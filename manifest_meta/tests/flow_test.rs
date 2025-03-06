@@ -11,7 +11,7 @@ fn it_should_read_flow_block() -> Result<()> {
     let mut block_reader = BlockReader::new();
     let flow_block = block_reader.resolve_flow_block("flow-1", &mut resolver)?;
 
-    assert!(flow_block.path.ends_with("flow-1/flow.oo.yaml"));
+    assert!(flow_block.path.ends_with("flow-1/block.oo.yaml"));
 
     assert!(flow_block.inputs_def.is_none());
     assert!(flow_block.outputs_def.is_none());
@@ -92,7 +92,7 @@ fn it_should_read_flow_block_with_inputs_def() -> Result<()> {
     let handle_flow_in1 = HandleName::new("flow_in1".to_owned());
     let handle_in1 = HandleName::new("in1".to_owned());
 
-    assert!(flow_block.path.ends_with("flow-2/flow.oo.yaml"));
+    assert!(flow_block.path.ends_with("flow-2/block.oo.yaml"));
 
     assert_eq!(
         flow_block

@@ -6,5 +6,5 @@ description = "Ouput the input value"
 edition = "2021"
 
 [dependencies]
-vocana_sdk = { path = "../../../sdk" }
+oocana_sdk = { path = "../../../sdk" }
 tokio = { version = "1.28.2", features = ["full"] }

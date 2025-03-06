@@ -1,12 +1,13 @@
 use std::{collections::HashMap, sync::Arc};
 
-use crate::{FlowBlock, HandleName, InputHandle, OutputHandle, SlotBlock, TaskBlock};
+use crate::{AppletBlock, FlowBlock, HandleName, InputHandle, OutputHandle, SlotBlock, TaskBlock};
 
 #[derive(Debug, Clone)]
 pub enum Block {
     Task(Arc<TaskBlock>),
     Flow(Arc<FlowBlock>),
     Slot(Arc<SlotBlock>),
+    Applet(Arc<AppletBlock>),
 }
 
 impl Block {
@@ -15,6 +16,7 @@ impl Block {
             Block::Task(task) => task.path_str.as_ref(),
             Block::Flow(flow) => Some(&flow.path_str),
             Block::Slot(slot) => slot.path_str.as_ref(),
+            Block::Applet(_) => None,
         }
     }
 }

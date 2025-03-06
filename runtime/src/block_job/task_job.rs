@@ -1,15 +1,21 @@
 use mainframe::scheduler::SchedulerTx;
 use mainframe::{reporter::BlockReporterTx, worker};
-use manifest_meta::{FlowBlock, TaskBlock};
+use manifest_meta::{
+    FlowBlock, InputHandles, OutputHandles, TaskBlock, TaskBlockEntry, TaskBlockExecutor,
+    OOMOL_VAR_DATA,
+};
+use serde_json::Value;
 use std::{process, sync::Arc};
 use tokio::io::{AsyncBufReadExt, BufReader};
-use utils::error::Result;
-use utils::path::to_absolute;
 
 use super::BlockJobHandle;
 use crate::block_status::BlockStatusTx;
 use crate::shared::Shared;
+use utils::output::{self, OutputValue};
+
 use job::{BlockInputs, BlockJobStacks, JobId, SessionId};
+use utils::error::Result;
+use utils::path::to_absolute;
 
 pub struct TaskJobHandle {
     pub job_id: JobId,
@@ -43,61 +49,114 @@ pub fn run_task_block(
         task_block.path_str.clone(),
         stacks.clone(),
     ));
-    reporter.started();
+
+    reporter.started(&inputs);
 
     let mut spawn_handles: Vec<tokio::task::JoinHandle<()>> = Vec::new();
 
     let worker_listener_handle = listen_to_worker(
         job_id.to_owned(),
         task_block.path_str.clone(),
-        stacks,
+        stacks.clone(),
         shared.scheduler_tx.clone(),
         inputs,
+        task_block.outputs_def.clone(),
+        task_block.inputs_def.clone(),
         block_status,
         Arc::clone(&reporter),
     );
 
-    let execute_result = execute(
-        &task_block,
-        parent_flow.as_ref(),
-        &shared.address,
-        &shared.session_id,
-        &job_id,
-    );
+    if let Some(entry) = &task_block.entry {
+        let execute_result = spawn(
+            &task_block,
+            entry,
+            parent_flow.as_ref(),
+            &shared.address,
+            &shared.session_id,
+            &job_id,
+        );
 
-    match execute_result {
-        Ok(mut child) => {
-            spawn_handles.push(worker_listener_handle);
-            bind_stdio(&mut child, &reporter, &mut spawn_handles);
+        match execute_result {
+            Ok(mut child) => {
+                spawn_handles.push(worker_listener_handle);
+                bind_stdio(&mut child, &reporter, &mut spawn_handles);
 
-            Some(BlockJobHandle::new(
-                job_id.to_owned(),
-                TaskJobHandle {
-                    job_id,
-                    shared,
-                    child: Some(child),
-                    spawn_handles,
-                },
-            ))
+                Some(BlockJobHandle::new(
+                    job_id.to_owned(),
+                    TaskJobHandle {
+                        job_id,
+                        shared,
+                        child: Some(child),
+                        spawn_handles,
+                    },
+                ))
+            }
+            Err(e) => {
+                worker_listener_handle.abort();
+                reporter.done(&Some(e.to_string()));
+                None
+            }
         }
-        Err(e) => {
-            worker_listener_handle.abort();
-            reporter.done(&Some(e.to_string()));
-            None
-        }
+    } else if let Some(executor) = &task_block.executor {
+        send_to_executor(
+            &task_block,
+            executor,
+            parent_flow.as_ref(),
+            &job_id,
+            shared.scheduler_tx.clone(),
+            stacks,
+        );
+
+        spawn_handles.push(worker_listener_handle);
+
+        Some(BlockJobHandle::new(
+            job_id.to_owned(),
+            TaskJobHandle {
+                job_id,
+                shared,
+                child: None,
+                spawn_handles,
+            },
+        ))
+    } else {
+        reporter.done(&Some("No executor or entry found".to_owned()));
+        None
     }
 }
 
-fn execute(
-    task_block: &TaskBlock, parent_flow: Option<&Arc<FlowBlock>>, address: &str,
-    session_id: &SessionId, job_id: &JobId,
+fn send_to_executor(
+    task_block: &TaskBlock, executor: &TaskBlockExecutor, parent_flow: Option<&Arc<FlowBlock>>,
+    job_id: &JobId, scheduler_tx: SchedulerTx, stacks: BlockJobStacks,
+) {
+    let dir = match &task_block.path {
+        Some(block_path) => block_path.parent().unwrap().to_str().unwrap().to_owned(),
+        None => match parent_flow {
+            Some(parent_flow) => parent_flow
+                .path
+                .parent()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .to_owned(),
+            None => ".".to_owned(),
+        },
+    };
+
+    scheduler_tx.send_to_executor(
+        executor.name.to_owned(),
+        job_id.to_owned(),
+        stacks.vec(),
+        dir,
+        executor,
+        &task_block.outputs_def,
+    );
+}
+
+fn spawn(
+    task_block: &TaskBlock, entry: &TaskBlockEntry, parent_flow: Option<&Arc<FlowBlock>>,
+    address: &str, session_id: &SessionId, job_id: &JobId,
 ) -> Result<process::Child> {
-    let mut args = task_block
-        .entry
-        .args
-        .iter()
-        .map(AsRef::as_ref)
-        .collect::<Vec<&str>>();
+    let mut args = entry.args.iter().map(AsRef::as_ref).collect::<Vec<&str>>();
 
     // add block task arguments
     args.extend(
@@ -113,9 +172,9 @@ fn execute(
     );
 
     // Execute the command
-    let mut command = process::Command::new(&task_block.entry.bin);
+    let mut command = process::Command::new(&entry.bin);
 
-    if let Some(cwd) = task_block.entry.cwd.as_ref() {
+    if let Some(cwd) = entry.cwd.as_ref() {
         command.current_dir(cwd);
     } else if let Some(block_path) = &task_block.path {
         if let Some(cwd) = block_path.parent().unwrap().to_str() {
@@ -129,7 +188,7 @@ fn execute(
 
     command
         .args(args)
-        .envs(&task_block.entry.envs)
+        .envs(&entry.envs)
         .stdin(process::Stdio::null())
         .stdout(process::Stdio::piped())
         .stderr(process::Stdio::piped())
@@ -143,9 +202,9 @@ fn execute(
 
             utils::error::Error::with_source(
                 &format!(
-                    "Failed to execute '{} {} <...VOCANA_ARGS>' at '{}'",
+                    "Failed to execute '{} {} <...OOCANA_ARGS>' at '{}'",
                     program,
-                    task_block.entry.args.join(" "),
+                    entry.args.join(" "),
                     current_dir,
                 ),
                 Box::new(e),
@@ -182,9 +241,10 @@ fn bind_stdio(
     }
 }
 
-fn listen_to_worker(
+pub fn listen_to_worker(
     job_id: JobId, block_path: Option<String>, stacks: BlockJobStacks, scheduler_tx: SchedulerTx,
-    mut inputs: Option<BlockInputs>, block_status: BlockStatusTx, reporter: Arc<BlockReporterTx>,
+    mut inputs: Option<BlockInputs>, outputs_def: Option<OutputHandles>,
+    inputs_def: Option<InputHandles>, block_status: BlockStatusTx, reporter: Arc<BlockReporterTx>,
 ) -> tokio::task::JoinHandle<()> {
     let (job_tx, job_rx) = flume::unbounded::<worker::MessageDeserialize>();
     scheduler_tx.register_subscriber(job_id.to_owned(), job_tx);
@@ -192,12 +252,12 @@ fn listen_to_worker(
         while let Ok(message) = job_rx.recv_async().await {
             match message {
                 worker::MessageDeserialize::BlockReady { job_id, .. } => {
-                    reporter.inputs(&inputs);
                     scheduler_tx.send_inputs(
                         job_id,
                         &block_path,
                         stacks.vec(),
                         inputs.take().as_ref(),
+                        &inputs_def,
                     );
                 }
                 worker::MessageDeserialize::BlockOutput {
@@ -208,11 +268,45 @@ fn listen_to_worker(
                     ..
                 } => {
                     reporter.result(&result, &handle, done);
-                    block_status.result(job_id, Arc::new(result), handle, done);
+
+                    let sender = outputs_def.as_ref().and_then(|outputs| {
+                        outputs.get(&handle).and_then(|output| {
+                            output
+                                .json_schema
+                                .as_ref()
+                                .and_then(|f: &serde_json::Value| match f {
+                                    Value::Object(obj) => {
+                                        obj.get("contentMediaType").as_ref().and_then(|k| {
+                                            if k.to_string() == OOMOL_VAR_DATA {
+                                                let s: Box<dyn output::DropSender> =
+                                                    Box::new(scheduler_tx.clone());
+                                                Some(Arc::new(s))
+                                            } else {
+                                                None
+                                            }
+                                        })
+                                    }
+                                    _ => None,
+                                })
+                        })
+                    });
+                    block_status.result(
+                        job_id,
+                        Arc::new(OutputValue {
+                            value: result,
+                            sender: sender,
+                        }),
+                        handle,
+                        done,
+                    );
                 }
-                worker::MessageDeserialize::BlockDone { error, job_id, .. } => {
+                worker::MessageDeserialize::BlockFinished { error, job_id, .. } => {
                     reporter.done(&error);
-                    block_status.done(job_id);
+                    if let Some(error) = error {
+                        block_status.done(job_id, Some(error));
+                    } else {
+                        block_status.done(job_id, None);
+                    }
                 }
                 worker::MessageDeserialize::BlockError { error, .. } => {
                     reporter.error(&error);

@@ -3,42 +3,46 @@ on:
   push:
     branches:
       - main
+    paths:
+      - '**'
+      - '!**.md'
+      - '!.vscode/*'
+      - '!.github/**'
+      - '.github/workflows/build-and-test.yml'
   pull_request:
+    paths:
+      - '**'
+      - '!**.md'
+      - '!.vscode/*'
+      - '!.github/**'
+      - '.github/workflows/build-and-test.yml'
     branches:
       - main
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
     build-compiler:
-      name: Build and Test ${{ matrix.rust-host }}
-      runs-on: ubuntu-latest
+      name: Build and Test
+      runs-on: [self-hosted, macOS, ARM64]
+      timeout-minutes: 20
       steps:
-        - uses: actions/checkout@v1
-        
-        - name: Selecting toolchain
+        - uses: actions/checkout@v4
+        # self-hosted runner 已经安装好了 rustup，检查访问总有问题，暂时不安装。
+        # - name: Selecting toolchain
           # When rustup is updated, it tries to replace its binary, which on Windows is somehow locked.
           # This can result in the CI failure, see: https://github.com/rust-lang/rustup/issues/3029
-          run: |
-            rustup set auto-self-update disable
-            rustup toolchain install stable --profile minimal
-        
-        - name: Set up cargo cache
-          uses: actions/cache@v3
-          continue-on-error: false
-          with:
-            path: |
-              ~/.cargo/bin/
-              ~/.cargo/registry/index/
-              ~/.cargo/registry/cache/
-              ~/.cargo/git/db/
-              target/
-            key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-            restore-keys: ${{ runner.os }}-cargo-
-
+          # run: |
+          #   rustup set auto-self-update disable
+          #   rustup toolchain install stable --profile minimal
         - name: Start MQTT Broker
           run: |
             which rumqttd || cargo install --git https://github.com/bytebeamio/rumqtt rumqttd
             rumqttd --config rumqttd.toml &
             sleep 5
-
+        # cargo test 不会使用 build cache，因此也没有必要为他设置 build cache。
+        # dependencies cache，由 self-hosted runner 全局的 rustup 自动支持，也不需要通过 cache 操作。
         - name: Test
-          run: cargo test
+          run: cargo test --workspace

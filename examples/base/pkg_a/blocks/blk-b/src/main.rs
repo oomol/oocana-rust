@@ -1,6 +1,6 @@
 #[tokio::main]
 async fn main() {
-    let (sdk, event_loop) = vocana_sdk::connect().await;
+    let (sdk, event_loop) = oocana_sdk::connect().await;
 
     let count: i64 = sdk
         .inputs
@@ -12,7 +12,7 @@ async fn main() {
 
     println!("Result of task {} is {}", &sdk.job_id, &result);
 
-    sdk.output(&vocana_sdk::json!(result), "my_output", true);
+    sdk.output(&oocana_sdk::json!(result), "my_output", true);
 
     event_loop.wait().await;
 }

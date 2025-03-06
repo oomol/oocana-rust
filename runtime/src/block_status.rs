@@ -2,17 +2,20 @@ use std::sync::Arc;
 
 use flume::{Receiver, Sender};
 use job::JobId;
-use manifest_meta::{HandleName, JsonValue};
+use utils::output::OutputValue;
+
+use manifest_meta::HandleName;
 
 pub enum Status {
     Result {
         job_id: JobId,
-        result: Arc<JsonValue>,
+        result: Arc<OutputValue>,
         handle: HandleName,
         done: bool,
     },
     Done {
         job_id: JobId,
+        error: Option<String>,
     },
 }
 
@@ -22,7 +25,7 @@ pub struct BlockStatusTx {
 }
 
 impl BlockStatusTx {
-    pub fn result(&self, job_id: JobId, result: Arc<JsonValue>, handle: HandleName, done: bool) {
+    pub fn result(&self, job_id: JobId, result: Arc<OutputValue>, handle: HandleName, done: bool) {
         self.tx
             .send(Status::Result {
                 job_id,
@@ -32,8 +35,8 @@ impl BlockStatusTx {
             })
             .unwrap();
     }
-    pub fn done(&self, job_id: JobId) {
-        self.tx.send(Status::Done { job_id }).unwrap();
+    pub fn done(&self, job_id: JobId, error: Option<String>) {
+        self.tx.send(Status::Done { job_id, error }).unwrap();
     }
 }
 

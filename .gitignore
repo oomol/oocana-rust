@@ -6,3 +6,4 @@ custom_config.toml
 .DS_Store
 
 /npm/
+last_input_values.json

@@ -1,3 +1,4 @@
+pub mod applet;
 pub mod block;
 pub mod node;
 

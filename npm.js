@@ -39,7 +39,7 @@ if (fs.existsSync(NPM_PATH)) {
     fs.mkdirSync(NPM_PATH);
 }
 
-const allTargetsDir = path.join(__dirname, "npm", `vocana-cli`);
+const allTargetsDir = path.join(__dirname, "npm", `oocana-cli`);
 const allTargetsBinDir = path.join(allTargetsDir, "bin");
 fs.mkdirSync(allTargetsDir)
 fs.mkdirSync(allTargetsBinDir)
@@ -48,9 +48,9 @@ fs.writeFileSync(
     path.join(allTargetsDir, "package.json"),
     JSON.stringify(
         {
-            name: `@vocana/vocana-cli`,
+            name: `@oomol/oocana-cli`,
             version: version,
-            description: `All-platform cli binaries for @vocana/vocana`,
+            description: `All-platform cli binaries for @oomol/oocana`,
             preferUnplugged: true,
             engines: {
                 node: ">=12",
@@ -66,7 +66,7 @@ fs.writeFileSync(
 // generate README.md
 fs.writeFileSync(
     path.join(allTargetsDir, "README.md"),
-    `# \`@vocana/vocana-cli\`\n\nThis is all-platform cli binaries for @vocana/vocana`
+    `# \`@oomol/oocana-cli\`\n\nThis is all-platform cli binaries for @oomol/oocana`
 );
 fs.writeFileSync(
     path.join(allTargetsDir, "index.js"),
@@ -74,7 +74,7 @@ fs.writeFileSync(
 );
 
 for (const target of targets) {
-    const targetDir = path.join(__dirname, "npm", `vocana-cli-${target}`);
+    const targetDir = path.join(__dirname, "npm", `oocana-cli-${target}`);
     const binDir = path.join(targetDir, "bin");
     // build rust for each target
     const result = spawnSync("cargo", ["build", "--release", "--target", target], {
@@ -101,12 +101,12 @@ for (const target of targets) {
     fs.mkdirSync(binDir);
     // copy target artifacts
     fs.copyFileSync(
-        path.join(__dirname, "target", target, "release", "vocana"),
-        path.join(binDir, "vocana")
+        path.join(__dirname, "target", target, "release", "oocana"),
+        path.join(binDir, "oocana")
     );
     // copy target artifacts to all-platform directory
     fs.copyFileSync(
-        path.join(__dirname, "target", target, "release", "vocana"),
+        path.join(__dirname, "target", target, "release", "oocana"),
         path.join(allTargetsBinDir, target)
     );
     // generate package.json
@@ -126,9 +126,9 @@ for (const target of targets) {
 function genPackageJson(target) {
     return JSON.stringify(
         {
-            name: `@vocana/vocana-cli-${target}`,
+            name: `@oomol/oocana-cli-${target}`,
             version: version,
-            description: `The ${target} cli binary for @vocana/vocana`,
+            description: `The ${target} cli binary for @oomol/oocana`,
             os: [targetConfig[target].os],
             cpu: [targetConfig[target].cpu],
             preferUnplugged: true,
@@ -145,7 +145,7 @@ function genPackageJson(target) {
 }
 
 function genReadme(target) {
-    return `# \`@vocana/vocana-cli-${target}\`\n\nThis is the ${target} cli binary for @vocana/vocana`;
+    return `# \`@oomol/oocana-cli-${target}\`\n\nThis is the ${target} cli binary for @oomol/oocana`;
 }
 
 function getVersion() {

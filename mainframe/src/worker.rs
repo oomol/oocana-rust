@@ -28,7 +28,7 @@ pub enum MessageSerialize<'a> {
         job_id: &'a str,
         error: &'a str,
     },
-    BlockDone {
+    BlockFinished {
         session_id: &'a str,
         job_id: &'a str,
         error: Option<&'a str>,
@@ -54,7 +54,7 @@ pub enum MessageDeserialize {
         job_id: JobId,
         error: String,
     },
-    BlockDone {
+    BlockFinished {
         session_id: SessionId,
         job_id: JobId,
         error: Option<String>,
@@ -67,7 +67,7 @@ impl MessageDeserialize {
             MessageDeserialize::BlockReady { session_id, .. } => session_id,
             MessageDeserialize::BlockOutput { session_id, .. } => session_id,
             MessageDeserialize::BlockError { session_id, .. } => session_id,
-            MessageDeserialize::BlockDone { session_id, .. } => session_id,
+            MessageDeserialize::BlockFinished { session_id, .. } => session_id,
         }
     }
 
@@ -76,7 +76,7 @@ impl MessageDeserialize {
             MessageDeserialize::BlockReady { job_id, .. } => job_id,
             MessageDeserialize::BlockOutput { job_id, .. } => job_id,
             MessageDeserialize::BlockError { job_id, .. } => job_id,
-            MessageDeserialize::BlockDone { job_id, .. } => job_id,
+            MessageDeserialize::BlockFinished { job_id, .. } => job_id,
         }
     }
 }
@@ -125,8 +125,11 @@ impl WorkerTx {
                 handle,
                 output,
             },
-            done,
+            false,
         );
+        if done {
+            self.done(None);
+        }
     }
 
     pub fn error(&self, error: &String) {
@@ -142,7 +145,7 @@ impl WorkerTx {
 
     pub fn done(&self, error: Option<&str>) {
         self.send(
-            MessageSerialize::BlockDone {
+            MessageSerialize::BlockFinished {
                 session_id: &self.session_id,
                 job_id: &self.job_id,
                 error,
@@ -151,9 +154,9 @@ impl WorkerTx {
         );
     }
 
-    fn send(&self, message: MessageSerialize, done: bool) {
+    fn send(&self, message: MessageSerialize, finish: bool) {
         let data = serde_json::to_vec(&message).unwrap();
-        self.tx.send(Command::SendMessage(data, done)).unwrap();
+        self.tx.send(Command::SendMessage(data, finish)).unwrap();
     }
 }
 
@@ -213,6 +216,8 @@ where
                                         callback.send(inputs).unwrap();
                                     }
                                 }
+                                scheduler::MessageDeserialize::ExecuteBlock { .. } => {}
+                                scheduler::MessageDeserialize::ExecuteAppletBlock { .. } => {}
                             };
                         }
                     }

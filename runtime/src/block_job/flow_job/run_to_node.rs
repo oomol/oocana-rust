@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use manifest_meta::{FlowBlock, HandleFrom, Node, NodeId};
 
 pub struct RunToNode {
-    should_run_nodes: Option<HashSet<NodeId>>,
+    pub should_run_nodes: Option<HashSet<NodeId>>,
 }
 
 impl RunToNode {
@@ -27,6 +27,21 @@ impl RunToNode {
             should_run_nodes.contains(node_id)
         } else {
             true
+        }
+    }
+
+    pub fn has_deps_in(&self, nodes: &HashSet<NodeId>) -> bool {
+        match self.should_run_nodes {
+            Some(ref should_run_nodes) => !should_run_nodes.is_disjoint(&nodes),
+            None => false,
+        }
+    }
+
+    // 返回交集
+    pub fn find_intersection_nodes(&self, nodes: &HashSet<NodeId>) -> HashSet<NodeId> {
+        match self.should_run_nodes {
+            Some(ref should_run_nodes) => should_run_nodes.intersection(nodes).cloned().collect(),
+            None => HashSet::new(),
         }
     }
 }

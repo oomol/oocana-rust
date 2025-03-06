@@ -22,34 +22,25 @@ impl BlockReporterTx {
         }
     }
 
-    pub fn started(&self) {
+    pub fn started(&self, inputs: &Option<BlockInputs>) {
         self.tx.send(ReporterMessage::BlockStarted {
             session_id: &self.tx.session_id,
             job_id: &self.job_id,
             block_path: &self.block_path,
             stacks: &self.stacks.vec(),
+            inputs,
             create_at: ReporterMessage::now(),
         });
     }
 
     pub fn done(&self, error: &Option<String>) {
-        self.tx.send(ReporterMessage::BlockDone {
+        self.tx.send(ReporterMessage::BlockFinished {
             session_id: &self.tx.session_id,
             job_id: &self.job_id,
             block_path: &self.block_path,
             stacks: &self.stacks.vec(),
             error,
             finish_at: ReporterMessage::now(),
-        });
-    }
-
-    pub fn inputs(&self, inputs: &Option<BlockInputs>) {
-        self.tx.send(ReporterMessage::BlockInputs {
-            session_id: &self.tx.session_id,
-            job_id: &self.job_id,
-            block_path: &self.block_path,
-            stacks: &self.stacks.vec(),
-            inputs,
         });
     }
 

@@ -10,10 +10,10 @@ use utils::types::LogLevel;
 
 #[derive(Parser, Debug)]
 #[clap(
-    name = "vocana",
+    name = "oocana",
     author,
     about,
-    long_about = "Vocana CLI",
+    long_about = "Oocana CLI",
     version
 )]
 #[clap(setting = AppSettings::SubcommandRequired)]
@@ -40,11 +40,11 @@ pub struct Cli {
 enum Commands {
     #[clap(
         name = "run",
-        about = "Run a Vocana Flow",
+        about = "Run a Oocana Flow",
         long_about = None, 
     )]
     Run {
-        #[clap(help = "Path to the Vocana Block Manifest file or a directory with flow.oo.yaml.")]
+        #[clap(help = "Path to the Oocana Block Manifest file or a directory with flow.oo.yaml.")]
         block: String,
         #[clap(help = "MQTT Broker Address.", long)]
         broker: Option<String>,
@@ -56,6 +56,10 @@ enum Commands {
         reporter: bool,
         #[clap(help = "Stop the flow after the node is finished.", long)]
         node: Option<String>,
+        #[clap(help = "Run the flow with the nodes needed to run.", long)]
+        nodes: Option<String>,
+        #[clap(help = "Values for the input handles value. format is {\"node_id\": \"inputHandleName\": [1]}}. first key is node id, the first level value is a key-value pair, the next level's value is a list of input values", long)]
+        input_values: Option<String>,
     },
     #[clap(
         name = "completion",
@@ -97,20 +101,20 @@ pub fn cli_match() -> Result<()> {
 
     // Execute the subcommand
     match &cli.command {
-        Commands::Run { block, broker, block_search_paths, session, reporter, node } => {
-            commands::run(block, broker.to_owned(), block_search_paths.to_owned(), session.to_owned(), reporter.to_owned(), node.to_owned())?
+        Commands::Run { block, broker, block_search_paths, session, reporter, node, nodes, input_values } => {
+            commands::run(block, broker.to_owned(), block_search_paths.to_owned(), session.to_owned(), reporter.to_owned(), node.to_owned(), nodes.to_owned(), input_values.to_owned())?
         },
         Commands::Completion {subcommand} => {
             let mut app = Cli::into_app();
             match subcommand {
                 CompletionSubcommand::Bash => {
-                    generate(Bash, &mut app, "vocana", &mut std::io::stdout());
+                    generate(Bash, &mut app, "oocana", &mut std::io::stdout());
                 }
                 CompletionSubcommand::Zsh => {
-                    generate(Zsh, &mut app, "vocana", &mut std::io::stdout());
+                    generate(Zsh, &mut app, "oocana", &mut std::io::stdout());
                 }
                 CompletionSubcommand::Fish => {
-                    generate(Fish, &mut app, "vocana", &mut std::io::stdout());
+                    generate(Fish, &mut app, "oocana", &mut std::io::stdout());
                 }
             }
         }

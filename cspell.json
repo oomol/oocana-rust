@@ -6,9 +6,11 @@
     "commitlint",
     "Condvar",
     "CRIMX",
+    "Deque",
     "Froms",
     "MQTT",
     "oneshot",
+    "oocana",
     "rumqttc",
     "rumqttd",
     "rustup",
@@ -17,7 +19,7 @@
     "termlog",
     "thiserror",
     "ttlhashmap",
-    "vocana"
+    "oocana"
   ],
   "ignorePaths": [
     "**/coverage/**",

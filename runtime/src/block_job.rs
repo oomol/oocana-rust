@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{collections::HashSet, sync::Arc};
 
 use job::{BlockInputs, BlockJobStacks, JobId};
 use mainframe::reporter::ReporterMessage;
@@ -6,6 +6,7 @@ use manifest_meta::{Block, FlowBlock, NodeId};
 
 use crate::{block_status::BlockStatusTx, shared::Shared};
 
+mod applet_job;
 mod flow_job;
 mod task_job;
 
@@ -26,10 +27,11 @@ impl BlockJobHandle {
 pub fn run_block(
     block: Block, shared: Arc<Shared>, parent_flow: Option<Arc<FlowBlock>>, stacks: BlockJobStacks,
     job_id: JobId, inputs: Option<BlockInputs>, block_status: BlockStatusTx,
-    to_node: Option<NodeId>,
+    to_node: Option<NodeId>, nodes: Option<HashSet<NodeId>>, input_values: Option<String>,
 ) -> Option<BlockJobHandle> {
     match block {
-        Block::Flow(flow_block) => flow_job::run_flow_block(
+        // block.oo.yaml type flow_block || flow.oo.yaml
+        Block::Flow(flow_block) => flow_job::run_flow(
             flow_block,
             shared,
             stacks,
@@ -37,7 +39,10 @@ pub fn run_block(
             inputs,
             block_status,
             to_node,
+            nodes,
+            input_values,
         ),
+        // block.oo.yaml type task_block
         Block::Task(task_block) => task_job::run_task_block(
             task_block,
             shared,
@@ -47,10 +52,13 @@ pub fn run_block(
             inputs,
             block_status,
         ),
+        Block::Applet(applet_block) => {
+            applet_job::run_applet_block(applet_block, shared, stacks, job_id, inputs, block_status)
+        }
         Block::Slot(slot_block) => {
             shared
                 .reporter
-                .send(mainframe::reporter::ReporterMessage::BlockDone {
+                .send(mainframe::reporter::ReporterMessage::BlockFinished {
                     session_id: &shared.session_id,
                     job_id: &job_id,
                     block_path: &slot_block

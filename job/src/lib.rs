@@ -1,7 +1,8 @@
 use std::{collections::HashMap, sync::Arc};
 
-use manifest_meta::{HandleName, JsonValue, NodeId};
+use manifest_meta::{HandleName, NodeId};
 use serde::{Deserialize, Serialize};
+use utils::output::OutputValue;
 
 #[derive(
     Serialize,
@@ -49,7 +50,7 @@ impl JobId {
     }
 }
 
-pub type BlockInputs = HashMap<HandleName, Arc<JsonValue>>;
+pub type BlockInputs = HashMap<HandleName, Arc<OutputValue>>;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct BlockJobStackLevel {

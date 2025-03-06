@@ -1,6 +1,6 @@
-# Vocana Rust
+# Oocana Rust
 
-![github-actions](https://github.com/oomol/vocana-rust/actions/workflows/build-and-test.yml/badge.svg?branch=main)
+![github-actions](https://github.com/oomol/oocana-rust/actions/workflows/build-and-test.yml/badge.svg?branch=main)
 
 ## Demo
 
@@ -18,7 +18,7 @@ cargo run run examples
 
 1. 安装 rust。
 1. 项目根执行 `cargo build --release`。
-1. 产物在 `target/release/vocana`。
+1. 产物在 `target/release/oocana`。
 
 clean:
 ```bash
@@ -34,12 +34,19 @@ clean:
   ```bash
   rustup target add x86_64-apple-darwin
   rustup target add aarch64-apple-darwin
+  rustup target add x86_64-unknown-linux-gnu
+  rustup target add aarch64-unknown-linux-gnu
   
   brew tap messense/macos-cross-toolchains
   brew install x86_64-unknown-linux-gnu
   brew install aarch64-unknown-linux-gnu
   ```
 - 先更新 `Cargo.toml` 中的版本。
+- Macos 用户在当前项目的父一级目录，或者在 `~/.cargo/config` 中增加如下配置：
+    ```toml
+    [target.x86_64-unknown-linux-gnu]
+    linker = "x86_64-unknown-linux-gnu-gcc"
+    ```
 - 编译各个环境二进制并生成 NPM 包。
   ```bash
   node npm.js
@@ -62,7 +69,7 @@ clean:
 - `manifest_reader`
   负责从 yaml 文件中读取 flow 图与 block 的 meta 信息并进行处理成内部结构供 core 使用
 - `sdk`
-  基于 Rust 实现的 Vocana block sdk，供本项目测试使用
+  基于 Rust 实现的 Oocana block sdk，供本项目测试使用
 - `src`
   Rust 程序入口
 - `tests`
@@ -74,7 +81,7 @@ clean:
 
 ### 执行过程
 
-从整个程序角度看，当命令行输入 `vocana run ./[path_to_flow_project]` 时：
+从整个程序角度看，当命令行输入 `oocana run ./[path_to_flow_project]` 时：
 
 1. 先从 `src` 启动程序。
 1. 通过 `cli` 处理命令行参数。
@@ -89,6 +96,6 @@ clean:
 
 当 block 中的任务被执行后
 
-1. sdk 会先启动，告知 vocana 服务 block 已启动，同时返回输入数据。
+1. sdk 会先启动，告知 oocana 服务 block 已启动，同时返回输入数据。
 1. sdk 处理好后执行具体业务代码。
-1. 产出结果告知 vocana 服务。
+1. 产出结果告知 oocana 服务。

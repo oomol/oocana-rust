@@ -1,6 +1,8 @@
 use manifest_reader::block_manifest_reader::{
     self, resolve_flow_block, resolve_slot_block, resolve_task_block,
 };
+
+use manifest_reader::applet_manifest_reader::resolve_applet;
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
@@ -8,7 +10,8 @@ use std::{
 };
 use utils::error::Result;
 
-use crate::{Block, FlowBlock, SlotBlock, TaskBlock};
+use crate::applet::AppletBlock;
+use crate::{applet_reader, flow_reader, Applet, Block, FlowBlock, SlotBlock, TaskBlock};
 
 pub type BlockName = String;
 pub type BlockPath = PathBuf;
@@ -18,6 +21,7 @@ pub struct BlockReader {
     flow_cache: Option<HashMap<BlockPath, Arc<FlowBlock>>>,
     task_cache: Option<HashMap<BlockPath, Arc<TaskBlock>>>,
     slot_cache: Option<HashMap<BlockPath, Arc<SlotBlock>>>,
+    applet_cache: Option<HashMap<BlockPath, Applet>>,
 }
 
 impl BlockReader {
@@ -26,6 +30,7 @@ impl BlockReader {
             flow_cache: None,
             task_cache: None,
             slot_cache: None,
+            applet_cache: None,
         }
     }
 
@@ -67,6 +72,14 @@ impl BlockReader {
         }
     }
 
+    pub fn resolve_applet_node_block(
+        &mut self, applet_node_block: String, resolver: &mut BlockPathResolver,
+    ) -> Result<Arc<AppletBlock>> {
+        let applet_path = resolver.resolve_applet_block(&applet_node_block)?;
+        let block_name = applet_node_block.split("::").last().unwrap();
+        self.read_applet_block(&applet_path, block_name)
+    }
+
     pub fn resolve_block(
         &mut self, block_name: &str, resolver: &mut BlockPathResolver,
     ) -> Result<Block> {
@@ -92,6 +105,22 @@ impl BlockReader {
                 }
                 Err(err) => {
                     if task_path.ends_with("block.oo.yaml") || task_path.ends_with("block.oo.yml") {
+                        return Err(err);
+                    }
+                }
+            }
+        }
+
+        let applet_path = resolver.resolve_applet_block(block_name);
+        if let Ok(applet_path) = applet_path {
+            match self.read_applet_block(&applet_path, block_name) {
+                Ok(applet) => {
+                    return Ok(Block::Applet(applet));
+                }
+                Err(err) => {
+                    if applet_path.ends_with("applet.oo.yaml")
+                        || applet_path.ends_with("applet.oo.yml")
+                    {
                         return Err(err);
                     }
                 }
@@ -137,17 +166,44 @@ impl BlockReader {
             }
         }
 
-        let flow = Arc::new(FlowBlock::from_manifest(
-            block_manifest_reader::read_flow_block(flow_path)?,
-            flow_path.to_owned(),
-            self,
-            resolver.subflow(flow_path),
-        )?);
+        let flow = Arc::new(flow_reader::read_flow(flow_path, self, resolver)?);
 
         let flow_cache = self.flow_cache.get_or_insert_with(HashMap::new);
         flow_cache.insert(flow_path.to_owned(), Arc::clone(&flow));
 
         Ok(flow)
+    }
+
+    fn read_applet(&mut self, applet_path: &Path) -> Result<&Applet> {
+        let applet_cache = self.applet_cache.get_or_insert_with(HashMap::new);
+
+        if applet_cache.contains_key(applet_path) {
+            Ok(applet_cache.get(applet_path).unwrap())
+        } else {
+            let applet = applet_reader::read_applet(applet_path)?;
+            applet_cache.insert(applet_path.to_owned(), applet);
+            Ok(&applet_cache[applet_path])
+        }
+    }
+
+    fn read_applet_block(
+        &mut self, applet_path: &Path, block_name: &str,
+    ) -> Result<Arc<AppletBlock>> {
+        let applet = self.read_applet(applet_path)?;
+
+        let block = applet
+            .blocks
+            .as_ref()
+            .and_then(|m| m.get(block_name).cloned())
+            .ok_or_else(|| {
+                utils::error::Error::new(&format!(
+                    "Block {} not found in applet {}",
+                    block_name,
+                    applet_path.to_str().unwrap_or("")
+                ))
+            })?;
+
+        Ok(block)
     }
 
     fn read_slot_block(&mut self, slot_path: &Path) -> Result<Arc<SlotBlock>> {
@@ -238,5 +294,19 @@ impl BlockPathResolver {
             .insert(slot_name.to_owned(), slot_path.to_owned());
 
         Ok(slot_path)
+    }
+
+    pub fn resolve_applet_block(&mut self, block_in_applet: &str) -> Result<BlockPath> {
+        if let Some(applet_path) = self.cache.get(block_in_applet) {
+            return Ok(applet_path.to_owned());
+        }
+
+        let applet_path =
+            resolve_applet(block_in_applet, &self.base_dir, &self.block_search_paths)?;
+
+        self.cache
+            .insert(block_in_applet.to_owned(), applet_path.to_owned());
+
+        Ok(applet_path)
     }
 }

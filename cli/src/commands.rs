@@ -13,7 +13,11 @@ pub fn config() -> Result<()> {
 pub fn run(
     block_path: &str, broker_address: Option<String>, block_search_paths: Option<String>,
     execution_session: Option<String>, reporter_enable: bool, to_node: Option<String>,
+    nodes: Option<String>, input_values: Option<String>,
 ) -> Result<()> {
+    println!("block_path: {}, broker_address: {:?}, block_search_paths: {:?}, execution_session: {:?}, reporter_enable: {}, to_node: {:?}, nodes: {:?}, input_values: {:?}", 
+    block_path, broker_address, block_search_paths, execution_session, reporter_enable, to_node, nodes, input_values);
+
     run_block(
         block_path,
         broker_address,
@@ -21,5 +25,7 @@ pub fn run(
         execution_session,
         reporter_enable,
         to_node,
+        nodes,
+        input_values,
     )
 }

@@ -1,4 +1,4 @@
-use std::{collections::HashMap, path::PathBuf, sync::Arc};
+use std::{collections::HashMap, path::PathBuf};
 
 use manifest_reader::block_manifest_reader::{block as manifest_block, node as manifest_node};
 use utils::error::Result;
@@ -7,8 +7,9 @@ use crate::{
     block,
     block_reader::{BlockPathResolver, BlockReader},
     connections::Connections,
-    FlowNode, HandlesFroms, HandlesTos, InputHandle, InputHandleCache, InputHandles, Node, NodeId,
-    OutputHandles, SlotNode, TaskNode,
+    node::AppletNode,
+    FlowNode, HandlesFroms, HandlesTos, InputHandles, Node, NodeId, OutputHandles, SlotNode,
+    TaskNode,
 };
 
 #[derive(Debug, Clone)]
@@ -20,7 +21,7 @@ pub struct FlowBlock {
     pub path_str: String,
     /// Flow inputs to in-flow nodes
     pub flow_inputs_tos: HandlesTos,
-    /// Flow inputs from in-flow nodes
+    /// Flow outputs from in-flow nodes
     pub flow_outputs_froms: HandlesFroms,
 }
 
@@ -69,6 +70,25 @@ impl FlowBlock {
                             node_id: flow_node.node_id,
                             // title: flow_node.title,
                             timeout: flow_node.timeout,
+                            inputs_def,
+                        }),
+                    );
+                }
+                manifest_node::Node::Applet(applet_node) => {
+                    let applet = block_reader
+                        .resolve_applet_node_block(applet_node.applet, &mut resolver)?;
+                    let inputs_def =
+                        parse_inputs_def(&applet_node.inputs_from, &applet.as_ref().inputs_def);
+
+                    new_nodes.insert(
+                        applet_node.node_id.to_owned(),
+                        Node::Applet(AppletNode {
+                            from: connections.node_inputs_froms.remove(&applet_node.node_id),
+                            to: connections.node_outputs_tos.remove(&applet_node.node_id),
+                            node_id: applet_node.node_id,
+                            // title: flow_node.title,
+                            timeout: applet_node.timeout,
+                            block: applet,
                             inputs_def,
                         }),
                     );
@@ -127,33 +147,29 @@ impl FlowBlock {
 }
 
 fn parse_inputs_def(
-    inputs_from: &Option<Vec<manifest_node::DataSource>>, inputs_def: &Option<InputHandles>,
+    node_inputs_from: &Option<Vec<manifest_node::DataSource>>, inputs_def: &Option<InputHandles>,
 ) -> Option<InputHandles> {
     match inputs_def {
         Some(inputs_def) => {
-            let mut inputs_def = inputs_def.clone();
-            if let Some(inputs_from) = inputs_from {
+            let mut merged_inputs_def = inputs_def.clone();
+            if let Some(inputs_from) = node_inputs_from {
                 for input in inputs_from {
-                    let def = inputs_def
+                    // 如果 node_inputs_from 中的 input 不在 inputs_def 中，则不合并进 node 实例中的 inputs_def 中。这样可以避免后续做很多判断。
+                    if !merged_inputs_def.contains_key(&input.handle) {
+                        continue;
+                    }
+
+                    merged_inputs_def
                         .entry(input.handle.to_owned())
-                        .or_insert_with(|| InputHandle::new(input.handle.to_owned()));
-                    if let Some(trigger) = input.trigger {
-                        def.trigger = trigger;
-                    }
-                    if let Some(cache) = &input.cache {
-                        def.cache = match cache {
-                            manifest_node::DataSourceCache::Bool(b) => InputHandleCache::Bool(*b),
-                            manifest_node::DataSourceCache::InitialValue(v) => {
-                                InputHandleCache::InitialValue {
-                                    initial_value: Arc::clone(&v.initial_value),
-                                }
+                        .and_modify(|def| {
+                            if let Some(value) = &input.value {
+                                def.value = Some(value.clone());
                             }
-                        };
-                    }
+                        });
                 }
             }
 
-            Some(inputs_def)
+            Some(merged_inputs_def)
         }
         None => None,
     }

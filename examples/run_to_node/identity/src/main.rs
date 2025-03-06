@@ -1,6 +1,6 @@
 #[tokio::main]
 async fn main() {
-    let (sdk, event_loop) = vocana_sdk::connect().await;
+    let (sdk, event_loop) = oocana_sdk::connect().await;
 
     let count: i64 = sdk
         .inputs
@@ -10,7 +10,7 @@ async fn main() {
 
     let result = count;
 
-    sdk.output(&vocana_sdk::json!(result), "out", true);
+    sdk.output(&oocana_sdk::json!(result), "out", true);
 
     event_loop.wait().await;
 }

@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use serde::{Deserialize, Serialize};
 
 use super::block::{HandleName, SlotBlock, TaskBlock};
@@ -27,6 +25,7 @@ pub enum Node {
     Task(TaskNode),
     Flow(FlowNode),
     Slot(SlotNode),
+    Applet(AppletNode),
 }
 
 impl Node {
@@ -35,6 +34,7 @@ impl Node {
             Node::Task(task) => &task.node_id,
             Node::Flow(flow) => &flow.node_id,
             Node::Slot(slot) => &slot.node_id,
+            Node::Applet(applet) => &applet.node_id,
         }
     }
     pub fn inputs_from(&self) -> Option<&Vec<DataSource>> {
@@ -42,6 +42,7 @@ impl Node {
             Node::Task(task) => task.inputs_from.as_ref(),
             Node::Flow(flow) => flow.inputs_from.as_ref(),
             Node::Slot(slot) => slot.inputs_from.as_ref(),
+            Node::Applet(applet) => applet.inputs_from.as_ref(),
         }
     }
 }
@@ -63,6 +64,16 @@ pub struct FlowNode {
     pub slots: Option<Vec<FlowNodeSlotDataSource>>,
     pub node_id: NodeId,
     // pub title: Option<String>,
+    #[serde(default)]
+    pub timeout: Option<u64>,
+    #[serde(default)]
+    pub inputs_from: Option<Vec<DataSource>>,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct AppletNode {
+    pub applet: String,
+    pub node_id: NodeId,
     #[serde(default)]
     pub timeout: Option<u64>,
     #[serde(default)]
@@ -96,28 +107,16 @@ pub enum SlotNodeBlock {
 #[derive(Deserialize, Debug, Clone)]
 pub struct DataSource {
     pub handle: HandleName,
-    #[serde(default)]
-    pub trigger: Option<bool>,
-    #[serde(default)]
-    pub cache: Option<DataSourceCache>,
+
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub value: Option<serde_json::Value>,
+
     #[serde(default)]
     pub from_flow: Option<Vec<DataSourceFromFlow>>,
     #[serde(default)]
     pub from_node: Option<Vec<DataSourceFromNode>>,
     #[serde(default)]
     pub from_slot_node: Option<Vec<DataSourceFromSlotNode>>,
-}
-
-#[derive(Deserialize, Debug, Clone)]
-#[serde(untagged)]
-pub enum DataSourceCache {
-    Bool(bool),
-    InitialValue(DataSourceCacheInitialValue),
-}
-
-#[derive(Deserialize, Debug, Clone)]
-pub struct DataSourceCacheInitialValue {
-    pub initial_value: Arc<serde_json::Value>,
 }
 
 #[derive(Deserialize, Debug, Clone)]

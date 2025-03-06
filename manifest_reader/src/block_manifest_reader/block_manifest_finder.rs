@@ -43,7 +43,15 @@ fn search_block_manifest(
     // block_name is `pkg_name::block_name`
     let parts: Vec<&str> = block_name.split("::").filter(|s| s.len() > 0).collect();
 
-    if parts.len() > 2 {
+    let sep = "/blocks/";
+
+    // 这种格式是在 applet 中的 block，存在两个 :: 分隔符，最后面一个是 block 的名字。
+    if parts.len() == 3 {
+        let guess_block_path = block_search_path.join(parts[..2].join(sep));
+        return resolve_path(&guess_block_path, prefix);
+    }
+
+    if parts.len() > 3 {
         return None;
         // TODO:
         // return Err(Error::new(&format!(
@@ -52,7 +60,7 @@ fn search_block_manifest(
         // )));
     }
 
-    let guess_block_path = block_search_path.join(parts.join("/blocks/"));
+    let guess_block_path = block_search_path.join(parts.join(&sep));
 
     resolve_path(&guess_block_path, prefix)
 }

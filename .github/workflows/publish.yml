@@ -1,0 +1,30 @@
+name: Publish to github npm registry
+on:
+  push:
+    tags:
+      - "**"
+jobs:
+    prepare-env:
+      runs-on: [self-hosted, macOS, ARM64]
+      timeout-minutes: 20
+      steps:
+        - uses: actions/checkout@v4
+        - name: Selecting toolchain
+          # When rustup is updated, it tries to replace its binary, which on Windows is somehow locked.
+          # This can result in the CI failure, see: https://github.com/rust-lang/rustup/issues/3029
+          run: |
+            rustup set auto-self-update disable
+            rustup toolchain install stable --profile minimal
+    build-and-publish:
+      runs-on: [self-hosted, macOS, ARM64]
+      timeout-minutes: 20
+      needs: prepare-env
+      steps:
+        - uses: actions/setup-node@v4
+          with:
+            # self-hosted runners publish 时，没法直接使用 node 20，所以这里使用 18 做临时 workaround
+            node-version: "18"
+            registry-url: "https://npm.pkg.github.com/"
+        - run: node npm.js && node publish.js
+          env:
+            NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -2,6 +2,9 @@ name: flow-1
 nodes:
   - node_id: block-1
     task: blk_a
+    inputs_from:
+      - handle: my_count
+        value: 3
   - node_id: block-2
     task: ./blk_a # relative path to a block name
     inputs_from:

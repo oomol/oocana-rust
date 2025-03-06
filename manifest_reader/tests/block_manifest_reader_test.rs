@@ -10,7 +10,9 @@ fn it_should_read_task_block() -> Result<()> {
     let task_block = block_manifest_reader::read_task_block(&task_path)?;
 
     assert!(task_path.ends_with("task-blk1/block.oo.yaml"));
-    assert_eq!(task_block.entry.bin, "cargo");
+
+    assert!(task_block.entry.is_some());
+    assert_eq!(task_block.entry.unwrap().bin, "cargo");
 
     Ok(())
 }

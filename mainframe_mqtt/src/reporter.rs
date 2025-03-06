@@ -36,7 +36,7 @@ impl ReporterRxImpl for ReporterRx {
         tokio::spawn(async move {
             loop {
                 if let Err(e) = self.rx.poll().await {
-                    eprintln!("Cannot connect Vocana Reporter to broker. error: {:?}", e);
+                    eprintln!("Cannot connect Oocana Reporter to broker. error: {:?}", e);
                     std::process::exit(1);
                 }
             }
@@ -46,7 +46,7 @@ impl ReporterRxImpl for ReporterRx {
 
 pub async fn connect(addr: &SocketAddr) -> (ReporterTx, ReporterRx) {
     let mut options = MqttOptions::new(
-        format!("vocana-reporter-{}", Uuid::new_v4().to_string()),
+        format!("oocana-reporter-{}", Uuid::new_v4().to_string()),
         addr.ip().to_string(),
         addr.port(),
     );

@@ -1,8 +1,8 @@
 [package]
-name = "vocana_sdk"
+name = "oocana_sdk"
 version = "0.0.1"
 authors = ["CRIMX <straybugs@gmail.com>"]
-description = "Vocana runner SDK in Rust"
+description = "Oocana runner SDK in Rust"
 edition = "2021"
 
 [dependencies]

@@ -24,7 +24,7 @@ pub fn default_root_logger() -> Result<slog::Logger> {
     let drain = slog::Duplicate(default_syslog_drain().unwrap_or(default_discard()?), drain).fuse();
 
     // Create Logger
-    let logger = slog::Logger::root(drain, o!("who" => "vocana"));
+    let logger = slog::Logger::root(drain, o!("who" => "oocana"));
 
     // Return Logger
     Ok(logger)

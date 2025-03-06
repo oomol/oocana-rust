@@ -1,6 +1,10 @@
 pub use manifest_reader::{
     block_manifest_reader::{
-        block::{HandleName, InputHandle, InputHandleCache, OutputHandle, TaskBlockEntry},
+        applet::AppletExecutorOptions,
+        block::{
+            HandleName, InputHandle, OutputHandle, TaskBlockEntry, TaskBlockExecutor,
+            OOMOL_BIN_DATA, OOMOL_SECRET_DATA, OOMOL_VAR_DATA,
+        },
         node::NodeId,
     },
     JsonValue,
@@ -8,6 +12,11 @@ pub use manifest_reader::{
 
 mod block;
 pub use block::{Block, InputHandles, OutputHandles};
+
+mod applet;
+pub use applet::{Applet, AppletBlock};
+
+mod applet_reader;
 
 mod task;
 pub use task::TaskBlock;

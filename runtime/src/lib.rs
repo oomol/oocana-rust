@@ -4,7 +4,7 @@ pub mod block_status;
 pub mod delay_abort;
 pub mod shared;
 
-use std::sync::Arc;
+use std::{collections::HashSet, sync::Arc};
 
 use job::{BlockJobStacks, JobId};
 use manifest_meta::{flow_reader, Block, BlockPathResolver, BlockReader, NodeId};
@@ -13,6 +13,7 @@ use utils::error::Result;
 pub async fn run(
     shared: Arc<shared::Shared>, block_name: &str, block_reader: BlockReader,
     resolver: BlockPathResolver, job_id: Option<JobId>, to_node: Option<NodeId>,
+    nodes: Option<HashSet<NodeId>>, input_values: Option<String>,
 ) -> Result<()> {
     let (block_status_tx, block_status_rx) = block_status::create();
     let job_id = job_id.unwrap_or_else(JobId::random);
@@ -36,6 +37,8 @@ pub async fn run(
         None,
         block_status_tx,
         to_node,
+        nodes,
+        input_values,
     );
 
     while let Some(status) = block_status_rx.recv().await {

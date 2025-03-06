@@ -1,14 +1,20 @@
 use async_trait::async_trait;
 use flume::{Receiver, Sender};
 use serde::Serialize;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::{
+    sync::Arc,
+    time::{SystemTime, UNIX_EPOCH},
+};
+use utils::output::OutputValue;
 
 use crate::MessageData;
 use job::{BlockInputs, BlockJobStackLevel, BlockJobStacks, JobId, SessionId};
 use manifest_meta::JsonValue;
 
 mod block_reporter;
+mod flow_reporter;
 pub use block_reporter::BlockReporterTx;
+pub use flow_reporter::FlowReporterTx;
 
 #[derive(Serialize, Debug, Clone)]
 #[serde(tag = "type")]
@@ -23,14 +29,30 @@ pub enum ReporterMessage<'a> {
         finish_at: u128,
         path: &'a str,
     },
-    BlockStarted {
+    FlowStarted {
         session_id: &'a str,
         job_id: &'a str,
-        block_path: &'a Option<String>,
+        flow_path: &'a Option<String>,
         stacks: &'a Vec<BlockJobStackLevel>,
         create_at: u128,
     },
-    BlockDone {
+    FlowBlockStarted {
+        session_id: &'a str,
+        job_id: &'a str,
+        block_path: &'a Option<String>,
+        inputs: &'a Option<BlockInputs>,
+        stacks: &'a Vec<BlockJobStackLevel>,
+        create_at: u128,
+    },
+    FlowFinished {
+        session_id: &'a str,
+        job_id: &'a str,
+        flow_path: &'a Option<String>,
+        stacks: &'a Vec<BlockJobStackLevel>,
+        error: &'a Option<String>,
+        finish_at: u128,
+    },
+    FlowBlockFinished {
         session_id: &'a str,
         job_id: &'a str,
         block_path: &'a Option<String>,
@@ -38,13 +60,38 @@ pub enum ReporterMessage<'a> {
         error: &'a Option<String>,
         finish_at: u128,
     },
-    BlockInputs {
+    // TODO: 应该永远不会触发
+    FlowOutput {
+        session_id: &'a str,
+        job_id: &'a str,
+        flow_path: &'a Option<String>,
+        stacks: &'a Vec<BlockJobStackLevel>,
+        output: Arc<OutputValue>,
+        handle: &'a str,
+    },
+    FlowBlockOutput {
         session_id: &'a str,
         job_id: &'a str,
         block_path: &'a Option<String>,
         stacks: &'a Vec<BlockJobStackLevel>,
-        #[serde(default)]
+        output: Arc<OutputValue>,
+        handle: &'a str,
+    },
+    BlockStarted {
+        session_id: &'a str,
+        job_id: &'a str,
+        block_path: &'a Option<String>,
+        stacks: &'a Vec<BlockJobStackLevel>,
         inputs: &'a Option<BlockInputs>,
+        create_at: u128,
+    },
+    BlockFinished {
+        session_id: &'a str,
+        job_id: &'a str,
+        block_path: &'a Option<String>,
+        stacks: &'a Vec<BlockJobStackLevel>,
+        error: &'a Option<String>,
+        finish_at: u128,
     },
     BlockOutput {
         session_id: &'a str,
@@ -132,6 +179,12 @@ impl ReporterTx {
         &self, job_id: JobId, block_path: Option<String>, stacks: BlockJobStacks,
     ) -> BlockReporterTx {
         BlockReporterTx::new(job_id, block_path, stacks, self.clone())
+    }
+
+    pub fn flow(
+        &self, job_id: JobId, flow_path: Option<String>, stacks: BlockJobStacks,
+    ) -> FlowReporterTx {
+        FlowReporterTx::new(job_id, flow_path, stacks, self.clone())
     }
 
     pub fn abort(&self) {

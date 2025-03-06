@@ -8,7 +8,7 @@ use std::process::{Command, Stdio};
 
 #[test]
 fn smoke_test() {
-    Command::cargo_bin("vocana")
+    Command::cargo_bin("oocana")
         .unwrap()
         .args(["run", "examples/base"])
         .stdin(Stdio::null())
@@ -20,7 +20,7 @@ fn smoke_test() {
 
 #[test]
 fn should_failed_if_flow_not_exist() {
-    Command::cargo_bin("vocana")
+    Command::cargo_bin("oocana")
         .unwrap()
         .args(["run", "error_path"])
         .stdin(Stdio::null())
@@ -32,7 +32,7 @@ fn should_failed_if_flow_not_exist() {
 
 #[test]
 fn should_failed_without_subcommand() {
-    Command::cargo_bin("vocana")
+    Command::cargo_bin("oocana")
         .expect("Calling binary failed")
         .assert()
         .failure();

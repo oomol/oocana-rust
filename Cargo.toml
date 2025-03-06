@@ -1,9 +1,9 @@
 [package]
-name = "vocana"
-version = "0.5.5"
+name = "oocana"
+version = "0.10.1"
 authors = ["CRIMX <straybugs@gmail.com>"]
 edition = "2021"
-repository = "https://github.com/vocana/vocana-rust"
+repository = "https://github.com/oomol/oocana-rust"
 readme = "README.md"
  
 keywords = ["cli", "pipeline", "flow", "graph"]

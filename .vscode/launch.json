@@ -1,0 +1,38 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "inputs": [
+        {
+            "id": "flowFile",
+            "type": "promptString",
+            "description": "Enter the path to the flow file",
+            "default": "${workspaceFolder}/examples/base/flow.oo.yaml"
+        }
+    ],
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'oocana'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=oocana",
+                    "--package=oocana"
+                ],
+                "filter": {
+                    "name": "oocana",
+                    "kind": "bin"
+                }
+            },
+            "args": [
+                "run",
+                "${input:flowFile}",
+                "--reporter"
+            ],
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}

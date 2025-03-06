@@ -25,6 +25,32 @@ impl SchedulerTxImpl for SchedulerTx {
             .unwrap();
     }
 
+    async fn run_block(&self, executor: &String, data: MessageData) {
+        let topic = format!("executor/{}/run_block", executor);
+
+        self.tx
+            .publish(topic, QoS::AtLeastOnce, false, data)
+            .await
+            .unwrap();
+    }
+
+    async fn run_applet_block(&self, executor: &String, data: MessageData) {
+        let topic = format!("executor/{}/run_applet_block", executor);
+
+        self.tx
+            .publish(topic, QoS::AtLeastOnce, false, data)
+            .await
+            .unwrap();
+    }
+
+    async fn send_drop_message(&self, executor: &String, data: MessageData) {
+        let topic = format!("executor/{}/drop", executor);
+        self.tx
+            .publish(topic, QoS::AtLeastOnce, false, data)
+            .await
+            .unwrap()
+    }
+
     async fn disconnect(&self) {
         self.tx.disconnect().await.unwrap();
     }
@@ -45,7 +71,7 @@ impl SchedulerRxImpl for SchedulerRx {
                     }
                 }
                 Err(e) => {
-                    eprintln!("Cannot connect Vocana Scheduler to broker. error: {:?}", e);
+                    eprintln!("Cannot connect Oocana Scheduler to broker. error: {:?}", e);
                     std::process::exit(1);
                 }
             }
@@ -55,7 +81,7 @@ impl SchedulerRxImpl for SchedulerRx {
 
 pub async fn connect(addr: &SocketAddr, session_id: SessionId) -> (SchedulerTx, SchedulerRx) {
     let mut options = MqttOptions::new(
-        &format!("vocana-scheduler-{}", &session_id),
+        &format!("oocana-scheduler-{}", &session_id),
         addr.ip().to_string(),
         addr.port(),
     );

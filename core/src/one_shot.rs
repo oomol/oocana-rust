@@ -2,6 +2,7 @@
 
 use job::SessionId;
 use manifest_meta::{BlockPathResolver, BlockReader, NodeId};
+use std::collections::HashSet;
 use std::env;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::process::exit;
@@ -14,6 +15,7 @@ const DEFAULT_PORT: u16 = 47688;
 pub fn run_block(
     block_path: &str, broker_address: Option<String>, block_search_paths: Option<String>,
     execution_session: Option<String>, reporter_enable: bool, to_node: Option<String>,
+    nodes: Option<String>, input_values: Option<String>,
 ) -> Result<()> {
     tokio::runtime::Builder::new_multi_thread()
         .enable_all()
@@ -26,6 +28,13 @@ pub fn run_block(
             execution_session,
             reporter_enable,
             to_node.map(|node| NodeId::new(node)),
+            nodes.map(|nodes| {
+                nodes
+                    .split(',')
+                    .map(|node| NodeId::new(node.to_owned()))
+                    .collect()
+            }),
+            input_values,
         ))?;
     exit(0)
 }
@@ -33,6 +42,7 @@ pub fn run_block(
 async fn run_block_async(
     block_path: &str, broker_address: Option<String>, block_search_paths: Option<String>,
     execution_session: Option<String>, reporter_enable: bool, to_node: Option<NodeId>,
+    nodes: Option<HashSet<NodeId>>, input_values: Option<String>,
 ) -> Result<()> {
     let session_id =
         SessionId::new(execution_session.unwrap_or_else(|| Uuid::new_v4().to_string()));
@@ -87,6 +97,8 @@ async fn run_block_async(
         block_path_resolver,
         None,
         to_node,
+        nodes,
+        input_values,
     )
     .await?;
 

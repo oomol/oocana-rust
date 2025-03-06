@@ -1,7 +1,8 @@
 use std::{collections::HashMap, sync::Arc};
 
 use crate::{
-    Block, FlowBlock, HandleName, InputHandles, NodeId, OutputHandles, SlotBlock, TaskBlock,
+    AppletBlock, Block, FlowBlock, HandleName, InputHandles, NodeId, OutputHandles, SlotBlock,
+    TaskBlock,
 };
 
 pub type HandlesFroms = HashMap<HandleName, Vec<HandleFrom>>;
@@ -15,6 +16,16 @@ pub type NodesHandlesTos = HashMap<NodeId, HandlesTos>;
 #[derive(Debug, Clone)]
 pub struct TaskNode {
     pub task: Arc<TaskBlock>,
+    pub node_id: NodeId,
+    pub timeout: Option<u64>,
+    pub from: Option<HandlesFroms>,
+    pub to: Option<HandlesTos>,
+    pub inputs_def: Option<InputHandles>,
+}
+
+#[derive(Debug, Clone)]
+pub struct AppletNode {
+    pub block: Arc<AppletBlock>,
     pub node_id: NodeId,
     // pub title: Option<String>,
     pub timeout: Option<u64>,
@@ -52,6 +63,7 @@ pub enum Node {
     Task(TaskNode),
     Flow(FlowNode),
     Slot(SlotNode),
+    Applet(AppletNode),
 }
 
 impl Node {
@@ -60,6 +72,7 @@ impl Node {
             Self::Task(task) => &task.node_id,
             Self::Flow(flow) => &flow.node_id,
             Self::Slot(slot) => &slot.node_id,
+            Self::Applet(applet) => &applet.node_id,
         }
     }
 
@@ -68,6 +81,7 @@ impl Node {
             Self::Task(task) => Block::Task(Arc::clone(&task.task)),
             Self::Flow(flow) => Block::Flow(Arc::clone(&flow.flow)),
             Self::Slot(slot) => Block::Slot(Arc::clone(&slot.slot)),
+            Self::Applet(applet) => Block::Applet(Arc::clone(&applet.block)),
         }
     }
 
@@ -76,6 +90,7 @@ impl Node {
             Self::Task(task) => task.from.as_ref(),
             Self::Flow(flow) => flow.from.as_ref(),
             Self::Slot(slot) => slot.from.as_ref(),
+            Self::Applet(applet) => applet.from.as_ref(),
         }
     }
 
@@ -84,6 +99,7 @@ impl Node {
             Self::Task(task) => task.to.as_ref(),
             Self::Flow(flow) => flow.to.as_ref(),
             Self::Slot(slot) => slot.to.as_ref(),
+            Self::Applet(applet) => applet.to.as_ref(),
         }
     }
 
@@ -92,6 +108,7 @@ impl Node {
             Self::Task(task) => task.inputs_def.as_ref(),
             Self::Flow(flow) => flow.inputs_def.as_ref(),
             Self::Slot(slot) => slot.inputs_def.as_ref(),
+            Self::Applet(applet) => applet.inputs_def.as_ref(),
         }
     }
 
@@ -100,6 +117,7 @@ impl Node {
             Self::Task(task) => task.task.outputs_def.as_ref(),
             Self::Flow(flow) => flow.flow.outputs_def.as_ref(),
             Self::Slot(slot) => slot.slot.outputs_def.as_ref(),
+            Self::Applet(applet) => applet.block.outputs_def.as_ref(),
         }
     }
 

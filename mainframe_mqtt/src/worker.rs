@@ -39,8 +39,7 @@ impl WorkerRxImpl for WorkerRx {
                     }
                 }
                 Err(e) => {
-                    eprintln!("Cannot connect Vocana Worker to broker. error: {:?}", e);
-                    std::process::exit(1);
+                    eprintln!("Cannot connect Oocana Worker to broker. error: {:?}", e);
                 }
             }
         }
@@ -51,7 +50,7 @@ pub async fn connect(
     addr: SocketAddr, session_id: SessionId, job_id: JobId,
 ) -> (WorkerTx, WorkerRx) {
     let mut options = MqttOptions::new(
-        &format!("vocana-worker-{}", &job_id),
+        &format!("oocana-worker-{}", &job_id),
         addr.ip().to_string(),
         addr.port(),
     );

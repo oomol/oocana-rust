@@ -8,7 +8,7 @@ use std::{collections::HashMap, net::SocketAddr};
 
 use crate::args::Args;
 
-pub async fn connect() -> (VocanaSDK, WorkerRxHandle) {
+pub async fn connect() -> (OocanaSDK, WorkerRxHandle) {
     let Args {
         address,
         session_id,
@@ -34,7 +34,7 @@ pub async fn connect() -> (VocanaSDK, WorkerRxHandle) {
     let inputs = tx.ready().await;
 
     (
-        VocanaSDK {
+        OocanaSDK {
             session_id,
             job_id,
             inputs,
@@ -44,14 +44,14 @@ pub async fn connect() -> (VocanaSDK, WorkerRxHandle) {
     )
 }
 
-pub struct VocanaSDK {
+pub struct OocanaSDK {
     pub session_id: String,
     pub job_id: String,
     pub inputs: Option<HashMap<String, JsonValue>>,
     tx: WorkerTx,
 }
 
-impl VocanaSDK {
+impl OocanaSDK {
     pub fn output(&self, output: &JsonValue, handle: &str, done: bool) {
         self.tx.output(output, handle, done);
     }

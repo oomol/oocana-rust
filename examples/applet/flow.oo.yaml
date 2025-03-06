@@ -1,0 +1,4 @@
+name: flow-1
+nodes:
+  - node_id: block-1
+    applet: pkg_a::app::a

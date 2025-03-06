@@ -7,4 +7,3 @@ inputs_def:
     optional: true
 outputs_def:
   - handle: my_output
-
