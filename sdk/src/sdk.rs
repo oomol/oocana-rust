@@ -1,68 +1,66 @@
 use clap::Parser;
-use mainframe::{Client, ClientMessage, JsonValue, MBlockBlockDone, MBlockOutput, MBlockReady};
-use utils::error::Result;
+use job::{JobId, SessionId};
+use mainframe::{
+    worker::{self, WorkerRxHandle, WorkerTx},
+    JsonValue,
+};
+use std::{collections::HashMap, net::SocketAddr};
 
 use crate::args::Args;
 
-pub use mainframe::json;
+pub async fn connect() -> (VocanaSDK, WorkerRxHandle) {
+    let Args {
+        address,
+        session_id,
+        job_id,
+    } = Args::parse();
+
+    let (impl_tx, impl_rx) = mainframe_mqtt::worker::connect(
+        address.parse::<SocketAddr>().unwrap(),
+        SessionId::new(session_id.to_owned()),
+        JobId::new(job_id.to_owned()),
+    )
+    .await;
+
+    let (tx, rx) = worker::create(
+        SessionId::new(session_id.to_owned()),
+        JobId::new(job_id.to_owned()),
+        impl_tx,
+        impl_rx,
+    );
+
+    let event_loop_handle = rx.event_loop();
+
+    let inputs = tx.ready().await;
+
+    (
+        VocanaSDK {
+            session_id,
+            job_id,
+            inputs,
+            tx,
+        },
+        event_loop_handle,
+    )
+}
 
 pub struct VocanaSDK {
-    mainframe_client: Client,
-    pub block_meta: Args,
-    pub block_input: Option<JsonValue>,
-    pub block_options: Option<JsonValue>,
+    pub session_id: String,
+    pub job_id: String,
+    pub inputs: Option<HashMap<String, JsonValue>>,
+    tx: WorkerTx,
 }
 
 impl VocanaSDK {
-    pub fn new() -> VocanaSDK {
-        let config = Args::parse();
-        let mainframe_client = Client::new();
-
-        VocanaSDK {
-            block_meta: config,
-            mainframe_client,
-            block_input: None,
-            block_options: None,
-        }
+    pub fn output(&self, output: &JsonValue, handle: &str, done: bool) {
+        self.tx.output(output, handle, done);
     }
 
-    pub fn connect(&mut self) -> Result<()> {
-        self.mainframe_client.connect(&self.block_meta.address)?;
-
-        let m_block_input = self.mainframe_client.send_ready(MBlockReady {
-            pipeline_task_id: (&self.block_meta.pipeline_task_id).to_owned(),
-            block_task_id: (&self.block_meta.block_task_id).to_owned(),
-            block_id: (&self.block_meta.block_id).to_owned(),
-        })?;
-
-        self.block_input = m_block_input.input;
-        self.block_options = m_block_input.options;
-
-        Ok(())
+    pub fn error(&self, error: &str) {
+        self.tx.error(&error.to_string());
     }
 
-    pub fn output(&self, slot_id: &str, done: bool, data: JsonValue) -> Result<()> {
-        self.mainframe_client
-            .send(ClientMessage::BlockOutput(MBlockOutput {
-                pipeline_task_id: (&self.block_meta.pipeline_task_id).to_owned(),
-                block_task_id: (&self.block_meta.block_task_id).to_owned(),
-                block_id: (&self.block_meta.block_id).to_owned(),
-                slot_id: slot_id.to_owned(),
-                done,
-                output: data,
-            }))?;
-
-        Ok(())
-    }
-
-    pub fn done(&self) -> Result<()> {
-        self.mainframe_client
-            .send(ClientMessage::BlockDone(MBlockBlockDone {
-                pipeline_task_id: (&self.block_meta.pipeline_task_id).to_owned(),
-                block_task_id: (&self.block_meta.block_task_id).to_owned(),
-                block_id: (&self.block_meta.block_id).to_owned(),
-            }))?;
-
-        Ok(())
+    pub fn done(&self, error: Option<&str>) {
+        self.tx.done(error);
     }
 }

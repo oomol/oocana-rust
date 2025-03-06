@@ -1,0 +1,39 @@
+name: flow-1
+nodes:
+  - node_id: block-1
+    task: blk_a
+  - node_id: block-2
+    task: ./blk_a # relative path to a block name
+    inputs_from:
+      - handle: my_count
+        from_node:
+          - node_id: block-1
+            output_handle: my_output
+  - node_id: block-3
+    task: ./blk_a/block.oo.yaml # relative path to a block manifest file
+    inputs_from:
+      - handle: my_count
+        from_node:
+          - node_id: block-2
+            output_handle: my_output
+  - node_id: block-4
+    task: pkg_a::blk-b # block name under a package name, equivalent to `pkg_a/blocks/blk-b`
+    inputs_from:
+      - handle: my_count
+        from_node:
+          - node_id: block-3
+            output_handle: my_output
+  - node_id: block-5
+    task: pkg_a/blocks/blk-b # path to a block name under a package name
+    inputs_from:
+      - handle: my_count
+        from_node:
+          - node_id: block-4
+            output_handle: my_output
+  - node_id: block-6
+    task: pkg_a/blocks/blk-b/block.oo.yaml # path to a block manifest file under a package name
+    inputs_from:
+      - handle: my_count
+        from_node:
+          - node_id: block-5
+            output_handle: my_output

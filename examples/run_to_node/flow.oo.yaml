@@ -1,0 +1,17 @@
+name: flow-1
+nodes:
+  - node_id: b11
+    task: identity
+  - node_id: b12
+    task: identity
+    inputs_from:
+      - handle: in
+        cache:
+          initial_value: 88
+  - node_id: b13
+    task: identity
+    inputs_from:
+      - handle: in
+        from_node:
+          - node_id: b12
+            output_handle: out

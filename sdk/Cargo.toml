@@ -7,5 +7,12 @@ edition = "2021"
 
 [dependencies]
 utils = { path = "../utils" }
+job = { path = "../job" }
+manifest_meta = { path = "../manifest_meta"}
 mainframe = { path = "../mainframe" }
+mainframe_mqtt = { path = "../mainframe_mqtt" }
 clap = { version = "3.0.14", features = ["cargo", "derive"] }
+rumqttc = "0.22.0"
+serde = { version = "1.0.149", features = ["derive", "rc"] }
+serde_json = "1.0.89"
+tokio = { version = "1.28.2", features = ["full"] }

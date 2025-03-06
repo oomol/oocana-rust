@@ -1,0 +1,10 @@
+type: task_block
+entry:
+  bin: cargo
+  args: [run, "--"]
+inputs_def:
+  - handle: in
+    cache:
+      initial_value: 0
+outputs_def:
+  - handle: out

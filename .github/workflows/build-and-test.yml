@@ -13,9 +13,32 @@ jobs:
       runs-on: ubuntu-latest
       steps:
         - uses: actions/checkout@v1
+        
+        - name: Selecting toolchain
+          # When rustup is updated, it tries to replace its binary, which on Windows is somehow locked.
+          # This can result in the CI failure, see: https://github.com/rust-lang/rustup/issues/3029
+          run: |
+            rustup set auto-self-update disable
+            rustup toolchain install stable --profile minimal
+        
+        - name: Set up cargo cache
+          uses: actions/cache@v3
+          continue-on-error: false
+          with:
+            path: |
+              ~/.cargo/bin/
+              ~/.cargo/registry/index/
+              ~/.cargo/registry/cache/
+              ~/.cargo/git/db/
+              target/
+            key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+            restore-keys: ${{ runner.os }}-cargo-
 
-        - name: Build
-          run: cargo build --release
+        - name: Start MQTT Broker
+          run: |
+            which rumqttd || cargo install --git https://github.com/bytebeamio/rumqtt rumqttd
+            rumqttd --config rumqttd.toml &
+            sleep 5
 
         - name: Test
           run: cargo test

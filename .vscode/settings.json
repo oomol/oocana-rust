@@ -3,16 +3,21 @@
   "editor.formatOnSave": true,
   "editor.defaultFormatter": "rust-lang.rust-analyzer",
   "editor.codeActionsOnSave": {
-    "source.fixAll": true,
-    "source.addMissingImports": true
+    "source.fixAll": "explicit",
+    "source.addMissingImports": "explicit"
   },
   "[rust]": {
     "editor.defaultFormatter": "rust-lang.rust-analyzer",
     "editor.formatOnSave": true
   },
   "conventionalCommits.scopes": [
-    "core",
     "cli",
+    "core",
+    "examples",
+    "mainframe",
+    "manifest_reader",
+    "sdk",
+    "tests",
     "utils",
     "deployment",
     "env",
@@ -20,6 +25,9 @@
     "version",
     "scripts",
     "readme",
-    "project"
+    "project",
+    "block_meta",
+    "runtime",
+    "manifest_meta"
   ],
 }

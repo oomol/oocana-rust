@@ -16,7 +16,11 @@ pub struct Error {
 // Implement the Display trait for our Error type.
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.msg)
+        write!(f, "{}", self.msg)?;
+        if let Some(source) = &self.source {
+            write!(f, " Source: {}", *source)?;
+        }
+        Ok(())
     }
 }
 
@@ -108,10 +112,10 @@ impl From<log::SetLoggerError> for Error {
     }
 }
 
-impl From<zmq::Error> for Error {
-    fn from(err: zmq::Error) -> Self {
+impl From<serde_json::Error> for Error {
+    fn from(err: serde_json::Error) -> Self {
         Error {
-            msg: String::from("Socket Error"),
+            msg: String::from("JSON Error"),
             #[cfg(feature = "nightly")]
             backtrace: std::backtrace::Backtrace::capture(),
             source: Some(Box::new(err)),
@@ -119,10 +123,10 @@ impl From<zmq::Error> for Error {
     }
 }
 
-impl From<serde_json::Error> for Error {
-    fn from(err: serde_json::Error) -> Self {
+impl From<serde_yaml::Error> for Error {
+    fn from(err: serde_yaml::Error) -> Self {
         Error {
-            msg: String::from("JSON Error"),
+            msg: String::from("YAML Error"),
             #[cfg(feature = "nightly")]
             backtrace: std::backtrace::Backtrace::capture(),
             source: Some(Box::new(err)),

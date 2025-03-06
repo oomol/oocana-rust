@@ -1,0 +1,9 @@
+entry:
+  bin: cargo
+  args: [run, "--"]
+inputs_def:
+  - handle: in1
+    optional: true
+outputs_def:
+  - handle: out2
+

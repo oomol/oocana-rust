@@ -1,14 +1,23 @@
 {
   "language": "en",
   "words": [
+    "aarch",
+    "canonicalize",
     "commitlint",
+    "Condvar",
     "CRIMX",
+    "Froms",
+    "MQTT",
+    "oneshot",
+    "rumqttc",
+    "rumqttd",
+    "rustup",
     "stdlog",
+    "Subflow",
     "termlog",
     "thiserror",
     "ttlhashmap",
-    "vocana",
-    "walkdir"
+    "vocana"
   ],
   "ignorePaths": [
     "**/coverage/**",

@@ -1,0 +1,10 @@
+[package]
+name = "manifest_meta"
+version = "0.0.1"
+authors = ["CRIMX <straybugs@gmail.com>"]
+description = "Vocana block meta"
+edition = "2021"
+
+[dependencies]
+utils = { path = "../utils" }
+manifest_reader = { path = "../manifest_reader" }

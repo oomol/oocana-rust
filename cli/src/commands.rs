@@ -1,5 +1,4 @@
-use core::one_shot::run_pipeline;
-
+use core::one_shot::run_block;
 use utils::app_config::AppConfig;
 use utils::error::Result;
 
@@ -11,8 +10,16 @@ pub fn config() -> Result<()> {
     Ok(())
 }
 
-pub fn run(graph_path: &str) -> Result<()> {
-    run_pipeline(graph_path)?;
-
-    Ok(())
+pub fn run(
+    block_path: &str, broker_address: Option<String>, block_search_paths: Option<String>,
+    execution_session: Option<String>, reporter_enable: bool, to_node: Option<String>,
+) -> Result<()> {
+    run_block(
+        block_path,
+        broker_address,
+        block_search_paths,
+        execution_session,
+        reporter_enable,
+        to_node,
+    )
 }

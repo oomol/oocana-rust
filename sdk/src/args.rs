@@ -7,11 +7,8 @@ pub struct Args {
     pub address: String,
 
     #[clap(long)]
-    pub pipeline_task_id: String,
+    pub session_id: String,
 
     #[clap(long)]
-    pub block_task_id: String,
-
-    #[clap(long)]
-    pub block_id: String,
+    pub job_id: String,
 }

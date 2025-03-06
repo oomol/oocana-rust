@@ -1,0 +1,10 @@
+[package]
+name = "identity"
+version = "0.0.1"
+authors = ["CRIMX <straybugs@gmail.com>"]
+description = "Ouput the input value"
+edition = "2021"
+
+[dependencies]
+vocana_sdk = { path = "../../../sdk" }
+tokio = { version = "1.28.2", features = ["full"] }

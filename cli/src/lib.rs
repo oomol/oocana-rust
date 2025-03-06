@@ -40,12 +40,22 @@ pub struct Cli {
 enum Commands {
     #[clap(
         name = "run",
-        about = "Run a Vocana Pipeline",
+        about = "Run a Vocana Flow",
         long_about = None, 
     )]
     Run {
-        #[clap(help = "Path to the Vocana Graph file or directory")]
-        graph_path: String
+        #[clap(help = "Path to the Vocana Block Manifest file or a directory with flow.oo.yaml.")]
+        block: String,
+        #[clap(help = "MQTT Broker Address.", long)]
+        broker: Option<String>,
+        #[clap(help = "Paths to search for blocks. Fallback to the directory of current flow block.", long)]
+        block_search_paths: Option<String>,
+        #[clap(help = "Optional id to mark this execution session.", long)]
+        session: Option<String>,
+        #[clap(help = "Enable reporter.", long)]
+        reporter: bool,
+        #[clap(help = "Stop the flow after the node is finished.", long)]
+        node: Option<String>,
     },
     #[clap(
         name = "completion",
@@ -87,8 +97,8 @@ pub fn cli_match() -> Result<()> {
 
     // Execute the subcommand
     match &cli.command {
-        Commands::Run { graph_path} => {
-            commands::run(graph_path)?
+        Commands::Run { block, broker, block_search_paths, session, reporter, node } => {
+            commands::run(block, broker.to_owned(), block_search_paths.to_owned(), session.to_owned(), reporter.to_owned(), node.to_owned())?
         },
         Commands::Completion {subcommand} => {
             let mut app = Cli::into_app();
