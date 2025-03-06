@@ -1,0 +1,65 @@
+{
+  "id": "pipeline-1",
+  "blocks": [
+    {
+      "id": "block-1",
+      "in_slots": [],
+      "out_slots": [
+        {
+          "id": "out"
+        }
+      ],
+      "options": {
+        "option-1": "option-1"
+      },
+      "pkg": "counter"
+    },
+    {
+      "id": "block-2",
+      "in_slots": [
+        {
+          "id": "count"
+        }
+      ],
+      "out_slots": [
+        {
+          "id": "out"
+        }
+      ],
+      "options": {
+        "option-2": "option-2"
+      },
+      "pkg": "counter"
+    },
+    {
+      "id": "block-3",
+      "in_slots": [
+        {
+          "id": "count"
+        }
+      ],
+      "out_slots": [
+        {
+          "id": "out"
+        }
+      ],
+      "pkg": "counter"
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-1",
+      "from_block": "block-1",
+      "from_slot": "out",
+      "to_block": "block-2",
+      "to_slot": "count"
+    },
+    {
+      "id": "edge-2",
+      "from_block": "block-2",
+      "from_slot": "out",
+      "to_block": "block-3",
+      "to_slot": "count"
+    }
+  ]
+}

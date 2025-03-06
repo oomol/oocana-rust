@@ -1,0 +1,25 @@
+{
+  "editor.tabSize": 4,
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "rust-lang.rust-analyzer",
+  "editor.codeActionsOnSave": {
+    "source.fixAll": true,
+    "source.addMissingImports": true
+  },
+  "[rust]": {
+    "editor.defaultFormatter": "rust-lang.rust-analyzer",
+    "editor.formatOnSave": true
+  },
+  "conventionalCommits.scopes": [
+    "core",
+    "cli",
+    "utils",
+    "deployment",
+    "env",
+    "i18n",
+    "version",
+    "scripts",
+    "readme",
+    "project"
+  ],
+}

@@ -1,0 +1,7 @@
+{
+  "recommendations": [
+    "rust-lang.rust-analyzer",
+    "vivaxy.vscode-conventional-commits",
+    "streetsidesoftware.code-spell-checker"
+  ]
+}

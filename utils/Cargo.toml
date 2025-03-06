@@ -1,0 +1,29 @@
+[package]
+name = "utils"
+version = "0.0.1"
+authors = ["CRIMX <straybugs@gmail.com>"]
+description = "Various utilities and functionalities"
+edition = "2021"
+
+[features]
+nightly = []
+termlog = []
+syslog = []
+
+[dependencies]
+thiserror = "1.0.30"
+anyhow = { version = "1.0.66", features = ["backtrace"] }
+color-backtrace = "0.5.1"
+config = "0.11.0"
+lazy_static = "1.4.0"
+slog = "2.7.0"
+slog-syslog = "0.13.0"
+slog-term = "2.8.0"
+slog-scope = "4.4.0"
+slog-async = "2.7.0"
+slog-stdlog = "4.1.0"
+clap = "3.0.14"
+log = "0.4.14"
+serde = { version = "1.0.149", features = ["derive", "rc"] }
+serde_json = "1.0.89"
+zmq = "0.10.0"

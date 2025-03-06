@@ -1,0 +1,73 @@
+[package]
+name = "vocana"
+version = "0.0.1"
+authors = ["CRIMX <straybugs@gmail.com>"]
+edition = "2021"
+repository = "https://github.com/vocana/vocana-rust"
+readme = "README.md"
+ 
+keywords = ["cli", "pipeline", "flow"]
+description = """
+A CLI tool for building data pipelines.
+"""
+
+[workspace]
+members = [
+    "utils",
+    "cli",
+    "core",
+    "sdk",
+    "mainframe",
+    "examples/packages/counter"
+]
+
+[features]
+default = ["termlog", "backtrace"]
+nightly = ["utils/nightly"]
+termlog = ["utils/termlog"]
+syslog = ["utils/syslog"]
+backtrace = []
+
+[dependencies]
+utils = { path = "utils" }
+cli = { path = "cli"}
+core = { path = "core" }
+human-panic = "1.0.3"
+better-panic = "0.3.0"
+log = "0.4.14"
+
+[dev-dependencies]
+assert_cmd = "2.0.4"
+predicates = "2.1.1"
+
+[profile.dev]
+opt-level=0
+debug = true
+rpath = false
+lto = false
+debug-assertions = true
+codegen-units = 4
+
+[profile.release]
+opt-level=3
+debug = false
+rpath = false
+lto = true
+debug-assertions = false
+codegen-units = 1
+
+[profile.test]
+opt-level = 1
+debug = true
+rpath = false
+lto = false
+debug-assertions = true
+codegen-units = 4
+
+[profile.bench]
+opt-level = 3
+debug = false
+rpath = false
+lto = true
+debug-assertions = false
+codegen-units = 1
