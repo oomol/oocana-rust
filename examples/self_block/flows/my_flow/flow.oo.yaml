@@ -1,0 +1,21 @@
+name: flow-1
+nodes:
+  - node_id: block-1
+    task: self::blk_d # self name
+    inputs_from:
+      - handle: my_count
+        value: 3
+  - node_id: block-2
+    task: ../../blocks/blk_d # relative path to a block name
+    inputs_from:
+      - handle: my_count
+        from_node:
+          - node_id: block-1
+            output_handle: my_output
+  - node_id: block-3
+    task: ../../blocks/blk_d/block.oo.yaml # relative path to a block manifest file
+    inputs_from:
+      - handle: my_count
+        from_node:
+          - node_id: block-2
+            output_handle: my_output

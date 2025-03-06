@@ -26,6 +26,7 @@ members = [
     "examples/run_to_node/identity",
     "examples/base/blk_a",
     "examples/base/pkg_a/blocks/blk-b",
+    "examples/self_block/blocks/blk_d",
 ]
 
 [features]

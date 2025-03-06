@@ -5,6 +5,16 @@ use std::path::{Component, Path, PathBuf};
 pub fn resolve_block_manifest_path(
     block_name: &str, prefix: &str, base_dir: &Path, block_search_paths: &Vec<PathBuf>,
 ) -> Option<PathBuf> {
+    if block_name.starts_with("self::") {
+        let mut block_manifest_path = base_dir.to_path_buf();
+        block_manifest_path.pop();
+        block_manifest_path.pop();
+        block_manifest_path.push("blocks");
+        block_manifest_path.push(&block_name[6..]);
+
+        return resolve_path(&block_manifest_path, prefix);
+    }
+
     let block_manifest_path = Path::new(block_name);
     if block_manifest_path.is_absolute() {
         // pkg_name is an absolute path
