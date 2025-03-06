@@ -1,4 +1,5 @@
-use manifest_meta::{BlockPathResolver, BlockReader, HandleName, NodeId};
+use manifest_meta::{BlockResolver, HandleName, NodeId};
+use manifest_reader::path_finder::BlockPathFinder;
 
 use std::path::PathBuf;
 use utils::error::Result;
@@ -6,12 +7,12 @@ use utils::error::Result;
 #[test]
 fn it_should_read_flow_block() -> Result<()> {
     let base_dir = dirname();
-    let block_search_paths = Some(dirname().to_string_lossy().to_string());
-    let mut resolver = BlockPathResolver::new(base_dir, block_search_paths);
-    let mut block_reader = BlockReader::new();
-    let flow_block = block_reader.resolve_flow_block("flow-1", &mut resolver)?;
+    let block_search_paths = Some(vec![dirname()]);
+    let mut finder = BlockPathFinder::new(base_dir, block_search_paths);
+    let mut block_reader = BlockResolver::new();
+    let flow_block = block_reader.resolve_flow_block("flow-1", &mut finder)?;
 
-    assert!(flow_block.path.ends_with("flow-1/block.oo.yaml"));
+    assert!(flow_block.path.ends_with("flow-1/subflow.oo.yaml"));
 
     assert!(flow_block.inputs_def.is_none());
     assert!(flow_block.outputs_def.is_none());
@@ -84,15 +85,15 @@ fn it_should_read_flow_block() -> Result<()> {
 #[test]
 fn it_should_read_flow_block_with_inputs_def() -> Result<()> {
     let base_dir = dirname();
-    let block_search_paths = Some(dirname().to_string_lossy().to_string());
-    let mut resolver = BlockPathResolver::new(base_dir, block_search_paths);
-    let mut block_reader = BlockReader::new();
-    let flow_block = block_reader.resolve_flow_block("flow-2", &mut resolver)?;
+    let block_search_paths = Some(vec![dirname()]);
+    let mut finder = BlockPathFinder::new(base_dir, block_search_paths);
+    let mut block_reader = BlockResolver::new();
+    let flow_block = block_reader.resolve_flow_block("flow-2", &mut finder)?;
 
     let handle_flow_in1 = HandleName::new("flow_in1".to_owned());
     let handle_in1 = HandleName::new("in1".to_owned());
 
-    assert!(flow_block.path.ends_with("flow-2/block.oo.yaml"));
+    assert!(flow_block.path.ends_with("flow-2/subflow.oo.yaml"));
 
     assert_eq!(
         flow_block

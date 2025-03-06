@@ -10,8 +10,8 @@ nodes:
     inputs_from:
       - handle: my_count
         from_node:
-          - node_id: block-1
-            output_handle: my_output
+          - node_id: block-7
+            output_handle: my_count
   - node_id: block-3
     task: ./blk_a/block.oo.yaml # relative path to a block manifest file
     inputs_from:
@@ -40,3 +40,7 @@ nodes:
         from_node:
           - node_id: block-5
             output_handle: my_output
+  - node_id: block-7
+    values:
+      - handle: my_count
+        value: 5

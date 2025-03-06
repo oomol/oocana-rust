@@ -1,8 +1,6 @@
 use std::path::PathBuf;
 
-use manifest_reader::block_manifest_reader;
-
-use crate::{block, InputHandles, OutputHandles};
+use manifest_reader::manifest::{self, InputHandles, OutputHandles};
 
 #[derive(Debug, Clone)]
 pub struct SlotBlock {
@@ -16,22 +14,24 @@ pub struct SlotBlock {
     // pub icon: Option<String>,
     pub path: Option<PathBuf>,
     pub path_str: Option<String>,
+    pub package_path: Option<PathBuf>,
 }
 
 impl SlotBlock {
     pub fn from_manifest(
-        manifest: block_manifest_reader::block::SlotBlock, path: Option<PathBuf>,
+        manifest: manifest::SlotBlock, path: Option<PathBuf>, package_path: Option<PathBuf>,
     ) -> Self {
-        let block_manifest_reader::block::SlotBlock {
+        let manifest::SlotBlock {
             inputs_def,
             outputs_def,
         } = manifest;
 
         Self {
-            inputs_def: block::to_input_handles(inputs_def),
-            outputs_def: block::to_output_handles(outputs_def),
+            inputs_def: inputs_def,
+            outputs_def: outputs_def,
             path_str: path.as_ref().map(|path| path.to_string_lossy().to_string()),
             path,
+            package_path,
         }
     }
 }

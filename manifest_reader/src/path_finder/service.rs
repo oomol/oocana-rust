@@ -1,0 +1,50 @@
+use path_clean::PathClean;
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+};
+use utils::error::Result;
+
+use super::serach_paths::{search_block_manifest, BlockManifestParams};
+
+pub struct ServiceManifestParams<'a> {
+    pub value: &'a str,
+    pub base_dir: &'a Path,
+    pub block_search_paths: &'a Vec<PathBuf>,
+    pub pkg_version: &'a HashMap<String, String>,
+}
+
+pub fn find_service(params: ServiceManifestParams) -> Result<PathBuf> {
+    let ServiceManifestParams {
+        value,
+        base_dir,
+        block_search_paths,
+        pkg_version,
+    } = params;
+    if let Some(path) = search_block_manifest(BlockManifestParams {
+        value,
+        base_name: "service",
+        block_dir: "services",
+        working_dir: base_dir,
+        search_paths: block_search_paths,
+        pkg_version,
+    }) {
+        return Ok(path.clean());
+    }
+
+    if let Some(path) = search_block_manifest(BlockManifestParams {
+        value,
+        base_name: "service",
+        block_dir: "blocks",
+        working_dir: base_dir,
+        search_paths: block_search_paths,
+        pkg_version,
+    }) {
+        return Ok(path.clean());
+    }
+
+    Err(utils::error::Error::new(&format!(
+        "Service {} not found",
+        value,
+    )))
+}

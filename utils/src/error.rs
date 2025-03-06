@@ -90,17 +90,6 @@ impl From<std::io::Error> for Error {
     }
 }
 
-impl From<clap::Error> for Error {
-    fn from(err: clap::Error) -> Self {
-        Error {
-            msg: String::from("Clap Error"),
-            #[cfg(feature = "nightly")]
-            backtrace: std::backtrace::Backtrace::capture(),
-            source: Some(Box::new(err)),
-        }
-    }
-}
-
 impl From<log::SetLoggerError> for Error {
     fn from(err: log::SetLoggerError) -> Self {
         Error {
@@ -130,6 +119,28 @@ impl From<serde_yaml::Error> for Error {
             #[cfg(feature = "nightly")]
             backtrace: std::backtrace::Backtrace::capture(),
             source: Some(Box::new(err)),
+        }
+    }
+}
+
+impl From<std::string::String> for Error {
+    fn from(value: String) -> Self {
+        Error {
+            msg: value,
+            #[cfg(feature = "nightly")]
+            backtrace: std::backtrace::Backtrace::capture(),
+            source: None,
+        }
+    }
+}
+
+impl From<&str> for Error {
+    fn from(value: &str) -> Self {
+        Error {
+            msg: value.to_string(),
+            #[cfg(feature = "nightly")]
+            backtrace: std::backtrace::Backtrace::capture(),
+            source: None,
         }
     }
 }

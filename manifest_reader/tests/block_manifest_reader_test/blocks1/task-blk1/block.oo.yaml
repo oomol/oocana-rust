@@ -1,9 +1,8 @@
 entry:
   bin: cargo
   args: [run, "--"]
+concurrency: 3
 inputs_def:
   - handle: in1
-    optional: true
 outputs_def:
   - handle: out2
-

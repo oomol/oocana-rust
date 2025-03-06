@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 utils = { path = "../utils" }
 manifest_reader = { path = "../manifest_reader" }
+tracing = "0.1.40"

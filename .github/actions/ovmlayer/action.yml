@@ -1,0 +1,35 @@
+name: "setup ovmlayer"
+description: "setup ovmlayer on ubuntu-latest"
+inputs:
+  token:
+    description: "GitHub token"
+    required: true
+    default: ${{ github.token }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: download ovmlayer
+      uses: actions/checkout@v4
+      with:
+        repository: oomol/ovmlayer
+        path: ovmlayer
+        token: ${{ inputs.token }}
+    - name: move ovmlayer to PATH
+      run: |
+        mv ovmlayer ../ovmlayer
+        cd ..
+        ln -sf $(pwd)/ovmlayer/ovmlayer /usr/local/bin/ovmlayer
+      shell: bash
+    - name: setup ovmlayer environment
+      run: |
+        sudo apt update && sudo apt install -y --no-install-recommends locales-all tar xz-utils uuid-runtime
+      shell: bash
+    - name: download base rootfs
+      run: |
+        curl -L https://github.com/oomol/ovmlayer-rootfs/releases/download/base-rootfs%400.3.0/arm64-rootfs.tar -o base_rootfs.tar
+      shell: bash
+    - name: setup ovmlayer
+      run: |
+        sudo ovmlayer setup dev --base-rootfs=$(pwd)/base_rootfs.tar --layer-disk=/tmp/layer-disk
+      shell: bash

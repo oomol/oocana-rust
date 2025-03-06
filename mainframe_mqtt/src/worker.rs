@@ -1,6 +1,7 @@
 use std::{net::SocketAddr, time::Duration};
 
 use async_trait::async_trait;
+use tracing::warn;
 use rumqttc::{AsyncClient, Event, EventLoop, Incoming, MqttOptions, QoS};
 
 use job::{JobId, SessionId};
@@ -39,7 +40,7 @@ impl WorkerRxImpl for WorkerRx {
                     }
                 }
                 Err(e) => {
-                    eprintln!("Cannot connect Oocana Worker to broker. error: {:?}", e);
+                    warn!("Cannot connect Oocana Worker to broker. error: {:?}", e);
                 }
             }
         }

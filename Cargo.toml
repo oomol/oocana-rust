@@ -1,6 +1,6 @@
 [package]
 name = "oocana"
-version = "0.10.1"
+version = "0.22.4"
 authors = ["CRIMX <straybugs@gmail.com>"]
 edition = "2021"
 repository = "https://github.com/oomol/oocana-rust"
@@ -15,7 +15,7 @@ A CLI tool for building data pipelines.
 members = [
     "utils",
     "cli",
-    "core",
+    "one_shot",
     "sdk",
     "job",
     "runtime",
@@ -27,6 +27,10 @@ members = [
     "examples/base/blk_a",
     "examples/base/pkg_a/blocks/blk-b",
     "examples/self_block/blocks/blk_d",
+    "examples/concurrency/blk_a",
+    "examples/concurrency/pkg_a/blocks/blk-b",
+    "examples/flows/pkg/pkg_v-0.1.0/blocks/blk-b",
+    "layer",
 ]
 
 [features]
@@ -39,10 +43,10 @@ backtrace = []
 [dependencies]
 utils = { path = "utils" }
 cli = { path = "cli"}
-core = { path = "core" }
+one_shot = { path = "./one_shot" }
 human-panic = "1.0.3"
 better-panic = "0.3.0"
-log = "0.4.14"
+tracing = "0.1.40"
 
 [dev-dependencies]
 assert_cmd = "2.0.4"

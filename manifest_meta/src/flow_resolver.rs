@@ -1,0 +1,16 @@
+use manifest_reader::{path_finder::BlockPathFinder, reader};
+use std::path::Path;
+use utils::error::Result;
+
+use crate::{BlockResolver, FlowBlock};
+
+pub fn read_flow(
+    flow_path: &Path, block_resolver: &mut BlockResolver, path_finder: &mut BlockPathFinder,
+) -> Result<FlowBlock> {
+    FlowBlock::from_manifest(
+        reader::read_flow(flow_path)?,
+        flow_path.to_owned(),
+        block_resolver,
+        path_finder.subflow(flow_path),
+    )
+}

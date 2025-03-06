@@ -54,6 +54,21 @@ impl FlowReporterTx {
         }
     }
 
+    pub fn will_run_nodes(&self, start: &Vec<String>, mid: &Vec<String>, end: &Vec<String>) {
+        match self.is_block {
+            true => {}
+            false => self.tx.send(ReporterMessage::FlowNodesWillRun {
+                session_id: &self.tx.session_id,
+                job_id: &self.job_id,
+                flow_path: &self.path,
+                stacks: &self.stacks.vec(),
+                mid_nodes: mid,
+                start_nodes: start,
+                end_nodes: end,
+            }),
+        }
+    }
+
     pub fn done(&self, error: &Option<String>) {
         match self.is_block {
             true => self.tx.send(ReporterMessage::FlowBlockFinished {

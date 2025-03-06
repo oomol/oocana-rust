@@ -7,10 +7,15 @@
     "Condvar",
     "CRIMX",
     "Deque",
+    "devcontainer",
+    "devcontainers",
     "Froms",
+    "mknod",
     "MQTT",
     "oneshot",
     "oocana",
+    "ovmlayer",
+    "rootfs",
     "rumqttc",
     "rumqttd",
     "rustup",
@@ -19,7 +24,8 @@
     "termlog",
     "thiserror",
     "ttlhashmap",
-    "oocana"
+    "unmerge",
+    "Unmerging"
   ],
   "ignorePaths": [
     "**/coverage/**",

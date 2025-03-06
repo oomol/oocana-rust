@@ -1,0 +1,8 @@
+type: task_block
+executor:
+  name: shell
+inputs_def:
+  - handle: args
+    value: "ls -al"
+outputs_def:
+  - handle: stdout

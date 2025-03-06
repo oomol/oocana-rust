@@ -7,7 +7,6 @@ extern crate better_panic;
 #[cfg(feature = "backtrace")]
 use std::env;
 
-use utils::app_config::AppConfig;
 use utils::error::Result;
 
 /// The main entry point of the application.
@@ -30,12 +29,6 @@ fn main() -> Result<()> {
             .verbosity(better_panic::Verbosity::Full)
             .install();
     }
-
-    let _guard = utils::logger::setup_logging()?;
-
-    // Initialize Configuration
-    let config_contents = include_str!("resources/default_config.toml");
-    AppConfig::init(Some(config_contents))?;
 
     // Match Commands
     cli::cli_match()?;

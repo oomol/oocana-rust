@@ -1,17 +1,18 @@
 use std::collections::HashMap;
 
-use crate::{scheduler, MessageData};
+use crate::MessageData;
 use async_trait::async_trait;
 use flume::{Receiver, Sender};
-use job::{JobId, SessionId};
-use manifest_meta::{HandleName, JsonValue};
+use job::{BlockJobStackLevel, JobId, SessionId};
+use manifest_meta::{JsonValue, ServiceExecutorOptions};
 use tokio::sync::oneshot;
+use tracing::{error, warn};
 
 type BlockInputsDeserialize = HashMap<String, JsonValue>;
 
 #[derive(serde::Serialize, Debug, Clone)]
 #[serde(tag = "type")]
-pub enum MessageSerialize<'a> {
+pub enum BlockMessage<'a> {
     BlockReady {
         session_id: &'a str,
         job_id: &'a str,
@@ -37,46 +38,45 @@ pub enum MessageSerialize<'a> {
 
 #[derive(serde::Deserialize, Debug, Clone)]
 #[serde(tag = "type")]
-pub enum MessageDeserialize {
-    BlockReady {
-        session_id: SessionId,
-        job_id: JobId,
+pub enum ReceiveMessage {
+    BlockInputs {
+        session_id: String,
+        job_id: String,
+        stacks: Vec<BlockJobStackLevel>,
+        block_path: Option<String>,
+        inputs: Option<HashMap<String, JsonValue>>,
     },
-    BlockOutput {
-        session_id: SessionId,
-        job_id: JobId,
-        done: bool,
-        handle: HandleName,
-        output: JsonValue,
+    ExecuteBlock {
+        executor_name: String,
+        session_id: String,
+        job_id: String,
+        stacks: Vec<BlockJobStackLevel>,
+        envs: HashMap<String, String>,
+        dir: String,
     },
-    BlockError {
-        session_id: SessionId,
-        job_id: JobId,
-        error: String,
-    },
-    BlockFinished {
-        session_id: SessionId,
-        job_id: JobId,
-        error: Option<String>,
+    ExecuteServiceBlock {
+        executor_name: String,
+        session_id: String,
+        job_id: String,
+        dir: String,
+        service_executor: ServiceExecutorOptions,
     },
 }
 
-impl MessageDeserialize {
-    pub fn session_id(&self) -> &SessionId {
+impl ReceiveMessage {
+    pub fn session_id(&self) -> &str {
         match self {
-            MessageDeserialize::BlockReady { session_id, .. } => session_id,
-            MessageDeserialize::BlockOutput { session_id, .. } => session_id,
-            MessageDeserialize::BlockError { session_id, .. } => session_id,
-            MessageDeserialize::BlockFinished { session_id, .. } => session_id,
+            ReceiveMessage::BlockInputs { session_id, .. } => session_id,
+            ReceiveMessage::ExecuteBlock { session_id, .. } => session_id,
+            ReceiveMessage::ExecuteServiceBlock { session_id, .. } => session_id,
         }
     }
 
-    pub fn job_id(&self) -> &JobId {
+    pub fn job_id(&self) -> &str {
         match self {
-            MessageDeserialize::BlockReady { job_id, .. } => job_id,
-            MessageDeserialize::BlockOutput { job_id, .. } => job_id,
-            MessageDeserialize::BlockError { job_id, .. } => job_id,
-            MessageDeserialize::BlockFinished { job_id, .. } => job_id,
+            ReceiveMessage::BlockInputs { job_id, .. } => job_id,
+            ReceiveMessage::ExecuteBlock { job_id, .. } => job_id,
+            ReceiveMessage::ExecuteServiceBlock { job_id, .. } => job_id,
         }
     }
 }
@@ -106,7 +106,7 @@ pub struct WorkerTx {
 
 impl WorkerTx {
     pub async fn ready(&self) -> Option<BlockInputsDeserialize> {
-        let data = serde_json::to_vec(&MessageSerialize::BlockReady {
+        let data = serde_json::to_vec(&BlockMessage::BlockReady {
             session_id: &self.session_id,
             job_id: &self.job_id,
         })
@@ -118,7 +118,7 @@ impl WorkerTx {
 
     pub fn output(&self, output: &JsonValue, handle: &str, done: bool) {
         self.send(
-            MessageSerialize::BlockOutput {
+            BlockMessage::BlockOutput {
                 session_id: &self.session_id,
                 job_id: &self.job_id,
                 done,
@@ -134,7 +134,7 @@ impl WorkerTx {
 
     pub fn error(&self, error: &String) {
         self.send(
-            MessageSerialize::BlockError {
+            BlockMessage::BlockError {
                 session_id: &self.session_id,
                 job_id: &self.job_id,
                 error,
@@ -145,7 +145,7 @@ impl WorkerTx {
 
     pub fn done(&self, error: Option<&str>) {
         self.send(
-            MessageSerialize::BlockFinished {
+            BlockMessage::BlockFinished {
                 session_id: &self.session_id,
                 job_id: &self.job_id,
                 error,
@@ -154,7 +154,7 @@ impl WorkerTx {
         );
     }
 
-    fn send(&self, message: MessageSerialize, finish: bool) {
+    fn send(&self, message: BlockMessage, finish: bool) {
         let data = serde_json::to_vec(&message).unwrap();
         self.tx.send(Command::SendMessage(data, finish)).unwrap();
     }
@@ -209,20 +209,20 @@ where
                     Ok(Command::ReceiveMessage(data)) => {
                         if let Some(msg) = parse_scheduler_message(data, &session_id, &job_id) {
                             match msg {
-                                scheduler::MessageDeserialize::BlockInputs { inputs, .. } => {
+                                ReceiveMessage::BlockInputs { inputs, .. } => {
                                     debug_assert!(&inputs_callback.is_some());
 
                                     if let Some(callback) = inputs_callback.take() {
                                         callback.send(inputs).unwrap();
                                     }
                                 }
-                                scheduler::MessageDeserialize::ExecuteBlock { .. } => {}
-                                scheduler::MessageDeserialize::ExecuteAppletBlock { .. } => {}
+                                ReceiveMessage::ExecuteBlock { .. } => {}
+                                ReceiveMessage::ExecuteServiceBlock { .. } => {}
                             };
                         }
                     }
                     Err(e) => {
-                        eprintln!("Worker event-loop breaks unexpectedly: {:?}", e);
+                        error!("Worker event-loop breaks unexpectedly: {:?}", e);
                         break;
                     }
                 }
@@ -269,8 +269,8 @@ impl WorkerAbortHandle {
 
 fn parse_scheduler_message(
     data: MessageData, session_id: &str, job_id: &str,
-) -> Option<scheduler::MessageDeserialize> {
-    match serde_json::from_slice::<scheduler::MessageDeserialize>(&data) {
+) -> Option<ReceiveMessage> {
+    match serde_json::from_slice::<ReceiveMessage>(&data) {
         Ok(msg) => {
             if msg.session_id() == session_id && msg.job_id() == job_id {
                 Some(msg)
@@ -279,7 +279,7 @@ fn parse_scheduler_message(
             }
         }
         Err(e) => {
-            eprintln!(
+            warn!(
                 "Incorrect message sending to worker. session_id: {:?} error: {:?}",
                 session_id, e
             );

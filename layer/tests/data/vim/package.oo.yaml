@@ -1,0 +1,5 @@
+version: 0.1.2
+scripts:
+  bootstrap: |
+      apt update
+      apt install -y vim

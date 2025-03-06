@@ -1,0 +1,6 @@
+name: flow-1
+nodes:
+  - node_id: block-1
+    service: pkg_a::app::a
+  - node_id: block-2
+    service: pkg_a::two::a

@@ -1,0 +1,13 @@
+executor:
+  name: python
+  entry: ./main.py
+  function: main
+blocks:
+  - name: a
+    outputs_def:
+      - handle: two
+  - name: b
+    inputs_def:
+      - handle: one
+    outputs_def:
+      - handle: two

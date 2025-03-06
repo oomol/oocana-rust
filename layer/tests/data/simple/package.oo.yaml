@@ -1,0 +1,4 @@
+version: 0.1.2
+scripts:
+  bootstrap: |
+    touch 1.txt

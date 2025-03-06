@@ -1,0 +1,12 @@
+nodes:
+  - node_id: shell-1
+    task:
+      executor:
+        name: shell
+      inputs_def:
+        - handle: command
+      outputs_def:
+        - handle: stdout
+    inputs_from:
+      - handle: command
+        value: "ls -l"

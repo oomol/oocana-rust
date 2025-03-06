@@ -17,6 +17,9 @@ pub enum Status {
         job_id: JobId,
         error: Option<String>,
     },
+    Error {
+        error: String,
+    },
 }
 
 #[derive(Clone)]
@@ -37,6 +40,9 @@ impl BlockStatusTx {
     }
     pub fn done(&self, job_id: JobId, error: Option<String>) {
         self.tx.send(Status::Done { job_id, error }).unwrap();
+    }
+    pub fn error(&self, error: String) {
+        self.tx.send(Status::Error { error }).unwrap();
     }
 }
 

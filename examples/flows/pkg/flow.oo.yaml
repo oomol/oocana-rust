@@ -1,0 +1,7 @@
+name: flow-1
+nodes:
+  - node_id: block-1
+    task: pkg_v::blk-b
+    inputs_from:
+      - handle: my_count
+        value: 3

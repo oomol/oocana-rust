@@ -1,0 +1,12 @@
+name: flow-1
+nodes:
+  - node_id: block-1
+    task: blk_a
+  - node_id: block-2
+    task: pkg_a/blocks/blk-b # path to a block name under a package name
+    # concurrency: 3
+    inputs_from:
+      - handle: my_count
+        from_node:
+          - node_id: block-1
+            output_handle: my_output

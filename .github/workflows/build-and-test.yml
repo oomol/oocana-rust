@@ -3,19 +3,7 @@ on:
   push:
     branches:
       - main
-    paths:
-      - '**'
-      - '!**.md'
-      - '!.vscode/*'
-      - '!.github/**'
-      - '.github/workflows/build-and-test.yml'
   pull_request:
-    paths:
-      - '**'
-      - '!**.md'
-      - '!.vscode/*'
-      - '!.github/**'
-      - '.github/workflows/build-and-test.yml'
     branches:
       - main
 
@@ -24,25 +12,47 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-    build-compiler:
-      name: Build and Test
-      runs-on: [self-hosted, macOS, ARM64]
-      timeout-minutes: 20
-      steps:
-        - uses: actions/checkout@v4
-        # self-hosted runner 已经安装好了 rustup，检查访问总有问题，暂时不安装。
-        # - name: Selecting toolchain
-          # When rustup is updated, it tries to replace its binary, which on Windows is somehow locked.
-          # This can result in the CI failure, see: https://github.com/rust-lang/rustup/issues/3029
-          # run: |
-          #   rustup set auto-self-update disable
-          #   rustup toolchain install stable --profile minimal
-        - name: Start MQTT Broker
-          run: |
-            which rumqttd || cargo install --git https://github.com/bytebeamio/rumqtt rumqttd
-            rumqttd --config rumqttd.toml &
-            sleep 5
-        # cargo test 不会使用 build cache，因此也没有必要为他设置 build cache。
-        # dependencies cache，由 self-hosted runner 全局的 rustup 自动支持，也不需要通过 cache 操作。
-        - name: Test
-          run: cargo test --workspace
+  skip:
+    runs-on: ubuntu-latest
+    outputs:
+      should_skip: ${{ steps.filter.outputs.should_skip }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          filter: blob:none
+          fetch-depth: 0
+      - uses: leavesster/pull-request-path-filter@v0.2
+        id: "filter"
+        with:
+          paths: |
+            - '**'
+            - '!**.md'
+            - '!.vscode/*'
+            - '!.github/**'
+            - '.github/workflows/build-and-test.yml'
+
+  build:
+    runs-on: ubuntu-24.04
+    needs: [skip]
+    # squash commit 都会在末尾添加 #，通过这种方式过滤掉 squash commit 的 push 来减少重复构建。
+    if: ${{ needs.skip.outputs.should_skip != 'true' && !contains(github.event.head_commit.message, '#')}}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          rustflags: ""
+      - name: Start MQTT Broker
+        run: |
+          sudo apt update && sudo apt install -y --no-install-recommends mosquitto
+          mosquitto -d -p 47688
+      - name: Test
+        timeout-minutes: 10
+        run: cargo test --workspace --exclude layer
+      - uses: ./.github/actions/oocana-node
+        with:
+          token: ${{ secrets.ACCESS_REPO }}
+      # - name: Setup tmate session # only enable when debugging
+      #   uses: mxschmitt/action-tmate@v3
+      #   timeout-minutes: 10
+      #   if: failure()

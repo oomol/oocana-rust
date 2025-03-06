@@ -13,6 +13,7 @@ pub struct Shared {
     pub scheduler_tx: SchedulerTx,
     pub delay_abort_tx: DelayAbortTx,
     pub reporter: ReporterTx,
+    pub use_cache: bool,
 }
 
 pub struct FlowContext {

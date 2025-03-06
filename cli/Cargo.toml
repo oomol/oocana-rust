@@ -1,19 +1,18 @@
 [package]
 name = "cli"
-version = "0.10.1"
+version = "0.22.4"
 authors = ["CRIMX <straybugs@gmail.com>"]
 description = "CLI interface for oocana"
 edition = "2021"
 
 [dependencies]
 utils = { path = "../utils" }
-core = { path = "../core" }
-clap_complete = "3.0"
-
-[dependencies.clap]
-version = "3.0.14"
-features = ["cargo", "derive"]
-
-[dev-dependencies]
-assert_cmd = "2.0.4"
-predicates = "2.1.1"
+one_shot = { path = "../one_shot" }
+runtime = {path = "../runtime"}
+layer = { path = "../layer" }
+tracing = "0.1.40"
+clap = { version = "4.5.20", features = ["derive"] }
+dirs = "5.0.1"
+manifest_meta = { path = "../manifest_meta"}
+manifest_reader = { path = "../manifest_reader"}
+uuid = { version = "1.3.0", features = ["v4", "fast-rng", "macro-diagnostics"] }

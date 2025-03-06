@@ -12,7 +12,7 @@
   },
   "conventionalCommits.scopes": [
     "cli",
-    "core",
+    "one_shot",
     "examples",
     "mainframe",
     "manifest_reader",
@@ -30,4 +30,5 @@
     "runtime",
     "manifest_meta"
   ],
+  "rust-analyzer.runnables.extraTestBinaryArgs": ["--nocapture"]
 }

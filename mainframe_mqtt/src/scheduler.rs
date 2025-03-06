@@ -1,17 +1,19 @@
 use std::{net::SocketAddr, time::Duration};
 
 use async_trait::async_trait;
-use rumqttc::{AsyncClient, Event, EventLoop, Incoming, MqttOptions, QoS};
-
 use job::{JobId, SessionId};
 use mainframe::{
     scheduler::{SchedulerRxImpl, SchedulerTxImpl},
     MessageData,
 };
+use rumqttc::{AsyncClient, Event, EventLoop, Incoming, MqttOptions, QoS};
+use tokio::sync::watch;
+use tracing::{error, info};
 
 pub struct SchedulerTx {
     session_id: SessionId,
     tx: AsyncClient,
+    shutdown_tx: watch::Sender<bool>,
 }
 
 #[async_trait]
@@ -34,8 +36,8 @@ impl SchedulerTxImpl for SchedulerTx {
             .unwrap();
     }
 
-    async fn run_applet_block(&self, executor: &String, data: MessageData) {
-        let topic = format!("executor/{}/run_applet_block", executor);
+    async fn run_service_block(&self, executor: &String, data: MessageData) {
+        let topic = format!("executor/{}/run_service_block", executor);
 
         self.tx
             .publish(topic, QoS::AtLeastOnce, false, data)
@@ -43,21 +45,15 @@ impl SchedulerTxImpl for SchedulerTx {
             .unwrap();
     }
 
-    async fn send_drop_message(&self, executor: &String, data: MessageData) {
-        let topic = format!("executor/{}/drop", executor);
-        self.tx
-            .publish(topic, QoS::AtLeastOnce, false, data)
-            .await
-            .unwrap()
-    }
-
     async fn disconnect(&self) {
-        self.tx.disconnect().await.unwrap();
+        let _ = self.shutdown_tx.send(true);
+        let _ = self.tx.disconnect().await;
     }
 }
 
 pub struct SchedulerRx {
     rx: EventLoop,
+    shutdown_rx: watch::Receiver<bool>,
 }
 
 #[async_trait]
@@ -71,11 +67,18 @@ impl SchedulerRxImpl for SchedulerRx {
                     }
                 }
                 Err(e) => {
-                    eprintln!("Cannot connect Oocana Scheduler to broker. error: {:?}", e);
+                    let is_shutdown = self.shutdown_rx.borrow();
+                    if *is_shutdown {
+                        info!("scheduler is shutting down");
+                        break;
+                    }
+                    // TODO: need distinguish between normal error and unrecoverable error
+                    error!("exit because scheduler error: {:?}", e);
                     std::process::exit(1);
                 }
             }
         }
+        MessageData::default()
     }
 }
 
@@ -93,6 +96,14 @@ pub async fn connect(addr: &SocketAddr, session_id: SessionId) -> (SchedulerTx, 
     let channel = format!("session/{}", &session_id);
 
     tx.subscribe(&channel, QoS::AtLeastOnce).await.unwrap();
+    let (shutdown_tx, shutdown_rx) = watch::channel(false);
 
-    (SchedulerTx { tx, session_id }, SchedulerRx { rx })
+    (
+        SchedulerTx {
+            tx,
+            session_id,
+            shutdown_tx,
+        },
+        SchedulerRx { rx, shutdown_rx },
+    )
 }

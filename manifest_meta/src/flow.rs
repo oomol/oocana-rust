@@ -1,16 +1,53 @@
-use std::{collections::HashMap, path::PathBuf};
+use std::{
+    collections::{HashMap, HashSet},
+    fmt,
+    fmt::Formatter,
+    path::PathBuf,
+};
 
-use manifest_reader::block_manifest_reader::{block as manifest_block, node as manifest_node};
+use manifest_reader::{
+    manifest::{self, HandleName, InputDefPatch, InputHandles, OutputHandles},
+    path_finder::{find_package_file, BlockPathFinder},
+    reader::read_package,
+};
+
 use utils::error::Result;
 
 use crate::{
-    block,
-    block_reader::{BlockPathResolver, BlockReader},
+    block_resolver::{package_path, BlockResolver},
     connections::Connections,
-    node::AppletNode,
-    FlowNode, HandlesFroms, HandlesTos, InputHandles, Node, NodeId, OutputHandles, SlotNode,
-    TaskNode,
+    node::ServiceNode,
+    FlowNode, HandleFrom, HandlesFroms, HandlesTos, Node, NodeId, SlotNode, TaskNode,
 };
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub enum InjectionTarget {
+    Package(PathBuf),
+    Node {
+        package_path: PathBuf,
+        flow_path: String,
+        node_id: NodeId,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct InjectionNode {
+    pub node_id: NodeId,
+    /// node 文件的绝对路径，后续会将这个文件所在目录，注入到 package 中
+    pub absolute_entry: PathBuf,
+    /// node 文件的相对路径，在注入 package 后，就是相对于 package 的路径
+    pub relative_entry: PathBuf,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct InjectionMeta {
+    pub nodes: Vec<InjectionNode>,
+    /// value 设置为数组，方便未来如果每个支持每个小脚本有独立的注入代码(也可以在 injectionNode 里面设置)
+    pub scripts: Option<Vec<String>>,
+    pub package_version: String,
+}
+
+pub type InjectionStore = HashMap<InjectionTarget, InjectionMeta>;
 
 #[derive(Debug, Clone)]
 pub struct FlowBlock {
@@ -23,39 +60,112 @@ pub struct FlowBlock {
     pub flow_inputs_tos: HandlesTos,
     /// Flow outputs from in-flow nodes
     pub flow_outputs_froms: HandlesFroms,
+    pub package_path: Option<PathBuf>,
+    pub injection_store: Option<InjectionStore>,
+}
+
+#[derive(Hash, PartialEq, Eq, Debug)]
+pub struct ServiceQueryResult {
+    entry: Option<String>,
+    dir: String,
+    package: Option<String>,
+    service_hash: String,
+    is_global: bool,
+}
+
+impl fmt::Display for ServiceQueryResult {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let mut msg = format!(
+            "{{ \"dir\": {:?}, \"service_hash\": {:?}, \"is_global\": {:?}",
+            self.dir, self.service_hash, self.is_global
+        );
+        if let Some(entry) = &self.entry {
+            msg.push_str(&format!(", \"entry\": {:?}", entry));
+        }
+        if let Some(package) = &self.package {
+            msg.push_str(&format!(", \"package\": {:?}", package));
+        }
+        msg.push_str(" }");
+        write!(f, "{msg}")
+    }
 }
 
 impl FlowBlock {
     pub fn from_manifest(
-        manifest: manifest_block::FlowBlock, flow_path: PathBuf, block_reader: &mut BlockReader,
-        mut resolver: BlockPathResolver,
+        manifest: manifest::FlowBlock, flow_path: PathBuf, block_resolver: &mut BlockResolver,
+        mut path_finder: BlockPathFinder,
     ) -> Result<Self> {
-        let manifest_block::FlowBlock {
+        let manifest::FlowBlock {
             nodes,
             inputs_def,
             outputs_def,
             outputs_from,
+            injection: scripts,
         } = manifest;
 
-        let mut connections = Connections::new();
+        let mut connections =
+            Connections::new(nodes.iter().map(|n| n.node_id().to_owned()).collect());
 
         connections.parse_flow_outputs_from(outputs_from);
 
         for node in nodes.iter() {
             connections.parse_node_inputs_from(node.node_id(), node.inputs_from());
-            if let manifest_node::Node::Flow(flow_node) = node {
+            if let manifest::Node::Flow(flow_node) = node {
                 connections
                     .parse_subflow_slot_outputs_from(&flow_node.node_id, flow_node.slots.as_ref());
             }
         }
 
+        let value_nodes = nodes
+            .iter()
+            .filter_map(|node| match node {
+                manifest::Node::Value(value_node) => Some(value_node.clone()),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        let value_nodes_id = value_nodes
+            .iter()
+            .map(|n| n.node_id.clone())
+            .collect::<Vec<_>>();
+
+        // node 的 skip 属性为 true，这个 node 不会放到 flow 列表，但是仍然保留连线逻辑。所以要在 parse_node_inputs_from 处理完之后删除。
+        let nodes_in_flow: Vec<manifest::Node> = nodes
+            .into_iter()
+            .filter(|node| !node.should_skip() && !value_nodes_id.contains(node.node_id()))
+            .collect();
+
+        let find_node = |node_id: &NodeId| -> Option<&manifest::Node> {
+            nodes_in_flow.iter().find(|n| n.node_id() == node_id)
+        };
+
+        type PackageInectionScripts = HashMap<PathBuf, Vec<String>>;
+        let mut injection_scripts: PackageInectionScripts = HashMap::new();
+        if let Some(map) = scripts {
+            for (pkg, script) in map {
+                let mut pkg_file_path = path_finder.find_package_file_path(&pkg)?;
+                pkg_file_path = pkg_file_path.parent().unwrap().to_path_buf();
+                injection_scripts
+                    .entry(pkg_file_path)
+                    .or_insert_with(Vec::new)
+                    .push(script);
+            }
+        }
+
+        type InjectionNodes = HashMap<InjectionTarget, HashSet<InjectionNode>>;
+        let mut injection_nodes: InjectionNodes = HashMap::new();
+
         let mut new_nodes: HashMap<NodeId, Node> = HashMap::new();
-        for node in nodes {
+
+        for node in &nodes_in_flow {
             match node {
-                manifest_node::Node::Flow(flow_node) => {
-                    let flow = block_reader.resolve_flow_block(&flow_node.flow, &mut resolver)?;
+                manifest::Node::Flow(flow_node) => {
+                    let flow =
+                        block_resolver.resolve_flow_block(&flow_node.flow, &mut path_finder)?;
                     let inputs_def =
                         parse_inputs_def(&flow_node.inputs_from, &flow.as_ref().inputs_def);
+                    let inputs_def_patch = get_inputs_def_patch(&flow_node.inputs_from);
+
+                    // TODO: flow 注入
 
                     new_nodes.insert(
                         flow_node.node_id.to_owned(),
@@ -67,87 +177,387 @@ impl FlowBlock {
                                 .remove(&flow_node.node_id),
                             slots_inputs_to: connections.slot_inputs_tos.remove(&flow_node.node_id),
                             flow,
-                            node_id: flow_node.node_id,
-                            // title: flow_node.title,
+                            node_id: flow_node.node_id.to_owned(),
                             timeout: flow_node.timeout,
                             inputs_def,
+                            concurrency: flow_node.concurrency,
+                            inputs_def_patch,
                         }),
                     );
                 }
-                manifest_node::Node::Applet(applet_node) => {
-                    let applet = block_reader
-                        .resolve_applet_node_block(applet_node.applet, &mut resolver)?;
+                manifest::Node::Service(service_node) => {
+                    let service = block_resolver.resolve_service_node_block(
+                        service_node.service.to_owned(),
+                        &mut path_finder,
+                    )?;
                     let inputs_def =
-                        parse_inputs_def(&applet_node.inputs_from, &applet.as_ref().inputs_def);
+                        parse_inputs_def(&service_node.inputs_from, &service.as_ref().inputs_def);
+                    let inputs_def_patch = get_inputs_def_patch(&service_node.inputs_from);
 
                     new_nodes.insert(
-                        applet_node.node_id.to_owned(),
-                        Node::Applet(AppletNode {
-                            from: connections.node_inputs_froms.remove(&applet_node.node_id),
-                            to: connections.node_outputs_tos.remove(&applet_node.node_id),
-                            node_id: applet_node.node_id,
+                        service_node.node_id.to_owned(),
+                        Node::Service(ServiceNode {
+                            from: connections.node_inputs_froms.remove(&service_node.node_id),
+                            to: connections.node_outputs_tos.remove(&service_node.node_id),
+                            node_id: service_node.node_id.to_owned(),
                             // title: flow_node.title,
-                            timeout: applet_node.timeout,
-                            block: applet,
+                            timeout: service_node.timeout,
+                            block: service,
                             inputs_def,
+                            concurrency: service_node.concurrency,
+                            inputs_def_patch,
                         }),
                     );
                 }
-                manifest_node::Node::Task(task_node) => {
-                    let task =
-                        block_reader.resolve_task_node_block(task_node.task, &mut resolver)?;
-                    let inputs_def =
+                manifest::Node::Value(_) => {}
+                manifest::Node::Task(task_node) => {
+                    let task_node_block = task_node.task.clone();
+
+                    let injection_package_dir = if let Some(node_injection) = &task_node.inject {
+                        match &node_injection.target {
+                            manifest::InjectionTarget::Package(pkg) => {
+                                let pkg_path = path_finder
+                                    .find_package_file_path(&pkg)
+                                    .ok()
+                                    .map(|p| p.parent().map(|p| p.to_path_buf()))
+                                    .unwrap_or(None);
+
+                                if pkg_path.is_none() {
+                                    tracing::warn!("injection failed. package {} not found", pkg);
+                                }
+
+                                if let Some(ref pkg_path) = pkg_path {
+                                    let task_node_file = task_node_block.entry_file();
+
+                                    if let Some(task_node_file) = task_node_file {
+                                        let node_file = if flow_path.is_dir() {
+                                            flow_path.join(task_node_file)
+                                        } else {
+                                            flow_path.parent().unwrap().join(task_node_file)
+                                        };
+                                        injection_nodes
+                                            .entry(InjectionTarget::Package(pkg_path.clone()))
+                                            .or_insert_with(HashSet::new)
+                                            .insert(InjectionNode {
+                                                node_id: task_node.node_id.clone(),
+                                                absolute_entry: node_file,
+                                                relative_entry: task_node_file.into(),
+                                            });
+                                    }
+                                    if node_injection.script.is_some() {
+                                        injection_scripts
+                                            .entry(pkg_path.clone())
+                                            .or_insert_with(Vec::new)
+                                            .push(node_injection.script.clone().unwrap());
+                                    }
+                                }
+                                pkg_path
+                            }
+                            manifest::InjectionTarget::Node(node_id) => {
+                                let current_pkg_path = flow_path
+                                    .parent()
+                                    .and_then(|p| p.parent().map(|p| p.to_path_buf()));
+
+                                if let Some(current_pkg_path) = current_pkg_path {
+                                    let node = find_node(node_id);
+                                    if let Some(node) = node {
+                                        match node {
+                                            manifest::Node::Flow(_flow_node) => {
+                                                // TODO: flow 注入
+                                            }
+                                            manifest::Node::Task(task_node) => {
+                                                let task_node_file = task_node_block.entry_file();
+                                                if let Some(task_node_file) = task_node_file {
+                                                    let node_file = if flow_path.is_dir() {
+                                                        flow_path.join(task_node_file)
+                                                    } else {
+                                                        flow_path
+                                                            .parent()
+                                                            .unwrap()
+                                                            .join(task_node_file)
+                                                    };
+                                                    let target_node = find_node(&task_node.node_id);
+
+                                                    if let Some(target_node) = target_node {
+                                                        if target_node.should_spawn() {
+                                                            let k = InjectionTarget::Node {
+                                                                package_path: current_pkg_path,
+                                                                flow_path: flow_path
+                                                                    .to_string_lossy()
+                                                                    .to_string(),
+                                                                node_id: target_node
+                                                                    .node_id()
+                                                                    .clone(),
+                                                            };
+                                                            injection_nodes
+                                                                .entry(k)
+                                                                .or_insert_with(HashSet::new)
+                                                                .insert(InjectionNode {
+                                                                    node_id: task_node
+                                                                        .node_id
+                                                                        .clone(),
+                                                                    absolute_entry: node_file,
+                                                                    relative_entry: task_node_file
+                                                                        .into(),
+                                                                });
+                                                        } else {
+                                                            tracing::warn!(
+                                                                "injection failed. target node {} is not a spawnable node",
+                                                                target_node.node_id()
+                                                            );
+                                                        }
+                                                    } else {
+                                                        tracing::warn!(
+                                                            "injection failed. node {} not found",
+                                                            task_node.node_id
+                                                        );
+                                                    }
+                                                }
+                                            }
+                                            _ => {}
+                                        }
+                                    }
+                                } else {
+                                    tracing::warn!("injection failed. node {} not found", node_id);
+                                }
+                                None
+                            }
+                            _ => None,
+                        }
+                    } else {
+                        None
+                    };
+
+                    let task = block_resolver.resolve_task_node_block(
+                        task_node_block.clone(),
+                        &mut path_finder,
+                        injection_package_dir.clone(),
+                    )?;
+
+                    let mut inputs_def =
                         parse_inputs_def(&task_node.inputs_from, &task.as_ref().inputs_def);
+
+                    let inputs_def_patch = get_inputs_def_patch(&task_node.inputs_from);
+
+                    let mut froms: Option<HashMap<HandleName, Vec<HandleFrom>>> =
+                        connections.node_inputs_froms.remove(&task_node.node_id);
+                    let mut has_value_node = false;
+
+                    // TODO: value node 应该支持其他的几种 node，暂时没实现。
+                    if let Some(ref froms) = froms {
+                        for (handle_name, froms) in froms {
+                            for from in froms {
+                                if let HandleFrom::FromNodeOutput {
+                                    node_id,
+                                    node_output_handle,
+                                } = from
+                                {
+                                    if let Some(value_node) =
+                                        value_nodes.iter().find(|n| &n.node_id == node_id)
+                                    {
+                                        has_value_node = true;
+                                        if let Some(handle) = value_node
+                                            .values
+                                            .iter()
+                                            .find(|v| v.handle == *node_output_handle)
+                                        {
+                                            if let Some(ref mut input_defs) = inputs_def {
+                                                if value_node.skip {
+                                                    input_defs
+                                                        .entry(handle_name.to_owned())
+                                                        .and_modify(|def| def.value = None);
+                                                } else {
+                                                    input_defs
+                                                        .entry(handle_name.to_owned())
+                                                        .and_modify(|def| {
+                                                            def.value = handle.value.clone()
+                                                        });
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if has_value_node {
+                        // value node 不会运行，所以不能作为 from to 的一部分
+                        if let Some(ref mut froms) = froms {
+                            for (_, froms) in froms.iter_mut() {
+                                froms.retain(|from| {
+                                    if let HandleFrom::FromNodeOutput { node_id, .. } = from {
+                                        !value_nodes_id.contains(node_id)
+                                    } else {
+                                        true
+                                    }
+                                });
+                            }
+                        }
+                    }
 
                     new_nodes.insert(
                         task_node.node_id.to_owned(),
                         Node::Task(TaskNode {
-                            from: connections.node_inputs_froms.remove(&task_node.node_id),
+                            from: froms,
                             to: connections.node_outputs_tos.remove(&task_node.node_id),
-                            node_id: task_node.node_id,
+                            node_id: task_node.node_id.to_owned(),
                             // title: flow_node.title,
                             timeout: task_node.timeout,
                             task,
                             inputs_def,
+                            concurrency: task_node.concurrency,
+                            timeout_seconds: task_node.timeout_seconds,
+                            inputs_def_patch,
                         }),
                     );
                 }
-                manifest_node::Node::Slot(slot_node) => {
-                    let slot =
-                        block_reader.resolve_slot_node_block(slot_node.slot, &mut resolver)?;
+                manifest::Node::Slot(slot_node) => {
+                    let slot = block_resolver
+                        .resolve_slot_node_block(slot_node.slot.to_owned(), &mut path_finder)?;
                     let inputs_def =
                         parse_inputs_def(&slot_node.inputs_from, &slot.as_ref().inputs_def);
+                    let inputs_def_patch = get_inputs_def_patch(&slot_node.inputs_from);
 
                     new_nodes.insert(
                         slot_node.node_id.to_owned(),
                         Node::Slot(SlotNode {
                             from: connections.node_inputs_froms.remove(&slot_node.node_id),
                             to: connections.node_outputs_tos.remove(&slot_node.node_id),
-                            node_id: slot_node.node_id,
+                            node_id: slot_node.node_id.to_owned(),
                             // title: flow_node.title,
                             timeout: slot_node.timeout,
                             slot,
                             inputs_def,
+                            concurrency: slot_node.concurrency,
+                            inputs_def_patch,
                         }),
                     );
                 }
             }
         }
 
+        // merge injection nodes and scripts' key
+        let key1 = injection_nodes
+            .keys()
+            .cloned()
+            .collect::<HashSet<InjectionTarget>>();
+        let key2 = injection_scripts
+            .keys()
+            .map(|k| InjectionTarget::Package(k.clone()))
+            .collect::<HashSet<InjectionTarget>>();
+
+        let intersection = key1.union(&key2);
+
+        let mut injection = InjectionStore::new();
+        for key in intersection {
+            let nodes = injection_nodes
+                .remove(key)
+                .unwrap_or_default()
+                .into_iter()
+                .collect();
+            match key {
+                InjectionTarget::Package(pkg) => {
+                    let scripts = injection_scripts.remove(pkg).unwrap_or_default();
+                    let pkg_file = find_package_file(pkg).unwrap_or_default();
+                    let pkg_meta = read_package(pkg_file)?;
+                    injection.insert(
+                        key.clone(),
+                        InjectionMeta {
+                            nodes,
+                            scripts: Some(scripts),
+                            package_version: pkg_meta.version.unwrap_or_default(),
+                        },
+                    );
+                }
+                InjectionTarget::Node {
+                    package_path,
+                    flow_path,
+                    node_id,
+                } => {
+                    let pkg_file = find_package_file(package_path).unwrap_or_default();
+                    let pkg = read_package(pkg_file)?;
+                    injection.insert(
+                        InjectionTarget::Node {
+                            package_path: package_path.clone(),
+                            flow_path: flow_path.clone(),
+                            node_id: node_id.clone(),
+                        },
+                        InjectionMeta {
+                            nodes,
+                            scripts: None,
+                            package_version: pkg.version.unwrap_or_default(),
+                        },
+                    );
+                }
+            }
+        }
+
+        if !injection.is_empty() {
+            tracing::info!("injection: {:?}", injection);
+        }
+
         Ok(Self {
             nodes: new_nodes,
-            inputs_def: block::to_input_handles(inputs_def),
-            outputs_def: block::to_output_handles(outputs_def),
+            inputs_def: inputs_def,
+            outputs_def: outputs_def,
             path_str: flow_path.to_string_lossy().to_string(),
-            path: flow_path,
+            path: flow_path.clone(),
             flow_inputs_tos: connections.flow_inputs_tos.restore(),
             flow_outputs_froms: connections.flow_outputs_froms.restore(),
+            package_path: package_path(&flow_path).ok(),
+            injection_store: if injection.is_empty() {
+                None
+            } else {
+                Some(injection)
+            },
         })
+    }
+
+    pub fn get_services(&self) -> HashSet<ServiceQueryResult> {
+        let mut services = HashSet::new();
+
+        self.nodes.iter().for_each(|node| match node.1 {
+            Node::Service(service) => {
+                let service_block_path = service.block.dir();
+                let entry = if let Some(executor) = &service.block.service_executor.as_ref() {
+                    executor.entry.clone()
+                } else {
+                    None
+                };
+                let package = if let Some(package_path) = &service.block.package_path {
+                    if let Some(package_path) = package_path.to_str() {
+                        Some(package_path.to_string())
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                };
+
+                let is_global = if let Some(e) = service.block.service_executor.as_ref() {
+                    e.is_global()
+                } else {
+                    false
+                };
+
+                services.insert(ServiceQueryResult {
+                    entry,
+                    service_hash: utils::calculate_short_hash(&service_block_path, 16),
+                    dir: service_block_path,
+                    package,
+                    is_global,
+                });
+            }
+            _ => {}
+        });
+
+        services
     }
 }
 
 fn parse_inputs_def(
-    node_inputs_from: &Option<Vec<manifest_node::DataSource>>, inputs_def: &Option<InputHandles>,
+    node_inputs_from: &Option<Vec<manifest::NodeInputFrom>>, inputs_def: &Option<InputHandles>,
 ) -> Option<InputHandles> {
     match inputs_def {
         Some(inputs_def) => {
@@ -162,14 +572,36 @@ fn parse_inputs_def(
                     merged_inputs_def
                         .entry(input.handle.to_owned())
                         .and_modify(|def| {
-                            if let Some(value) = &input.value {
-                                def.value = Some(value.clone());
-                            }
+                            // input_def 里面的 value 在实际运行中，是不会被使用的，要用 from 里面的值替换。
+                            // 如果 from 里面没有对应 input def 的值，也需要考虑删除 def 的值。目前没考虑。
+                            def.value = input.value.clone();
                         });
                 }
             }
 
             Some(merged_inputs_def)
+        }
+        None => None,
+    }
+}
+
+fn get_inputs_def_patch(
+    node_inputs_from: &Option<Vec<manifest::NodeInputFrom>>,
+) -> Option<HashMap<HandleName, Vec<InputDefPatch>>> {
+    match node_inputs_from {
+        Some(inputs_from) => {
+            let mut inputs_def_patch = HashMap::new();
+            for input in inputs_from {
+                if let Some(schema_overrides) = &input.schema_overrides {
+                    inputs_def_patch.insert(input.handle.to_owned(), schema_overrides.clone());
+                }
+            }
+
+            if inputs_def_patch.is_empty() {
+                None
+            } else {
+                Some(inputs_def_patch)
+            }
         }
         None => None,
     }

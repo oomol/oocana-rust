@@ -1,58 +1,158 @@
-use slog::o;
-use slog::Drain;
-#[cfg(feature = "syslog")]
-use slog_syslog::Facility;
+use std::{
+    fs::{self, File},
+    io,
+    path::{Path, PathBuf},
+};
+use tracing::info;
+
+use crate::settings;
 
 use super::error::Result;
 
-pub fn setup_logging() -> Result<slog_scope::GlobalLoggerGuard> {
-    // Setup Logging
-    let guard = slog_scope::set_global_logger(default_root_logger()?);
-    let _log_guard = slog_stdlog::init()?;
+use std::sync::Mutex;
+use tracing::level_filters::LevelFilter;
+use tracing_appender::non_blocking;
+use tracing_subscriber::{fmt, layer::SubscriberExt, EnvFilter, Layer, Registry};
+
+lazy_static::lazy_static! {
+    static ref LOGGER_DIR: Mutex<PathBuf> = Mutex::new(settings::oocana_dir().unwrap_or(std::env::temp_dir()));
+}
+
+pub fn logger_dir() -> PathBuf {
+    LOGGER_DIR.lock().unwrap().clone()
+}
+
+pub const STDOUT_TARGET: &str = "stdout";
+pub const STDERR_TARGET: &str = "stderr";
+
+pub struct LogParams<'a, P: AsRef<Path>> {
+    pub sub_dir: Option<P>,
+    pub log_name: &'a str,
+    pub output_to_console: bool,
+    /// 捕获 target 为 STDOUT_TARGET 或者 STDERR_TARGET 的日志。
+    pub capture_stdout_stderr_target: bool,
+}
+
+#[allow(unused_mut)]
+pub fn setup_logging<P: AsRef<Path>>(params: LogParams<P>) -> Result<non_blocking::WorkerGuard> {
+    let LogParams {
+        sub_dir,
+        log_name,
+        mut output_to_console,
+        capture_stdout_stderr_target,
+    } = params;
+
+    let mut logger_dir = settings::oocana_dir().unwrap_or_else(std::env::temp_dir);
+
+    if let Some(sub_dir) = sub_dir {
+        logger_dir.push(sub_dir);
+    }
+
+    *LOGGER_DIR.lock().unwrap() = logger_dir.clone();
+    let file_path = logger_dir.join(format!("{}.log", log_name));
+
+    let f = create_file_with_dirs(file_path.to_owned())?;
+
+    let (non_blocking, guard) = non_blocking(f);
+    let file_layer = fmt::Layer::default()
+        .with_writer(non_blocking)
+        .with_ansi(false)
+        .with_target(false)
+        .with_file(true)
+        .with_line_number(true)
+        .with_filter(LevelFilter::TRACE);
+
+    let subscriber = Registry::default().with(file_layer);
+
+    // 主动要求输出时，不使用 ansi color
+    #[allow(unused_assignments, unused_mut)]
+    let mut show_ansi_color = if output_to_console { false } else { true };
+
+    #[cfg(debug_assertions)]
+    {
+        output_to_console = true;
+        show_ansi_color = true;
+    }
+
+    if output_to_console {
+        // 使用 target 提取出原始内容更方便。如果用 span，需要使用自定义 format 来提取原始信息（不带 span 的）
+        if capture_stdout_stderr_target {
+            let stdout_layer = fmt::Layer::default()
+                .with_writer(std::io::stdout)
+                .with_target(false)
+                .with_ansi(show_ansi_color)
+                .with_level(false)
+                .without_time()
+                .with_filter(
+                    EnvFilter::from_default_env()
+                        .add_directive(format!("{STDOUT_TARGET}=trace").parse().unwrap()),
+                );
+
+            let stderr_layer = fmt::Layer::default()
+                .with_writer(std::io::stderr)
+                .with_target(false)
+                .with_ansi(show_ansi_color)
+                .with_level(false)
+                .without_time()
+                .with_filter(
+                    EnvFilter::from_default_env()
+                        .add_directive(format!("{STDERR_TARGET}=trace").parse().unwrap()),
+                );
+
+            let subscriber = subscriber.with(stdout_layer).with(stderr_layer);
+            tracing::subscriber::set_global_default(subscriber)
+                .expect("Unable to set global subscriber");
+        } else {
+            let stdout_layer = fmt::Layer::default()
+                .with_writer(std::io::stdout)
+                .with_target(false)
+                .with_ansi(show_ansi_color);
+
+            #[cfg(debug_assertions)]
+            let stdout_layer = stdout_layer.with_file(true).with_line_number(true);
+            let subscriber = subscriber.with(stdout_layer);
+            tracing::subscriber::set_global_default(subscriber)
+                .expect("Unable to set global subscriber");
+        }
+    } else {
+        tracing::subscriber::set_global_default(subscriber)
+            .expect("Unable to set global subscriber");
+    }
+
+    info!("Logging to file: {:?}", file_path);
 
     Ok(guard)
 }
 
-pub fn default_root_logger() -> Result<slog::Logger> {
-    // Create drains
-    let drain = slog::Duplicate(default_discard()?, default_discard()?).fuse();
-
-    // Merge drains
-    #[cfg(feature = "termlog")]
-    let drain = slog::Duplicate(default_term_drain().unwrap_or(default_discard()?), drain).fuse();
-    #[cfg(feature = "syslog")]
-    let drain = slog::Duplicate(default_syslog_drain().unwrap_or(default_discard()?), drain).fuse();
-
-    // Create Logger
-    let logger = slog::Logger::root(drain, o!("who" => "oocana"));
-
-    // Return Logger
-    Ok(logger)
+fn create_file_with_dirs<P: AsRef<Path>>(file_path: P) -> io::Result<File> {
+    if let Some(parent) = file_path.as_ref().parent() {
+        fs::create_dir_all(parent)?;
+    }
+    // File::create(file_path)
+    File::options()
+        .write(true)
+        .create(true)
+        .append(true)
+        .open(file_path)
 }
 
-fn default_discard() -> Result<slog_async::Async> {
-    let drain = slog_async::Async::default(slog::Discard);
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    Ok(drain)
-}
+    #[test]
+    fn test_logger() {
+        let g = setup_logging(LogParams {
+            sub_dir: Some("test"),
+            log_name: "test",
+            output_to_console: true,
+            capture_stdout_stderr_target: true,
+        })
+        .unwrap();
 
-// term drain: Log to Terminal
-#[cfg(feature = "termlog")]
-fn default_term_drain() -> Result<slog_async::Async> {
-    let plain = slog_term::PlainSyncDecorator::new(std::io::stdout());
-    let term = slog_term::FullFormat::new(plain);
+        tracing::info!(target: "stdout", "stdout");
+        tracing::info!(target: "stderr", "stderr");
 
-    let drain = slog_async::Async::default(term.build().fuse());
-
-    Ok(drain)
-}
-
-// syslog drain: Log to syslog
-#[cfg(feature = "syslog")]
-fn default_syslog_drain() -> Result<slog_async::Async> {
-    let syslog = slog_syslog::unix_3164(Facility::LOG_USER)?;
-
-    let drain = slog_async::Async::default(syslog.fuse());
-
-    Ok(drain)
+        drop(g);
+    }
 }

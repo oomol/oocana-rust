@@ -1,0 +1,9 @@
+type: task_block
+entry:
+  bin: cargo
+  args: [run, "--"]
+inputs_def:
+  - handle: my_count
+    optional: true
+outputs_def:
+  - handle: my_result

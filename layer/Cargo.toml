@@ -1,0 +1,19 @@
+[package]
+name = "layer"
+version = "0.2.1"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+dirs = "5.0.1"
+manifest_reader = { path = "../manifest_reader" }
+serde = { version = "1.0.210", features = ["rc", "derive"] }
+serde_json = "1.0.128"
+uuid = { version = "1.3.0", features = ["v4", "fast-rng", "macro-diagnostics"] }
+utils = { path = "../utils" }
+tracing = "0.1.40"
+fs2 = "0.4.3"
+[dev-dependencies]
+tracing-subscriber = "0.3.18"
+ctor = "0.2.8"

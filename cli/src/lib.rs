@@ -1,124 +1,187 @@
-mod commands;
+mod layer;
+mod cache;
+mod query;
+mod parser;
+use std::collections::HashSet;
+use cache::CacheAction;
+use one_shot::one_shot::{run_block, BlockArgs};
 
-use std::path::PathBuf;
-use clap::{AppSettings, Parser, IntoApp, Subcommand};
-use clap_complete::{generate, shells::{Bash, Fish, Zsh}};
-
-use utils::app_config::AppConfig;
-use utils::error::Result;
-use utils::types::LogLevel;
+use clap::{Parser, Subcommand};
+use tracing::debug;
+use utils::{error::Result, logger::LogParams};
+use uuid::Uuid;
 
 #[derive(Parser, Debug)]
-#[clap(
+#[command(
     name = "oocana",
     author,
     about,
     long_about = "Oocana CLI",
-    version
+    version,
+    subcommand_required = true,
 )]
-#[clap(setting = AppSettings::SubcommandRequired)]
-#[clap(global_setting(AppSettings::DeriveDisplayOrder))]
 pub struct Cli {
-    /// Set a custom config file
-    #[clap(short, long,parse(from_os_str), value_name = "FILE")]
-    pub config: Option<PathBuf>,
-
-    /// Set a custom config file
-    #[clap(name="debug", short, long="debug", value_name = "DEBUG")]
-    pub debug: Option<bool>,
-
-    /// Set Log Level 
-    #[clap(name="log_level", short, long="log-level", value_name = "LOG_LEVEL")]
-    pub log_level: Option<LogLevel>,
-
-    /// Subcommands
-    #[clap(subcommand)]
+    #[command(subcommand)]
     command: Commands,
 }
 
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+
 #[derive(Subcommand, Debug)]
 enum Commands {
-    #[clap(
+    #[command(
         name = "run",
         about = "Run a Oocana Flow",
         long_about = None, 
     )]
     Run {
-        #[clap(help = "Path to the Oocana Block Manifest file or a directory with flow.oo.yaml.")]
+        #[arg(help = "Absolute Path to the Oocana Block Manifest file or a directory with flow.oo.yaml.")]
         block: String,
-        #[clap(help = "MQTT Broker Address.", long)]
+        #[arg(help = "message report Address. format is ip:port", long)]
         broker: Option<String>,
-        #[clap(help = "Paths to search for blocks. Fallback to the directory of current flow block.", long)]
+        #[arg(help = "Paths to search for blocks. Fallback to the directory of current flow block.", long)]
         block_search_paths: Option<String>,
-        #[clap(help = "Optional id to mark this execution session.", long)]
-        session: Option<String>,
-        #[clap(help = "Enable reporter.", long)]
+        #[arg(help = "id to mark this execution session. If not provided, a UUID will be randomly generated different value as the default value for that run.", long, default_value_t = Uuid::new_v4().to_string())]
+        session: String,
+        #[arg(help = "Enable reporter.", long)]
         reporter: bool,
-        #[clap(help = "Stop the flow after the node is finished.", long)]
-        node: Option<String>,
-        #[clap(help = "Run the flow with the nodes needed to run.", long)]
+        #[arg(help = "Use previous result cache if exist.", long)]
+        use_cache: bool,
+        #[arg(help = "Stop the flow after the node is finished.", long)]
         nodes: Option<String>,
-        #[clap(help = "Values for the input handles value. format is {\"node_id\": \"inputHandleName\": [1]}}. first key is node id, the first level value is a key-value pair, the next level's value is a list of input values", long)]
+        #[arg(help = "Values for the input handles value. format is {\"node_id\": \"inputHandleName\": [1]}}. first key is node id, the first level value is a key-value pair, the next level's value is a list of input values", long)]
         input_values: Option<String>,
+        #[arg(help = "default package environment, any block has no package will use this package environment", long)]
+        default_package: Option<String>,
+        #[arg(help = "exclude package, accept package path", long)]
+        exclude_packages: Option<String>,
+        #[arg(help = "temporary session path,  It will be the return value of context.sessionDir or context.session_dir function. just a string, oocana just check if it is exist.", long)]
+        session_dir: Option<String>,
+        #[arg(help = "extra bind paths, format <source_path>:<target_path>, accept multiple input. example: --bind-paths <source>:<target> --bind-paths <source>:<target>", long)]
+        extra_bind_paths: Option<Vec<String>>,
+        #[arg(help = "when spawn a new process, retain the environment variables(only accept variable name), accept multiple input. example: --retain-env-keys <env> --retain-env-keys <env>", long)]
+        retain_env_keys: Option<Vec<String>>,
     },
-    #[clap(
-        name = "completion",
-        about = "Generate completion scripts",
-        long_about = None,
-        )]
-        Completion {
-            #[clap(subcommand)]
-            subcommand: CompletionSubcommand,
-        },
-    #[clap(
-        name = "config",
-        about = "Show Configuration",
-        long_about = None,
+    Cache {
+        #[command(subcommand)]
+        action: CacheAction,
+    },
+    Query {
+        #[command(subcommand)]
+        action: query::QueryAction,
+    },
+    #[command(
+        name = "package-layer",
+        about = "Package Layer action api",
+        long_about = None, 
     )]
-    Config,
-}
-
-#[derive(Subcommand, PartialEq, Debug)]
-enum CompletionSubcommand {
-    #[clap(about = "generate the autocompletion script for bash")]
-    Bash,
-    #[clap(about = "generate the autocompletion script for zsh")]
-    Zsh,
-    #[clap(about = "generate the autocompletion script for fish")]
-    Fish,
+    PackageLayer {
+        #[command(subcommand)]
+        action: layer::LayerAction,
+    }
 }
 
 pub fn cli_match() -> Result<()> {
-    // Parse the command line arguments
     let cli = Cli::parse();
 
-    // Merge clap config file if the value is set
-    AppConfig::merge_config(cli.config.as_deref())?;
+    let command = &cli.command;
 
-    let app = Cli::into_app();
-    
-    AppConfig::merge_args(app)?;
-
-    // Execute the subcommand
-    match &cli.command {
-        Commands::Run { block, broker, block_search_paths, session, reporter, node, nodes, input_values } => {
-            commands::run(block, broker.to_owned(), block_search_paths.to_owned(), session.to_owned(), reporter.to_owned(), node.to_owned(), nodes.to_owned(), input_values.to_owned())?
+    let _guard = match command {
+        Commands::Run { session, .. } => {
+            utils::logger::setup_logging(LogParams {
+                sub_dir: Some(format!("sessions/{session}")),
+                log_name: "oocana",
+                output_to_console: false,
+                capture_stdout_stderr_target: false,
+            })?
         },
-        Commands::Completion {subcommand} => {
-            let mut app = Cli::into_app();
-            match subcommand {
-                CompletionSubcommand::Bash => {
-                    generate(Bash, &mut app, "oocana", &mut std::io::stdout());
+        Commands::PackageLayer { action } => {
+            utils::logger::setup_logging({
+                LogParams {
+                    sub_dir: Some("package-layer"),
+                    log_name: "action",
+                    // create 要将特定 stdout stderr 的 target 输出到控制台。因此两个都要为 true。
+                    output_to_console: match action {
+                        layer::LayerAction::Create { .. } => true,
+                        _ => false,
+                    },
+                    capture_stdout_stderr_target: match action {
+                        layer::LayerAction::Create { .. } => true,
+                        _ => false,
+                    }
                 }
-                CompletionSubcommand::Zsh => {
-                    generate(Zsh, &mut app, "oocana", &mut std::io::stdout());
+            })?
+        },
+        Commands::Query { action } => {
+            utils::logger::setup_logging({
+                LogParams {
+                    sub_dir: Some("query"),
+                    log_name: match action {
+                        query::QueryAction::Upstream {  .. } => "upstream",
+                        query::QueryAction::Service { .. } => "service",
+                        query::QueryAction::Package { .. } => "package",
+                    },
+                    output_to_console: false,
+                    capture_stdout_stderr_target: false,
                 }
-                CompletionSubcommand::Fish => {
-                    generate(Fish, &mut app, "oocana", &mut std::io::stdout());
+            })?
+        },
+        Commands::Cache { .. } => {
+            utils::logger::setup_logging({
+                LogParams {
+                    sub_dir: Some("cache"),
+                    log_name: "action",
+                    output_to_console: false,
+                    capture_stdout_stderr_target: false,
                 }
-            }
+            })?
         }
-        Commands::Config => commands::config()?,
+    };
+
+    debug!("run cli args: {command:#?} in version: {VERSION}");
+    match command {
+        Commands::Run { block, broker, block_search_paths, session, reporter, use_cache, nodes, input_values, exclude_packages, default_package, extra_bind_paths, session_dir: session_path, retain_env_keys } => {
+            run_block(BlockArgs {
+                block_path: block,
+                broker_address: broker.to_owned(),
+                block_search_paths: block_search_paths.as_ref()
+                .map(|p| p.split(',').map(|s| parser::expand_tilde(s)).collect()),
+                session: session.to_owned(),
+                reporter_enable: reporter.to_owned(),
+                use_cache: use_cache.to_owned(),
+                nodes: nodes.as_ref().map(|nodes| {
+                    nodes
+                        .split(',')
+                        .map(|node| node.to_string())
+                        .collect::<HashSet<String>>()
+                }),
+                input_values: input_values.to_owned(),
+                default_package: default_package.to_owned(),
+                exclude_packages: exclude_packages.as_ref()
+                .map(|p| p.split(',').map(|s| s.to_string()).collect()),
+                session_dir: session_path.to_owned(),
+                bind_paths: extra_bind_paths.as_ref().map(|paths| {
+                    paths.iter().map(|path| {
+                        let parts = path.split(':').collect::<Vec<&str>>();
+                        if parts.len() == 2 {
+                            (parts[0].to_string(), parts[1].to_string())
+                        } else {
+                            ("".to_string(), "".to_string())
+                        }
+                    }).collect()
+                }),
+                retain_env_keys: retain_env_keys.to_owned(),
+            })?
+        },
+        Commands::Cache { action } => {
+            cache::cache_action(action)?;
+        },
+        Commands::Query { action } => {
+            query::query(action)?;
+        },
+        Commands::PackageLayer { action} => {
+            layer::layer_action(action)?;
+        },
     }
 
     Ok(())

@@ -13,17 +13,15 @@ syslog = []
 [dependencies]
 thiserror = "1.0.30"
 anyhow = { version = "1.0.66", features = ["backtrace"] }
-color-backtrace = "0.5.1"
 config = "0.11.0"
 lazy_static = "1.4.0"
-slog = "2.7.0"
-slog-syslog = "0.13.0"
-slog-term = "2.8.0"
-slog-scope = "4.4.0"
-slog-async = "2.7.0"
-slog-stdlog = "4.1.0"
-clap = "3.0.14"
-log = "0.4.14"
+tracing = "0.1.40"
+tracing-subscriber = {version = "0.3.18", features = ["env-filter"]}
+tracing-appender = "0.2.3"
 serde = { version = "1.0.149", features = ["derive", "rc"] }
 serde_json = "1.0.89"
 serde_yaml = "0.9"
+dirs = "5.0.1"
+log = "0.4.14"
+sha2 = "0.10.8"
+hex = "0.4.3"

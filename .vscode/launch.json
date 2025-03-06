@@ -17,11 +17,7 @@
             "request": "launch",
             "name": "Debug executable 'oocana'",
             "cargo": {
-                "args": [
-                    "build",
-                    "--bin=oocana",
-                    "--package=oocana"
-                ],
+                "args": ["build", "--bin=oocana", "--package=oocana"],
                 "filter": {
                     "name": "oocana",
                     "kind": "bin"
@@ -30,7 +26,9 @@
             "args": [
                 "run",
                 "${input:flowFile}",
-                "--reporter"
+                "--reporter",
+                "--block-search-paths",
+                "${workspaceFolder}/examples"
             ],
             "cwd": "${workspaceFolder}"
         }

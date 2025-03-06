@@ -1,0 +1,45 @@
+name: layer test
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "layer/**"
+      - ".github/workflows/layer.yml"
+      - ".github/actions/ovmlayer/action.yml"
+      - "!layer/**.md"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  OVMLAYER_LOG: /tmp/ovmlayer.log
+
+jobs:
+  layer:
+    runs-on: linux-arm64
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          rustflags: ""
+      - uses: ./.github/actions/ovmlayer
+        with:
+          token: ${{ secrets.ACCESS_REPO }}
+      - name: test layer api
+        run: cargo test --package layer -- --test-threads=1 # 部分单测 API 互相干扰，需要一个个测试
+      - name: Start MQTT Broker
+        run: |
+          sudo apt update && sudo apt install -y --no-install-recommends mosquitto
+          mosquitto -d -p 47688
+      - uses: ./.github/actions/oocana-node
+        with:
+          token: ${{ secrets.ACCESS_REPO }}
+          create-layer: "true"
+      # - name: Setup tmate session # only enable when debugging
+      #   uses: mxschmitt/action-tmate@v3
+      #   timeout-minutes: 10
+      #   if: failure()

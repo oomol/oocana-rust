@@ -1,0 +1,5 @@
+name: flow-1
+nodes:
+  - node_id: block-1
+    task: ./block_manifest_reader_test/blocks1/task-blk1/block.oo.yaml
+    concurrency: 3

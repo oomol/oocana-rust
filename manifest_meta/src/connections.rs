@@ -1,6 +1,6 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
-use manifest_reader::block_manifest_reader::node as manifest_node;
+use manifest_reader::manifest::{self};
 
 use super::{
     node::{HandleFrom, HandleTo},
@@ -8,6 +8,8 @@ use super::{
 };
 
 pub struct Connections {
+    pub nodes: HashSet<NodeId>,
+
     pub node_inputs_froms: ConnNodesFroms,
     pub node_outputs_tos: ConnNodesTos,
 
@@ -19,8 +21,9 @@ pub struct Connections {
 }
 
 impl Connections {
-    pub fn new() -> Self {
+    pub fn new(nodes: HashSet<NodeId>) -> Self {
         Self {
+            nodes,
             node_inputs_froms: ConnNodesFroms::new(),
             node_outputs_tos: ConnNodesTos::new(),
 
@@ -32,13 +35,15 @@ impl Connections {
         }
     }
 
-    pub fn parse_flow_outputs_from(
-        &mut self, outputs_from: Option<Vec<manifest_node::DataSource>>,
-    ) {
+    pub fn parse_flow_outputs_from(&mut self, outputs_from: Option<Vec<manifest::NodeInputFrom>>) {
         if let Some(outputs_from) = outputs_from {
             for output_from in outputs_from {
                 if let Some(from_nodes) = output_from.from_node {
                     for from_node in from_nodes {
+                        if !self.nodes.contains(&from_node.node_id) {
+                            continue;
+                        }
+
                         self.flow_outputs_froms.add(
                             output_from.handle.to_owned(),
                             HandleFrom::FromNodeOutput {
@@ -75,6 +80,9 @@ impl Connections {
 
                 if let Some(from_slot_nodes) = output_from.from_slot_node {
                     for from_slot_node in from_slot_nodes {
+                        if !self.nodes.contains(&from_slot_node.node_id) {
+                            continue;
+                        }
                         self.flow_outputs_froms.add(
                             output_from.handle.to_owned(),
                             HandleFrom::FromSlotInput {
@@ -98,12 +106,23 @@ impl Connections {
     }
 
     pub fn parse_node_inputs_from(
-        &mut self, node_id: &NodeId, inputs_from: Option<&Vec<manifest_node::DataSource>>,
+        &mut self, node_id: &NodeId, inputs_from: Option<&Vec<manifest::NodeInputFrom>>,
     ) {
         if let Some(inputs_from) = inputs_from {
             for input_from in inputs_from {
                 if let Some(from_nodes) = &input_from.from_node {
                     for from_node in from_nodes {
+                        // 连接的节点不在当前 flow 中，不创建连线
+                        if !self.nodes.contains(&from_node.node_id) {
+                            tracing::warn!(
+                                "Node {} input {} from node {} not in nodes",
+                                node_id,
+                                input_from.handle,
+                                from_node.node_id
+                            );
+                            return;
+                        }
+
                         self.node_inputs_froms.add(
                             node_id.to_owned(),
                             input_from.handle.to_owned(),
@@ -169,8 +188,7 @@ impl Connections {
     }
 
     pub fn parse_subflow_slot_outputs_from(
-        &mut self, flow_node_id: &NodeId,
-        slots: Option<&Vec<manifest_node::FlowNodeSlotDataSource>>,
+        &mut self, flow_node_id: &NodeId, slots: Option<&Vec<manifest::FlowNodeSlots>>,
     ) {
         if let Some(slots) = slots {
             for slot in slots {

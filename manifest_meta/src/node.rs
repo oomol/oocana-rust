@@ -1,9 +1,8 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, path::PathBuf, sync::Arc};
 
-use crate::{
-    AppletBlock, Block, FlowBlock, HandleName, InputHandles, NodeId, OutputHandles, SlotBlock,
-    TaskBlock,
-};
+use manifest_reader::manifest::{InputDefPatch, InputHandles, OutputHandles};
+
+use crate::{Block, FlowBlock, HandleName, NodeId, ServiceBlock, SlotBlock, TaskBlock};
 
 pub type HandlesFroms = HashMap<HandleName, Vec<HandleFrom>>;
 
@@ -13,58 +12,50 @@ pub type NodesHandlesFroms = HashMap<NodeId, HandlesFroms>;
 
 pub type NodesHandlesTos = HashMap<NodeId, HandlesTos>;
 
-#[derive(Debug, Clone)]
-pub struct TaskNode {
-    pub task: Arc<TaskBlock>,
-    pub node_id: NodeId,
-    pub timeout: Option<u64>,
-    pub from: Option<HandlesFroms>,
-    pub to: Option<HandlesTos>,
-    pub inputs_def: Option<InputHandles>,
+macro_rules! extend_node_common_field {
+    ($name:ident { $($field:ident : $type:ty),* $(,)? }) => {
+        #[derive(Debug, Clone)]
+        pub struct $name {
+            $(pub $field: $type,)*
+            pub node_id: NodeId,
+            pub timeout: Option<u64>,
+            pub from: Option<HandlesFroms>,
+            pub to: Option<HandlesTos>,
+            pub inputs_def: Option<InputHandles>,
+            pub concurrency: i32,
+            pub inputs_def_patch: Option<HashMap<HandleName, Vec<InputDefPatch>>>,
+        }
+    };
 }
 
-#[derive(Debug, Clone)]
-pub struct AppletNode {
-    pub block: Arc<AppletBlock>,
-    pub node_id: NodeId,
-    // pub title: Option<String>,
-    pub timeout: Option<u64>,
-    pub from: Option<HandlesFroms>,
-    pub to: Option<HandlesTos>,
-    pub inputs_def: Option<InputHandles>,
-}
+extend_node_common_field!(TaskNode {
+    task: Arc<TaskBlock>,
+    timeout_seconds: Option<u64>,
+});
 
-#[derive(Debug, Clone)]
-pub struct FlowNode {
-    pub flow: Arc<FlowBlock>,
-    pub slots_inputs_to: Option<NodesHandlesTos>,
-    pub slots_outputs_from: Option<NodesHandlesFroms>,
-    pub node_id: NodeId,
-    // pub title: Option<String>,
-    pub timeout: Option<u64>,
-    pub from: Option<HandlesFroms>,
-    pub to: Option<HandlesTos>,
-    pub inputs_def: Option<InputHandles>,
-}
+extend_node_common_field!(ServiceNode {
+    block: Arc<ServiceBlock>
+});
 
-#[derive(Debug, Clone)]
-pub struct SlotNode {
-    pub slot: Arc<SlotBlock>,
-    pub node_id: NodeId,
-    // pub title: Option<String>,
-    pub timeout: Option<u64>,
-    pub from: Option<HandlesFroms>,
-    pub to: Option<HandlesTos>,
-    pub inputs_def: Option<InputHandles>,
-}
+extend_node_common_field!(FlowNode {
+    flow: Arc<FlowBlock>,
+    slots_inputs_to: Option<NodesHandlesTos>,
+    slots_outputs_from: Option<NodesHandlesFroms>,
+});
+
+extend_node_common_field!(SlotNode {
+    slot: Arc<SlotBlock>,
+});
 
 #[derive(Debug, Clone)]
 pub enum Node {
     Task(TaskNode),
     Flow(FlowNode),
     Slot(SlotNode),
-    Applet(AppletNode),
+    Service(ServiceNode),
 }
+
+pub type InputDefPatchMap = HashMap<HandleName, Vec<InputDefPatch>>;
 
 impl Node {
     pub fn node_id(&self) -> &NodeId {
@@ -72,7 +63,16 @@ impl Node {
             Self::Task(task) => &task.node_id,
             Self::Flow(flow) => &flow.node_id,
             Self::Slot(slot) => &slot.node_id,
-            Self::Applet(applet) => &applet.node_id,
+            Self::Service(service) => &service.node_id,
+        }
+    }
+
+    pub fn concurrency(&self) -> i32 {
+        match self {
+            Self::Task(task) => task.concurrency,
+            Self::Flow(flow) => flow.concurrency,
+            Self::Slot(slot) => slot.concurrency,
+            Self::Service(service) => service.concurrency,
         }
     }
 
@@ -81,7 +81,7 @@ impl Node {
             Self::Task(task) => Block::Task(Arc::clone(&task.task)),
             Self::Flow(flow) => Block::Flow(Arc::clone(&flow.flow)),
             Self::Slot(slot) => Block::Slot(Arc::clone(&slot.slot)),
-            Self::Applet(applet) => Block::Applet(Arc::clone(&applet.block)),
+            Self::Service(service) => Block::Service(Arc::clone(&service.block)),
         }
     }
 
@@ -90,7 +90,7 @@ impl Node {
             Self::Task(task) => task.from.as_ref(),
             Self::Flow(flow) => flow.from.as_ref(),
             Self::Slot(slot) => slot.from.as_ref(),
-            Self::Applet(applet) => applet.from.as_ref(),
+            Self::Service(service) => service.from.as_ref(),
         }
     }
 
@@ -99,7 +99,7 @@ impl Node {
             Self::Task(task) => task.to.as_ref(),
             Self::Flow(flow) => flow.to.as_ref(),
             Self::Slot(slot) => slot.to.as_ref(),
-            Self::Applet(applet) => applet.to.as_ref(),
+            Self::Service(service) => service.to.as_ref(),
         }
     }
 
@@ -108,7 +108,7 @@ impl Node {
             Self::Task(task) => task.inputs_def.as_ref(),
             Self::Flow(flow) => flow.inputs_def.as_ref(),
             Self::Slot(slot) => slot.inputs_def.as_ref(),
-            Self::Applet(applet) => applet.inputs_def.as_ref(),
+            Self::Service(service) => service.inputs_def.as_ref(),
         }
     }
 
@@ -117,7 +117,16 @@ impl Node {
             Self::Task(task) => task.task.outputs_def.as_ref(),
             Self::Flow(flow) => flow.flow.outputs_def.as_ref(),
             Self::Slot(slot) => slot.slot.outputs_def.as_ref(),
-            Self::Applet(applet) => applet.block.outputs_def.as_ref(),
+            Self::Service(service) => service.block.outputs_def.as_ref(),
+        }
+    }
+
+    pub fn inputs_def_patch(&self) -> Option<&InputDefPatchMap> {
+        match self {
+            Self::Task(task) => task.inputs_def_patch.as_ref(),
+            Self::Flow(flow) => flow.inputs_def_patch.as_ref(),
+            Self::Slot(slot) => slot.inputs_def_patch.as_ref(),
+            Self::Service(service) => service.inputs_def_patch.as_ref(),
         }
     }
 
@@ -129,8 +138,16 @@ impl Node {
                 }
             }
         }
-
         false
+    }
+
+    pub fn package_path(&self) -> Option<PathBuf> {
+        match self {
+            Self::Task(task) => task.task.package_path.clone(),
+            Self::Flow(flow) => flow.flow.package_path.clone(),
+            Self::Slot(slot) => slot.slot.package_path.clone(),
+            Self::Service(service) => service.block.package_path.clone(),
+        }
     }
 }
 
