@@ -8,42 +8,32 @@ on:
 jobs:
   release-ubuntu:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target: [
+          aarch64-unknown-linux-gnu,
+          x86_64-unknown-linux-gnu,
+          x86_64-unknown-linux-musl,
+          aarch64-unknown-linux-musl,
+        ]
     steps:
       - uses: actions/checkout@v4
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: stable
-      - name: Set up build environment
-        run: |
-          sudo apt-get update
-      - name: copy config.toml
-        run: |
-          mkdir -p .config
-          cp .github/config.toml .config/
       - name: build
         run: |
           cargo install cross
-          cross build --release --target aarch64-unknown-linux-gnu
-          cross build --release --target x86_64-unknown-linux-gnu
-          cross build --release --target x86_64-unknown-linux-musl
-          cross build --release --target aarch64-unknown-linux-musl
+          cross build --release --target ${{ matrix.target }}
       - name: name cli tool
-        run: |
-          find target -name oocana
-          mv target/x86_64-unknown-linux-gnu/release/oocana oocana-cli-x86_64-unknown-linux-gnu
-          mv target/aarch64-unknown-linux-gnu/release/oocana oocana-cli-aarch64-unknown-linux-gnu
-          mv target/aarch64-unknown-linux-musl/release/oocana oocana-cli-aarch64-unknown-linux-musl
-          mv target/x86_64-unknown-linux-musl/release/oocana oocana-cli-x86_64-unknown-linux-musl
+        run: mv target/x86_64-unknown-linux-gnu/release/oocana oocana-cli-${{ matrix.target }}
       - name: Release
         uses: softprops/action-gh-release@v2
         if: ${{ (github.event_name == 'push' && github.ref_type == 'tag') || github.event_name == 'workflow_dispatch' }}
         with:
           files: |
-            oocana-cli-x86_64-unknown-linux-gnu
-            oocana-cli-aarch64-unknown-linux-gnu
-            oocana-cli-aarch64-unknown-linux-musl
-            oocana-cli-x86_64-unknown-linux-musl
+            oocana-cli-${{ matrix.target }}
           token: ${{ secrets.GITHUB_TOKEN }}
           append_body: true
           draft: false
@@ -59,10 +49,6 @@ jobs:
         with:
           toolchain: stable
           targets: aarch64-apple-darwin,x86_64-apple-darwin
-      - name: copy config.toml
-        run: |
-          mkdir -p .config
-          cp .github/config.toml .config/
       - name: build
         run: |
           cargo build --release --target aarch64-apple-darwin
