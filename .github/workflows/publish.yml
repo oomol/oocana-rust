@@ -59,8 +59,6 @@ jobs:
         with:
           toolchain: stable
           targets: aarch64-apple-darwin,x86_64-apple-darwin
-      - name: Set up build environment
-        run: xcode-select --install
       - name: copy config.toml
         run: |
           mkdir -p .config
