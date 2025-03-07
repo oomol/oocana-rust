@@ -22,12 +22,12 @@ jobs:
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: stable
+      - name: install cross
+        run: cargo install cross
       - name: build
-        run: |
-          cargo install cross
-          cross build --release --target ${{ matrix.target }}
+        run: cross build --release --target ${{ matrix.target }}
       - name: name cli tool
-        run: mv target/x86_64-unknown-linux-gnu/release/oocana oocana-cli-${{ matrix.target }}
+        run: mv target/${{ matrix.target }}/release/oocana oocana-cli-${{ matrix.target }}
       - name: Release
         uses: softprops/action-gh-release@v2
         if: ${{ (github.event_name == 'push' && github.ref_type == 'tag') || github.event_name == 'workflow_dispatch' }}
