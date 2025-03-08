@@ -12,7 +12,7 @@ const projectDir = path.dirname(__dirname);
 
 // build the @oomol/oocana-cli package.json with binaries
 if (!process.env.CI) {
-    console.log("build outside of CI");
+    console.log("build outside of CI. be aware the owner is @oomol not your github username!");
     for (const target of targets) {
         const cargo = spawn("cargo", ["build", "--release", "--target",
             target], {

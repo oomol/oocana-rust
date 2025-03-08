@@ -120,7 +120,6 @@ jobs:
       - name: prepare npm
         run: node npm/npm.mjs
       - name: publish npm
-        if: ${{ github.repository_owner == 'oomol' }}
         run: node npm/publish.mjs
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
