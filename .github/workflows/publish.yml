@@ -99,6 +99,7 @@ jobs:
         with:
           pattern: oocana-cli-*
           path: oocana-cli
+          merge-multiple: true
       - name: prepare cli
         run: |
           mkdir -p ../target
