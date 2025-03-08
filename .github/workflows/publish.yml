@@ -32,7 +32,7 @@ jobs:
           tar -czf oocana-cli-${{ matrix.target }}.tar.gz oocana-cli-${{ matrix.target }}
       - uses: actions/upload-artifact@v4
         with:
-          name: oocana-cli
+          name: oocana-cli-${{ matrix.target }}
           path: oocana-cli-${{ matrix.target }}
           retention-days: 1
       - name: Release
@@ -68,7 +68,7 @@ jobs:
           tar -czf oocana-cli-aarch64-apple-darwin.tar.gz oocana-cli-aarch64-apple-darwin
       - uses: actions/upload-artifact@v4
         with:
-          name: oocana-cli
+          name: oocana-cli-macos
           path: |
             oocana-cli-x86_64-apple-darwin
             oocana-cli-aarch64-apple-darwin
@@ -97,7 +97,7 @@ jobs:
           registry-url: https://npm.pkg.github.com/
       - uses: actions/download-artifact@v4
         with:
-          name: oocana-cli
+          pattern: oocana-cli
           path: oocana-cli
       - name: prepare cli
         run: |
