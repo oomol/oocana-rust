@@ -1,38 +1,95 @@
-name: Publish to github npm registry
+name: Release oocana CLI
 on:
   push:
     tags:
       - "**"
+  workflow_dispatch:
+
 jobs:
-  prepare-env:
-    runs-on: [self-hosted, macOS, ARM64]
-    timeout-minutes: 20
+  release-ubuntu:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target: [
+          aarch64-unknown-linux-gnu,
+          x86_64-unknown-linux-gnu,
+          x86_64-unknown-linux-musl,
+          aarch64-unknown-linux-musl,
+        ]
     steps:
       - uses: actions/checkout@v4
-      - name: Selecting toolchain
-        # When rustup is updated, it tries to replace its binary, which on Windows is somehow locked.
-        # This can result in the CI failure, see: https://github.com/rust-lang/rustup/issues/3029
-        run: |
-          rustup set auto-self-update disable
-          rustup toolchain install stable --profile minimal
-  build-and-publish:
-    runs-on: [self-hosted, macOS, ARM64]
-    timeout-minutes: 20
-    needs: prepare-env
-    steps:
-      - uses: actions/setup-node@v4
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@v1
         with:
-          # self-hosted runners publish 时，没法直接使用 node 20，所以这里使用 18 做临时 workaround
-          node-version: "18"
-          registry-url: "https://npm.pkg.github.com/"
-      - run: node npm.js && node publish.js
+          toolchain: stable
+      - name: install cross
+        run: cargo install cross
+      - name: build
+        run: cross build --release --target ${{ matrix.target }}
+      - name: name cli tool
+        run: mv target/${{ matrix.target }}/release/oocana oocana-cli-${{ matrix.target }}
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        if: ${{ (github.event_name == 'push' && github.ref_type == 'tag') || github.event_name == 'workflow_dispatch' }}
+        with:
+          files: |
+            oocana-cli-${{ matrix.target }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          append_body: true
+          draft: false
+          prerelease: false
+          make_latest: true
+
+  release-macos:
+    runs-on: [macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+      - name: build
+        run: |
+          cargo build --release --target aarch64-apple-darwin
+          cargo build --release --target x86_64-apple-darwin
+      - name: name cli tool
+        run: |
+          mv target/x86_64-apple-darwin/release/oocana oocana-cli-x86_64-apple-darwin
+          mv target/aarch64-apple-darwin/release/oocana oocana-cli-aarch64-apple-darwin
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        if: ${{ (github.event_name == 'push' && github.ref_type == 'tag') || github.event_name == 'workflow_dispatch' }}
+        with:
+          files: |
+            oocana-cli-x86_64-apple-darwin
+            oocana-cli-aarch64-apple-darwin
+          token: ${{ secrets.GITHUB_TOKEN }}
+          append_body: true
+          draft: false
+          prerelease: false
+          make_latest: true
+
+  publish-npm:
+    runs-on: ubuntu-latest
+    needs: [release-ubuntu, release-macos]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          registry-url: https://npm.pkg.github.com/
+      - name: prepare npm
+        run: node npm/npm.mjs
+      - name: publish npm
+        if: ${{ github.repository_owner == 'oomol' }}
+        run: node npm/publish.mjs
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   trigger:
     runs-on: ubuntu-latest
-    needs: build-and-publish
+    needs: [publish-npm]
     steps:
-      - name: Trigger
-        run: |
+      - run: |
           curl -X POST -H "Content-Type: application/json" https://github-package-event-worker.cloud-c35.workers.dev/renovate --data '{"repos": [{"owner": "oomol", "repo": "oocana-node", "workflow_id": "renovate.yml"}]}'

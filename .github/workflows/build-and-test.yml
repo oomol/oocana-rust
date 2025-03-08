@@ -51,7 +51,7 @@ jobs:
         run: cargo test --workspace --exclude layer
       - uses: ./.github/actions/oocana-node
         with:
-          token: ${{ secrets.ACCESS_REPO }}
+          token: ${{ secrets.GITHUB_TOKEN }}
       # - name: Setup tmate session # only enable when debugging
       #   uses: mxschmitt/action-tmate@v3
       #   timeout-minutes: 10
