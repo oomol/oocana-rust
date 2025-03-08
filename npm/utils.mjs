@@ -2,6 +2,8 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
+export const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
 /**
  * @param {string} url
  * @param {string} outputPath
@@ -39,7 +41,6 @@ export async function downloadFile(url, outputPath) {
 }
 
 export async function getVersion() {
-    const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
     const toml = await fs.promises.readFile(path.join(path.dirname(__dirname), "Cargo.toml"), "utf8");
     const version = toml.match(/version = "(.*)?"/)[1];

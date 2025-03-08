@@ -1,11 +1,9 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { packageTemplate, readme, targetConfig } from "./target.mjs";
-import { downloadFile, getVersion } from "./utils.mjs";
+import { downloadFile, getVersion, __dirname } from "./utils.mjs";
 
 const targets = Object.keys(targetConfig);
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const version = await getVersion();
 
 const owner = process.env.GITHUB_REPOSITORY_OWNER || "oomol";
