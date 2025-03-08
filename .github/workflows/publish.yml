@@ -27,13 +27,15 @@ jobs:
       - name: build
         run: cross build --release --target ${{ matrix.target }}
       - name: name cli tool
-        run: mv target/${{ matrix.target }}/release/oocana oocana-cli-${{ matrix.target }}
+        run: |
+          mv target/${{ matrix.target }}/release/oocana oocana-cli-${{ matrix.target }}
+          tar -czf oocana-cli-${{ matrix.target }}.tar.gz oocana-cli-${{ matrix.target }}
       - name: Release
         uses: softprops/action-gh-release@v2
         if: ${{ (github.event_name == 'push' && github.ref_type == 'tag') || github.event_name == 'workflow_dispatch' }}
         with:
           files: |
-            oocana-cli-${{ matrix.target }}
+            oocana-cli-${{ matrix.target }}.tar.gz
           token: ${{ secrets.GITHUB_TOKEN }}
           append_body: true
           draft: false
@@ -57,13 +59,15 @@ jobs:
         run: |
           mv target/x86_64-apple-darwin/release/oocana oocana-cli-x86_64-apple-darwin
           mv target/aarch64-apple-darwin/release/oocana oocana-cli-aarch64-apple-darwin
+          tar -czf oocana-cli-x86_64-apple-darwin.tar.gz oocana-cli-x86_64-apple-darwin
+          tar -czf oocana-cli-aarch64-apple-darwin.tar.gz oocana-cli-aarch64-apple-darwin
       - name: Release
         uses: softprops/action-gh-release@v2
         if: ${{ (github.event_name == 'push' && github.ref_type == 'tag') || github.event_name == 'workflow_dispatch' }}
         with:
           files: |
-            oocana-cli-x86_64-apple-darwin
-            oocana-cli-aarch64-apple-darwin
+            oocana-cli-x86_64-apple-darwin.tar.gz
+            oocana-cli-aarch64-apple-darwin.tar.gz
           token: ${{ secrets.GITHUB_TOKEN }}
           append_body: true
           draft: false
