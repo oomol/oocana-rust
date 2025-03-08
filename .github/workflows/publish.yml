@@ -87,7 +87,7 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  triage:
+  trigger:
     runs-on: ubuntu-latest
     needs: [publish-npm]
     steps:
