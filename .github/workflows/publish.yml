@@ -30,6 +30,11 @@ jobs:
         run: |
           mv target/${{ matrix.target }}/release/oocana oocana-cli-${{ matrix.target }}
           tar -czf oocana-cli-${{ matrix.target }}.tar.gz oocana-cli-${{ matrix.target }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: oocana-cli
+          path: oocana-cli-${{ matrix.target }}
+          retention-days: 1
       - name: Release
         uses: softprops/action-gh-release@v2
         if: ${{ (github.event_name == 'push' && github.ref_type == 'tag') || github.event_name == 'workflow_dispatch' }}
@@ -61,6 +66,13 @@ jobs:
           mv target/aarch64-apple-darwin/release/oocana oocana-cli-aarch64-apple-darwin
           tar -czf oocana-cli-x86_64-apple-darwin.tar.gz oocana-cli-x86_64-apple-darwin
           tar -czf oocana-cli-aarch64-apple-darwin.tar.gz oocana-cli-aarch64-apple-darwin
+      - uses: actions/upload-artifact@v4
+        with:
+          name: oocana-cli
+          path: |
+            oocana-cli-x86_64-apple-darwin
+            oocana-cli-aarch64-apple-darwin
+          retention-days: 1
       - name: Release
         uses: softprops/action-gh-release@v2
         if: ${{ (github.event_name == 'push' && github.ref_type == 'tag') || github.event_name == 'workflow_dispatch' }}
@@ -83,6 +95,28 @@ jobs:
         uses: actions/setup-node@v4
         with:
           registry-url: https://npm.pkg.github.com/
+      - uses: actions/download-artifact@v4
+        with:
+          name: oocana-cli
+          path: oocana-cli
+      - name: prepare cli
+        run: |
+          mkdir -p ../target
+
+          # Loop through each file in current directory
+          for file in *; do
+              # Skip if it's a directory or the script itself
+              if [[ -f "$file" && "$file" != "target" ]]; then
+                target_name=${file#oocana-cli-}
+
+                # Create the destination directory structure
+                mkdir -p "../target/$target_name/release"
+
+                # Move the file to its destination
+                mv "$file" "../target/$target_name/release/oocana"
+              fi
+          done
+        working-directory: oocana-cli
       - name: prepare npm
         run: node npm/npm.mjs
       - name: publish npm

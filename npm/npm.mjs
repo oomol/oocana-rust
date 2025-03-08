@@ -1,30 +1,13 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { packageTemplate, readme, targetConfig } from "./target.mjs";
-import { downloadFile, getVersion, __dirname } from "./utils.mjs";
+import { getVersion, __dirname } from "./utils.mjs";
 
 const targets = Object.keys(targetConfig);
 const version = await getVersion();
 
 const owner = process.env.GITHUB_REPOSITORY_OWNER || "oomol";
-
-// @oocana/oocana-cli package.json without binaries
-const oocana_cli_package = path.join(__dirname, "oocana-cli");
-const oocana_cli_bin = path.join(oocana_cli_package, "bin");
-{
-    await fs.mkdir(oocana_cli_bin, { recursive: true });
-
-    const newFile = {
-        name: `@${owner}/oocana-cli`,
-        description: `All-platform cli binaries for @${owner}/oocana`,
-        version,
-        ...packageTemplate
-    };
-
-    await fs.writeFile(path.join(oocana_cli_package, "package.json"), JSON.stringify(newFile, null, 2));
-    await fs.writeFile(path.join(oocana_cli_package, "README.md"), `# @${owner}/oocana-cli\n\n${newFile.description}`);
-    await fs.copyFile(path.join(__dirname, "index.js"), path.join(oocana_cli_package, "index.js"));
-}
+const projectDir = path.dirname(__dirname);
 
 // @oomol/oocana-cli-* package.json with binaries
 for (const target of targets) {
@@ -32,20 +15,17 @@ for (const target of targets) {
     const binDir = path.join(targetDir, "bin");
     await fs.mkdir(binDir, { recursive: true });
 
-    const oocana = (path.join(binDir, "oocana"))
+    const bin = path.join(binDir, "oocana");
+    const oocana = path.join(projectDir, "target", target, "release", "oocana");
 
-    // TODO: consider build locally if the 404.
-    await downloadFile(`https://github.com/${owner}/oocana-rust/releases/download/v${version}/oocana-cli-${target}`, oocana);
-
-    // copy the oocana binary to npm/oocana-cli/bin
-    await fs.copyFile(oocana, path.join(oocana_cli_bin, target));
+    await fs.copyFile(oocana, bin);
 
     const newFile = {
         name: `@${owner}/oocana-cli-${target}`,
         description: `The ${target} cli binary for @${owner}/oocana`,
         version,
         bin: {
-            "oocana": `bin/${target}`
+            "oocana": `bin/oocana`,
         },
         os: targetConfig[target].os,
         cpu: targetConfig[target].cpu,
