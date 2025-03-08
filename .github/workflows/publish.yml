@@ -103,9 +103,9 @@ jobs:
         run: |
           mkdir -p ../target
 
-          # Loop through each file in current directory
+          ls
+
           for file in *; do
-              # Skip if it's a directory or the script itself
               if [[ -f "$file" && "$file" != "target" ]]; then
                 target_name=${file#oocana-cli-}
 
@@ -114,6 +114,8 @@ jobs:
 
                 # Move the file to its destination
                 mv "$file" "../target/$target_name/release/oocana"
+
+                echo "Moved $file to ../target/$target_name/release/oocana"
               fi
           done
         working-directory: oocana-cli
