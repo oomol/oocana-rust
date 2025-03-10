@@ -8,7 +8,7 @@ use manifest_meta::{
 use std::collections::HashMap;
 use std::path::Path;
 use std::{process, sync::Arc};
-use tokio::io::{AsyncBufReadExt, AsyncReadExt, BufReader};
+use tokio::io::{AsyncBufReadExt, BufReader};
 
 use crate::block_status::BlockStatusTx;
 use crate::shared::Shared;
