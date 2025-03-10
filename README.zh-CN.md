@@ -10,7 +10,16 @@
 
 ## Demo
 
-本项目产物为 cli 可执行程序，支持多种子命令。
+本项目产物为 cli 可执行程序，支持多种子命令，其中 Run 子命令支持执行 flow 图。
+
+* 安装 mqtt broker 并启动
+
+```bash
+# macos: brew install mosquitto
+apt update && apt install -y mosquitto 
+# 启动 mosquitto 并指定端口 47688。如果你想在前台运行 mosquitto，可以移除 -d 选项。
+mosquitto -d -p 47688
+```
 
 开发时以 `cargo run` 代替可执行文件，如 `run` 子命令：
 
@@ -33,6 +42,10 @@ cargo run run examples/base
 ```bash
 cargo clean
 ```
+
+## 日志
+
+发布版本不会将日志打印到 stdout 和 stderr。对于想要在 stdout 和 stderr 中查看日志的用户，可以为 `run` 子命令传递 `--verbose`。您可以在 `~/.oocana/session/<session_id>/` 中找到所有 `run` 子命令的日志。如果未给出`session id`，oocana 将生成一个新的随机 ID。对于想要指定 ID 的用户，可以为 `run` 子命令传递 `--session-id <session_id>`。
 
 ## 项目结构
 
