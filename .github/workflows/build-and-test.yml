@@ -3,6 +3,12 @@ on:
   push:
     branches:
       - main
+    paths:
+      - "**"
+      - "!**.md"
+      - "!.vscode/*"
+      - "!.github/**"
+      - ".github/workflows/build-and-test.yml"
   pull_request:
     branches:
       - main
@@ -34,7 +40,7 @@ jobs:
   build:
     runs-on: ubuntu-24.04
     needs: [skip]
-    # squash commit 都会在末尾添加 #，通过这种方式过滤掉 squash commit 的 push 来减少重复构建。
+    # Squash commits will add # at the end, filtering out squash commit pushes to reduce duplicate builds.
     if: ${{ needs.skip.outputs.should_skip != 'true' && !contains(github.event.head_commit.message, '#')}}
     timeout-minutes: 20
     steps:
