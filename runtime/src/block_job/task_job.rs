@@ -8,7 +8,7 @@ use manifest_meta::{
 use std::collections::HashMap;
 use std::path::Path;
 use std::{process, sync::Arc};
-use tokio::io::{AsyncBufReadExt, AsyncReadExt, BufReader};
+use tokio::io::{AsyncBufReadExt, BufReader};
 
 use crate::block_status::BlockStatusTx;
 use crate::shared::Shared;
@@ -161,6 +161,7 @@ pub fn run_task_block(args: RunTaskBlockArgs) -> Option<BlockJobHandle> {
                 match execute_result {
                     Ok(mut child) => {
                         // TODO: shell executor 不需要 listen worker
+                        let block_status_clone = block_status.clone();
                         spawn_handles.push(worker_listener_handle);
                         bind_shell_stdio(
                             &mut child,
@@ -170,12 +171,33 @@ pub fn run_task_block(args: RunTaskBlockArgs) -> Option<BlockJobHandle> {
                             job_id.clone(),
                         );
 
+                        let job_id_clone = job_id.clone();
+                        println!("BlockFinished: {:?}", job_id_clone);
+
+                        // TODO: consider to use tokio::process::Command
+                        let exit_handler = tokio::task::spawn_blocking(move || {
+                            let status = child.wait().unwrap();
+                            let status_code = status.code().unwrap_or(-1);
+                            if status_code != 0 {
+                                block_status_clone.done(
+                                    job_id_clone.clone(),
+                                    Some(format!("Exit code: {}", status_code)),
+                                );
+                                reporter.done(&Some(format!("Exit code: {}", status_code)));
+                            } else {
+                                block_status_clone.done(job_id_clone.clone(), None);
+                                reporter.done(&None);
+                            }
+                        });
+
+                        spawn_handles.push(exit_handler);
+
                         return Some(BlockJobHandle::new(
                             job_id.to_owned(),
                             TaskJobHandle {
                                 job_id,
                                 shared,
-                                child: Some(child),
+                                child: None, // TODO: keep child and also wait exit code
                                 spawn_handles,
                             },
                         ));
@@ -432,41 +454,60 @@ fn bind_shell_stdio(
     job_id: JobId,
 ) {
     if let Some(stdout) = child.stdout.take() {
-        if let Ok(mut async_stdout) = tokio::process::ChildStdout::from_std(stdout) {
+        if let Ok(async_stdout) = tokio::process::ChildStdout::from_std(stdout) {
             let reporter = Arc::clone(reporter);
+            let job_id_clone = job_id.clone();
+            let block_status_clone = block_status.clone();
             spawn_handles.push(tokio::spawn(async move {
+                let mut stdout_reader = BufReader::new(async_stdout).lines();
                 let mut output = String::new();
-                match async_stdout.read_to_string(&mut output).await {
-                    Ok(_) => {
-                        block_status.result(
-                            job_id.clone(),
-                            Arc::new(OutputValue {
-                                value: serde_json::json!(output),
-                                cacheable: true,
-                            }),
-                            "stdout".to_string().into(),
-                            true,
-                        );
-                        block_status.done(job_id, None);
-                        reporter.done(&None);
-                    }
-                    Err(e) => {
-                        block_status.done(job_id, Some(e.to_string()));
-                        reporter.error(&format!("Failed to read stdout: {}", e));
-                    }
+                while let Some(line) = stdout_reader.next_line().await.unwrap_or(None) {
+                    reporter.log(&line, "stdout");
+                    output.push_str(&line);
+                    output.push_str("\n");
                 }
+
+                if output.ends_with('\n') {
+                    output.pop();
+                }
+                block_status_clone.result(
+                    job_id_clone.clone(),
+                    Arc::new(OutputValue {
+                        value: serde_json::json!(output),
+                        cacheable: true,
+                    }),
+                    "stdout".to_string().into(),
+                    true,
+                );
             }));
         }
     }
 
     if let Some(stderr) = child.stderr.take() {
         if let Ok(async_stderr) = tokio::process::ChildStderr::from_std(stderr) {
-            let mut stderr_reader = BufReader::new(async_stderr).lines();
             let reporter = Arc::clone(reporter);
+            let job_id_clone = job_id.clone();
             spawn_handles.push(tokio::spawn(async move {
+                let mut stderr_reader = BufReader::new(async_stderr).lines();
+                let mut stderr_output = String::new();
                 while let Some(line) = stderr_reader.next_line().await.unwrap_or(None) {
                     reporter.log(&line, "stderr");
+                    stderr_output.push_str(&line);
+                    stderr_output.push_str("\n");
                 }
+                if stderr_output.ends_with('\n') {
+                    stderr_output.pop();
+                }
+
+                block_status.result(
+                    job_id_clone.clone(),
+                    Arc::new(OutputValue {
+                        value: serde_json::json!(stderr_output),
+                        cacheable: true,
+                    }),
+                    "stderr".to_string().into(),
+                    true,
+                );
             }));
         }
     }
