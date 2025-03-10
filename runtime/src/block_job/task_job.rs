@@ -434,6 +434,8 @@ fn bind_shell_stdio(
     if let Some(stdout) = child.stdout.take() {
         if let Ok(async_stdout) = tokio::process::ChildStdout::from_std(stdout) {
             let reporter = Arc::clone(reporter);
+            let job_id_clone = job_id.clone();
+            let block_status_clone = block_status.clone();
             spawn_handles.push(tokio::spawn(async move {
                 let mut stdout_reader = BufReader::new(async_stdout).lines();
                 let mut output = String::new();
@@ -446,8 +448,8 @@ fn bind_shell_stdio(
                 if output.ends_with('\n') {
                     output.pop();
                 }
-                block_status.result(
-                    job_id.clone(),
+                block_status_clone.result(
+                    job_id_clone.clone(),
                     Arc::new(OutputValue {
                         value: serde_json::json!(output),
                         cacheable: true,
@@ -455,7 +457,6 @@ fn bind_shell_stdio(
                     "stdout".to_string().into(),
                     true,
                 );
-                block_status.done(job_id, None);
             }));
         }
     }
@@ -463,11 +464,28 @@ fn bind_shell_stdio(
     if let Some(stderr) = child.stderr.take() {
         if let Ok(async_stderr) = tokio::process::ChildStderr::from_std(stderr) {
             let reporter = Arc::clone(reporter);
+            let job_id_clone = job_id.clone();
             spawn_handles.push(tokio::spawn(async move {
                 let mut stderr_reader = BufReader::new(async_stderr).lines();
+                let mut stderr_output = String::new();
                 while let Some(line) = stderr_reader.next_line().await.unwrap_or(None) {
                     reporter.log(&line, "stderr");
+                    stderr_output.push_str(&line);
+                    stderr_output.push_str("\n");
                 }
+                if stderr_output.ends_with('\n') {
+                    stderr_output.pop();
+                }
+
+                block_status.result(
+                    job_id_clone.clone(),
+                    Arc::new(OutputValue {
+                        value: serde_json::json!(stderr_output),
+                        cacheable: true,
+                    }),
+                    "stderr".to_string().into(),
+                    true,
+                );
             }));
         }
     }
