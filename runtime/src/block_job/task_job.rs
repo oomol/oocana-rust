@@ -161,6 +161,7 @@ pub fn run_task_block(args: RunTaskBlockArgs) -> Option<BlockJobHandle> {
                 match execute_result {
                     Ok(mut child) => {
                         // TODO: shell executor 不需要 listen worker
+                        let block_status_clone = block_status.clone();
                         spawn_handles.push(worker_listener_handle);
                         bind_shell_stdio(
                             &mut child,
@@ -170,12 +171,32 @@ pub fn run_task_block(args: RunTaskBlockArgs) -> Option<BlockJobHandle> {
                             job_id.clone(),
                         );
 
+                        let job_id_clone = job_id.clone();
+                        println!("BlockFinished: {:?}", job_id_clone);
+
+                        let exit_handler = tokio::task::spawn_blocking(move || {
+                            let status = child.wait().unwrap();
+                            let status_code = status.code().unwrap_or(-1);
+                            if status_code != 0 {
+                                block_status_clone.done(
+                                    job_id_clone.clone(),
+                                    Some(format!("Exit code: {}", status_code)),
+                                );
+                                reporter.done(&Some(format!("Exit code: {}", status_code)));
+                            } else {
+                                block_status_clone.done(job_id_clone.clone(), None);
+                                reporter.done(&None);
+                            }
+                        });
+
+                        spawn_handles.push(exit_handler);
+
                         return Some(BlockJobHandle::new(
                             job_id.to_owned(),
                             TaskJobHandle {
                                 job_id,
                                 shared,
-                                child: Some(child),
+                                child: None, // TODO: keep child and also wait exit code
                                 spawn_handles,
                             },
                         ));
