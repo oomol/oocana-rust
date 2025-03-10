@@ -432,38 +432,39 @@ fn bind_shell_stdio(
     job_id: JobId,
 ) {
     if let Some(stdout) = child.stdout.take() {
-        if let Ok(mut async_stdout) = tokio::process::ChildStdout::from_std(stdout) {
+        if let Ok(async_stdout) = tokio::process::ChildStdout::from_std(stdout) {
             let reporter = Arc::clone(reporter);
             spawn_handles.push(tokio::spawn(async move {
+                let mut stdout_reader = BufReader::new(async_stdout).lines();
                 let mut output = String::new();
-                match async_stdout.read_to_string(&mut output).await {
-                    Ok(_) => {
-                        block_status.result(
-                            job_id.clone(),
-                            Arc::new(OutputValue {
-                                value: serde_json::json!(output),
-                                cacheable: true,
-                            }),
-                            "stdout".to_string().into(),
-                            true,
-                        );
-                        block_status.done(job_id, None);
-                        reporter.done(&None);
-                    }
-                    Err(e) => {
-                        block_status.done(job_id, Some(e.to_string()));
-                        reporter.error(&format!("Failed to read stdout: {}", e));
-                    }
+                while let Some(line) = stdout_reader.next_line().await.unwrap_or(None) {
+                    reporter.log(&line, "stdout");
+                    output.push_str(&line);
+                    output.push_str("\n");
                 }
+
+                if output.ends_with('\n') {
+                    output.pop();
+                }
+                block_status.result(
+                    job_id.clone(),
+                    Arc::new(OutputValue {
+                        value: serde_json::json!(output),
+                        cacheable: true,
+                    }),
+                    "stdout".to_string().into(),
+                    true,
+                );
+                block_status.done(job_id, None);
             }));
         }
     }
 
     if let Some(stderr) = child.stderr.take() {
         if let Ok(async_stderr) = tokio::process::ChildStderr::from_std(stderr) {
-            let mut stderr_reader = BufReader::new(async_stderr).lines();
             let reporter = Arc::clone(reporter);
             spawn_handles.push(tokio::spawn(async move {
+                let mut stderr_reader = BufReader::new(async_stderr).lines();
                 while let Some(line) = stderr_reader.next_line().await.unwrap_or(None) {
                     reporter.log(&line, "stderr");
                 }
