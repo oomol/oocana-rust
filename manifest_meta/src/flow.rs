@@ -131,7 +131,7 @@ impl FlowBlock {
         // node 的 skip 属性为 true，这个 node 不会放到 flow 列表，但是仍然保留连线逻辑。所以要在 parse_node_inputs_from 处理完之后删除。
         let nodes_in_flow: Vec<manifest::Node> = nodes
             .into_iter()
-            .filter(|node| !node.should_skip() && !value_nodes_id.contains(node.node_id()))
+            .filter(|node| !node.should_ignore() && !value_nodes_id.contains(node.node_id()))
             .collect();
 
         let find_node = |node_id: &NodeId| -> Option<&manifest::Node> {
@@ -362,7 +362,7 @@ impl FlowBlock {
                                             .find(|v| v.handle == *node_output_handle)
                                         {
                                             if let Some(ref mut input_defs) = inputs_def {
-                                                if value_node.skip {
+                                                if value_node.ignore {
                                                     input_defs
                                                         .entry(handle_name.to_owned())
                                                         .and_modify(|def| def.value = None);

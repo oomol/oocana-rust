@@ -59,13 +59,13 @@ impl Node {
             Node::Value(_) => None,
         }
     }
-    pub fn should_skip(&self) -> bool {
+    pub fn should_ignore(&self) -> bool {
         match self {
-            Node::Task(task) => task.skip,
-            Node::Flow(flow) => flow.skip,
-            Node::Slot(slot) => slot.skip,
-            Node::Service(service) => service.skip,
-            Node::Value(value) => value.skip,
+            Node::Task(task) => task.ignore,
+            Node::Flow(flow) => flow.ignore,
+            Node::Slot(slot) => slot.ignore,
+            Node::Service(service) => service.ignore,
+            Node::Value(value) => value.ignore,
         }
     }
 
@@ -151,7 +151,7 @@ macro_rules! extend_node_common_field {
             #[serde(default = "default_concurrency")]
             pub concurrency: i32,
             #[serde(default)]
-            pub skip: bool,
+            pub ignore: bool,
         }
     };
 }
@@ -163,7 +163,7 @@ pub struct ValueNode {
     pub concurrency: i32,
     pub values: Vec<InputHandle>,
     #[serde(default)]
-    pub skip: bool,
+    pub ignore: bool,
 }
 
 extend_node_common_field!(TaskNode {
