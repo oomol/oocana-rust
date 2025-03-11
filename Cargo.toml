@@ -1,6 +1,6 @@
 [package]
 name = "oocana"
-version = "0.23.2"
+version = "0.23.3"
 authors = ["CRIMX <straybugs@gmail.com>"]
 edition = "2021"
 repository = "https://github.com/oomol/oocana-rust"

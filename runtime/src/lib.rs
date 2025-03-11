@@ -17,6 +17,8 @@ use job::{BlockJobStacks, JobId};
 use manifest_meta::{read_flow_or_block, Block, BlockResolver, NodeId};
 use utils::error::Result;
 
+const SESSION_CANCEL_INFO: &str = "Cancelled";
+
 pub struct RunArgs<'a> {
     pub shared: Arc<shared::Shared>,
     pub block_name: &'a str,
@@ -88,11 +90,11 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
         tokio::select! {
             _ = sigint.recv() => {
                 log_error!("Received SIGINT");
-                block_status_tx.error("Session canceled due to user interrupt it.".to_owned());
+                block_status_tx.error(SESSION_CANCEL_INFO.to_owned());
             }
             _ = sigterm.recv() => {
                 log_error!("Received SIGTERM");
-                block_status_tx.error("Session canceled due to user kill process.".to_owned());
+                block_status_tx.error(SESSION_CANCEL_INFO.to_owned());
             }
         }
     });
