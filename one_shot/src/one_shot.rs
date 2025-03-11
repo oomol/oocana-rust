@@ -15,11 +15,15 @@ use utils::error::Result;
 const DEFAULT_PORT: u16 = 47688;
 
 pub fn run_block(run_args: BlockArgs) -> Result<()> {
-    tokio::runtime::Builder::new_multi_thread()
+    let r = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
         .unwrap()
-        .block_on(run_block_async(run_args))?;
+        .block_on(run_block_async(run_args));
+    if let Err(err) = r {
+        tracing::error!("{err:?}");
+        exit(-1);
+    }
     exit(0)
 }
 
