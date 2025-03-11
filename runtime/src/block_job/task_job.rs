@@ -172,7 +172,6 @@ pub fn run_task_block(args: RunTaskBlockArgs) -> Option<BlockJobHandle> {
                         );
 
                         let job_id_clone = job_id.clone();
-                        println!("BlockFinished: {:?}", job_id_clone);
 
                         // TODO: consider to use tokio::process::Command
                         let exit_handler = tokio::task::spawn_blocking(move || {
