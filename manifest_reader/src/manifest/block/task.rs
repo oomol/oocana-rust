@@ -30,15 +30,11 @@ pub struct TaskBlock {
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
-#[serde(tag = "name")]
+#[serde(tag = "name", rename_all = "lowercase")]
 pub enum TaskBlockExecutor {
-    #[serde(rename = "nodejs")]
     NodeJS(NodeJSExecutor),
-    #[serde(rename = "python")]
     Python(PythonExecutor),
-    #[serde(rename = "shell")]
     Shell(ShellExecutor),
-    #[serde(rename = "rust")]
     Rust(RustExecutor),
 }
 
