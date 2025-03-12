@@ -22,7 +22,10 @@ fn is_flow_block(flow_path: &Option<String>) -> bool {
 
 impl FlowReporterTx {
     pub fn new(
-        job_id: JobId, path: Option<String>, stacks: BlockJobStacks, tx: ReporterTx,
+        job_id: JobId,
+        path: Option<String>,
+        stacks: BlockJobStacks,
+        tx: ReporterTx,
     ) -> Self {
         let is_block = is_flow_block(&path);
         Self {
@@ -36,7 +39,7 @@ impl FlowReporterTx {
 
     pub fn started(&self, inputs: &Option<BlockInputs>) {
         match self.is_block {
-            true => self.tx.send(ReporterMessage::FlowBlockStarted {
+            true => self.tx.send(ReporterMessage::SubflowBlockStarted {
                 session_id: &self.tx.session_id,
                 job_id: &self.job_id,
                 block_path: &self.path,
@@ -71,7 +74,7 @@ impl FlowReporterTx {
 
     pub fn done(&self, error: &Option<String>) {
         match self.is_block {
-            true => self.tx.send(ReporterMessage::FlowBlockFinished {
+            true => self.tx.send(ReporterMessage::SubflowBlockFinished {
                 session_id: &self.tx.session_id,
                 job_id: &self.job_id,
                 block_path: &self.path,
@@ -91,23 +94,15 @@ impl FlowReporterTx {
     }
 
     pub fn result(&self, result: Arc<OutputValue>, handle: &str) {
-        match self.is_block {
-            true => self.tx.send(ReporterMessage::FlowBlockOutput {
+        if self.is_block {
+            self.tx.send(ReporterMessage::SubflowBlockOutput {
                 session_id: &self.tx.session_id,
                 job_id: &self.job_id,
                 block_path: &self.path,
                 stacks: &self.stacks.vec(),
                 output: result,
                 handle,
-            }),
-            false => self.tx.send(ReporterMessage::FlowOutput {
-                session_id: &self.tx.session_id,
-                job_id: &self.job_id,
-                flow_path: &self.path,
-                stacks: &self.stacks.vec(),
-                output: result,
-                handle,
-            }),
+            })
         }
     }
 }

@@ -16,7 +16,7 @@ use tracing::{info, warn};
 use utils::output::OutputValue;
 
 use job::{BlockInputs, BlockJobStacks, JobId};
-use manifest_meta::{FlowBlock, HandleFrom, HandleTo, Node, NodeId};
+use manifest_meta::{HandleFrom, HandleTo, Node, NodeId, SubflowBlock};
 
 use super::node_input_values;
 use node_input_values::{CacheMetaMap, CacheMetaMapExt, NodeInputValues};
@@ -42,7 +42,7 @@ struct BlockInFlowJobHandle {
 
 struct FlowShared {
     job_id: JobId,
-    flow_block: Arc<FlowBlock>,
+    flow_block: Arc<SubflowBlock>,
     shared: Arc<Shared>,
     stacks: BlockJobStacks,
 }
@@ -62,7 +62,7 @@ struct NodeQueue {
 }
 
 pub struct RunFlowArgs {
-    pub flow_block: Arc<FlowBlock>,
+    pub flow_block: Arc<SubflowBlock>,
     pub shared: Arc<Shared>,
     pub stacks: BlockJobStacks,
     pub flow_job_id: JobId,
@@ -73,7 +73,7 @@ pub struct RunFlowArgs {
 }
 
 pub struct UpstreamArgs {
-    pub flow_block: Arc<FlowBlock>,
+    pub flow_block: Arc<SubflowBlock>,
     pub use_cache: bool,
     pub nodes: Option<HashSet<NodeId>>,
 }
@@ -369,7 +369,8 @@ fn run_pending_node(job_id: JobId, flow_shared: &FlowShared, run_flow_ctx: &mut 
 /// 第二个是等待的节点 nodes（不包含 origin_nodes）
 /// 第三个是所有的上游 nodes（不包含 origin_nodes）
 fn find_upstream_nodes<'a>(
-    origin_nodes: &HashSet<NodeId>, flow_block: &'a FlowBlock,
+    origin_nodes: &HashSet<NodeId>,
+    flow_block: &'a SubflowBlock,
     node_input_values: &mut NodeInputValues,
 ) -> (Vec<String>, Vec<String>, Vec<String>) {
     let (node_not_found, out_of_side_nodes, node_can_run_directly) =
@@ -408,7 +409,9 @@ fn find_upstream_nodes<'a>(
 }
 
 fn calc_nodes<'a>(
-    nodes: &HashSet<NodeId>, flow_block: &'a FlowBlock, node_input_values: &mut NodeInputValues,
+    nodes: &HashSet<NodeId>,
+    flow_block: &'a SubflowBlock,
+    node_input_values: &mut NodeInputValues,
 ) -> (HashSet<NodeId>, HashSet<NodeId>, Vec<&'a Node>) {
     let mut node_id_not_found = HashSet::new();
     let mut dep_node_id_outside_list = HashSet::new();
@@ -460,8 +463,12 @@ fn calc_nodes<'a>(
 }
 
 fn produce_new_value(
-    value: &Arc<OutputValue>, handle_tos: &Vec<HandleTo>, shared: &FlowShared,
-    ctx: &mut RunFlowContext, run_next_node: bool, filter_nodes: &Option<HashSet<NodeId>>,
+    value: &Arc<OutputValue>,
+    handle_tos: &Vec<HandleTo>,
+    shared: &FlowShared,
+    ctx: &mut RunFlowContext,
+    run_next_node: bool,
+    filter_nodes: &Option<HashSet<NodeId>>,
 ) {
     for handle_to in handle_tos {
         match handle_to {
@@ -508,7 +515,9 @@ fn produce_new_value(
                     }
                 }
             }
-            HandleTo::ToFlowOutput { flow_output_handle } => {
+            HandleTo::ToFlowOutput {
+                output_handle: flow_output_handle,
+            } => {
                 ctx.parent_block_status.result(
                     shared.job_id.to_owned(),
                     Arc::clone(value),
@@ -517,11 +526,11 @@ fn produce_new_value(
                 );
             }
             HandleTo::ToSlotOutput {
-                flow_node_id,
+                subflow_node_id,
                 slot_node_id,
                 slot_output_handle,
             } => {
-                dbg!(flow_node_id, slot_node_id, slot_output_handle);
+                dbg!(subflow_node_id, slot_node_id, slot_output_handle);
                 todo!("ToSlotOutput");
             }
         }

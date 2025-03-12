@@ -11,11 +11,11 @@ use std::{
 use utils::error::Result;
 
 use crate::service::ServiceBlock;
-use crate::{flow_resolver, service_resolver, Block, FlowBlock, Service, SlotBlock, TaskBlock};
+use crate::{flow_resolver, service_resolver, Block, SubflowBlock, Service, SlotBlock, TaskBlock};
 pub type BlockPath = PathBuf;
 
 pub struct BlockResolver {
-    flow_cache: Option<HashMap<BlockPath, Arc<FlowBlock>>>,
+    flow_cache: Option<HashMap<BlockPath, Arc<SubflowBlock>>>,
     task_cache: Option<HashMap<BlockPath, Arc<TaskBlock>>>,
     slot_cache: Option<HashMap<BlockPath, Arc<SlotBlock>>>,
     service_cache: Option<HashMap<BlockPath, Service>>,
@@ -33,7 +33,7 @@ impl BlockResolver {
 
     pub fn resolve_flow_block(
         &mut self, flow_name: &str, path_finder: &mut BlockPathFinder,
-    ) -> Result<Arc<FlowBlock>> {
+    ) -> Result<Arc<SubflowBlock>> {
         let flow_path = path_finder.find_flow_block_path(flow_name)?;
 
         self.read_flow_block(&flow_path, path_finder)
@@ -156,7 +156,7 @@ impl BlockResolver {
 
     fn read_flow_block(
         &mut self, flow_path: &Path, resolver: &mut BlockPathFinder,
-    ) -> Result<Arc<FlowBlock>> {
+    ) -> Result<Arc<SubflowBlock>> {
         if let Some(flow_cache) = &self.flow_cache {
             if let Some(flow) = flow_cache.get(flow_path) {
                 return Ok(Arc::clone(flow));

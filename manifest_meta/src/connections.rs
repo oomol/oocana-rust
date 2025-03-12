@@ -55,48 +55,48 @@ impl Connections {
                             from_node.node_id.to_owned(),
                             from_node.output_handle.to_owned(),
                             HandleTo::ToFlowOutput {
-                                flow_output_handle: output_from.handle.to_owned(),
+                                output_handle: output_from.handle.to_owned(),
                             },
                         );
                     }
                 }
 
-                if let Some(from_flows) = output_from.from_flow {
-                    for from_flow in from_flows {
+                if let Some(from_subflows) = output_from.from_subflow {
+                    for from_subflow in from_subflows {
                         self.flow_outputs_froms.add(
                             output_from.handle.to_owned(),
                             HandleFrom::FromFlowInput {
-                                flow_input_handle: from_flow.input_handle.to_owned(),
+                                input_handle: from_subflow.input_handle.to_owned(),
                             },
                         );
                         self.flow_inputs_tos.add(
-                            from_flow.input_handle.to_owned(),
+                            from_subflow.input_handle.to_owned(),
                             HandleTo::ToFlowOutput {
-                                flow_output_handle: output_from.handle.to_owned(),
+                                output_handle: output_from.handle.to_owned(),
                             },
                         );
                     }
                 }
 
-                if let Some(from_slot_nodes) = output_from.from_slot_node {
+                if let Some(from_slot_nodes) = output_from.from_slot {
                     for from_slot_node in from_slot_nodes {
-                        if !self.nodes.contains(&from_slot_node.node_id) {
+                        if !self.nodes.contains(&from_slot_node.slot_node_id) {
                             continue;
                         }
                         self.flow_outputs_froms.add(
                             output_from.handle.to_owned(),
                             HandleFrom::FromSlotInput {
-                                flow_node_id: from_slot_node.flow_node_id.to_owned(),
-                                slot_node_id: from_slot_node.node_id.to_owned(),
+                                subflow_node_id: from_slot_node.subflow_node_id.to_owned(),
+                                slot_node_id: from_slot_node.slot_node_id.to_owned(),
                                 slot_input_handle: from_slot_node.input_handle.to_owned(),
                             },
                         );
                         self.slot_inputs_tos.add(
-                            from_slot_node.flow_node_id.to_owned(),
-                            from_slot_node.node_id.to_owned(),
+                            from_slot_node.subflow_node_id.to_owned(),
+                            from_slot_node.slot_node_id.to_owned(),
                             from_slot_node.input_handle.to_owned(),
                             HandleTo::ToFlowOutput {
-                                flow_output_handle: output_from.handle.to_owned(),
+                                output_handle: output_from.handle.to_owned(),
                             },
                         );
                     }
@@ -106,7 +106,9 @@ impl Connections {
     }
 
     pub fn parse_node_inputs_from(
-        &mut self, node_id: &NodeId, inputs_from: Option<&Vec<manifest::NodeInputFrom>>,
+        &mut self,
+        node_id: &NodeId,
+        inputs_from: Option<&Vec<manifest::NodeInputFrom>>,
     ) {
         if let Some(inputs_from) = inputs_from {
             for input_from in inputs_from {
@@ -142,17 +144,17 @@ impl Connections {
                     }
                 }
 
-                if let Some(from_flows) = &input_from.from_flow {
-                    for from_flow in from_flows {
+                if let Some(from_subflows) = &input_from.from_subflow {
+                    for from_subflow in from_subflows {
                         self.node_inputs_froms.add(
                             node_id.to_owned(),
                             input_from.handle.to_owned(),
                             HandleFrom::FromFlowInput {
-                                flow_input_handle: from_flow.input_handle.to_owned(),
+                                input_handle: from_subflow.input_handle.to_owned(),
                             },
                         );
                         self.flow_inputs_tos.add(
-                            from_flow.input_handle.to_owned(),
+                            from_subflow.input_handle.to_owned(),
                             HandleTo::ToNodeInput {
                                 node_id: node_id.to_owned(),
                                 node_input_handle: input_from.handle.to_owned(),
@@ -161,20 +163,20 @@ impl Connections {
                     }
                 }
 
-                if let Some(from_slot_nodes) = &input_from.from_slot_node {
+                if let Some(from_slot_nodes) = &input_from.from_slot {
                     for from_slot_node in from_slot_nodes {
                         self.node_inputs_froms.add(
                             node_id.to_owned(),
                             input_from.handle.to_owned(),
                             HandleFrom::FromSlotInput {
-                                flow_node_id: from_slot_node.flow_node_id.to_owned(),
-                                slot_node_id: from_slot_node.node_id.to_owned(),
+                                subflow_node_id: from_slot_node.subflow_node_id.to_owned(),
+                                slot_node_id: from_slot_node.slot_node_id.to_owned(),
                                 slot_input_handle: from_slot_node.input_handle.to_owned(),
                             },
                         );
                         self.slot_inputs_tos.add(
-                            from_slot_node.flow_node_id.to_owned(),
-                            from_slot_node.node_id.to_owned(),
+                            from_slot_node.subflow_node_id.to_owned(),
+                            from_slot_node.slot_node_id.to_owned(),
                             from_slot_node.input_handle.to_owned(),
                             HandleTo::ToNodeInput {
                                 node_id: node_id.to_owned(),
@@ -188,7 +190,9 @@ impl Connections {
     }
 
     pub fn parse_subflow_slot_outputs_from(
-        &mut self, flow_node_id: &NodeId, slots: Option<&Vec<manifest::FlowNodeSlots>>,
+        &mut self,
+        subflow_node_id: &NodeId,
+        slots: Option<&Vec<manifest::SubflowNodeSlots>>,
     ) {
         if let Some(slots) = slots {
             for slot in slots {
@@ -196,7 +200,7 @@ impl Connections {
                     if let Some(from_nodes) = &output_from.from_node {
                         for from_node in from_nodes {
                             self.slot_outputs_froms.add(
-                                flow_node_id.to_owned(),
+                                subflow_node_id.to_owned(),
                                 slot.slot_node_id.to_owned(),
                                 output_from.handle.to_owned(),
                                 HandleFrom::FromNodeOutput {
@@ -208,7 +212,7 @@ impl Connections {
                                 from_node.node_id.to_owned(),
                                 from_node.output_handle.to_owned(),
                                 HandleTo::ToSlotOutput {
-                                    flow_node_id: flow_node_id.to_owned(),
+                                    subflow_node_id: subflow_node_id.to_owned(),
                                     slot_node_id: slot.slot_node_id.to_owned(),
                                     slot_output_handle: output_from.handle.to_owned(),
                                 },
@@ -216,20 +220,20 @@ impl Connections {
                         }
                     }
 
-                    if let Some(from_flows) = &output_from.from_flow {
-                        for from_flow in from_flows {
+                    if let Some(from_subflows) = &output_from.from_subflow {
+                        for from_subflow in from_subflows {
                             self.slot_outputs_froms.add(
-                                flow_node_id.to_owned(),
+                                subflow_node_id.to_owned(),
                                 slot.slot_node_id.to_owned(),
                                 output_from.handle.to_owned(),
                                 HandleFrom::FromFlowInput {
-                                    flow_input_handle: from_flow.input_handle.to_owned(),
+                                    input_handle: from_subflow.input_handle.to_owned(),
                                 },
                             );
                             self.flow_inputs_tos.add(
-                                from_flow.input_handle.to_owned(),
+                                from_subflow.input_handle.to_owned(),
                                 HandleTo::ToSlotOutput {
-                                    flow_node_id: flow_node_id.to_owned(),
+                                    subflow_node_id: subflow_node_id.to_owned(),
                                     slot_node_id: slot.slot_node_id.to_owned(),
                                     slot_output_handle: output_from.handle.to_owned(),
                                 },
@@ -237,24 +241,24 @@ impl Connections {
                         }
                     }
 
-                    if let Some(from_slot_nodes) = &output_from.from_slot_node {
+                    if let Some(from_slot_nodes) = &output_from.from_slot {
                         for from_slot_node in from_slot_nodes {
                             self.slot_outputs_froms.add(
-                                flow_node_id.to_owned(),
+                                subflow_node_id.to_owned(),
                                 slot.slot_node_id.to_owned(),
                                 output_from.handle.to_owned(),
                                 HandleFrom::FromSlotInput {
-                                    flow_node_id: from_slot_node.flow_node_id.to_owned(),
-                                    slot_node_id: from_slot_node.node_id.to_owned(),
+                                    subflow_node_id: from_slot_node.subflow_node_id.to_owned(),
+                                    slot_node_id: from_slot_node.slot_node_id.to_owned(),
                                     slot_input_handle: from_slot_node.input_handle.to_owned(),
                                 },
                             );
                             self.slot_inputs_tos.add(
-                                from_slot_node.flow_node_id.to_owned(),
-                                from_slot_node.node_id.to_owned(),
+                                from_slot_node.subflow_node_id.to_owned(),
+                                from_slot_node.slot_node_id.to_owned(),
                                 from_slot_node.input_handle.to_owned(),
                                 HandleTo::ToSlotOutput {
-                                    flow_node_id: flow_node_id.to_owned(),
+                                    subflow_node_id: subflow_node_id.to_owned(),
                                     slot_node_id: slot.slot_node_id.to_owned(),
                                     slot_output_handle: output_from.handle.to_owned(),
                                 },
@@ -391,28 +395,32 @@ impl Default for ConnNodesFroms {
 
 #[derive(Debug, Clone)]
 pub struct ConnSlotNodesFroms {
-    flow_nodes: HashMap<NodeId, ConnNodesFroms>,
+    subflow_nodes: HashMap<NodeId, ConnNodesFroms>,
 }
 
 impl ConnSlotNodesFroms {
     pub fn new() -> Self {
         Self {
-            flow_nodes: HashMap::new(),
+            subflow_nodes: HashMap::new(),
         }
     }
 
     pub fn add(
-        &mut self, flow_node_id: NodeId, node_id: NodeId, handle: HandleName, from: HandleFrom,
+        &mut self,
+        subflow_node_id: NodeId,
+        node_id: NodeId,
+        handle: HandleName,
+        from: HandleFrom,
     ) {
-        self.flow_nodes
-            .entry(flow_node_id)
+        self.subflow_nodes
+            .entry(subflow_node_id)
             .or_default()
             .add(node_id, handle, from);
     }
 
-    pub fn remove(&mut self, flow_node_id: &NodeId) -> Option<NodesHandlesFroms> {
-        self.flow_nodes
-            .remove(flow_node_id)
+    pub fn remove(&mut self, subflow_node_id: &NodeId) -> Option<NodesHandlesFroms> {
+        self.subflow_nodes
+            .remove(subflow_node_id)
             .map(ConnNodesFroms::restore)
     }
 }
@@ -425,26 +433,32 @@ impl Default for ConnSlotNodesFroms {
 
 #[derive(Debug, Clone)]
 pub struct ConnSlotNodesTos {
-    flow_nodes: HashMap<NodeId, ConnNodesTos>,
+    subflow_nodes: HashMap<NodeId, ConnNodesTos>,
 }
 
 impl ConnSlotNodesTos {
     pub fn new() -> Self {
         Self {
-            flow_nodes: HashMap::new(),
+            subflow_nodes: HashMap::new(),
         }
     }
 
-    pub fn add(&mut self, flow_node_id: NodeId, node_id: NodeId, handle: HandleName, to: HandleTo) {
-        self.flow_nodes
-            .entry(flow_node_id)
+    pub fn add(
+        &mut self,
+        subflow_node_id: NodeId,
+        node_id: NodeId,
+        handle: HandleName,
+        to: HandleTo,
+    ) {
+        self.subflow_nodes
+            .entry(subflow_node_id)
             .or_default()
             .add(node_id, handle, to);
     }
 
-    pub fn remove(&mut self, flow_node_id: &NodeId) -> Option<NodesHandlesTos> {
-        self.flow_nodes
-            .remove(flow_node_id)
+    pub fn remove(&mut self, subflow_node_id: &NodeId) -> Option<NodesHandlesTos> {
+        self.subflow_nodes
+            .remove(subflow_node_id)
             .map(ConnNodesTos::restore)
     }
 }

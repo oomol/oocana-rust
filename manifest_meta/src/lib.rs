@@ -23,15 +23,15 @@ mod task;
 pub use task::TaskBlock;
 
 mod flow;
-pub use flow::{FlowBlock, InjectionStore, InjectionTarget};
+pub use flow::{InjectionStore, InjectionTarget, SubflowBlock};
 
 mod slot;
 pub use slot::SlotBlock;
 
 mod node;
 pub use node::{
-    FlowNode, HandleFrom, HandleTo, HandlesFroms, HandlesTos, InputDefPatchMap, Node,
-    NodesHandlesFroms, NodesHandlesTos, ServiceNode, SlotNode, TaskNode,
+    HandleFrom, HandleTo, HandlesFroms, HandlesTos, InputDefPatchMap, Node, NodesHandlesFroms,
+    NodesHandlesTos, ServiceNode, SlotNode, SubflowNode, TaskNode,
 };
 
 mod connections;

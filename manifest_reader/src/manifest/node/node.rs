@@ -24,7 +24,7 @@ pub struct NodeId(String);
 #[serde(untagged)]
 pub enum Node {
     Task(TaskNode),
-    Flow(FlowNode),
+    Subflow(SubflowNode),
     Slot(SlotNode),
     Service(ServiceNode),
     Value(ValueNode),
@@ -34,7 +34,7 @@ impl Node {
     pub fn node_id(&self) -> &NodeId {
         match self {
             Node::Task(task) => &task.node_id,
-            Node::Flow(flow) => &flow.node_id,
+            Node::Subflow(subflow) => &subflow.node_id,
             Node::Slot(slot) => &slot.node_id,
             Node::Service(service) => &service.node_id,
             Node::Value(value) => &value.node_id,
@@ -44,7 +44,7 @@ impl Node {
     pub fn concurrency(&self) -> i32 {
         match self {
             Node::Task(task) => task.concurrency,
-            Node::Flow(flow) => flow.concurrency,
+            Node::Subflow(subflow) => subflow.concurrency,
             Node::Slot(slot) => slot.concurrency,
             Node::Service(service) => service.concurrency,
             Node::Value(value) => value.concurrency,
@@ -53,7 +53,7 @@ impl Node {
     pub fn inputs_from(&self) -> Option<&Vec<NodeInputFrom>> {
         match self {
             Node::Task(task) => task.inputs_from.as_ref(),
-            Node::Flow(flow) => flow.inputs_from.as_ref(),
+            Node::Subflow(subflow) => subflow.inputs_from.as_ref(),
             Node::Slot(slot) => slot.inputs_from.as_ref(),
             Node::Service(service) => service.inputs_from.as_ref(),
             Node::Value(_) => None,
@@ -62,7 +62,7 @@ impl Node {
     pub fn should_ignore(&self) -> bool {
         match self {
             Node::Task(task) => task.ignore,
-            Node::Flow(flow) => flow.ignore,
+            Node::Subflow(subflow) => subflow.ignore,
             Node::Slot(slot) => slot.ignore,
             Node::Service(service) => service.ignore,
             Node::Value(value) => value.ignore,
@@ -78,7 +78,7 @@ impl Node {
                     .as_ref()
                     .map_or(false, |executor| executor.should_spawn()),
             },
-            Node::Flow(_) => false,
+            Node::Subflow(_) => false,
             Node::Slot(_) => false,
             Node::Service(_) => false,
             Node::Value(_) => false,
@@ -172,9 +172,9 @@ extend_node_common_field!(TaskNode {
     inject: Option<Injection>,
 });
 
-extend_node_common_field!(FlowNode {
-    flow: String,
-    slots: Option<Vec<FlowNodeSlots>>,
+extend_node_common_field!(SubflowNode {
+    subflow: String,
+    slots: Option<Vec<SubflowNodeSlots>>,
 });
 
 extend_node_common_field!(ServiceNode { service: String });
@@ -184,7 +184,7 @@ extend_node_common_field!(SlotNode {
 });
 
 #[derive(Deserialize, Debug, Clone)]
-pub struct FlowNodeSlots {
+pub struct SubflowNodeSlots {
     pub slot_node_id: NodeId,
     pub outputs_from: Vec<NodeInputFrom>,
 }
@@ -192,6 +192,7 @@ pub struct FlowNodeSlots {
 #[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum SlotNodeBlock {
+    #[deprecated(note = "remove slot node block file support")]
     File(String),
     Inline(SlotBlock),
 }

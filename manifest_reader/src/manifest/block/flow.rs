@@ -10,7 +10,7 @@ use super::{
 };
 
 #[derive(Deserialize, Debug, Clone)]
-pub struct TmpFlowBlock {
+pub struct TmpSubflowBlock {
     pub nodes: Vec<Node>,
     pub outputs_from: Option<Vec<NodeInputFrom>>,
     pub inputs_def: Option<Vec<InputHandle>>,
@@ -18,9 +18,9 @@ pub struct TmpFlowBlock {
     pub injection: Option<HashMap<String, String>>,
 }
 
-impl From<TmpFlowBlock> for FlowBlock {
-    fn from(tmp: TmpFlowBlock) -> Self {
-        FlowBlock {
+impl From<TmpSubflowBlock> for SubflowBlock {
+    fn from(tmp: TmpSubflowBlock) -> Self {
+        SubflowBlock {
             nodes: tmp.nodes,
             outputs_from: tmp.outputs_from,
             inputs_def: to_input_handles(tmp.inputs_def),
@@ -31,8 +31,8 @@ impl From<TmpFlowBlock> for FlowBlock {
 }
 
 #[derive(Deserialize, Debug, Clone)]
-#[serde(from = "TmpFlowBlock")]
-pub struct FlowBlock {
+#[serde(from = "TmpSubflowBlock")]
+pub struct SubflowBlock {
     pub nodes: Vec<Node>,
     pub outputs_from: Option<Vec<NodeInputFrom>>,
     pub inputs_def: Option<InputHandles>,

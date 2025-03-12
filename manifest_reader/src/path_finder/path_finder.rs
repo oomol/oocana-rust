@@ -7,8 +7,8 @@ use utils::error::Result;
 use crate::reader::read_package;
 
 use super::block::{
-    find_flow_block, find_slot_block, find_task_block, FlowBlockManifestParams,
-    SlotBlockManifestParams, TaskBlockManifestParams,
+    find_flow_block, find_slot_block, find_task_block, SlotBlockManifestParams,
+    SubflowBlockManifestParams, TaskBlockManifestParams,
 };
 use super::package::find_package_file;
 use super::service::{find_service, ServiceManifestParams};
@@ -106,7 +106,7 @@ impl BlockPathFinder {
             return Ok(flow_path.to_owned());
         }
 
-        let flow_path = find_flow_block(FlowBlockManifestParams {
+        let flow_path = find_flow_block(SubflowBlockManifestParams {
             value: flow_name,
             base_dir: &self.base_dir,
             search_paths: &self.search_paths,

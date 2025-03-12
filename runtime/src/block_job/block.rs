@@ -2,7 +2,7 @@ use std::{collections::HashSet, sync::Arc};
 
 use job::{BlockInputs, BlockJobStacks, JobId};
 use mainframe::reporter::ReporterMessage;
-use manifest_meta::{Block, FlowBlock, InputDefPatchMap, NodeId};
+use manifest_meta::{Block, SubflowBlock, InputDefPatchMap, NodeId};
 
 use super::{service_job, task_job};
 use crate::{block_status::BlockStatusTx, flow_job, shared::Shared};
@@ -34,7 +34,7 @@ impl BlockJobHandle {
 pub struct RunBlockArgs {
     pub block: Block,
     pub shared: Arc<Shared>,
-    pub parent_flow: Option<Arc<FlowBlock>>,
+    pub parent_flow: Option<Arc<SubflowBlock>>,
     pub stacks: BlockJobStacks,
     pub job_id: JobId,
     pub inputs: Option<BlockInputs>,
@@ -46,7 +46,7 @@ pub struct RunBlockArgs {
 }
 
 pub struct FindUpstreamArgs {
-    pub flow_block: Arc<FlowBlock>,
+    pub flow_block: Arc<SubflowBlock>,
     pub use_cache: bool,
     pub nodes: Option<HashSet<NodeId>>,
 }
