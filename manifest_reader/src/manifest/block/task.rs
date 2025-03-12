@@ -44,12 +44,20 @@ pub enum TaskBlockExecutor {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct RustExecutor {
-    pub options: Option<SpawnOptions>,
+    #[serde(default = "default_rust_spawn_options")]
+    pub options: SpawnOptions,
+}
+
+pub fn default_rust_spawn_options() -> SpawnOptions {
+    SpawnOptions {
+        bin: "cargo".to_string(),
+        args: vec!["run".to_string(), "--".to_string()],
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SpawnOptions {
-    pub bin: Option<String>,
+    pub bin: String,
     #[serde(default)]
     pub args: Vec<String>,
 }

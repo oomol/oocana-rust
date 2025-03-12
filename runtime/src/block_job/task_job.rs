@@ -1,6 +1,7 @@
 use mainframe::reporter::BlockReporterTx;
 use mainframe::scheduler::{ExecutorParams, SchedulerTx};
 use manifest_meta::{FlowBlock, HandleName, InputDefPatchMap, TaskBlock, TaskBlockExecutor};
+use manifest_reader::manifest::SpawnOptions;
 
 use std::collections::HashMap;
 use std::path::Path;
@@ -109,6 +110,7 @@ pub fn run_task_block(args: RunTaskBlockArgs) -> Option<BlockJobHandle> {
             TaskBlockExecutor::Rust(e) => {
                 let execute_result = spawn(
                     &task_block,
+                    &e.options,
                     parent_flow.as_ref(),
                     &shared.address,
                     &shared.session_id,
@@ -145,10 +147,9 @@ pub fn run_task_block(args: RunTaskBlockArgs) -> Option<BlockJobHandle> {
                     }
                 }
             }
-            TaskBlockExecutor::Shell(e) => {
+            TaskBlockExecutor::Shell(_) => {
                 let execute_result = spawn_shell(
                     &task_block,
-                    e,
                     parent_flow.as_ref(),
                     inputs,
                     &shared.session_id,
@@ -394,13 +395,17 @@ fn get_string_value_from_inputs(inputs: &Option<BlockInputs>, key: &str) -> Opti
 
 fn spawn(
     task_block: &TaskBlock,
-    entry: &TaskBlockEntry,
+    spawn_options: &SpawnOptions,
     parent_flow: Option<&Arc<FlowBlock>>,
     address: &str,
     session_id: &SessionId,
     job_id: &JobId,
 ) -> Result<process::Child> {
-    let mut args = entry.args.iter().map(AsRef::as_ref).collect::<Vec<&str>>();
+    let mut args = spawn_options
+        .args
+        .iter()
+        .map(AsRef::as_ref)
+        .collect::<Vec<&str>>();
 
     // add block task arguments
     args.extend(
@@ -416,18 +421,13 @@ fn spawn(
     );
 
     // Execute the command
-    let mut command = process::Command::new(&entry.bin);
+    let mut command = process::Command::new(&spawn_options.bin);
 
-    if let Some(cwd) = entry.cwd.as_ref() {
-        command.current_dir(cwd);
-    } else {
-        let block_dir = block_dir(task_block, parent_flow);
-        command.current_dir(block_dir);
-    }
+    let block_dir = block_dir(task_block, parent_flow);
+    command.current_dir(block_dir);
 
     command
         .args(args)
-        .envs(&entry.envs)
         .stdin(process::Stdio::null())
         .stdout(process::Stdio::piped())
         .stderr(process::Stdio::piped())
@@ -443,7 +443,7 @@ fn spawn(
                 &format!(
                     "Failed to execute '{} {} <...OOCANA_ARGS>' at '{}'",
                     program,
-                    entry.args.join(" "),
+                    spawn_options.args.join(" "),
                     current_dir,
                 ),
                 Box::new(e),
