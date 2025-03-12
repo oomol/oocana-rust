@@ -2,11 +2,11 @@
 
 ![github-actions](https://github.com/oomol/oocana-rust/actions/workflows/build-and-test.yml/badge.svg?branch=main) [![release](https://img.shields.io/github/v/release/oomol/oocana-rust)](https://github.com/oomol/oocana-rust/releases) [![readme_zh-cn](https://img.shields.io/badge/%E4%B8%AD%E6%96%87-none)](README.zh-CN.md)
 
-[OOMOL studio](https://oomol.com)'s workflow engine, implemented in Rust.
+[OOMOL Studio](https://oomol.com)'s workflow engine, implemented in Rust.
 
-To support run `javascript`/`typescript` block as OOMOL studio, we need to use [node-executor](https://github.com/oomol/oocana-node). Add `nodejs-executor`(build in oocana-node) to `$PATH` to support run `javascript`/`typescript` block.
+To support run `javascript`/`typescript` block as OOMOL Studio, we need to use [node-executor](https://github.com/oomol/oocana-node). Add `nodejs-executor`(build in oocana-node) to `$PATH` to support run `javascript`/`typescript` block.
 
-To support run `python` block as OOMOL studio, we need to use [python-executor](https://github.com/oomol/oocana-python). you can install `python-executor` by `pip install python-executor`. Typically python dependencies are installed in a virtual environment and the package manager will add `python-executor` to `$PATH` (this behavior may vary depending on the package manager).
+To support run `python` block as OOMOL Studio, we need to use [python-executor](https://github.com/oomol/oocana-python). you can install `python-executor` by `pip install python-executor`. Typically python dependencies are installed in a virtual environment and the package manager will add `python-executor` to `$PATH` (this behavior may vary depending on the package manager).
 
 ## How to Use
 
