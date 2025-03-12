@@ -1,8 +1,4 @@
-use manifest_reader::{
-    manifest,
-    path_finder::BlockPathFinder,
-    reader::{read_slot_block, read_task_block},
-};
+use manifest_reader::{manifest, path_finder::BlockPathFinder, reader::read_task_block};
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
@@ -11,13 +7,12 @@ use std::{
 use utils::error::Result;
 
 use crate::service::ServiceBlock;
-use crate::{flow_resolver, service_resolver, Block, SubflowBlock, Service, SlotBlock, TaskBlock};
+use crate::{flow_resolver, service_resolver, Block, Service, SlotBlock, SubflowBlock, TaskBlock};
 pub type BlockPath = PathBuf;
 
 pub struct BlockResolver {
     flow_cache: Option<HashMap<BlockPath, Arc<SubflowBlock>>>,
     task_cache: Option<HashMap<BlockPath, Arc<TaskBlock>>>,
-    slot_cache: Option<HashMap<BlockPath, Arc<SlotBlock>>>,
     service_cache: Option<HashMap<BlockPath, Service>>,
 }
 
@@ -26,13 +21,14 @@ impl BlockResolver {
         Self {
             flow_cache: None,
             task_cache: None,
-            slot_cache: None,
             service_cache: None,
         }
     }
 
     pub fn resolve_flow_block(
-        &mut self, flow_name: &str, path_finder: &mut BlockPathFinder,
+        &mut self,
+        flow_name: &str,
+        path_finder: &mut BlockPathFinder,
     ) -> Result<Arc<SubflowBlock>> {
         let flow_path = path_finder.find_flow_block_path(flow_name)?;
 
@@ -40,7 +36,9 @@ impl BlockResolver {
     }
 
     pub fn resolve_task_node_block(
-        &mut self, task_node_block: manifest::TaskNodeBlock, path_finder: &mut BlockPathFinder,
+        &mut self,
+        task_node_block: manifest::TaskNodeBlock,
+        path_finder: &mut BlockPathFinder,
         injection_package_dir: Option<PathBuf>,
     ) -> Result<Arc<TaskBlock>> {
         match task_node_block {
@@ -55,12 +53,10 @@ impl BlockResolver {
     }
 
     pub fn resolve_slot_node_block(
-        &mut self, slot_node_block: manifest::SlotNodeBlock, finder: &mut BlockPathFinder,
+        &mut self,
+        slot_node_block: manifest::SlotNodeBlock,
     ) -> Result<Arc<SlotBlock>> {
         match slot_node_block {
-            manifest::SlotNodeBlock::File(file) => {
-                self.read_slot_block(&finder.find_slot_block_path(&file)?)
-            }
             manifest::SlotNodeBlock::Inline(block) => {
                 let slot_block = SlotBlock::from_manifest(block, None, None);
                 Ok(Arc::new(slot_block))
@@ -69,7 +65,9 @@ impl BlockResolver {
     }
 
     pub fn resolve_service_node_block(
-        &mut self, service_node_block: String, finder: &mut BlockPathFinder,
+        &mut self,
+        service_node_block: String,
+        finder: &mut BlockPathFinder,
     ) -> Result<Arc<ServiceBlock>> {
         let service_path = finder.find_service_block(&service_node_block)?;
         let block_name = service_node_block.split("::").last().unwrap();
@@ -77,7 +75,9 @@ impl BlockResolver {
     }
 
     pub fn resolve_block(
-        &mut self, block_name: &str, finder: &mut BlockPathFinder,
+        &mut self,
+        block_name: &str,
+        finder: &mut BlockPathFinder,
     ) -> Result<Block> {
         let flow_path = finder.find_flow_block_path(block_name);
 
@@ -155,7 +155,9 @@ impl BlockResolver {
     }
 
     fn read_flow_block(
-        &mut self, flow_path: &Path, resolver: &mut BlockPathFinder,
+        &mut self,
+        flow_path: &Path,
+        resolver: &mut BlockPathFinder,
     ) -> Result<Arc<SubflowBlock>> {
         if let Some(flow_cache) = &self.flow_cache {
             if let Some(flow) = flow_cache.get(flow_path) {
@@ -185,7 +187,9 @@ impl BlockResolver {
     }
 
     fn read_service_block(
-        &mut self, service_path: &Path, block_name: &str,
+        &mut self,
+        service_path: &Path,
+        block_name: &str,
     ) -> Result<Arc<ServiceBlock>> {
         let service = self.read_service(service_path)?;
 
@@ -202,25 +206,6 @@ impl BlockResolver {
             })?;
 
         Ok(block)
-    }
-
-    fn read_slot_block(&mut self, slot_path: &Path) -> Result<Arc<SlotBlock>> {
-        if let Some(slot_cache) = &self.slot_cache {
-            if let Some(slot) = slot_cache.get(slot_path) {
-                return Ok(Arc::clone(slot));
-            }
-        }
-
-        let slot = Arc::new(SlotBlock::from_manifest(
-            read_slot_block(slot_path)?,
-            Some(slot_path.to_owned()),
-            package_path(slot_path).ok(),
-        ));
-
-        let slot_cache = self.slot_cache.get_or_insert_with(HashMap::new);
-        slot_cache.insert(slot_path.to_owned(), Arc::clone(&slot));
-
-        Ok(slot)
     }
 }
 

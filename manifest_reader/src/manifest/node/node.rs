@@ -192,8 +192,6 @@ pub struct SubflowNodeSlots {
 #[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum SlotNodeBlock {
-    #[deprecated(note = "remove slot node block file support")]
-    File(String),
     Inline(SlotBlock),
 }
 

@@ -419,8 +419,7 @@ impl SubflowBlock {
                     );
                 }
                 manifest::Node::Slot(slot_node) => {
-                    let slot = block_resolver
-                        .resolve_slot_node_block(slot_node.slot.to_owned(), &mut path_finder)?;
+                    let slot = block_resolver.resolve_slot_node_block(slot_node.slot.to_owned())?;
                     let inputs_def =
                         parse_inputs_def(&slot_node.inputs_from, &slot.as_ref().inputs_def);
                     let inputs_def_patch = get_inputs_def_patch(&slot_node.inputs_from);
