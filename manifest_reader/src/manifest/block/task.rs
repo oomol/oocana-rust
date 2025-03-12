@@ -75,10 +75,10 @@ impl TaskBlockExecutor {
     pub fn entry(&self) -> Option<&str> {
         match self {
             TaskBlockExecutor::NodeJS(NodeJSExecutor { options }) => {
-                options.as_ref().and_then(|o| o.entry())
+                options.as_ref().and_then(|o| o.entry.as_deref())
             }
             TaskBlockExecutor::Python(PythonExecutor { options }) => {
-                options.as_ref().and_then(|o| o.entry())
+                options.as_ref().and_then(|o| o.entry.as_deref())
             }
             _ => None,
         }
@@ -98,23 +98,10 @@ impl TaskBlockExecutor {
     pub fn should_spawn(&self) -> bool {
         match self {
             TaskBlockExecutor::NodeJS(NodeJSExecutor { options }) => {
-                // options.as_ref().map_or(false, |o| o.spawn)
-                options.as_ref().map_or(false, |o| {
-                    if let ExecutorOptions::Inline(InlineExecutorOptions { spawn, .. }) = o {
-                        *spawn
-                    } else {
-                        false
-                    }
-                })
+                options.as_ref().map_or(false, |o| o.spawn)
             }
             TaskBlockExecutor::Python(PythonExecutor { options }) => {
-                options.as_ref().map_or(false, |o| {
-                    if let ExecutorOptions::Inline(InlineExecutorOptions { spawn, .. }) = o {
-                        *spawn
-                    } else {
-                        false
-                    }
-                })
+                options.as_ref().map_or(false, |o| o.spawn)
             }
             TaskBlockExecutor::Shell(_) => false,
             TaskBlockExecutor::Rust(_) => false,
@@ -135,40 +122,7 @@ pub struct PythonExecutor {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(untagged)]
-pub enum ExecutorOptions {
-    // TODO: inline 文件不存在，相关代码都可以后续删除
-    Inline(InlineExecutorOptions),
-    File(FileExecutorOptions),
-}
-
-impl ExecutorOptions {
-    pub fn is_inline(&self) -> bool {
-        match self {
-            ExecutorOptions::Inline(_) => true,
-            _ => false,
-        }
-    }
-
-    pub fn entry(&self) -> Option<&str> {
-        match self {
-            ExecutorOptions::File(FileExecutorOptions { entry, .. }) => entry.as_deref(),
-            _ => None,
-        }
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct InlineExecutorOptions {
-    pub source: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub function: Option<String>,
-    #[serde(default)]
-    pub spawn: bool,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct FileExecutorOptions {
+pub struct ExecutorOptions {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub entry: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
