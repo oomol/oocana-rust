@@ -1,6 +1,6 @@
 use mainframe::reporter::BlockReporterTx;
 use mainframe::scheduler::{ExecutorParams, SchedulerTx};
-use manifest_meta::{FlowBlock, HandleName, InputDefPatchMap, TaskBlock, TaskBlockExecutor};
+use manifest_meta::{HandleName, InputDefPatchMap, SubflowBlock, TaskBlock, TaskBlockExecutor};
 use manifest_reader::manifest::SpawnOptions;
 
 use std::collections::HashMap;
@@ -44,7 +44,7 @@ impl Drop for TaskJobHandle {
 pub struct RunTaskBlockArgs {
     pub task_block: Arc<TaskBlock>,
     pub shared: Arc<Shared>,
-    pub parent_flow: Option<Arc<FlowBlock>>,
+    pub parent_flow: Option<Arc<SubflowBlock>>,
     pub stacks: BlockJobStacks,
     pub job_id: JobId,
     pub inputs: Option<BlockInputs>,
@@ -244,7 +244,7 @@ pub fn run_task_block(args: RunTaskBlockArgs) -> Option<BlockJobHandle> {
     }
 }
 
-fn block_dir(task_block: &TaskBlock, parent_flow: Option<&Arc<FlowBlock>>) -> String {
+fn block_dir(task_block: &TaskBlock, parent_flow: Option<&Arc<SubflowBlock>>) -> String {
     if let Some(block_dir) = task_block.block_dir() {
         block_dir.to_string_lossy().to_string()
     } else {
@@ -261,7 +261,7 @@ fn block_dir(task_block: &TaskBlock, parent_flow: Option<&Arc<FlowBlock>>) -> St
 struct ExecutorArgs<'a> {
     task_block: &'a TaskBlock,
     executor: &'a TaskBlockExecutor,
-    parent_flow: Option<&'a Arc<FlowBlock>>,
+    parent_flow: Option<&'a Arc<SubflowBlock>>,
     job_id: &'a JobId,
     scheduler_tx: SchedulerTx,
     stacks: BlockJobStacks,
@@ -292,7 +292,7 @@ fn send_to_executor(args: ExecutorArgs) {
 
 fn spawn_shell(
     task_block: &TaskBlock,
-    parent_flow: Option<&Arc<FlowBlock>>,
+    parent_flow: Option<&Arc<SubflowBlock>>,
     inputs: Option<BlockInputs>,
     session_id: &SessionId,
     job_id: &JobId,
@@ -396,7 +396,7 @@ fn get_string_value_from_inputs(inputs: &Option<BlockInputs>, key: &str) -> Opti
 fn spawn(
     task_block: &TaskBlock,
     spawn_options: &SpawnOptions,
-    parent_flow: Option<&Arc<FlowBlock>>,
+    parent_flow: Option<&Arc<SubflowBlock>>,
     address: &str,
     session_id: &SessionId,
     job_id: &JobId,

@@ -3,7 +3,7 @@ use std::sync::Arc;
 use job::{BlockInputs, BlockJobStacks, JobId};
 use mainframe::scheduler::{SchedulerTx, ServiceParams};
 use manifest_meta::{
-    FlowBlock, InjectionStore, InputDefPatchMap, ServiceBlock, ServiceExecutorOptions,
+    SubflowBlock, InjectionStore, InputDefPatchMap, ServiceBlock, ServiceExecutorOptions,
 };
 
 use super::block::BlockJobHandle;
@@ -35,7 +35,7 @@ pub struct RunServiceBlockArgs {
     pub inputs: Option<BlockInputs>,
     pub block_status: BlockStatusTx,
     pub injection_store: Option<InjectionStore>,
-    pub parent_flow: Option<Arc<FlowBlock>>,
+    pub parent_flow: Option<Arc<SubflowBlock>>,
     pub inputs_def_patch: Option<InputDefPatchMap>,
 }
 

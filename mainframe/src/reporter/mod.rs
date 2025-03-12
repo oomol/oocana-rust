@@ -40,6 +40,14 @@ pub enum ReporterMessage<'a> {
         stacks: &'a Vec<BlockJobStackLevel>,
         create_at: u128,
     },
+    FlowFinished {
+        session_id: &'a str,
+        job_id: &'a str,
+        flow_path: &'a Option<String>,
+        stacks: &'a Vec<BlockJobStackLevel>,
+        error: &'a Option<String>,
+        finish_at: u128,
+    },
     // 使用指定 nodes 时，会通知，有哪些 nodes 会被执行
     FlowNodesWillRun {
         session_id: &'a str,
@@ -50,7 +58,7 @@ pub enum ReporterMessage<'a> {
         mid_nodes: &'a Vec<String>,   // 之后会运行的 nodes，但不是最终运行的 nodes
         end_nodes: &'a Vec<String>,   // 最后想要最终运行的 node
     },
-    FlowBlockStarted {
+    SubflowBlockStarted {
         session_id: &'a str,
         job_id: &'a str,
         block_path: &'a Option<String>,
@@ -58,15 +66,7 @@ pub enum ReporterMessage<'a> {
         stacks: &'a Vec<BlockJobStackLevel>,
         create_at: u128,
     },
-    FlowFinished {
-        session_id: &'a str,
-        job_id: &'a str,
-        flow_path: &'a Option<String>,
-        stacks: &'a Vec<BlockJobStackLevel>,
-        error: &'a Option<String>,
-        finish_at: u128,
-    },
-    FlowBlockFinished {
+    SubflowBlockFinished {
         session_id: &'a str,
         job_id: &'a str,
         block_path: &'a Option<String>,
@@ -74,16 +74,7 @@ pub enum ReporterMessage<'a> {
         error: &'a Option<String>,
         finish_at: u128,
     },
-    // TODO: 应该永远不会触发
-    FlowOutput {
-        session_id: &'a str,
-        job_id: &'a str,
-        flow_path: &'a Option<String>,
-        stacks: &'a Vec<BlockJobStackLevel>,
-        output: Arc<OutputValue>,
-        handle: &'a str,
-    },
-    FlowBlockOutput {
+    SubflowBlockOutput {
         session_id: &'a str,
         job_id: &'a str,
         block_path: &'a Option<String>,
@@ -197,13 +188,19 @@ impl ReporterTx {
     }
 
     pub fn block(
-        &self, job_id: JobId, block_path: Option<String>, stacks: BlockJobStacks,
+        &self,
+        job_id: JobId,
+        block_path: Option<String>,
+        stacks: BlockJobStacks,
     ) -> BlockReporterTx {
         BlockReporterTx::new(job_id, block_path, stacks, self.clone())
     }
 
     pub fn flow(
-        &self, job_id: JobId, flow_path: Option<String>, stacks: BlockJobStacks,
+        &self,
+        job_id: JobId,
+        flow_path: Option<String>,
+        stacks: BlockJobStacks,
     ) -> FlowReporterTx {
         FlowReporterTx::new(job_id, flow_path, stacks, self.clone())
     }
@@ -268,7 +265,9 @@ where
 }
 
 pub fn create<TT, TR>(
-    session_id: SessionId, impl_tx: Option<TT>, impl_rx: Option<TR>,
+    session_id: SessionId,
+    impl_tx: Option<TT>,
+    impl_rx: Option<TR>,
 ) -> (ReporterTx, ReporterRx<TT, TR>)
 where
     TT: ReporterTxImpl,

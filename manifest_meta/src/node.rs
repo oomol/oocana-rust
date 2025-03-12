@@ -2,7 +2,7 @@ use std::{collections::HashMap, path::PathBuf, sync::Arc};
 
 use manifest_reader::manifest::{InputDefPatch, InputHandles, OutputHandles};
 
-use crate::{Block, FlowBlock, HandleName, NodeId, ServiceBlock, SlotBlock, TaskBlock};
+use crate::{Block, HandleName, NodeId, ServiceBlock, SlotBlock, SubflowBlock, TaskBlock};
 
 pub type HandlesFroms = HashMap<HandleName, Vec<HandleFrom>>;
 
@@ -37,8 +37,8 @@ extend_node_common_field!(ServiceNode {
     block: Arc<ServiceBlock>
 });
 
-extend_node_common_field!(FlowNode {
-    flow: Arc<FlowBlock>,
+extend_node_common_field!(SubflowNode {
+    flow: Arc<SubflowBlock>,
     slots_inputs_to: Option<NodesHandlesTos>,
     slots_outputs_from: Option<NodesHandlesFroms>,
 });
@@ -50,7 +50,7 @@ extend_node_common_field!(SlotNode {
 #[derive(Debug, Clone)]
 pub enum Node {
     Task(TaskNode),
-    Flow(FlowNode),
+    Flow(SubflowNode),
     Slot(SlotNode),
     Service(ServiceNode),
 }
@@ -154,14 +154,14 @@ impl Node {
 #[derive(Debug, Clone)]
 pub enum HandleFrom {
     FromFlowInput {
-        flow_input_handle: HandleName,
+        input_handle: HandleName,
     },
     FromNodeOutput {
         node_id: NodeId,
         node_output_handle: HandleName,
     },
     FromSlotInput {
-        flow_node_id: NodeId,
+        subflow_node_id: NodeId,
         slot_node_id: NodeId,
         slot_input_handle: HandleName,
     },
@@ -170,14 +170,14 @@ pub enum HandleFrom {
 #[derive(Debug, Clone)]
 pub enum HandleTo {
     ToFlowOutput {
-        flow_output_handle: HandleName,
+        output_handle: HandleName,
     },
     ToNodeInput {
         node_id: NodeId,
         node_input_handle: HandleName,
     },
     ToSlotOutput {
-        flow_node_id: NodeId,
+        subflow_node_id: NodeId,
         slot_node_id: NodeId,
         slot_output_handle: HandleName,
     },

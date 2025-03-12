@@ -6,5 +6,5 @@ nodes:
     task: "./block1.oo.yaml"
     inputs_from:
       - handle: in1
-        from_flow:
+        from_subflow:
           - input_handle: flow_in1

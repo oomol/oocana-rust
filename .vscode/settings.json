@@ -30,5 +30,8 @@
     "runtime",
     "manifest_meta"
   ],
-  "rust-analyzer.runnables.extraTestBinaryArgs": ["--nocapture"]
+  "rust-analyzer.runnables.extraTestBinaryArgs": ["--nocapture"],
+  "git.branchProtection": ["main"],
+  "git.branchProtectionPrompt": "alwaysCommitToNewBranch",
+  "git.branchRandomName.enable": true
 }

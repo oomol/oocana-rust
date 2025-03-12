@@ -3,7 +3,7 @@ use std::path::Path;
 use serde::de::DeserializeOwned;
 use utils::error::Result;
 
-use crate::manifest::{FlowBlock, PackageMeta, Service, SlotBlock, TaskBlock};
+use crate::manifest::{SubflowBlock, PackageMeta, Service, SlotBlock, TaskBlock};
 use path_clean::PathClean;
 
 pub fn read_task_block(task_manifest_path: &Path) -> Result<TaskBlock> {
@@ -18,8 +18,8 @@ pub fn read_task_block(task_manifest_path: &Path) -> Result<TaskBlock> {
     })
 }
 
-pub fn read_flow(flow_manifest_path: &Path) -> Result<FlowBlock> {
-    read_manifest_file::<FlowBlock>(flow_manifest_path).map_err(|error| {
+pub fn read_flow(flow_manifest_path: &Path) -> Result<SubflowBlock> {
+    read_manifest_file::<SubflowBlock>(flow_manifest_path).map_err(|error| {
         utils::error::Error::with_source(
             &format!(
                 "Unable to read flow manifest file {:?}",
@@ -51,8 +51,8 @@ pub fn read_service(service_manifest_path: &Path) -> Result<Service> {
     })
 }
 
-pub fn read_flow_block(flow_manifest_path: &Path) -> Result<FlowBlock> {
-    read_manifest_file::<FlowBlock>(flow_manifest_path).map_err(|error| {
+pub fn read_flow_block(flow_manifest_path: &Path) -> Result<SubflowBlock> {
+    read_manifest_file::<SubflowBlock>(flow_manifest_path).map_err(|error| {
         utils::error::Error::with_source(
             &format!(
                 "Unable to read Flow Block manifest file {:?}",

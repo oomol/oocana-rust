@@ -83,7 +83,7 @@ fn it_should_read_flow_block() -> Result<()> {
 }
 
 #[test]
-fn it_should_read_flow_block_with_inputs_def() -> Result<()> {
+fn it_should_read_subflow_block_with_inputs_def() -> Result<()> {
     let base_dir = dirname();
     let block_search_paths = Some(vec![dirname()]);
     let mut finder = BlockPathFinder::new(base_dir, block_search_paths);
@@ -134,7 +134,7 @@ fn it_should_read_flow_block_with_inputs_def() -> Result<()> {
     assert_eq!(node1.node_id(), &node1_id);
     assert!(matches!(node1, manifest_meta::Node::Task(_)));
     if let manifest_meta::Node::Task(task_node) = node1 {
-        let from_flow = task_node
+        let from_subflow = task_node
             .from
             .as_ref()
             .unwrap()
@@ -144,11 +144,11 @@ fn it_should_read_flow_block_with_inputs_def() -> Result<()> {
             .unwrap();
 
         assert!(matches!(
-            from_flow,
+            from_subflow,
             manifest_meta::HandleFrom::FromFlowInput { .. }
         ));
-        if let manifest_meta::HandleFrom::FromFlowInput { flow_input_handle } = from_flow {
-            assert_eq!(flow_input_handle, &handle_flow_in1);
+        if let manifest_meta::HandleFrom::FromFlowInput { input_handle } = from_subflow {
+            assert_eq!(input_handle, &handle_flow_in1);
         }
     }
 

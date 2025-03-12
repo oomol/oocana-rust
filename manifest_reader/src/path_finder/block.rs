@@ -55,15 +55,15 @@ pub fn find_task_block(params: TaskBlockManifestParams) -> Result<PathBuf> {
     )));
 }
 
-pub struct FlowBlockManifestParams<'a> {
+pub struct SubflowBlockManifestParams<'a> {
     pub value: &'a str,
     pub base_dir: &'a Path,
     pub search_paths: &'a Vec<PathBuf>,
     pub pkg_version: &'a HashMap<String, String>,
 }
 
-pub fn find_flow_block(params: FlowBlockManifestParams) -> Result<PathBuf> {
-    let FlowBlockManifestParams {
+pub fn find_flow_block(params: SubflowBlockManifestParams) -> Result<PathBuf> {
+    let SubflowBlockManifestParams {
         value,
         base_dir,
         search_paths,

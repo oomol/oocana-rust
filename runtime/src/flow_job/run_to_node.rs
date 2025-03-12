@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use manifest_meta::{FlowBlock, HandleFrom, Node, NodeId};
+use manifest_meta::{SubflowBlock, HandleFrom, Node, NodeId};
 
 use super::node_input_values::NodeInputValues;
 
@@ -9,7 +9,7 @@ pub struct RunToNode {
 }
 
 impl RunToNode {
-    pub fn new(flow: &FlowBlock, to_node: Option<NodeId>, input: Option<&NodeInputValues>) -> Self {
+    pub fn new(flow: &SubflowBlock, to_node: Option<NodeId>, input: Option<&NodeInputValues>) -> Self {
         Self {
             should_run_nodes: to_node.and_then(|to_node| {
                 if let Some(node) = flow.nodes.get(&to_node) {
@@ -41,7 +41,7 @@ impl RunToNode {
 }
 
 fn calc_node_deps(
-    node: &Node, flow: &FlowBlock, should_run_nodes: &mut HashSet<NodeId>,
+    node: &Node, flow: &SubflowBlock, should_run_nodes: &mut HashSet<NodeId>,
     node_input_values: &Option<&NodeInputValues>,
 ) {
     should_run_nodes.insert(node.node_id().to_owned());

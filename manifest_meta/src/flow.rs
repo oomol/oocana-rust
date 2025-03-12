@@ -17,7 +17,7 @@ use crate::{
     block_resolver::{package_path, BlockResolver},
     connections::Connections,
     node::ServiceNode,
-    FlowNode, HandleFrom, HandlesFroms, HandlesTos, Node, NodeId, SlotNode, TaskNode,
+    HandleFrom, HandlesFroms, HandlesTos, Node, NodeId, SlotNode, SubflowNode, TaskNode,
 };
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -50,7 +50,7 @@ pub struct InjectionMeta {
 pub type InjectionStore = HashMap<InjectionTarget, InjectionMeta>;
 
 #[derive(Debug, Clone)]
-pub struct FlowBlock {
+pub struct SubflowBlock {
     pub nodes: HashMap<NodeId, Node>,
     pub inputs_def: Option<InputHandles>,
     pub outputs_def: Option<OutputHandles>,
@@ -90,14 +90,14 @@ impl fmt::Display for ServiceQueryResult {
     }
 }
 
-impl FlowBlock {
+impl SubflowBlock {
     pub fn from_manifest(
-        manifest: manifest::FlowBlock,
+        manifest: manifest::SubflowBlock,
         flow_path: PathBuf,
         block_resolver: &mut BlockResolver,
         mut path_finder: BlockPathFinder,
     ) -> Result<Self> {
-        let manifest::FlowBlock {
+        let manifest::SubflowBlock {
             nodes,
             inputs_def,
             outputs_def,
@@ -112,9 +112,11 @@ impl FlowBlock {
 
         for node in nodes.iter() {
             connections.parse_node_inputs_from(node.node_id(), node.inputs_from());
-            if let manifest::Node::Flow(flow_node) = node {
-                connections
-                    .parse_subflow_slot_outputs_from(&flow_node.node_id, flow_node.slots.as_ref());
+            if let manifest::Node::Subflow(subflow_node) = node {
+                connections.parse_subflow_slot_outputs_from(
+                    &subflow_node.node_id,
+                    subflow_node.slots.as_ref(),
+                );
             }
         }
 
@@ -160,29 +162,31 @@ impl FlowBlock {
 
         for node in &nodes_in_flow {
             match node {
-                manifest::Node::Flow(flow_node) => {
-                    let flow =
-                        block_resolver.resolve_flow_block(&flow_node.flow, &mut path_finder)?;
+                manifest::Node::Subflow(subflow_node) => {
+                    let flow = block_resolver
+                        .resolve_flow_block(&subflow_node.subflow, &mut path_finder)?;
                     let inputs_def =
-                        parse_inputs_def(&flow_node.inputs_from, &flow.as_ref().inputs_def);
-                    let inputs_def_patch = get_inputs_def_patch(&flow_node.inputs_from);
+                        parse_inputs_def(&subflow_node.inputs_from, &flow.as_ref().inputs_def);
+                    let inputs_def_patch = get_inputs_def_patch(&subflow_node.inputs_from);
 
                     // TODO: flow 注入
 
                     new_nodes.insert(
-                        flow_node.node_id.to_owned(),
-                        Node::Flow(FlowNode {
-                            from: connections.node_inputs_froms.remove(&flow_node.node_id),
-                            to: connections.node_outputs_tos.remove(&flow_node.node_id),
+                        subflow_node.node_id.to_owned(),
+                        Node::Flow(SubflowNode {
+                            from: connections.node_inputs_froms.remove(&subflow_node.node_id),
+                            to: connections.node_outputs_tos.remove(&subflow_node.node_id),
                             slots_outputs_from: connections
                                 .slot_outputs_froms
-                                .remove(&flow_node.node_id),
-                            slots_inputs_to: connections.slot_inputs_tos.remove(&flow_node.node_id),
+                                .remove(&subflow_node.node_id),
+                            slots_inputs_to: connections
+                                .slot_inputs_tos
+                                .remove(&subflow_node.node_id),
                             flow,
-                            node_id: flow_node.node_id.to_owned(),
-                            timeout: flow_node.timeout,
+                            node_id: subflow_node.node_id.to_owned(),
+                            timeout: subflow_node.timeout,
                             inputs_def,
-                            concurrency: flow_node.concurrency,
+                            concurrency: subflow_node.concurrency,
                             inputs_def_patch,
                         }),
                     );
@@ -202,7 +206,7 @@ impl FlowBlock {
                             from: connections.node_inputs_froms.remove(&service_node.node_id),
                             to: connections.node_outputs_tos.remove(&service_node.node_id),
                             node_id: service_node.node_id.to_owned(),
-                            // title: flow_node.title,
+                            // title: subflow_node.title,
                             timeout: service_node.timeout,
                             block: service,
                             inputs_def,
@@ -264,7 +268,7 @@ impl FlowBlock {
                                     let node = find_node(node_id);
                                     if let Some(node) = node {
                                         match node {
-                                            manifest::Node::Flow(_flow_node) => {
+                                            manifest::Node::Subflow(_flow_node) => {
                                                 // TODO: flow 注入
                                             }
                                             manifest::Node::Task(task_node) => {
@@ -404,7 +408,7 @@ impl FlowBlock {
                             from: froms,
                             to: connections.node_outputs_tos.remove(&task_node.node_id),
                             node_id: task_node.node_id.to_owned(),
-                            // title: flow_node.title,
+                            // title: subflow_node.title,
                             timeout: task_node.timeout,
                             task,
                             inputs_def,
@@ -427,7 +431,7 @@ impl FlowBlock {
                             from: connections.node_inputs_froms.remove(&slot_node.node_id),
                             to: connections.node_outputs_tos.remove(&slot_node.node_id),
                             node_id: slot_node.node_id.to_owned(),
-                            // title: flow_node.title,
+                            // title: subflow_node.title,
                             timeout: slot_node.timeout,
                             slot,
                             inputs_def,
