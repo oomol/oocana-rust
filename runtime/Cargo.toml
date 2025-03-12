@@ -2,7 +2,7 @@
 name = "runtime"
 version = "0.0.1"
 authors = ["CRIMX <straybugs@gmail.com>"]
-description = "Oocana runner rumtime"
+description = "Oocana runner runtime"
 edition = "2021"
 
 [dependencies]

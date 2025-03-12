@@ -9,14 +9,14 @@ https://github.com/oomol/ovmlayer 的 rust 封装，只能运行在**满足条�
 * rootfs 文件
 
 在 https://github.com/oomol/ovmlayer-rootfs/releases 寻找 base-rootfs 开头的 release。这是 ovmlayer 所需要的基础 linux 环境文件（oocana 会在 ovmlayer 下运行 zsh，因此额外添加了 zsh）。
-创建 `~/ooomol/layer_blocker` 目录，用于存放 ovmlayer 所需要的 rootfs 以及 ovmlayer 自动创建的 disk。
-将根据架构下载的 base-rootfs 移动到 `~/ooomol/layer_blocker` 目录下，并重命名为 `base-rootfs.tar`。
+创建 `~/oomol/layer_blocker` 目录，用于存放 ovmlayer 所需要的 rootfs 以及 ovmlayer 自动创建的 disk。
+将根据架构下载的 base-rootfs 移动到 `~/oomol/layer_blocker` 目录下，并重命名为 `base-rootfs.tar`。
 > 确保根目录下 `.devcontainer/devcontainer.json` 中的 mount 的路径文件都真实存在，否则 build devcontainer 的时候，会报错。
 
 对应的 shell 操作：
 
 ```shell
-mkdir -p ~/ooomol/layer_blocker
+mkdir -p ~/oomol/layer_blocker
 
 arch=$(uname -m)
 # 只有 amd64 和 arm64。
@@ -26,7 +26,7 @@ if [ $arch != "arm64" ]; then
 fi
 
 curl -o base-rootfs.tar -L https://github.com/oomol/ovmlayer-rootfs/releases/download/base-rootfs%400.3.0/$arch-rootfs.tar
-mv base-rootfs.tar ~/ooomol/layer_blocker
+mv base-rootfs.tar ~/oomol/layer_blocker
 ```
 
 * 多项目开发

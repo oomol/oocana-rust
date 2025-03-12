@@ -2,7 +2,7 @@
 name = "identity"
 version = "0.0.1"
 authors = ["CRIMX <straybugs@gmail.com>"]
-description = "Ouput the input value"
+description = "output the input value"
 edition = "2021"
 
 [dependencies]

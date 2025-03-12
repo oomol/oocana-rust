@@ -1,4 +1,4 @@
-use super::serach_paths::{search_block_manifest, BlockManifestParams};
+use super::search_paths::{search_block_manifest, BlockManifestParams};
 use path_clean::PathClean;
 use std::{
     collections::HashMap,

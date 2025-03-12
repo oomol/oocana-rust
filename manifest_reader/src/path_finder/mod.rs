@@ -3,7 +3,7 @@ mod flow;
 mod manifest_file;
 mod package;
 mod path_finder;
-mod serach_paths;
+mod search_paths;
 mod service;
 
 pub use flow::find_flow;

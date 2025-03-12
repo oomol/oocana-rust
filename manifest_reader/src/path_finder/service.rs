@@ -5,7 +5,7 @@ use std::{
 };
 use utils::error::Result;
 
-use super::serach_paths::{search_block_manifest, BlockManifestParams};
+use super::search_paths::{search_block_manifest, BlockManifestParams};
 
 pub struct ServiceManifestParams<'a> {
     pub value: &'a str,

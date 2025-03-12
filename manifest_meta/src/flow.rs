@@ -92,7 +92,9 @@ impl fmt::Display for ServiceQueryResult {
 
 impl FlowBlock {
     pub fn from_manifest(
-        manifest: manifest::FlowBlock, flow_path: PathBuf, block_resolver: &mut BlockResolver,
+        manifest: manifest::FlowBlock,
+        flow_path: PathBuf,
+        block_resolver: &mut BlockResolver,
         mut path_finder: BlockPathFinder,
     ) -> Result<Self> {
         let manifest::FlowBlock {
@@ -138,8 +140,8 @@ impl FlowBlock {
             nodes_in_flow.iter().find(|n| n.node_id() == node_id)
         };
 
-        type PackageInectionScripts = HashMap<PathBuf, Vec<String>>;
-        let mut injection_scripts: PackageInectionScripts = HashMap::new();
+        type PackageInjectionScripts = HashMap<PathBuf, Vec<String>>;
+        let mut injection_scripts: PackageInjectionScripts = HashMap::new();
         if let Some(map) = scripts {
             for (pkg, script) in map {
                 let mut pkg_file_path = path_finder.find_package_file_path(&pkg)?;
@@ -302,7 +304,7 @@ impl FlowBlock {
                                                                 });
                                                         } else {
                                                             tracing::warn!(
-                                                                "injection failed. target node {} is not a spawnable node",
+                                                                "injection failed. target node {} can be spawned",
                                                                 target_node.node_id()
                                                             );
                                                         }
@@ -557,7 +559,8 @@ impl FlowBlock {
 }
 
 fn parse_inputs_def(
-    node_inputs_from: &Option<Vec<manifest::NodeInputFrom>>, inputs_def: &Option<InputHandles>,
+    node_inputs_from: &Option<Vec<manifest::NodeInputFrom>>,
+    inputs_def: &Option<InputHandles>,
 ) -> Option<InputHandles> {
     match inputs_def {
         Some(inputs_def) => {
