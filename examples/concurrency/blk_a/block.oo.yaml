@@ -1,6 +1,5 @@
 type: task_block
-entry:
-  bin: cargo
-  args: [run, "--"]
+executor:
+  name: rust
 outputs_def:
   - handle: my_output
