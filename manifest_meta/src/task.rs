@@ -2,12 +2,11 @@ use std::path::PathBuf;
 
 use manifest_reader::manifest::{self, InputHandles, OutputHandles};
 
-use crate::{TaskBlockEntry, TaskBlockExecutor};
+use crate::TaskBlockExecutor;
 
 #[derive(Debug, Clone)]
 pub struct TaskBlock {
     pub executor: Option<TaskBlockExecutor>,
-    pub entry: Option<TaskBlockEntry>,
     pub inputs_def: Option<InputHandles>,
     pub outputs_def: Option<OutputHandles>,
     /// block.oo.[yml|yaml] 的路径；如果是 inline block，这个字段为空。
@@ -45,18 +44,18 @@ impl TaskBlock {
 
 impl TaskBlock {
     pub fn from_manifest(
-        manifest: manifest::TaskBlock, path: Option<PathBuf>, package: Option<PathBuf>,
+        manifest: manifest::TaskBlock,
+        path: Option<PathBuf>,
+        package: Option<PathBuf>,
     ) -> Self {
         let manifest::TaskBlock {
             executor,
-            entry,
             inputs_def,
             outputs_def,
         } = manifest;
 
         Self {
             executor,
-            entry,
             inputs_def: inputs_def,
             outputs_def: outputs_def,
             path_str: path.as_ref().map(|path| path.to_string_lossy().to_string()),

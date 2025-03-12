@@ -1,10 +1,8 @@
-entry:
-  bin: cargo
-  args: [run, "--"]
+executor:
+  name: rust
 inputs_def:
   - handle: in1
     optional: true
 outputs_def:
   - handle: out1
   - handle: out2
-

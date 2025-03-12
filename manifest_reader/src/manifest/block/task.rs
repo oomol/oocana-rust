@@ -1,26 +1,12 @@
-use std::collections::HashMap;
-
 use serde::{Deserialize, Serialize};
 
 use super::{
     handle::{to_input_handles, to_output_handles, InputHandle, OutputHandle},
     InputHandles, OutputHandles,
 };
-
-#[derive(Deserialize, Debug, Clone)]
-pub struct TaskBlockEntry {
-    pub bin: String,
-    #[serde(default)]
-    pub args: Vec<String>,
-    #[serde(default)]
-    pub envs: HashMap<String, String>,
-    pub cwd: Option<String>,
-}
-
 #[derive(Deserialize, Debug, Clone)]
 struct TmpTaskBlock {
     pub executor: Option<TaskBlockExecutor>,
-    pub entry: Option<TaskBlockEntry>,
     pub inputs_def: Option<Vec<InputHandle>>,
     pub outputs_def: Option<Vec<OutputHandle>>,
 }
@@ -29,7 +15,6 @@ impl From<TmpTaskBlock> for TaskBlock {
     fn from(tmp: TmpTaskBlock) -> Self {
         TaskBlock {
             executor: tmp.executor,
-            entry: tmp.entry,
             inputs_def: to_input_handles(tmp.inputs_def),
             outputs_def: to_output_handles(tmp.outputs_def),
         }
@@ -40,7 +25,6 @@ impl From<TmpTaskBlock> for TaskBlock {
 #[serde(from = "TmpTaskBlock")]
 pub struct TaskBlock {
     pub executor: Option<TaskBlockExecutor>,
-    pub entry: Option<TaskBlockEntry>,
     pub inputs_def: Option<InputHandles>,
     pub outputs_def: Option<OutputHandles>,
 }
@@ -54,6 +38,28 @@ pub enum TaskBlockExecutor {
     Python(PythonExecutor),
     #[serde(rename = "shell")]
     Shell(ShellExecutor),
+    #[serde(rename = "rust")]
+    Rust(RustExecutor),
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct RustExecutor {
+    #[serde(default = "default_rust_spawn_options")]
+    pub options: SpawnOptions,
+}
+
+pub fn default_rust_spawn_options() -> SpawnOptions {
+    SpawnOptions {
+        bin: "cargo".to_string(),
+        args: vec!["run".to_string(), "--".to_string()],
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct SpawnOptions {
+    pub bin: String,
+    #[serde(default)]
+    pub args: Vec<String>,
 }
 
 impl TaskBlockExecutor {
@@ -62,6 +68,7 @@ impl TaskBlockExecutor {
             TaskBlockExecutor::NodeJS(_) => "nodejs",
             TaskBlockExecutor::Python(_) => "python",
             TaskBlockExecutor::Shell(_) => "shell",
+            TaskBlockExecutor::Rust(_) => "rust",
         }
     }
 
@@ -110,6 +117,7 @@ impl TaskBlockExecutor {
                 })
             }
             TaskBlockExecutor::Shell(_) => false,
+            TaskBlockExecutor::Rust(_) => false,
         }
     }
 }

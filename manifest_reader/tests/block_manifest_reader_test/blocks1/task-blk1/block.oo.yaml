@@ -1,6 +1,5 @@
-entry:
-  bin: cargo
-  args: [run, "--"]
+executor:
+  name: rust
 concurrency: 3
 inputs_def:
   - handle: in1

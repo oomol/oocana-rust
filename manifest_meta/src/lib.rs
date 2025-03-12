@@ -3,8 +3,8 @@ use std::sync::Arc;
 use manifest_reader::path_finder::{find_flow, BlockPathFinder};
 pub use manifest_reader::{
     manifest::{
-        HandleName, InputHandle, NodeId, OutputHandle, ServiceExecutorOptions, ShellExecutor,
-        TaskBlockEntry, TaskBlockExecutor, OOMOL_BIN_DATA, OOMOL_SECRET_DATA, OOMOL_VAR_DATA,
+        HandleName, InputHandle, NodeId, OutputHandle, ServiceExecutorOptions, TaskBlockExecutor,
+        OOMOL_BIN_DATA, OOMOL_SECRET_DATA, OOMOL_VAR_DATA,
     },
     JsonValue,
 };
@@ -42,7 +42,9 @@ use utils::error::Result;
 pub mod flow_resolver;
 
 pub fn read_flow_or_block(
-    block_name: &str, mut block_reader: BlockResolver, mut path_finder: BlockPathFinder,
+    block_name: &str,
+    mut block_reader: BlockResolver,
+    mut path_finder: BlockPathFinder,
 ) -> Result<Block> {
     if let Ok(flow_path) = find_flow(block_name) {
         return flow_resolver::read_flow(&flow_path, &mut block_reader, &mut path_finder)

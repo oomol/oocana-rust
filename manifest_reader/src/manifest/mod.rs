@@ -9,7 +9,7 @@ pub use self::block::handle::{
 
 pub use self::block::{FlowBlock, ServiceBlock, SlotBlock, TaskBlock};
 pub use self::block::{InputHandles, OutputHandles};
-pub use self::block::{ShellExecutor, TaskBlockEntry, TaskBlockExecutor};
+pub use self::block::{SpawnOptions, TaskBlockExecutor};
 pub use self::node::node::{
     FlowNode, FlowNodeSlots, InjectionTarget, Node, NodeId, ServiceNode, SlotNode, SlotNodeBlock,
     TaskNode, TaskNodeBlock, ValueNode,

@@ -1,9 +1,7 @@
 use mainframe::reporter::BlockReporterTx;
 use mainframe::scheduler::{ExecutorParams, SchedulerTx};
-use manifest_meta::{
-    FlowBlock, HandleName, InputDefPatchMap, ShellExecutor, TaskBlock, TaskBlockEntry,
-    TaskBlockExecutor,
-};
+use manifest_meta::{FlowBlock, HandleName, InputDefPatchMap, TaskBlock, TaskBlockExecutor};
+use manifest_reader::manifest::SpawnOptions;
 
 use std::collections::HashMap;
 use std::path::Path;
@@ -107,51 +105,51 @@ pub fn run_task_block(args: RunTaskBlockArgs) -> Option<BlockJobHandle> {
         inputs_def_patch,
     });
 
-    if let Some(entry) = &task_block.entry {
-        let execute_result = spawn(
-            &task_block,
-            entry,
-            parent_flow.as_ref(),
-            &shared.address,
-            &shared.session_id,
-            &job_id,
-        );
-
-        match execute_result {
-            Ok(mut child) => {
-                spawn_handles.push(worker_listener_handle);
-                bind_stdio(&mut child, &reporter, &mut spawn_handles);
-
-                Some(BlockJobHandle::new(
-                    job_id.to_owned(),
-                    TaskJobHandle {
-                        job_id,
-                        shared,
-                        child: Some(child),
-                        spawn_handles,
-                    },
-                ))
-            }
-            Err(e) => {
-                worker_listener_handle.abort();
-                reporter.done(&Some(e.to_string()));
-                Some(BlockJobHandle::new(
-                    job_id.to_owned(),
-                    TaskJobHandle {
-                        job_id,
-                        shared,
-                        child: None,
-                        spawn_handles,
-                    },
-                ))
-            }
-        }
-    } else if let Some(executor) = &task_block.executor {
+    if let Some(executor) = &task_block.executor {
         match executor {
-            TaskBlockExecutor::Shell(e) => {
+            TaskBlockExecutor::Rust(e) => {
+                let execute_result = spawn(
+                    &task_block,
+                    &e.options,
+                    parent_flow.as_ref(),
+                    &shared.address,
+                    &shared.session_id,
+                    &job_id,
+                );
+
+                match execute_result {
+                    Ok(mut child) => {
+                        spawn_handles.push(worker_listener_handle);
+                        bind_stdio(&mut child, &reporter, &mut spawn_handles);
+
+                        Some(BlockJobHandle::new(
+                            job_id.to_owned(),
+                            TaskJobHandle {
+                                job_id,
+                                shared,
+                                child: Some(child),
+                                spawn_handles,
+                            },
+                        ))
+                    }
+                    Err(e) => {
+                        worker_listener_handle.abort();
+                        reporter.done(&Some(e.to_string()));
+                        Some(BlockJobHandle::new(
+                            job_id.to_owned(),
+                            TaskJobHandle {
+                                job_id,
+                                shared,
+                                child: None,
+                                spawn_handles,
+                            },
+                        ))
+                    }
+                }
+            }
+            TaskBlockExecutor::Shell(_) => {
                 let execute_result = spawn_shell(
                     &task_block,
-                    e,
                     parent_flow.as_ref(),
                     inputs,
                     &shared.session_id,
@@ -293,8 +291,11 @@ fn send_to_executor(args: ExecutorArgs) {
 }
 
 fn spawn_shell(
-    task_block: &TaskBlock, _executor: &ShellExecutor, parent_flow: Option<&Arc<FlowBlock>>,
-    inputs: Option<BlockInputs>, session_id: &SessionId, job_id: &JobId,
+    task_block: &TaskBlock,
+    parent_flow: Option<&Arc<FlowBlock>>,
+    inputs: Option<BlockInputs>,
+    session_id: &SessionId,
+    job_id: &JobId,
 ) -> Result<process::Child> {
     let mut envs = HashMap::new();
     envs.insert("OOCANA_SESSION_ID".to_string(), session_id.to_string());
@@ -393,10 +394,18 @@ fn get_string_value_from_inputs(inputs: &Option<BlockInputs>, key: &str) -> Opti
 }
 
 fn spawn(
-    task_block: &TaskBlock, entry: &TaskBlockEntry, parent_flow: Option<&Arc<FlowBlock>>,
-    address: &str, session_id: &SessionId, job_id: &JobId,
+    task_block: &TaskBlock,
+    spawn_options: &SpawnOptions,
+    parent_flow: Option<&Arc<FlowBlock>>,
+    address: &str,
+    session_id: &SessionId,
+    job_id: &JobId,
 ) -> Result<process::Child> {
-    let mut args = entry.args.iter().map(AsRef::as_ref).collect::<Vec<&str>>();
+    let mut args = spawn_options
+        .args
+        .iter()
+        .map(AsRef::as_ref)
+        .collect::<Vec<&str>>();
 
     // add block task arguments
     args.extend(
@@ -412,18 +421,13 @@ fn spawn(
     );
 
     // Execute the command
-    let mut command = process::Command::new(&entry.bin);
+    let mut command = process::Command::new(&spawn_options.bin);
 
-    if let Some(cwd) = entry.cwd.as_ref() {
-        command.current_dir(cwd);
-    } else {
-        let block_dir = block_dir(task_block, parent_flow);
-        command.current_dir(block_dir);
-    }
+    let block_dir = block_dir(task_block, parent_flow);
+    command.current_dir(block_dir);
 
     command
         .args(args)
-        .envs(&entry.envs)
         .stdin(process::Stdio::null())
         .stdout(process::Stdio::piped())
         .stderr(process::Stdio::piped())
@@ -439,7 +443,7 @@ fn spawn(
                 &format!(
                     "Failed to execute '{} {} <...OOCANA_ARGS>' at '{}'",
                     program,
-                    entry.args.join(" "),
+                    spawn_options.args.join(" "),
                     current_dir,
                 ),
                 Box::new(e),
@@ -448,8 +452,10 @@ fn spawn(
 }
 
 fn bind_shell_stdio(
-    child: &mut process::Child, reporter: &Arc<BlockReporterTx>,
-    spawn_handles: &mut Vec<tokio::task::JoinHandle<()>>, block_status: BlockStatusTx,
+    child: &mut process::Child,
+    reporter: &Arc<BlockReporterTx>,
+    spawn_handles: &mut Vec<tokio::task::JoinHandle<()>>,
+    block_status: BlockStatusTx,
     job_id: JobId,
 ) {
     if let Some(stdout) = child.stdout.take() {
@@ -513,7 +519,8 @@ fn bind_shell_stdio(
 }
 
 fn bind_stdio(
-    child: &mut process::Child, reporter: &Arc<BlockReporterTx>,
+    child: &mut process::Child,
+    reporter: &Arc<BlockReporterTx>,
     spawn_handles: &mut Vec<tokio::task::JoinHandle<()>>,
 ) {
     if let Some(stdout) = child.stdout.take() {
@@ -542,7 +549,9 @@ fn bind_stdio(
 }
 
 pub fn timeout_abort(
-    job_id: JobId, timeout: std::time::Duration, block_status: BlockStatusTx,
+    job_id: JobId,
+    timeout: std::time::Duration,
+    block_status: BlockStatusTx,
     reporter: Arc<BlockReporterTx>,
 ) -> tokio::task::JoinHandle<()> {
     tokio::spawn(async move {
