@@ -55,7 +55,7 @@ pub fn default_rust_spawn_options() -> SpawnOptions {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct SpawnOptions {
     pub bin: String,
     #[serde(default)]
@@ -137,73 +137,62 @@ pub struct ShellExecutor {}
 #[cfg(test)]
 mod test {
 
+    use super::*;
     #[test]
-    fn deserialize_task_executor() {
-        use super::*;
-
+    fn deserialize_nodejs_executor() {
         let serialized = r#"{"name":"nodejs","options":{}}"#;
         let deserialized: TaskBlockExecutor = serde_json::from_str(&serialized).unwrap();
         match deserialized {
-            TaskBlockExecutor::NodeJS(node_executor) => match node_executor.options {
-                Some(ExecutorOptions::File(FileExecutorOptions { entry, .. })) => {
-                    assert_eq!(entry, None);
-                }
-                _ => panic!("Expected FileExecutorOptions"),
-            },
+            TaskBlockExecutor::NodeJS(e) => {
+                assert!(e.options.is_some_and(|o| o.entry.is_none()));
+            }
             _ => panic!("Expected NodeJSExecutor"),
         }
 
         let serialized = r#"{"name":"nodejs","options":{"entry":"entry1"}}"#;
         let deserialized: TaskBlockExecutor = serde_json::from_str(&serialized).unwrap();
         match deserialized {
-            TaskBlockExecutor::NodeJS(node_executor) => match node_executor.options {
-                Some(ExecutorOptions::File(FileExecutorOptions { entry, .. })) => {
-                    assert_eq!(entry, Some("entry1".to_string()));
-                }
-                _ => panic!("Expected FileExecutorOptions"),
-            },
+            TaskBlockExecutor::NodeJS(e) => {
+                assert!(e.options.as_ref().is_some_and(|o| o.entry.is_some()));
+                assert_eq!(e.options.unwrap().entry.unwrap(), "entry1");
+            }
             _ => panic!("Expected NodeJSExecutor"),
         }
+    }
 
-        let serialized = r#"{"name":"nodejs","options":{"source":"source1"}}"#;
-        let deserialized: TaskBlockExecutor = serde_json::from_str(&serialized).unwrap();
-        match deserialized {
-            TaskBlockExecutor::NodeJS(node_executor) => match node_executor.options {
-                Some(ExecutorOptions::Inline(InlineExecutorOptions { source, .. })) => {
-                    assert_eq!(source, "source1".to_string());
-                }
-                _ => panic!("Expected InlineExecutorOptions"),
-            },
-            _ => panic!("Expected NodeJSExecutor"),
-        }
-
+    #[test]
+    fn deserialize_python_executor() {
         let serialized = r#"{"name":"python","options":{"entry":"entry1"}}"#;
         let deserialized: TaskBlockExecutor = serde_json::from_str(&serialized).unwrap();
         match deserialized {
             TaskBlockExecutor::Python(PythonExecutor {
-                options: Some(ExecutorOptions::File(FileExecutorOptions { entry, .. })),
+                options: Some(ExecutorOptions { entry, .. }),
             }) => {
                 assert_eq!(entry, Some("entry1".to_string()));
             }
             _ => panic!("Expected PythonExecutor"),
         }
+    }
 
-        let serialized = r#"{"name":"python","options":{"source":"source1"}}"#;
-        let deserialized: TaskBlockExecutor = serde_json::from_str(&serialized).unwrap();
-        match deserialized {
-            TaskBlockExecutor::Python(PythonExecutor {
-                options: Some(ExecutorOptions::Inline(InlineExecutorOptions { source, .. })),
-            }) => {
-                assert_eq!(source, "source1".to_string());
-            }
-            _ => panic!("Expected PythonExecutor"),
-        }
-
+    #[test]
+    fn deserialize_shell_executor() {
         let serialized = r#"{"name":"shell"}"#;
         let deserialized: TaskBlockExecutor = serde_json::from_str(&serialized).unwrap();
         match deserialized {
             TaskBlockExecutor::Shell(ShellExecutor { .. }) => {}
             _ => panic!("Expected ShellExecutor"),
+        }
+    }
+
+    #[test]
+    fn deserialize_rust_executor() {
+        let serialized = r#"{"name":"rust"}"#;
+        let deserialized: TaskBlockExecutor = serde_json::from_str(&serialized).unwrap();
+        match deserialized {
+            TaskBlockExecutor::Rust(e) => {
+                assert_eq!(e.options, default_rust_spawn_options());
+            }
+            _ => panic!("Expected RustExecutor"),
         }
     }
 }
