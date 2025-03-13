@@ -26,11 +26,6 @@ use crate::{
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum InjectionTarget {
     Package(PathBuf),
-    Node {
-        package_path: PathBuf,
-        flow_path: String,
-        node_id: NodeId,
-    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -431,26 +426,6 @@ impl SubflowBlock {
                             nodes,
                             scripts: Some(scripts),
                             package_version: pkg_meta.version.unwrap_or_default(),
-                        },
-                    );
-                }
-                InjectionTarget::Node {
-                    package_path,
-                    flow_path,
-                    node_id,
-                } => {
-                    let pkg_file = find_package_file(package_path).unwrap_or_default();
-                    let pkg = read_package(pkg_file)?;
-                    injection.insert(
-                        InjectionTarget::Node {
-                            package_path: package_path.clone(),
-                            flow_path: flow_path.clone(),
-                            node_id: node_id.clone(),
-                        },
-                        InjectionMeta {
-                            nodes,
-                            scripts: None,
-                            package_version: pkg.version.unwrap_or_default(),
                         },
                     );
                 }
