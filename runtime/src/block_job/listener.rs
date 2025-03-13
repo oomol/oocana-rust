@@ -1,4 +1,4 @@
-use std::{path::PathBuf, sync::Arc};
+use std::sync::Arc;
 
 use job::{BlockInputs, BlockJobStacks, JobId};
 use mainframe::{
@@ -36,7 +36,6 @@ pub struct ListenerArgs {
     pub executor: Option<TaskBlockExecutor>,
     pub service: Option<ServiceExecutorPayload>,
     pub block_dir: String,
-    pub package_path: Option<PathBuf>,
     pub scope: RunningScope,
     pub injection_store: Option<InjectionStore>,
     pub flow: Option<String>,
@@ -57,7 +56,6 @@ pub fn listen_to_worker(args: ListenerArgs) -> tokio::task::JoinHandle<()> {
         executor,
         service,
         block_dir,
-        package_path,
         scope,
         injection_store,
         flow,

@@ -87,7 +87,6 @@ pub fn run_service_block(args: RunServiceBlockArgs) -> Option<BlockJobHandle> {
                 .unwrap(),
         }),
         block_dir: service_dir(&service_block).to_owned(),
-        package_path: service_block.package_path.clone(),
         injection_store,
         flow: parent_flow.as_ref().map(|f| f.path_str.clone()),
         inputs_def_patch,

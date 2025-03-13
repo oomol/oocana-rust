@@ -103,7 +103,6 @@ pub fn run_task_block(args: RunTaskBlockArgs) -> Option<BlockJobHandle> {
         executor: task_block.executor.clone(),
         service: None,
         block_dir: block_dir(&task_block, parent_flow.as_ref()),
-        package_path: task_block.package_path.clone(),
         scope: scope.clone(),
         injection_store: parent_flow.as_ref().and_then(|f| f.injection_store.clone()),
         flow: parent_flow.as_ref().map(|f| f.path_str.clone()),
