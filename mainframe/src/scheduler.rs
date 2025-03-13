@@ -259,7 +259,7 @@ pub struct ExecutorParams<'a> {
     pub dir: String,
     pub executor: &'a TaskBlockExecutor,
     pub outputs: &'a Option<OutputHandles>,
-    pub package_path: &'a Option<PathBuf>,
+    pub scope: &'a RunningScope,
     pub injection_store: &'a Option<InjectionStore>,
     pub flow: &'a Option<String>,
 }
@@ -272,7 +272,7 @@ pub struct ServiceParams<'a> {
     pub dir: String,
     pub options: &'a ServiceExecutorOptions,
     pub outputs: &'a Option<OutputHandles>,
-    pub package_path: &'a Option<PathBuf>,
+    pub scope: &'a RunningScope,
     pub flow: &'a Option<String>,
 }
 
@@ -353,12 +353,11 @@ impl SchedulerTx {
             dir,
             executor,
             outputs,
-            package_path,
+            scope,
             injection_store,
             flow,
         } = params;
 
-        let final_package = self.calculate_pkg(package_path);
         // TODO: change to final scope
         self.tx
             .send(SchedulerCommand::ExecuteBlock {
@@ -366,7 +365,7 @@ impl SchedulerTx {
                 executor_name: executor_name.to_owned(),
                 dir: dir.to_owned(),
                 stacks: stacks.clone(),
-                scope: RunningScope::default(),
+                scope: scope.to_owned(),
                 outputs: outputs.clone(),
                 executor: executor.clone(),
                 injection_store: injection_store.clone(),
@@ -384,11 +383,10 @@ impl SchedulerTx {
             dir,
             options,
             outputs,
-            package_path,
+            scope,
             flow,
         } = params;
 
-        let final_package = self.calculate_pkg(&package_path);
         // TODO: change to final scope
         self.tx
             .send(SchedulerCommand::ExecuteServiceBlock {
@@ -397,7 +395,7 @@ impl SchedulerTx {
                 dir: dir.to_owned(),
                 block_name: block_name.to_owned(),
                 service_executor: options.clone(),
-                scope: RunningScope::default(),
+                scope: scope.to_owned(),
                 stacks: stacks.clone(),
                 outputs: outputs.clone(),
                 service_hash: calculate_short_hash(&dir, 16),

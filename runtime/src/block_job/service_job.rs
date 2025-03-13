@@ -3,7 +3,8 @@ use std::sync::Arc;
 use job::{BlockInputs, BlockJobStacks, JobId};
 use mainframe::scheduler::{SchedulerTx, ServiceParams};
 use manifest_meta::{
-    SubflowBlock, InjectionStore, InputDefPatchMap, ServiceBlock, ServiceExecutorOptions,
+    InjectionStore, InputDefPatchMap, RunningScope, ServiceBlock, ServiceExecutorOptions,
+    SubflowBlock,
 };
 
 use super::block::BlockJobHandle;
@@ -35,6 +36,7 @@ pub struct RunServiceBlockArgs {
     pub inputs: Option<BlockInputs>,
     pub block_status: BlockStatusTx,
     pub injection_store: Option<InjectionStore>,
+    pub scope: RunningScope,
     pub parent_flow: Option<Arc<SubflowBlock>>,
     pub inputs_def_patch: Option<InputDefPatchMap>,
 }
@@ -48,6 +50,7 @@ pub fn run_service_block(args: RunServiceBlockArgs) -> Option<BlockJobHandle> {
         inputs,
         block_status,
         injection_store,
+        scope,
         parent_flow,
         inputs_def_patch,
     } = args;
@@ -70,6 +73,7 @@ pub fn run_service_block(args: RunServiceBlockArgs) -> Option<BlockJobHandle> {
         block_status: block_status.clone(),
         reporter: Arc::clone(&reporter),
         executor: None,
+        scope: scope.clone(),
         service: Some(ServiceExecutorPayload {
             options: service_options,
             block_name: service_block.name.clone(),
@@ -94,6 +98,7 @@ pub fn run_service_block(args: RunServiceBlockArgs) -> Option<BlockJobHandle> {
         &job_id,
         shared.scheduler_tx.clone(),
         stacks,
+        &scope,
         parent_flow.as_ref().map(|f| f.path_str.clone()),
     );
 
@@ -131,8 +136,12 @@ fn service_executor_options(service_block: &ServiceBlock) -> ServiceExecutorOpti
 }
 
 fn send_to_service(
-    service_block: &ServiceBlock, job_id: &JobId, scheduler_tx: SchedulerTx,
-    stacks: BlockJobStacks, flow: Option<String>,
+    service_block: &ServiceBlock,
+    job_id: &JobId,
+    scheduler_tx: SchedulerTx,
+    stacks: BlockJobStacks,
+    scope: &RunningScope,
+    flow: Option<String>,
 ) {
     let executor_name = service_block
         .service_executor
@@ -155,7 +164,7 @@ fn send_to_service(
         dir,
         options: &service_executor_option,
         outputs: &service_block.outputs_def,
-        package_path: &service_block.package_path,
+        scope: &scope,
         flow: &flow,
     });
 }

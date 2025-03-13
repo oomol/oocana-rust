@@ -6,8 +6,8 @@ use mainframe::{
     scheduler::{self, ExecutorParams, SchedulerTx, ServiceParams},
 };
 use manifest_meta::{
-    InjectionStore, InputDefPatchMap, InputHandles, OutputHandles, ServiceExecutorOptions,
-    TaskBlockExecutor, OOMOL_BIN_DATA, OOMOL_SECRET_DATA, OOMOL_VAR_DATA,
+    InjectionStore, InputDefPatchMap, InputHandles, OutputHandles, RunningScope,
+    ServiceExecutorOptions, TaskBlockExecutor, OOMOL_BIN_DATA, OOMOL_SECRET_DATA, OOMOL_VAR_DATA,
 };
 use serde_json::Value;
 use tracing::{info, warn};
@@ -37,6 +37,7 @@ pub struct ListenerArgs {
     pub service: Option<ServiceExecutorPayload>,
     pub block_dir: String,
     pub package_path: Option<PathBuf>,
+    pub scope: RunningScope,
     pub injection_store: Option<InjectionStore>,
     pub flow: Option<String>,
 }
@@ -57,6 +58,7 @@ pub fn listen_to_worker(args: ListenerArgs) -> tokio::task::JoinHandle<()> {
         service,
         block_dir,
         package_path,
+        scope,
         injection_store,
         flow,
     } = args;
@@ -102,7 +104,7 @@ pub fn listen_to_worker(args: ListenerArgs) -> tokio::task::JoinHandle<()> {
                             dir: block_dir.to_owned(),
                             executor,
                             outputs: &outputs_def,
-                            package_path: &package_path,
+                            scope: &scope,
                             injection_store: &injection_store,
                             flow: &flow,
                         });
@@ -123,7 +125,7 @@ pub fn listen_to_worker(args: ListenerArgs) -> tokio::task::JoinHandle<()> {
                             dir: block_dir.to_owned(),
                             options: &service.options,
                             outputs: &outputs_def,
-                            package_path: &package_path,
+                            scope: &scope,
                             flow: &flow,
                         });
                     }

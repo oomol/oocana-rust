@@ -2,7 +2,7 @@ use std::{collections::HashSet, sync::Arc};
 
 use job::{BlockInputs, BlockJobStacks, JobId};
 use mainframe::reporter::ReporterMessage;
-use manifest_meta::{Block, SubflowBlock, InputDefPatchMap, NodeId};
+use manifest_meta::{Block, InputDefPatchMap, NodeId, RunningScope, SubflowBlock};
 
 use super::{service_job, task_job};
 use crate::{block_status::BlockStatusTx, flow_job, shared::Shared};
@@ -103,6 +103,7 @@ pub fn run_block(block_args: RunBlockArgs) -> Option<BlockJobHandle> {
             job_id,
             inputs,
             block_status,
+            scope: RunningScope::default(), // TODO: replace with actual scope
             timeout_seconds,
             inputs_def_patch,
         }),
@@ -116,6 +117,7 @@ pub fn run_block(block_args: RunBlockArgs) -> Option<BlockJobHandle> {
                 block_status,
                 injection_store: parent_flow.as_ref().and_then(|f| f.injection_store.clone()),
                 parent_flow,
+                scope: RunningScope::default(), // TODO: replace with actual scope
                 inputs_def_patch,
             })
         }

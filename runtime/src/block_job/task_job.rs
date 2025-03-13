@@ -1,6 +1,8 @@
 use mainframe::reporter::BlockReporterTx;
 use mainframe::scheduler::{ExecutorParams, SchedulerTx};
-use manifest_meta::{HandleName, InputDefPatchMap, SubflowBlock, TaskBlock, TaskBlockExecutor};
+use manifest_meta::{
+    HandleName, InputDefPatchMap, RunningScope, SubflowBlock, TaskBlock, TaskBlockExecutor,
+};
 use manifest_reader::manifest::SpawnOptions;
 
 use std::collections::HashMap;
@@ -49,6 +51,7 @@ pub struct RunTaskBlockArgs {
     pub job_id: JobId,
     pub inputs: Option<BlockInputs>,
     pub block_status: BlockStatusTx,
+    pub scope: RunningScope,
     pub timeout_seconds: Option<u64>,
     pub inputs_def_patch: Option<InputDefPatchMap>,
 }
@@ -62,6 +65,7 @@ pub fn run_task_block(args: RunTaskBlockArgs) -> Option<BlockJobHandle> {
         job_id,
         inputs,
         block_status,
+        scope,
         timeout_seconds,
         inputs_def_patch,
     } = args;
@@ -100,6 +104,7 @@ pub fn run_task_block(args: RunTaskBlockArgs) -> Option<BlockJobHandle> {
         service: None,
         block_dir: block_dir(&task_block, parent_flow.as_ref()),
         package_path: task_block.package_path.clone(),
+        scope: scope.clone(),
         injection_store: parent_flow.as_ref().and_then(|f| f.injection_store.clone()),
         flow: parent_flow.as_ref().map(|f| f.path_str.clone()),
         inputs_def_patch,
@@ -222,6 +227,7 @@ pub fn run_task_block(args: RunTaskBlockArgs) -> Option<BlockJobHandle> {
                     parent_flow: parent_flow.as_ref(),
                     job_id: &job_id,
                     scheduler_tx: shared.scheduler_tx.clone(),
+                    scope: &scope,
                     stacks,
                 });
 
@@ -263,6 +269,7 @@ struct ExecutorArgs<'a> {
     executor: &'a TaskBlockExecutor,
     parent_flow: Option<&'a Arc<SubflowBlock>>,
     job_id: &'a JobId,
+    scope: &'a RunningScope,
     scheduler_tx: SchedulerTx,
     stacks: BlockJobStacks,
 }
@@ -274,6 +281,7 @@ fn send_to_executor(args: ExecutorArgs) {
         parent_flow,
         job_id,
         scheduler_tx,
+        scope,
         stacks,
     } = args;
     let dir = block_dir(task_block, parent_flow);
@@ -284,7 +292,7 @@ fn send_to_executor(args: ExecutorArgs) {
         dir,
         executor: &executor,
         outputs: &task_block.outputs_def,
-        package_path: &task_block.package_path,
+        scope,
         injection_store: &parent_flow.as_ref().and_then(|f| f.injection_store.clone()),
         flow: &parent_flow.as_ref().map(|f| f.path_str.clone()),
     })
