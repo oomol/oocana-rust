@@ -11,6 +11,8 @@ use manifest_reader::{
     reader::read_package,
 };
 
+use crate::scope::{calculate_running_scope, RunningScope, RunningTarget};
+
 use tracing::warn;
 use utils::error::Result;
 
@@ -29,27 +31,6 @@ pub enum InjectionTarget {
         flow_path: String,
         node_id: NodeId,
     },
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum RunningScope {
-    Global { node_id: Option<NodeId> },
-    Layer { package: String },
-}
-
-impl RunningScope {
-    pub fn package(&self) -> Option<&str> {
-        match self {
-            RunningScope::Layer { package } => Some(package),
-            _ => None,
-        }
-    }
-}
-
-impl Default for RunningScope {
-    fn default() -> Self {
-        RunningScope::Global { node_id: None }
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -109,40 +90,6 @@ impl fmt::Display for ServiceQueryResult {
         }
         msg.push_str(" }");
         write!(f, "{msg}")
-    }
-}
-
-enum RunningTarget {
-    Global,
-    Node(NodeId),
-    PackageName(String),
-    PackagePath(PathBuf),
-}
-
-fn calculate_running_scope(
-    node: &manifest_reader::manifest::Node,
-    injection: &Option<manifest_reader::manifest::Injection>,
-    package_path: &Option<PathBuf>,
-) -> RunningTarget {
-    if node.should_spawn() {
-        return RunningTarget::Node(node.node_id().to_owned());
-    }
-
-    if let Some(pkg_path) = package_path {
-        return RunningTarget::PackagePath(pkg_path.to_owned());
-    }
-
-    match injection {
-        None => RunningTarget::Global,
-        Some(injection) => match &injection.target {
-            manifest_reader::manifest::InjectionTarget::Package(pkg) => {
-                RunningTarget::PackageName(pkg.to_owned())
-            }
-            manifest_reader::manifest::InjectionTarget::Node(node_id) => {
-                RunningTarget::Node(node_id.to_owned())
-            }
-            _ => RunningTarget::Global,
-        },
     }
 }
 
@@ -282,8 +229,10 @@ impl SubflowBlock {
 
                     let mut running_scope = match running_target {
                         RunningTarget::Global => RunningScope::default(),
-                        RunningTarget::PackagePath(package_path) => RunningScope::Layer {
-                            package: package_path.to_string_lossy().to_string(),
+                        RunningTarget::PackagePath(pkg_path) => RunningScope::Package {
+                            name: "".to_string(), // TODO: get package name
+                            node_id: None,
+                            path: pkg_path,
                         },
                         RunningTarget::Node(node_id) => match find_node(&node_id) {
                             Some(_) => RunningScope::Global {
@@ -294,9 +243,9 @@ impl SubflowBlock {
                                 RunningScope::default()
                             }
                         },
-                        RunningTarget::PackageName(package) => {
+                        RunningTarget::PackageName(name) => {
                             let pkg_path = path_finder
-                                .find_package_file_path(&package)
+                                .find_package_file_path(&name)
                                 .ok()
                                 .map(|p| p.parent().map(|p| p.to_path_buf()))
                                 .unwrap_or(None);
@@ -333,18 +282,20 @@ impl SubflowBlock {
                                                 .push(script);
                                         });
                                 }
-                                RunningScope::Layer {
-                                    package: pkg_path.to_string_lossy().to_string(),
+                                RunningScope::Package {
+                                    name,
+                                    node_id: None,
+                                    path: pkg_path,
                                 }
                             } else {
-                                warn!("package not found: {:?}", package);
+                                warn!("package not found: {:?}", name);
                                 // maybe just throw error and exit will be better
                                 RunningScope::default()
                             }
                         }
                     };
 
-                    if !layer::feature_enabled() && running_scope.package().is_some() {
+                    if !layer::feature_enabled() && running_scope.package_path().is_some() {
                         running_scope = RunningScope::default();
                     }
 
@@ -417,6 +368,7 @@ impl SubflowBlock {
                             to: connections.node_outputs_tos.remove(&task_node.node_id),
                             node_id: task_node.node_id.to_owned(),
                             timeout: task_node.timeout,
+                            scope: running_scope,
                             task,
                             inputs_def,
                             concurrency: task_node.concurrency,
