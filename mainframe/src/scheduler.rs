@@ -16,8 +16,8 @@ use layer::{create_runtime_layer, InjectionParams, RuntimeLayer};
 use job::{BlockInputs, BlockJobStackLevel, JobId, SessionId};
 
 use manifest_meta::{
-    HandleName, InjectionStore, InjectionTarget, InputDefPatchMap, InputHandles, JsonValue,
-    OutputHandles, RunningScope, ServiceExecutorOptions, TaskBlockExecutor,
+    HandleName, InjectionStore, InputDefPatchMap, InputHandles, JsonValue, OutputHandles,
+    RunningScope, ServiceExecutorOptions, TaskBlockExecutor,
 };
 use tokio::io::AsyncBufReadExt;
 
@@ -739,28 +739,51 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
         let mut bind_paths = executor_payload.bind_paths.clone();
 
         if let Some(store) = injection_store {
-            // TODO: find all package injection node, bind their file to package
+            if let Some(target) = scope.target() {
+                if let Some(meta) = store.get(&target) {
+                    for node in meta.nodes.iter() {
+                        // bind the parent directory of the node to avoid missing some files
+                        bind_paths.insert(
+                            node.absolute_entry
+                                .parent()
+                                .unwrap()
+                                .to_string_lossy()
+                                .to_string(),
+                            format!(
+                                "{}/{}",
+                                pkg.to_string_lossy().to_string(),
+                                node.relative_entry.parent().unwrap().display()
+                            ),
+                        );
+                    }
+                }
+            }
         }
         let path_str = pkg.to_string_lossy().to_string();
-        let runtime_layer = create_runtime_layer(&path_str, bind_paths)?;
+        let mut runtime_layer = create_runtime_layer(&path_str, bind_paths)?;
+
+        if let Some(store) = injection_store {
+            if let Some(target) = scope.target() {
+                if let Some(meta) = store.get(&target) {
+                    let scripts = meta.scripts.clone().unwrap_or_default();
+
+                    let result = runtime_layer.inject_runtime_layer(InjectionParams {
+                        package_version: &meta.package_version,
+                        package_path: &path_str,
+                        scripts: &scripts,
+                        flow: &flow.as_ref().unwrap_or(&"".to_string()),
+                    });
+
+                    if let Err(e) = result {
+                        return Result::Err(e);
+                    }
+                }
+            }
+        }
 
         Some(runtime_layer)
     } else {
         info!("final package is None, skip layer creation");
-        None
-    };
-
-    let layer = if let Some(mut layer) = layer {
-        info!("layer created: {:?}", layer);
-        // TODO: find all injection scripts and run them
-        // let result = layer.inject_runtime_layer(InjectionParams {
-        //     package_version: &pkg_version,
-        //     package_path: &package_path,
-        //     scripts: &scripts,
-        //     flow: &flow.as_ref().unwrap_or(&"".to_string()),
-        // });
-        Some(layer)
-    } else {
         None
     };
 

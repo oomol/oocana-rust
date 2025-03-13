@@ -2,6 +2,8 @@ use std::path::{Path, PathBuf};
 
 use manifest_reader::manifest::NodeId;
 
+use crate::InjectionTarget;
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum RunningScope {
     Global {
@@ -34,6 +36,13 @@ impl RunningScope {
             RunningScope::Package { path, .. } => {
                 Some(format!("package-{}", path.to_string_lossy().to_string()))
             }
+        }
+    }
+
+    pub fn target(&self) -> Option<InjectionTarget> {
+        match self {
+            RunningScope::Global { .. } => None,
+            RunningScope::Package { path, .. } => Some(InjectionTarget::Package(path.clone())),
         }
     }
 }
