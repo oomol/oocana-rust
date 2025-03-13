@@ -61,6 +61,8 @@ enum Commands {
         extra_bind_paths: Option<Vec<String>>,
         #[arg(help = "when spawn a new process, retain the environment variables(only accept variable name), accept multiple input. example: --retain-env-keys <env> --retain-env-keys <env>", long)]
         retain_env_keys: Option<Vec<String>>,
+        #[arg(help = "env files, only support json file for now, accept multiple input. example: --env-files <file> --env-files <file>. all env file will be processed. first root key will be env's key, the value will be pass through. Only available for python and nodejs executor.", long)]
+        env_files: Option<Vec<String>>,
     },
     Cache {
         #[command(subcommand)]
@@ -140,7 +142,7 @@ pub fn cli_match() -> Result<()> {
 
     debug!("run cli args: {command:#?} in version: {VERSION}");
     match command {
-        Commands::Run { block, broker, block_search_paths, session, reporter, use_cache, nodes, input_values, exclude_packages, default_package, extra_bind_paths, session_dir: session_path, retain_env_keys } => {
+        Commands::Run { block, broker, block_search_paths, session, reporter, use_cache, nodes, input_values, exclude_packages, default_package, extra_bind_paths, session_dir: session_path, retain_env_keys, env_files } => {
             run_block(BlockArgs {
                 block_path: block,
                 broker_address: broker.to_owned(),
@@ -171,6 +173,7 @@ pub fn cli_match() -> Result<()> {
                     }).collect()
                 }),
                 retain_env_keys: retain_env_keys.to_owned(),
+                env_files: env_files.to_owned(),
             })?
         },
         Commands::Cache { action } => {

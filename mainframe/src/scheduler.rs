@@ -437,8 +437,11 @@ where
 }
 
 fn spawn_executor(
-    executor: &str, layer: Option<RuntimeLayer>, executor_map_name: String,
-    executor_map: Arc<RwLock<HashMap<String, ExecutorState>>>, executor_payload: ExecutorPayload,
+    executor: &str,
+    layer: Option<RuntimeLayer>,
+    executor_map_name: String,
+    executor_map: Arc<RwLock<HashMap<String, ExecutorState>>>,
+    executor_payload: ExecutorPayload,
     tx: Sender<SchedulerCommand>,
 ) -> Result<()> {
     let mut write_map = executor_map.write().unwrap();
@@ -466,6 +469,7 @@ fn spawn_executor(
         session_dir,
         pass_through_env_keys,
         bind_paths: _bind_paths,
+        env_files,
     } = &executor_payload;
 
     // 后面加 -executor 尾缀是一种隐式约定。例如：如果 executor 是 "python"，那么实际上会执行 python-executor。
@@ -484,7 +488,7 @@ fn spawn_executor(
         let hash = calculate_short_hash(&package_path_str, 8);
         spawn_suffix = Some(hash.clone());
 
-        let exec_form_cmd: Vec<&str> = vec![
+        let mut exec_form_cmd: Vec<&str> = vec![
             &executor_bin,
             "--session-id",
             session_id,
@@ -497,6 +501,11 @@ fn spawn_executor(
             "--suffix",
             &hash,
         ];
+
+        for env_file in env_files {
+            exec_form_cmd.push("--env-files");
+            exec_form_cmd.push(env_file);
+        }
 
         executor_package = Some(package_path_str.to_string());
 
@@ -1179,12 +1188,20 @@ pub struct ExecutorPayload {
     session_dir: String,
     pass_through_env_keys: Vec<String>,
     bind_paths: HashMap<String, String>,
+    env_files: Vec<String>,
 }
 
 pub fn create<TT, TR>(
-    session_id: SessionId, addr: String, bind_paths: HashMap<String, String>, impl_tx: TT,
-    impl_rx: TR, default_package: Option<String>, exclude_packages: Option<Vec<String>>,
-    session_dir: String, retain_env_keys: Vec<String>,
+    session_id: SessionId,
+    addr: String,
+    bind_paths: HashMap<String, String>,
+    impl_tx: TT,
+    impl_rx: TR,
+    default_package: Option<String>,
+    exclude_packages: Option<Vec<String>>,
+    session_dir: String,
+    retain_env_keys: Vec<String>,
+    env_files: Vec<String>,
 ) -> (SchedulerTx, SchedulerRx<TT, TR>)
 where
     TT: SchedulerTxImpl,
@@ -1207,6 +1224,7 @@ where
                 session_dir: session_dir,
                 pass_through_env_keys: retain_env_keys,
                 bind_paths: bind_paths,
+                env_files: env_files,
             },
             tx,
             rx,
