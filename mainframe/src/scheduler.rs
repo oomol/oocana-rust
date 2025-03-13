@@ -699,7 +699,7 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
     let ExecutorCheckParams {
         executor_name,
         package_path,
-        injection_store: injection,
+        injection_store,
         executor_map,
         executor_payload,
         flow,
@@ -747,7 +747,7 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
     let layer = if let Some(ref pkg) = package_path {
         let mut bind_paths = executor_payload.bind_paths.clone();
 
-        if let Some(injection_nodes) = injection {
+        if let Some(injection_nodes) = injection_store {
             for (k, v) in injection_nodes.iter() {
                 match k {
                     InjectionTarget::Node { .. } => {
@@ -789,7 +789,7 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
 
         let package_path = package_path.clone().unwrap();
 
-        if let Some(pkg_injection) = injection
+        if let Some(pkg_injection) = injection_store
             .as_ref()
             .and_then(|m| m.get(&InjectionTarget::Package(PathBuf::from(&package_path))))
         {
@@ -968,14 +968,14 @@ where
                         stacks,
                         outputs,
                         executor,
-                        injection_store: injection,
+                        injection_store,
                         package,
                         flow,
                     }) => {
                         let result = query_executor_state(ExecutorCheckParams {
                             executor_name: &executor_name,
                             package_path: &package,
-                            injection_store: &injection,
+                            injection_store: &injection_store,
                             executor_payload: &executor_payload,
                             executor_map: executor_map.clone(),
                             flow: &flow,
