@@ -231,7 +231,7 @@ impl SubflowBlock {
                         RunningTarget::Global => RunningScope::default(),
                         RunningTarget::PackagePath(pkg_path) => RunningScope::Package {
                             name: "".to_string(), // TODO: get package name
-                            node_id: None,
+                            // node_id: None,
                             path: pkg_path,
                         },
                         RunningTarget::Node(node_id) => match find_node(&node_id) {
@@ -284,7 +284,7 @@ impl SubflowBlock {
                                 }
                                 RunningScope::Package {
                                     name,
-                                    node_id: None,
+                                    // node_id: None,
                                     path: pkg_path,
                                 }
                             } else {

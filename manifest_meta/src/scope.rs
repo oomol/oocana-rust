@@ -10,7 +10,7 @@ pub enum RunningScope {
     Package {
         path: PathBuf,
         name: String,
-        node_id: Option<NodeId>,
+        // node_id: Option<NodeId>,
     },
 }
 
