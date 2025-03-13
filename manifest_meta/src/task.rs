@@ -12,7 +12,6 @@ pub struct TaskBlock {
     /// block.oo.[yml|yaml] 的路径；如果是 inline block，这个字段为空。
     pub path: Option<PathBuf>,
     pub path_str: Option<String>,
-    /// 小脚本不应该有 package path，除非是 injection 注入到其他 package 中。
     pub package_path: Option<PathBuf>,
 }
 

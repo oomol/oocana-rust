@@ -7,5 +7,6 @@ edition = "2021"
 
 [dependencies]
 utils = { path = "../utils" }
+layer = { path = "../layer" }
 manifest_reader = { path = "../manifest_reader" }
 tracing = "0.1.40"
