@@ -17,7 +17,7 @@ use job::{BlockInputs, BlockJobStackLevel, JobId, SessionId};
 
 use manifest_meta::{
     HandleName, InjectionStore, InjectionTarget, InputDefPatchMap, InputHandles, JsonValue,
-    OutputHandles, ServiceExecutorOptions, TaskBlockExecutor,
+    OutputHandles, RunningScope, ServiceExecutorOptions, TaskBlockExecutor,
 };
 use tokio::io::AsyncBufReadExt;
 
@@ -194,7 +194,7 @@ enum SchedulerCommand {
         outputs: Option<OutputHandles>,
         executor: TaskBlockExecutor,
         injection_store: Option<InjectionStore>,
-        package: Option<String>,
+        scope: RunningScope,
         flow: Option<String>,
     },
     ExecuteServiceBlock {
@@ -205,7 +205,7 @@ enum SchedulerCommand {
         service_executor: ServiceExecutorOptions,
         stacks: Vec<BlockJobStackLevel>,
         outputs: Option<OutputHandles>,
-        package: Option<String>,
+        scope: RunningScope,
         service_hash: String,
         flow: Option<String>,
     },
@@ -279,22 +279,22 @@ pub struct ServiceParams<'a> {
 pub struct ExecutorCheckResult {
     pub executor_state: ExecutorSpawnState,
     pub executor_map_name: String,
-    pub package_path: Option<String>,
+    pub identifier: Option<String>,
     pub layer: Option<RuntimeLayer>, // layer is only exist when executor_exist is false
 }
 
 pub struct ExecutorCheckParams<'a> {
     pub executor_name: &'a str,
-    pub package_path: &'a Option<String>,
+    pub scope: &'a RunningScope,
     pub injection_store: &'a Option<InjectionStore>,
     pub flow: &'a Option<String>,
     pub executor_payload: &'a ExecutorPayload,
     pub executor_map: Arc<RwLock<HashMap<String, ExecutorState>>>,
 }
 
-fn generate_executor_map_name(executor_name: &str, package: &Option<String>) -> String {
-    if let Some(ref pkg) = package {
-        format!("{}-{}", executor_name, pkg)
+fn generate_executor_map_name(executor_name: &str, scope: &RunningScope) -> String {
+    if let Some(id) = scope.identifier() {
+        format!("{}-{}", executor_name, id)
     } else {
         executor_name.to_owned()
     }
@@ -359,16 +359,17 @@ impl SchedulerTx {
         } = params;
 
         let final_package = self.calculate_pkg(package_path);
+        // TODO: change to final scope
         self.tx
             .send(SchedulerCommand::ExecuteBlock {
                 job_id,
                 executor_name: executor_name.to_owned(),
                 dir: dir.to_owned(),
                 stacks: stacks.clone(),
+                scope: RunningScope::default(),
                 outputs: outputs.clone(),
                 executor: executor.clone(),
                 injection_store: injection_store.clone(),
-                package: final_package.clone(),
                 flow: flow.clone(),
             })
             .unwrap();
@@ -388,7 +389,7 @@ impl SchedulerTx {
         } = params;
 
         let final_package = self.calculate_pkg(&package_path);
-
+        // TODO: change to final scope
         self.tx
             .send(SchedulerCommand::ExecuteServiceBlock {
                 job_id,
@@ -396,9 +397,9 @@ impl SchedulerTx {
                 dir: dir.to_owned(),
                 block_name: block_name.to_owned(),
                 service_executor: options.clone(),
+                scope: RunningScope::default(),
                 stacks: stacks.clone(),
                 outputs: outputs.clone(),
-                package: final_package.clone(),
                 service_hash: calculate_short_hash(&dir, 16),
                 flow: flow.clone(),
             })
@@ -698,19 +699,14 @@ fn spawn_executor(
 fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResult> {
     let ExecutorCheckParams {
         executor_name,
-        package_path,
+        scope,
         injection_store,
         executor_map,
         executor_payload,
         flow,
     } = params;
     let no_layer_feature = !layer::feature_enabled();
-    let executor_map_name = if no_layer_feature {
-        warn!("ovmlayer feature is disabled, skip layer creation");
-        generate_executor_map_name(executor_name, &None)
-    } else {
-        generate_executor_map_name(executor_name, &package_path)
-    };
+    let executor_map_name = generate_executor_map_name(executor_name, &scope);
 
     let executor_state = {
         let read_map = executor_map
@@ -727,56 +723,26 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
         return Ok(ExecutorCheckResult {
             executor_state,
             executor_map_name,
-            package_path: if no_layer_feature {
-                None
-            } else {
-                package_path.clone()
-            },
+            identifier: scope.identifier(),
             layer: None,
         });
     } else if no_layer_feature {
         return Ok(ExecutorCheckResult {
             executor_state,
             executor_map_name,
-            package_path: None,
+            identifier: scope.identifier(),
             layer: None,
         });
     }
 
-    // Runtime layer 对应的 executor 不存在，且 final package 存在，进入 Runtime Layer 创建流程。
-    let layer = if let Some(ref pkg) = package_path {
+    let layer = if let Some(pkg) = scope.package_path() {
         let mut bind_paths = executor_payload.bind_paths.clone();
 
-        if let Some(injection_nodes) = injection_store {
-            for (k, v) in injection_nodes.iter() {
-                match k {
-                    InjectionTarget::Node { .. } => {
-                        // TODO: inject to node
-                    }
-                    InjectionTarget::Package(pkg_path) => {
-                        if &pkg_path.to_string_lossy().to_string() == pkg {
-                            let pkg_dir = pkg.clone();
-                            for node in v.nodes.iter() {
-                                // bind the parent directory of the node to avoid missing some files
-                                bind_paths.insert(
-                                    node.absolute_entry
-                                        .parent()
-                                        .unwrap()
-                                        .to_string_lossy()
-                                        .to_string(),
-                                    format!(
-                                        "{}/{}",
-                                        pkg_dir,
-                                        node.relative_entry.parent().unwrap().display()
-                                    ),
-                                );
-                            }
-                        }
-                    }
-                }
-            }
+        if let Some(store) = injection_store {
+            // TODO: find all package injection node, bind their file to package
         }
-        let runtime_layer = create_runtime_layer(&pkg, bind_paths)?;
+        let path_str = pkg.to_string_lossy().to_string();
+        let runtime_layer = create_runtime_layer(&path_str, bind_paths)?;
 
         Some(runtime_layer)
     } else {
@@ -786,30 +752,13 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
 
     let layer = if let Some(mut layer) = layer {
         info!("layer created: {:?}", layer);
-
-        let package_path = package_path.clone().unwrap();
-
-        if let Some(pkg_injection) = injection_store
-            .as_ref()
-            .and_then(|m| m.get(&InjectionTarget::Package(PathBuf::from(&package_path))))
-        {
-            info!("injecting scripts to layer: {:?}", layer);
-            let scripts = pkg_injection.scripts.clone().unwrap_or_default();
-            let pkg_version = pkg_injection.package_version.clone();
-
-            let result = layer.inject_runtime_layer(InjectionParams {
-                package_version: &pkg_version,
-                package_path: &package_path,
-                scripts: &scripts,
-                flow: &flow.as_ref().unwrap_or(&"".to_string()),
-            });
-            if let Err(e) = result {
-                return Err(Error::new(&format!(
-                    "Failed to inject scripts to layer: {:?}",
-                    e
-                )));
-            }
-        }
+        // TODO: find all injection scripts and run them
+        // let result = layer.inject_runtime_layer(InjectionParams {
+        //     package_version: &pkg_version,
+        //     package_path: &package_path,
+        //     scripts: &scripts,
+        //     flow: &flow.as_ref().unwrap_or(&"".to_string()),
+        // });
         Some(layer)
     } else {
         None
@@ -818,7 +767,7 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
     Ok(ExecutorCheckResult {
         executor_state,
         executor_map_name,
-        package_path: package_path.clone(),
+        identifier: scope.identifier(),
         layer,
     })
 }
@@ -890,16 +839,16 @@ where
                         executor_name,
                         dir,
                         block_name,
+                        scope,
                         service_executor,
                         stacks,
                         outputs,
-                        package,
                         service_hash,
                         flow,
                     }) => {
                         let result = query_executor_state(ExecutorCheckParams {
                             executor_name: &executor_name,
-                            package_path: &package,
+                            scope: &scope,
                             injection_store: &None,
                             executor_payload: &executor_payload,
                             executor_map: executor_map.clone(),
@@ -919,7 +868,7 @@ where
                         let ExecutorCheckResult {
                             executor_state,
                             executor_map_name,
-                            package_path: final_package,
+                            identifier,
                             layer,
                         } = result.unwrap();
 
@@ -955,7 +904,7 @@ where
                                 service_executor: &service_executor,
                                 outputs: &outputs,
                                 service_hash: service_hash,
-                                package: &final_package,
+                                package: &identifier,
                             })
                             .unwrap();
                             impl_tx.run_service_block(&executor_name, data).await;
@@ -965,16 +914,16 @@ where
                         job_id,
                         executor_name,
                         dir,
+                        scope,
                         stacks,
                         outputs,
                         executor,
                         injection_store,
-                        package,
                         flow,
                     }) => {
                         let result = query_executor_state(ExecutorCheckParams {
                             executor_name: &executor_name,
-                            package_path: &package,
+                            scope: &scope,
                             injection_store: &injection_store,
                             executor_payload: &executor_payload,
                             executor_map: executor_map.clone(),
@@ -994,7 +943,7 @@ where
                         let ExecutorCheckResult {
                             executor_state,
                             executor_map_name,
-                            package_path: final_package,
+                            identifier,
                             layer,
                         } = result.unwrap();
 
@@ -1029,7 +978,7 @@ where
                                 dir: &dir,
                                 executor: &executor,
                                 outputs: &outputs,
-                                package: &final_package,
+                                package: &identifier,
                             })
                             .unwrap();
                             impl_tx.run_block(&executor_name, data).await;
@@ -1085,11 +1034,14 @@ where
                             match msg {
                                 ReceiveMessage::ExecutorReady {
                                     executor_name,
-                                    package,
+                                    package: identifier,
                                     session_id,
                                 } => {
-                                    let executor_map_name =
-                                        generate_executor_map_name(&executor_name, &package);
+                                    let executor_map_name = if let Some(ref id) = identifier {
+                                        format!("{}-{}", executor_name, id)
+                                    } else {
+                                        executor_name.clone()
+                                    };
 
                                     let pid = {
                                         let read_map = executor_map.read().unwrap();
@@ -1114,7 +1066,7 @@ where
                                         sender
                                             .send(ReceiveMessage::ExecutorReady {
                                                 executor_name: executor_name.clone(),
-                                                package: package.clone(),
+                                                package: identifier.clone(),
                                                 session_id: session_id.clone(),
                                             })
                                             .unwrap();
