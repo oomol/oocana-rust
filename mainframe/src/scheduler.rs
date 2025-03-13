@@ -323,24 +323,29 @@ impl SchedulerTx {
             .unwrap();
     }
 
-    pub fn calculate_pkg(&self, package_path: &Option<PathBuf>) -> Option<String> {
+    /** TODO: generate default scope instead of default package. */
+    /** filter some scope, move then to defualt scope */
+    pub fn calculate_scope(&self, scope: &RunningScope) -> RunningScope {
         match self.exclude_packages.as_ref() {
             Some(exclude_packages) => {
-                if let Some(pkg) = package_path {
+                if let Some(pkg) = scope.package_path() {
                     let pkg_str = pkg.to_string_lossy().to_string();
                     if exclude_packages.contains(&pkg_str) {
-                        return self.default_package.clone();
+                        match self.default_package {
+                            Some(ref default_package) => RunningScope::Package {
+                                path: PathBuf::from(default_package.clone()),
+                                name: default_package.clone(),
+                            },
+                            None => scope.clone(),
+                        }
                     } else {
-                        return Some(pkg_str);
+                        return scope.clone();
                     }
                 } else {
-                    return self.default_package.clone();
+                    return scope.clone();
                 }
             }
-            None => package_path
-                .as_ref()
-                .and_then(|p| Some(p.to_string_lossy().to_string()))
-                .or_else(|| self.default_package.clone()),
+            None => scope.clone(),
         }
     }
 
@@ -358,14 +363,14 @@ impl SchedulerTx {
             flow,
         } = params;
 
-        // TODO: change to final scope
+        let scope = self.calculate_scope(scope);
         self.tx
             .send(SchedulerCommand::ExecuteBlock {
                 job_id,
                 executor_name: executor_name.to_owned(),
                 dir: dir.to_owned(),
                 stacks: stacks.clone(),
-                scope: scope.to_owned(),
+                scope,
                 outputs: outputs.clone(),
                 executor: executor.clone(),
                 injection_store: injection_store.clone(),
@@ -387,7 +392,8 @@ impl SchedulerTx {
             flow,
         } = params;
 
-        // TODO: change to final scope
+        let scope = self.calculate_scope(scope);
+
         self.tx
             .send(SchedulerCommand::ExecuteServiceBlock {
                 job_id,
@@ -395,7 +401,7 @@ impl SchedulerTx {
                 dir: dir.to_owned(),
                 block_name: block_name.to_owned(),
                 service_executor: options.clone(),
-                scope: scope.to_owned(),
+                scope,
                 stacks: stacks.clone(),
                 outputs: outputs.clone(),
                 service_hash: calculate_short_hash(&dir, 16),

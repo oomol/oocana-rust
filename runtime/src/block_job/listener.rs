@@ -63,11 +63,7 @@ pub fn listen_to_worker(args: ListenerArgs) -> tokio::task::JoinHandle<()> {
         flow,
     } = args;
 
-    let block_final_package = if layer::feature_enabled() {
-        scheduler_tx.calculate_pkg(&package_path)
-    } else {
-        None
-    };
+    let block_scope = scheduler_tx.calculate_scope(&scope);
 
     let (job_tx, job_rx) = flume::unbounded::<scheduler::ReceiveMessage>();
 
@@ -81,9 +77,9 @@ pub fn listen_to_worker(args: ListenerArgs) -> tokio::task::JoinHandle<()> {
                     package: executor_package,
                     ..
                 } => {
-                    tracing::info!("{executor_name} ({executor_package:?}) executor is ready. block package: {block_final_package:?}");
+                    tracing::info!("{executor_name} ({executor_package:?}) executor is ready. block package: {block_scope:?}");
 
-                    if block_final_package != executor_package {
+                    if block_scope.identifier() != executor_package {
                         continue;
                     }
 
