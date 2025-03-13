@@ -153,6 +153,15 @@ impl Node {
             Self::Service(service) => service.block.package_path.clone(),
         }
     }
+
+    pub fn scope(&self) -> RunningScope {
+        match self {
+            Self::Task(task) => task.scope.clone(),
+            Self::Flow(_) => RunningScope::default(),
+            Self::Slot(_) => RunningScope::default(),
+            Self::Service(_) => RunningScope::default(),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]

@@ -42,6 +42,7 @@ pub struct RunBlockArgs {
     pub nodes: Option<HashSet<NodeId>>,
     pub input_values: Option<String>,
     pub timeout_seconds: Option<u64>,
+    pub scope: RunningScope,
     pub inputs_def_patch: Option<InputDefPatchMap>,
 }
 
@@ -77,6 +78,7 @@ pub fn run_block(block_args: RunBlockArgs) -> Option<BlockJobHandle> {
         nodes,
         input_values,
         timeout_seconds,
+        scope,
         inputs_def_patch,
     } = block_args;
 
@@ -103,7 +105,7 @@ pub fn run_block(block_args: RunBlockArgs) -> Option<BlockJobHandle> {
             job_id,
             inputs,
             block_status,
-            scope: RunningScope::default(), // TODO: replace with actual scope
+            scope,
             timeout_seconds,
             inputs_def_patch,
         }),
@@ -117,7 +119,7 @@ pub fn run_block(block_args: RunBlockArgs) -> Option<BlockJobHandle> {
                 block_status,
                 injection_store: parent_flow.as_ref().and_then(|f| f.injection_store.clone()),
                 parent_flow,
-                scope: RunningScope::default(), // TODO: replace with actual scope
+                scope,
                 inputs_def_patch,
             })
         }

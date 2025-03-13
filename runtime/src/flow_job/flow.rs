@@ -560,6 +560,7 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
             block_status: ctx.block_status.clone(),
             nodes: None,
             input_values: None,
+            scope: node.scope(),
             timeout_seconds: match node {
                 Node::Task(task_node) => task_node.timeout_seconds,
                 _ => None,
