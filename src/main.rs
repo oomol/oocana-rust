@@ -11,8 +11,10 @@ use utils::error::Result;
 
 /// The main entry point of the application.
 fn main() -> Result<()> {
-    #[cfg(feature = "backtrace")]
-    env::set_var("RUST_BACKTRACE", "1");
+    unsafe {
+        #[cfg(feature = "backtrace")]
+        env::set_var("RUST_BACKTRACE", "1")
+    };
 
     // Human Panic. Only enabled when *not* debugging.
     #[cfg(not(debug_assertions))]

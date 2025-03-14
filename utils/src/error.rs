@@ -57,17 +57,6 @@ impl Error {
     }
 }
 
-impl From<config::ConfigError> for Error {
-    fn from(err: config::ConfigError) -> Self {
-        Error {
-            msg: String::from("Config Error"),
-            #[cfg(feature = "nightly")]
-            backtrace: std::backtrace::Backtrace::capture(),
-            source: Some(Box::new(err)),
-        }
-    }
-}
-
 impl<T> From<std::sync::PoisonError<T>> for Error {
     fn from(_err: std::sync::PoisonError<T>) -> Self {
         Error {
