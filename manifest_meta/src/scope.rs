@@ -11,7 +11,8 @@ pub enum RunningScope {
     },
     Package {
         path: PathBuf,
-        name: String,
+        /// None means the block is package block, if Some, it means the block is inject to this package
+        name: Option<String>,
         // node_id: Option<NodeId>,
     },
 }
@@ -20,6 +21,13 @@ impl RunningScope {
     pub fn package_path(&self) -> Option<&Path> {
         match self {
             RunningScope::Package { path, .. } => Some(&path),
+            _ => None,
+        }
+    }
+
+    pub fn name(&self) -> Option<String> {
+        match self {
+            RunningScope::Package { name, .. } => name.clone(),
             _ => None,
         }
     }

@@ -334,7 +334,7 @@ impl SchedulerTx {
                         match self.default_package {
                             Some(ref default_package) => RunningScope::Package {
                                 path: PathBuf::from(default_package.clone()),
-                                name: default_package.clone(),
+                                name: Some("default".to_string()),
                             },
                             None => scope.clone(),
                         }

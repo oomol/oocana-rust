@@ -225,8 +225,7 @@ impl SubflowBlock {
                     let mut running_scope = match running_target {
                         RunningTarget::Global => RunningScope::default(),
                         RunningTarget::PackagePath(pkg_path) => RunningScope::Package {
-                            name: "".to_string(), // TODO: get package name
-                            // node_id: None,
+                            name: None,
                             path: pkg_path,
                         },
                         RunningTarget::Node(node_id) => match find_node(&node_id) {
@@ -278,8 +277,7 @@ impl SubflowBlock {
                                         });
                                 }
                                 RunningScope::Package {
-                                    name,
-                                    // node_id: None,
+                                    name: Some(name),
                                     path: pkg_path,
                                 }
                             } else {

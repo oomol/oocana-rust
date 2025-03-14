@@ -102,7 +102,7 @@ pub fn run_task_block(args: RunTaskBlockArgs) -> Option<BlockJobHandle> {
         reporter: Arc::clone(&reporter),
         executor: task_block.executor.clone(),
         service: None,
-        block_dir: block_dir(&task_block, parent_flow.as_ref()),
+        block_dir: block_dir(&task_block, parent_flow.as_ref(), &scope),
         scope: scope.clone(),
         injection_store: parent_flow.as_ref().and_then(|f| f.injection_store.clone()),
         flow: parent_flow.as_ref().map(|f| f.path_str.clone()),
@@ -249,8 +249,14 @@ pub fn run_task_block(args: RunTaskBlockArgs) -> Option<BlockJobHandle> {
     }
 }
 
-fn block_dir(task_block: &TaskBlock, parent_flow: Option<&Arc<SubflowBlock>>) -> String {
-    if let Some(block_dir) = task_block.block_dir() {
+fn block_dir(
+    task_block: &TaskBlock,
+    parent_flow: Option<&Arc<SubflowBlock>>,
+    scope: &RunningScope,
+) -> String {
+    if scope.name().is_some() && scope.package_path().is_some() {
+        return scope.package_path().unwrap().to_string_lossy().to_string();
+    } else if let Some(block_dir) = task_block.block_dir() {
         block_dir.to_string_lossy().to_string()
     } else {
         parent_flow
@@ -283,7 +289,7 @@ fn send_to_executor(args: ExecutorArgs) {
         scope,
         stacks,
     } = args;
-    let dir = block_dir(task_block, parent_flow);
+    let dir = block_dir(task_block, parent_flow, &scope);
     scheduler_tx.send_to_executor(ExecutorParams {
         executor_name: executor.name(),
         job_id: job_id.to_owned(),
@@ -310,7 +316,7 @@ fn spawn_shell(
 
     let arg = get_string_value_from_inputs(&inputs, "command");
 
-    let block_dir = block_dir(task_block, parent_flow);
+    let block_dir = block_dir(task_block, parent_flow, &RunningScope::default());
 
     // 用户设置 cwd 在这里的意义不大，造成的问题反而可能更多，考虑去掉。
     let cwd = match get_string_value_from_inputs(&inputs, "cwd") {
@@ -430,7 +436,7 @@ fn spawn(
     // Execute the command
     let mut command = process::Command::new(&spawn_options.bin);
 
-    let block_dir = block_dir(task_block, parent_flow);
+    let block_dir = block_dir(task_block, parent_flow, &RunningScope::default());
     command.current_dir(block_dir);
 
     command
