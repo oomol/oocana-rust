@@ -122,10 +122,19 @@ jobs:
         working-directory: oocana-cli
       - name: prepare npm
         run: node npm/npm.mjs
-      - name: publish npm
+      - name: publish npm to github
         run: node npm/publish.mjs
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          registry-url: https://registry.npmjs.org
+      - name: publish npm to npm
+        run: node npm/publish.mjs npm
+        if: ${{ github.repository_owner == 'oomol' }}
+        env:
+          NODE_AUTH_TOKEN: ${{secrets.NPM_PUBLISH_TOKEN}} # expire at 2026-03-13
 
   trigger:
     runs-on: ubuntu-latest
