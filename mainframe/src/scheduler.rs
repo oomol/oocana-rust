@@ -444,11 +444,12 @@ where
 fn spawn_executor(
     executor: &str,
     layer: Option<RuntimeLayer>,
-    executor_map_name: String,
+    scope: &RunningScope,
     executor_map: Arc<RwLock<HashMap<String, ExecutorState>>>,
     executor_payload: ExecutorPayload,
     tx: Sender<SchedulerCommand>,
 ) -> Result<()> {
+    let executor_map_name = generate_executor_map_name(executor, scope);
     let mut write_map = executor_map.write().unwrap();
     info!("spawn executor {}", executor_map_name);
     if write_map.get(&executor_map_name).is_some() {
@@ -486,6 +487,8 @@ fn spawn_executor(
     let mut executor_package: Option<String> = None;
     let mut spawn_suffix = None;
 
+    let identifier = scope.identifier().unwrap_or_default();
+
     // package layer 的 command 不能再添加 args
     let mut command = if let Some(ref pkg_layer) = layer {
         let package_path_str = pkg_layer.package_path.to_string_lossy();
@@ -501,11 +504,14 @@ fn spawn_executor(
             addr,
             "--session-dir",
             session_dir,
-            "--package",
-            &package_path_str,
             "--suffix",
             &hash,
         ];
+
+        if identifier.len() > 0 {
+            exec_form_cmd.push("--package");
+            exec_form_cmd.push(&identifier);
+        }
 
         for env_file in env_files {
             exec_form_cmd.push("--env-files");
@@ -521,7 +527,7 @@ fn spawn_executor(
 
         cmd
     } else {
-        let args = vec![
+        let mut args = vec![
             "--session-id",
             session_id,
             "--address",
@@ -529,6 +535,11 @@ fn spawn_executor(
             "--session-dir",
             session_dir,
         ];
+
+        if identifier.len() > 0 {
+            args.push("--package");
+            args.push(&identifier);
+        }
 
         let mut cmd = process::Command::new(executor_bin.to_owned());
         cmd.args(args);
@@ -907,7 +918,7 @@ where
                             let r = spawn_executor(
                                 &executor_name,
                                 layer,
-                                executor_map_name,
+                                &scope,
                                 executor_map.clone(),
                                 executor_payload.clone(),
                                 tx.clone(),
@@ -982,7 +993,7 @@ where
                             let r = spawn_executor(
                                 &executor_name,
                                 layer,
-                                executor_map_name,
+                                &scope,
                                 executor_map.clone(),
                                 executor_payload.clone(),
                                 tx.clone(),
@@ -1064,6 +1075,7 @@ where
                                     package: identifier,
                                     session_id,
                                 } => {
+                                    // this logic is shoud keep the same with generate_executor_map_name bind
                                     let executor_map_name = if let Some(ref id) = identifier {
                                         format!("{}-{}", executor_name, id)
                                     } else {
