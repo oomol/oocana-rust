@@ -14,7 +14,7 @@ use tokio::signal::unix::{signal, SignalKind};
 use tracing::{error as log_error, info};
 
 use job::{BlockJobStacks, JobId};
-use manifest_meta::{read_flow_or_block, Block, BlockResolver, NodeId};
+use manifest_meta::{read_flow_or_block, Block, BlockResolver, NodeId, RunningScope};
 use utils::error::Result;
 
 const SESSION_CANCEL_INFO: &str = "Cancelled";
@@ -80,6 +80,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
             nodes,
             input_values,
             timeout_seconds: None,
+            scope: RunningScope::default(),
             inputs_def_patch: None,
         }
     });

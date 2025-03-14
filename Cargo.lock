@@ -1067,6 +1067,7 @@ dependencies = [
 name = "manifest_meta"
 version = "0.0.1"
 dependencies = [
+ "layer",
  "manifest_reader",
  "tracing",
  "utils",

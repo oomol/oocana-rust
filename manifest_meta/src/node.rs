@@ -2,7 +2,10 @@ use std::{collections::HashMap, path::PathBuf, sync::Arc};
 
 use manifest_reader::manifest::{InputDefPatch, InputHandles, OutputHandles};
 
-use crate::{Block, HandleName, NodeId, ServiceBlock, SlotBlock, SubflowBlock, TaskBlock};
+use crate::{
+    scope::RunningScope, Block, HandleName, NodeId, ServiceBlock, SlotBlock, SubflowBlock,
+    TaskBlock,
+};
 
 pub type HandlesFroms = HashMap<HandleName, Vec<HandleFrom>>;
 
@@ -31,6 +34,7 @@ macro_rules! extend_node_common_field {
 extend_node_common_field!(TaskNode {
     task: Arc<TaskBlock>,
     timeout_seconds: Option<u64>,
+    scope: RunningScope,
 });
 
 extend_node_common_field!(ServiceNode {
@@ -147,6 +151,15 @@ impl Node {
             Self::Flow(flow) => flow.flow.package_path.clone(),
             Self::Slot(slot) => slot.slot.package_path.clone(),
             Self::Service(service) => service.block.package_path.clone(),
+        }
+    }
+
+    pub fn scope(&self) -> RunningScope {
+        match self {
+            Self::Task(task) => task.scope.clone(),
+            Self::Flow(_) => RunningScope::default(),
+            Self::Slot(_) => RunningScope::default(),
+            Self::Service(_) => RunningScope::default(),
         }
     }
 }

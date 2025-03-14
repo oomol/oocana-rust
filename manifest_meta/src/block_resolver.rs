@@ -39,14 +39,13 @@ impl BlockResolver {
         &mut self,
         task_node_block: manifest::TaskNodeBlock,
         path_finder: &mut BlockPathFinder,
-        injection_package_dir: Option<PathBuf>,
     ) -> Result<Arc<TaskBlock>> {
         match task_node_block {
             manifest::TaskNodeBlock::File(file) => {
                 self.read_task_block(&path_finder.find_task_block_path(&file)?)
             }
             manifest::TaskNodeBlock::Inline(block) => {
-                let task_block = TaskBlock::from_manifest(block, None, injection_package_dir);
+                let task_block = TaskBlock::from_manifest(block, None, None);
                 Ok(Arc::new(task_block))
             }
         }

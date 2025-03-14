@@ -19,6 +19,9 @@ pub use service::{Service, ServiceBlock};
 
 mod service_resolver;
 
+mod scope;
+pub use scope::RunningScope;
+
 mod task;
 pub use task::TaskBlock;
 

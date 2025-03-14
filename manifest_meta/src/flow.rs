@@ -11,6 +11,9 @@ use manifest_reader::{
     reader::read_package,
 };
 
+use crate::scope::{calculate_running_scope, RunningScope, RunningTarget};
+
+use tracing::warn;
 use utils::error::Result;
 
 use crate::{
@@ -23,11 +26,6 @@ use crate::{
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum InjectionTarget {
     Package(PathBuf),
-    Node {
-        package_path: PathBuf,
-        flow_path: String,
-        node_id: NodeId,
-    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -219,126 +217,80 @@ impl SubflowBlock {
                 manifest::Node::Task(task_node) => {
                     let task_node_block = task_node.task.clone();
 
-                    let injection_package_dir = if let Some(node_injection) = &task_node.inject {
-                        match &node_injection.target {
-                            manifest::InjectionTarget::Package(pkg) => {
-                                let pkg_path = path_finder
-                                    .find_package_file_path(&pkg)
-                                    .ok()
-                                    .map(|p| p.parent().map(|p| p.to_path_buf()))
-                                    .unwrap_or(None);
+                    let task = block_resolver
+                        .resolve_task_node_block(task_node_block.clone(), &mut path_finder)?;
+                    let running_target =
+                        calculate_running_scope(&node, &task_node.inject, &task.package_path);
 
-                                if pkg_path.is_none() {
-                                    tracing::warn!("injection failed. package {} not found", pkg);
-                                }
-
-                                if let Some(ref pkg_path) = pkg_path {
-                                    let task_node_file = task_node_block.entry_file();
-
-                                    if let Some(task_node_file) = task_node_file {
-                                        let node_file = if flow_path.is_dir() {
-                                            flow_path.join(task_node_file)
-                                        } else {
-                                            flow_path.parent().unwrap().join(task_node_file)
-                                        };
-                                        injection_nodes
-                                            .entry(InjectionTarget::Package(pkg_path.clone()))
-                                            .or_insert_with(HashSet::new)
-                                            .insert(InjectionNode {
-                                                node_id: task_node.node_id.clone(),
-                                                absolute_entry: node_file,
-                                                relative_entry: task_node_file.into(),
-                                            });
-                                    }
-                                    if node_injection.script.is_some() {
-                                        injection_scripts
-                                            .entry(pkg_path.clone())
-                                            .or_insert_with(Vec::new)
-                                            .push(node_injection.script.clone().unwrap());
-                                    }
-                                }
-                                pkg_path
+                    let mut running_scope = match running_target {
+                        RunningTarget::Global => RunningScope::default(),
+                        RunningTarget::PackagePath(pkg_path) => RunningScope::Package {
+                            name: None,
+                            path: pkg_path,
+                        },
+                        RunningTarget::Node(node_id) => match find_node(&node_id) {
+                            Some(_) => RunningScope::Global {
+                                node_id: Some(node_id),
+                            },
+                            None => {
+                                warn!("target node not found: {:?}", node_id);
+                                RunningScope::default()
                             }
-                            manifest::InjectionTarget::Node(node_id) => {
-                                let current_pkg_path = flow_path
-                                    .parent()
-                                    .and_then(|p| p.parent().map(|p| p.to_path_buf()));
+                        },
+                        RunningTarget::PackageName(name) => {
+                            let pkg_path = path_finder
+                                .find_package_file_path(&name)
+                                .ok()
+                                .map(|p| p.parent().map(|p| p.to_path_buf()))
+                                .unwrap_or(None);
 
-                                if let Some(current_pkg_path) = current_pkg_path {
-                                    let node = find_node(node_id);
-                                    if let Some(node) = node {
-                                        match node {
-                                            manifest::Node::Subflow(_flow_node) => {
-                                                // TODO: flow 注入
-                                            }
-                                            manifest::Node::Task(task_node) => {
-                                                let task_node_file = task_node_block.entry_file();
-                                                if let Some(task_node_file) = task_node_file {
-                                                    let node_file = if flow_path.is_dir() {
-                                                        flow_path.join(task_node_file)
-                                                    } else {
-                                                        flow_path
-                                                            .parent()
-                                                            .unwrap()
-                                                            .join(task_node_file)
-                                                    };
-                                                    let target_node = find_node(&task_node.node_id);
+                            if let Some(pkg_path) = pkg_path {
+                                let task_node_file = task_node_block.entry_file();
 
-                                                    if let Some(target_node) = target_node {
-                                                        if target_node.should_spawn() {
-                                                            let k = InjectionTarget::Node {
-                                                                package_path: current_pkg_path,
-                                                                flow_path: flow_path
-                                                                    .to_string_lossy()
-                                                                    .to_string(),
-                                                                node_id: target_node
-                                                                    .node_id()
-                                                                    .clone(),
-                                                            };
-                                                            injection_nodes
-                                                                .entry(k)
-                                                                .or_insert_with(HashSet::new)
-                                                                .insert(InjectionNode {
-                                                                    node_id: task_node
-                                                                        .node_id
-                                                                        .clone(),
-                                                                    absolute_entry: node_file,
-                                                                    relative_entry: task_node_file
-                                                                        .into(),
-                                                                });
-                                                        } else {
-                                                            tracing::warn!(
-                                                                "injection failed. target node {} can be spawned",
-                                                                target_node.node_id()
-                                                            );
-                                                        }
-                                                    } else {
-                                                        tracing::warn!(
-                                                            "injection failed. node {} not found",
-                                                            task_node.node_id
-                                                        );
-                                                    }
-                                                }
-                                            }
-                                            _ => {}
-                                        }
-                                    }
-                                } else {
-                                    tracing::warn!("injection failed. node {} not found", node_id);
+                                if let Some(task_node_file) = task_node_file {
+                                    let node_file = if flow_path.is_dir() {
+                                        flow_path.join(task_node_file)
+                                    } else {
+                                        flow_path.parent().unwrap().join(task_node_file)
+                                    };
+
+                                    // update injection store for later use
+                                    injection_nodes
+                                        .entry(InjectionTarget::Package(pkg_path.clone()))
+                                        .or_insert_with(HashSet::new)
+                                        .insert(InjectionNode {
+                                            node_id: task_node.node_id.clone(),
+                                            absolute_entry: node_file,
+                                            relative_entry: task_node_file.into(),
+                                        });
+
+                                    task_node
+                                        .inject
+                                        .as_ref()
+                                        .map(|injection| injection.script.clone())
+                                        .flatten()
+                                        .map(|script| {
+                                            injection_scripts
+                                                .entry(pkg_path.clone())
+                                                .or_insert_with(Vec::new)
+                                                .push(script);
+                                        });
                                 }
-                                None
+                                RunningScope::Package {
+                                    name: Some(name),
+                                    path: pkg_path,
+                                }
+                            } else {
+                                warn!("package not found: {:?}", name);
+                                // maybe just throw error and exit will be better
+                                RunningScope::default()
                             }
-                            _ => None,
                         }
-                    } else {
-                        None
                     };
 
-                    let task = block_resolver.resolve_task_node_block(
-                        task_node_block.clone(),
-                        &mut path_finder,
-                        injection_package_dir.clone(),
-                    )?;
+                    if !layer::feature_enabled() && running_scope.package_path().is_some() {
+                        running_scope = RunningScope::default();
+                    }
 
                     let mut inputs_def =
                         parse_inputs_def(&task_node.inputs_from, &task.as_ref().inputs_def);
@@ -408,8 +360,8 @@ impl SubflowBlock {
                             from: froms,
                             to: connections.node_outputs_tos.remove(&task_node.node_id),
                             node_id: task_node.node_id.to_owned(),
-                            // title: subflow_node.title,
                             timeout: task_node.timeout,
+                            scope: running_scope,
                             task,
                             inputs_def,
                             concurrency: task_node.concurrency,
@@ -472,26 +424,6 @@ impl SubflowBlock {
                             nodes,
                             scripts: Some(scripts),
                             package_version: pkg_meta.version.unwrap_or_default(),
-                        },
-                    );
-                }
-                InjectionTarget::Node {
-                    package_path,
-                    flow_path,
-                    node_id,
-                } => {
-                    let pkg_file = find_package_file(package_path).unwrap_or_default();
-                    let pkg = read_package(pkg_file)?;
-                    injection.insert(
-                        InjectionTarget::Node {
-                            package_path: package_path.clone(),
-                            flow_path: flow_path.clone(),
-                            node_id: node_id.clone(),
-                        },
-                        InjectionMeta {
-                            nodes,
-                            scripts: None,
-                            package_version: pkg.version.unwrap_or_default(),
                         },
                     );
                 }
