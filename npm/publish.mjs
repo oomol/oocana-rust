@@ -11,30 +11,13 @@ console.log("Publishing packages... to", registry || "github");
 for (const pkg of fs.readdirSync(path.join(__dirname))) {
     if (pkg.startsWith("oocana-cli")) {
 
-        if (registry == "npm") {
-            const { status } = spawnSync("npm", ["pkg", "set", "publishConfig.registry=https://registry.npmjs.org"], {
-                cwd: path.join(__dirname, pkg),
-                stdio: "inherit",
-            });
-            if (status !== 0) {
-                process.exit(status);
-            }
-            const { status: publishStatus } = spawnSync("npm", ["publish", "--access", "public"], {
-                cwd: path.join(__dirname, pkg),
-                stdio: "inherit",
-            })
-            if (status !== 0) {
-                process.exit(status);
-            }
-        } else {
-            const { status } = spawnSync("npm", ["publish"], {
-                cwd: path.join(__dirname, pkg),
-                stdio: "inherit",
-            })
-            if (status !== 0) {
-                process.exit(status);
-            }
+        const args = registry == "npm" ? ["publish", "--access", "public"] : ["publish"];
+        const { status } = spawnSync("npm", args, {
+            cwd: path.join(__dirname, pkg),
+            stdio: "inherit",
+        })
+        if (status !== 0) {
+            process.exit(status);
         }
-
     }
 }

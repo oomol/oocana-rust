@@ -118,10 +118,20 @@ jobs:
         working-directory: oocana-cli
       - name: prepare npm
         run: node npm/npm.mjs
+      - name: setup github npm registry
+        uses: actions/setup-node@v4
+        with:
+          registry-url: "https://npm.pkg.github.com"
       - name: publish npm to github
         run: node npm/publish.mjs
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: setup npm registry
+        uses: actions/setup-node@v4
+        if: ${{ github.repository_owner == 'oomol' }}
+        with:
+          registry-url: "https://registry.npmjs.org"
+          scope: "@oomol"
       - name: publish npm to npm
         run: node npm/publish.mjs npm
         if: ${{ github.repository_owner == 'oomol' }}
