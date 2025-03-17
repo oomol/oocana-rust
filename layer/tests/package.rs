@@ -30,7 +30,7 @@ mod tests {
     #[test]
     fn test_package_layer_api() {
         let d = dirname().join("data").join("vim");
-        let r = get_or_create_package_layer(&d, None);
+        let r = get_or_create_package_layer(&d, &vec![]);
         assert!(r.is_ok(), "Error: {:?}", r.unwrap_err());
         info!("get_package_layer: {:?}", r.unwrap());
 
@@ -51,7 +51,7 @@ mod tests {
     #[test]
     fn test_package_layer_store() {
         let d = dirname().join("data").join("simple");
-        let r = get_or_create_package_layer(&d, None);
+        let r = get_or_create_package_layer(&d, &vec![]);
         assert!(r.is_ok(), "Error: {:?}", r.unwrap_err());
 
         let r = package_layer_status(&d);
@@ -64,7 +64,7 @@ mod tests {
     #[test]
     fn test_validate_package() {
         let d = dirname().join("data").join("simple");
-        let r = get_or_create_package_layer(&d, None);
+        let r = get_or_create_package_layer(&d, &vec![]);
         assert!(r.is_ok(), "Error: {:?}", r.unwrap_err());
         let package_layer = r.unwrap();
         let result = package_layer.validate();
@@ -80,7 +80,7 @@ mod tests {
     #[test]
     fn test_export_import() {
         let d = dirname().join("data").join("simple");
-        let layer = get_or_create_package_layer(&d, None);
+        let layer = get_or_create_package_layer(&d, &vec![]);
         assert!(layer.is_ok(), "Error: {:?}", layer.unwrap_err());
         let package_layer = layer.unwrap();
 

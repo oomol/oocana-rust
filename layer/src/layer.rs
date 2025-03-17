@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::env::temp_dir;
 use std::io::BufRead;
 use std::os::unix::fs::PermissionsExt;
@@ -10,7 +9,8 @@ use utils::logger::{STDERR_TARGET, STDOUT_TARGET};
 use crate::cli::{self, exec};
 use crate::ovmlayer::{
     cp_to_merge_point, create_layer_cmd, delete_all_layer_and_merge_point_cmd, delete_layer_cmd,
-    export_layer_cmd, import_layer_cmd, list_layer_cmd, merge_cmd, run_cmd, unmerge_cmd, LayerType,
+    export_layer_cmd, import_layer_cmd, list_layer_cmd, merge_cmd, run_cmd, unmerge_cmd, BindPath,
+    LayerType,
 };
 use utils::error::{Error, Result};
 
@@ -103,13 +103,13 @@ pub fn convert_script_to_shell(script: &str) -> Result<(String, String)> {
 /// this function will automatically unmerge the merge point.
 #[instrument(skip_all)]
 pub fn run_script_unmerge(
-    layers: &Vec<String>, bind: &Option<HashMap<String, String>>, work_dir: &Option<String>,
+    layers: &Vec<String>,
+    bind: &[BindPath],
+    work_dir: &Option<String>,
     script: &str,
 ) -> Result<()> {
     let merge_point = &random_merge_point();
     merge_layer(&layers, merge_point)?;
-
-    let bind_map = bind.clone().unwrap_or_default();
 
     let (file_path, script_filename) = convert_script_to_shell(script)?;
     let script_target_path = {
@@ -122,7 +122,7 @@ pub fn run_script_unmerge(
     let cp_cmd = cp_to_merge_point(&merge_point, &file_path, &script_target_path);
     exec(cp_cmd)?;
 
-    let mut cmd = run_cmd(merge_point, &Some(bind_map), work_dir);
+    let mut cmd = run_cmd(merge_point, &bind, work_dir);
     cmd.arg(format!("{script_target_path}"));
     tracing::info!("{cmd:?}");
 

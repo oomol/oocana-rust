@@ -1,13 +1,13 @@
 use std::collections::HashSet;
+use std::fmt::Debug;
 use std::fs::{metadata, File};
 use std::path::PathBuf;
-use std::{collections::HashMap, fmt::Debug};
 
 use crate::cli::exec;
 use crate::layer::{
     create_random_layer, export_layer, import_layer, list_layers, run_script_unmerge,
 };
-use crate::ovmlayer::cp_to_layer;
+use crate::ovmlayer::{cp_to_layer, BindPath};
 use crate::package_store::add_import_package;
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
@@ -50,12 +50,15 @@ pub struct PackageLayer {
 impl PackageLayer {
     #[instrument(skip_all)]
     pub fn create<P: Into<PathBuf> + Debug>(
-        version: Option<String>, layers: Option<Vec<String>>, bootstrap: Option<String>,
-        bind_paths: Option<HashMap<String, String>>, package_path: P,
+        version: Option<String>,
+        layers: Option<Vec<String>>,
+        bootstrap: Option<String>,
+        bind_paths: &[BindPath],
+        package_path: P,
     ) -> Result<Self> {
         let package_path: PathBuf = package_path.into();
 
-        let mut cache_bind_paths = HashMap::new();
+        let mut cache_bind_paths: Vec<BindPath> = Vec::new();
         let pkg_path = package_path.to_string_lossy().to_string();
 
         for cache in &*CACHE_DIR {
@@ -63,17 +66,18 @@ impl PackageLayer {
                 tracing::debug!("cache path: {cache:?} not exist. skip this bind path");
                 continue;
             }
-            cache_bind_paths.insert(cache.to_string(), cache.to_string());
+            cache_bind_paths.push(BindPath {
+                source: cache.to_string(),
+                target: cache.to_string(),
+            });
         }
 
-        if let Some(bind_paths) = bind_paths {
-            for (k, v) in bind_paths {
-                if metadata(&k).is_err() {
-                    tracing::warn!("passing bind paths {k:?} is not exist");
-                    continue;
-                }
-                cache_bind_paths.insert(k, v);
+        for bind_path in bind_paths {
+            if metadata(&bind_path.source).is_err() {
+                tracing::warn!("passing bind paths {:?} is not exist", bind_path.source);
+                continue;
             }
+            cache_bind_paths.push(bind_path.clone());
         }
 
         let source_layer = create_random_layer()?;
@@ -89,7 +93,7 @@ impl PackageLayer {
 
             run_script_unmerge(
                 &merge_layers,
-                &Some(cache_bind_paths),
+                &cache_bind_paths,
                 &Some(pkg_path),
                 &bootstrap,
             )?;

@@ -3,10 +3,9 @@ use crate::injection_store::get_injection_layer;
 use crate::layer::{
     create_tmp_layer, delete_layer, merge_layer, random_merge_point, random_name, unmerge,
 };
-use crate::ovmlayer;
+use crate::ovmlayer::{self, BindPath};
 use crate::package_layer::{PackageLayer, CACHE_DIR};
 use crate::package_store::get_or_create_package_layer;
-use std::collections::HashMap;
 use std::env::temp_dir;
 use std::fmt::Debug;
 use std::fs::metadata;
@@ -30,15 +29,13 @@ pub struct RuntimeLayer {
     /// The layer that bootstrap script is executed in.
     pub bootstrap_layer: Option<String>,
     pub package_path: PathBuf,
-    pub extra_bind_paths: HashMap<String, String>,
+    pub extra_bind_paths: Vec<BindPath>,
     /// 目前没有用到，只是单纯存储了 injection layer
     pub extra_layers: Option<Vec<String>>,
 }
 
-pub fn create_runtime_layer(
-    package: &str, bind_paths: HashMap<String, String>,
-) -> Result<RuntimeLayer> {
-    match get_or_create_package_layer(package, Some(bind_paths.clone())) {
+pub fn create_runtime_layer(package: &str, bind_paths: &[BindPath]) -> Result<RuntimeLayer> {
+    match get_or_create_package_layer(package, bind_paths) {
         Ok(layer) => match create_runtime_layer_from_package_layer(&layer) {
             Ok(mut runtime_layer) => {
                 runtime_layer.add_bind_paths(bind_paths);
@@ -84,32 +81,43 @@ impl RuntimeLayer {
         &self.tmp_layer
     }
 
-    pub fn add_bind_paths(&mut self, bind_paths: HashMap<String, String>) {
-        self.extra_bind_paths.extend(bind_paths);
+    pub fn add_bind_paths(&mut self, bind_paths: &[BindPath]) {
+        for b in bind_paths {
+            if metadata(&b.source).is_ok() {
+                self.extra_bind_paths.push(b.clone());
+            } else {
+                warn!(
+                    "add_bind_paths skip paths {:?} which is not exist",
+                    b.source
+                );
+            }
+        }
     }
 
     /// this Command is immutable. because lifetime limit, we can't add more arguments to it.
     #[instrument(skip_all)]
     pub fn run_command(&self, script: &str) -> Command {
-        let mut bind_path: HashMap<String, String> = HashMap::new();
+        let mut bind_paths: Vec<BindPath> = vec![];
 
-        for (k, v) in &self.extra_bind_paths {
-            if metadata(&k).is_ok() {
-                bind_path.insert(k.clone(), v.clone());
+        for b in &self.extra_bind_paths {
+            if metadata(&b.source).is_ok() {
+                bind_paths.push(b.clone());
             } else {
-                tracing::warn!("extra bind paths {k:?} is not exist");
+                warn!("bind paths {:?} is not exist", b.source);
             }
         }
 
         let work_dir = self.package_path.to_string_lossy().to_string();
-        let mut cmd = ovmlayer::run_cmd(&self.merge_point, &Some(bind_path), &Some(work_dir));
+        let mut cmd = ovmlayer::run_cmd(&self.merge_point, &bind_paths, &Some(work_dir));
         cmd.arg(script);
         cmd
     }
 
     #[instrument(skip_all)]
     pub fn create<P: Into<PathBuf> + Debug>(
-        version: Option<String>, layers: Option<Vec<String>>, bootstrap_layer: Option<String>,
+        version: Option<String>,
+        layers: Option<Vec<String>>,
+        bootstrap_layer: Option<String>,
         package_path: P,
     ) -> Result<Self> {
         let mut merge_layers = if let Some(ref layers) = layers {
@@ -136,7 +144,7 @@ impl RuntimeLayer {
             merge_point,
             bootstrap_layer,
             package_path: package_path.into(),
-            extra_bind_paths: HashMap::new(),
+            extra_bind_paths: vec![],
             extra_layers: None,
         })
     }
@@ -197,16 +205,22 @@ impl RuntimeLayer {
 
     #[instrument(skip_all)]
     fn run_injection_scripts(
-        &mut self, extra_layer: String, scripts: Vec<String>, package_path: &str,
+        &mut self,
+        extra_layer: String,
+        scripts: Vec<String>,
+        package_path: &str,
     ) -> Result<()> {
-        let mut bind_paths: HashMap<String, String> = HashMap::new();
+        let mut bind_paths: Vec<BindPath> = vec![];
 
         for cache in &*CACHE_DIR {
             if metadata(cache).is_err() {
                 tracing::warn!("cache path: {cache:?} not exist. skip this bind path");
                 continue;
             }
-            bind_paths.insert(cache.to_string(), cache.to_string());
+            bind_paths.push(BindPath {
+                source: cache.to_string(),
+                target: cache.to_string(),
+            });
         }
 
         let pkg_path = self.package_path.to_string_lossy().to_string();
@@ -244,15 +258,17 @@ impl RuntimeLayer {
             perms.set_mode(0o755);
             std::fs::set_permissions(&script_path, perms)?;
 
-            bind_paths.insert(script_path.clone(), script_run_path_str.to_owned());
+            bind_paths.push(BindPath {
+                source: script_path.clone(),
+                target: script_run_path_str.to_owned(),
+            });
             scripts_files.push(script_run_path_str.to_string());
         }
 
-        let bind_path_arg = Some(bind_paths.clone());
         let pkg_path_arg = Some(pkg_path.clone());
 
         for script in scripts_files {
-            let mut cmd = ovmlayer::run_cmd(&script_run_merge_point, &bind_path_arg, &pkg_path_arg);
+            let mut cmd = ovmlayer::run_cmd(&script_run_merge_point, &bind_paths, &pkg_path_arg);
             cmd.arg(format!("{script}"));
             let child = cmd.spawn()?;
 

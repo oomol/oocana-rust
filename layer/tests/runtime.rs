@@ -2,7 +2,7 @@
 #[cfg(target_os = "linux")]
 mod tests {
 
-    use std::{collections::HashMap, env::temp_dir};
+    use std::env::temp_dir;
 
     use ctor::ctor;
     use layer::{convert_to_script, *};
@@ -32,10 +32,10 @@ mod tests {
     #[test]
     fn test_run_command_api() {
         let d = dirname().join("data").join("simple");
-        let r = get_or_create_package_layer(&d, None);
+        let r = get_or_create_package_layer(&d, &vec![]);
         assert!(r.is_ok(), "Error: {:?}", r.unwrap_err());
 
-        let runtime_layer = create_runtime_layer(d.to_str().unwrap(), HashMap::new());
+        let runtime_layer = create_runtime_layer(d.to_str().unwrap(), &vec![]);
         assert!(
             runtime_layer.is_ok(),
             "Error: {:?}",
@@ -52,10 +52,11 @@ mod tests {
         work_dir.push("file");
         std::fs::write(&work_dir, "hello aaa").expect("write file failed");
         let bind_dir = work_dir.parent().unwrap().to_str().unwrap().to_string();
-        let mut bind_map = HashMap::new();
-        bind_map.insert(bind_dir.clone(), bind_dir.clone());
 
-        runtime_layer.add_bind_paths(bind_map);
+        runtime_layer.add_bind_paths(&vec![BindPath {
+            source: bind_dir.clone(),
+            target: bind_dir.clone(),
+        }]);
 
         let exec_form_cmd = vec!["ls", work_dir.parent().unwrap().to_str().unwrap()];
 

@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::process::Command;
 
 fn ovmlayer_bin() -> Command {
@@ -87,7 +86,12 @@ pub fn unmerge_cmd(merge_point: &str) -> Command {
     binding
 }
 
-/// bind: key is the source path, value is the target path
+#[derive(Debug, Clone)]
+pub struct BindPath {
+    pub source: String,
+    pub target: String,
+}
+
 /// run command is executed in merged point. All IO changed will saved in the top layer
 ///
 /// This command need add script shell to execute
@@ -98,20 +102,16 @@ pub fn unmerge_cmd(merge_point: &str) -> Command {
 /// use std::collections::HashMap;
 /// use crate::ovmlayer::run_cmd;
 ///
-/// let mut cmd = run_cmd("merge_point", &Some(HashMap::new()));
+/// let mut cmd = run_cmd("merge_point", &Vec[], &None););
 /// cmd.arg("shell.sh"); // 只能再传入一个参数，这个参数会作为 Command 执行，后续再传入的参数，都是第一个参数执行时的参数内容（以$1, $2, $3...的形式传入），可以参考 zsh -c 的文档。
 /// cmd.output().unwrap();
 /// ```
-pub fn run_cmd(
-    merge_point: &str, bind: &Option<HashMap<String, String>>, work_dir: &Option<String>,
-) -> Command {
+pub fn run_cmd(merge_point: &str, bind_paths: &[BindPath], work_dir: &Option<String>) -> Command {
     let mut binding = ovmlayer_bin();
     let mut options = vec!["run".to_string()];
 
-    if let Some(bind) = bind {
-        for (key, value) in bind.iter() {
-            options.push(format!("--bind={}:{}", key, value));
-        }
+    for bind_path in bind_paths {
+        options.push(format!("--bind={}:{}", bind_path.source, bind_path.target));
     }
 
     if let Some(work_dir) = work_dir {
