@@ -19,14 +19,22 @@ for (const pkg of fs.readdirSync(path.join(__dirname))) {
             if (status !== 0) {
                 process.exit(status);
             }
+            const { status: publishStatus } = spawnSync("npm", ["publish", "--access", "public"], {
+                cwd: path.join(__dirname, pkg),
+                stdio: "inherit",
+            })
+            if (status !== 0) {
+                process.exit(status);
+            }
+        } else {
+            const { status } = spawnSync("npm", ["publish"], {
+                cwd: path.join(__dirname, pkg),
+                stdio: "inherit",
+            })
+            if (status !== 0) {
+                process.exit(status);
+            }
         }
 
-        const { status } = spawnSync("npm", ["publish"], {
-            cwd: path.join(__dirname, pkg),
-            stdio: "inherit",
-        })
-        if (status !== 0) {
-            process.exit(status);
-        }
     }
 }
