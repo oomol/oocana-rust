@@ -336,7 +336,7 @@ impl SchedulerTx {
                                 path: PathBuf::from(default_package.clone()),
                                 name: Some("default".to_string()),
                             },
-                            None => scope.clone(),
+                            None => RunningScope::Global { node_id: None },
                         }
                     } else {
                         return scope.clone();
