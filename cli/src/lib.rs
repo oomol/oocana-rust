@@ -5,13 +5,12 @@ mod parser;
 mod fun;
 
 use fun::bind_path_file;
-use std::{collections::HashSet, io::BufRead};
+use std::collections::HashSet;
 use cache::CacheAction;
-use ::layer::BindPath;
 use one_shot::one_shot::{run_block, BlockArgs};
 
 use clap::{Parser, Subcommand};
-use tracing::{debug, warn};
+use tracing::debug;
 use utils::{error::Result, logger::LogParams};
 use uuid::Uuid;
 
@@ -68,7 +67,7 @@ enum Commands {
         retain_env_keys: Option<Vec<String>>,
         #[arg(help = "env files, only support json file for now, accept multiple input. example: --env-files <file> --env-files <file>. all env file will be processed. first root key will be env's key, the value will be pass through. Only available for python and nodejs executor.", long)]
         env_files: Option<Vec<String>>,
-        #[arg(help = "bind path from file, format is <source_path>:<target_path> line by line, if not provided, it will be find env OOCANA_BIND_PATH_FILE variable", long, default_value_t = bind_path_file())]
+        #[arg(help = "a file path contains multiple bind paths. The file format is <source_path>:<target_path> line by line, if not provided, it will be found in OOCANA_BIND_PATH_FILE env variable", long, default_value_t = bind_path_file())]
         bind_path_file: String,
     },
     Cache {
