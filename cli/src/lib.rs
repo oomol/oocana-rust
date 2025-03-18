@@ -171,7 +171,7 @@ pub fn cli_match() -> Result<()> {
                 exclude_packages: exclude_packages.as_ref()
                 .map(|p| p.split(',').map(|s| s.to_string()).collect()),
                 session_dir: session_path.to_owned(),
-                bind_paths: Some(bind_paths),
+                bind_paths: bind_paths,
                 retain_env_keys: retain_env_keys.to_owned(),
                 env_files: env_files.to_owned(),
             })?

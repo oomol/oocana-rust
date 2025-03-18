@@ -83,7 +83,7 @@ pub struct BlockArgs<'a> {
     pub default_package: Option<String>,
     pub exclude_packages: Option<Vec<String>>,
     pub session_dir: Option<String>,
-    pub bind_paths: Option<Vec<BindPath>>,
+    pub bind_paths: Vec<BindPath>,
     pub retain_env_keys: Option<Vec<String>>,
     pub env_files: Option<Vec<String>>,
 }
@@ -135,7 +135,7 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
     let (scheduler_tx, scheduler_rx) = mainframe::scheduler::create(
         session_id.to_owned(),
         addr.to_string(),
-        bind_paths.unwrap_or_default(),
+        bind_paths,
         _scheduler_impl_tx,
         _scheduler_impl_rx,
         default_pkg_path.and_then(|p| p.to_str().map(|s| s.to_owned())),
