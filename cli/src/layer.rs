@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use clap::Subcommand;
-use layer::import_package_layer;
+use layer::{import_package_layer, BindPath};
 use manifest_reader::path_finder::find_package_file;
 use tracing::info;
 use utils::error::{Error, Result};
@@ -68,20 +68,19 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
             package,
             bind_paths,
         } => {
-            let bind_paths_map = bind_paths.as_ref().map(|paths| {
-                paths
-                    .iter()
-                    .map(|path| {
-                        let parts = path.split(':').collect::<Vec<&str>>();
-                        if parts.len() == 2 {
-                            (parts[0].to_string(), parts[1].to_string())
-                        } else {
-                            ("".to_string(), "".to_string())
-                        }
-                    })
-                    .collect()
-            });
-            layer::get_or_create_package_layer(package, bind_paths_map)?;
+            let mut bind_path_arg: Vec<BindPath> = vec![];
+            if let Some(paths) = bind_paths {
+                for path in paths {
+                    let parts = path.split(':').collect::<Vec<&str>>();
+                    if parts.len() == 2 {
+                        bind_path_arg.push(BindPath {
+                            source: parts[0].to_string(),
+                            target: parts[1].to_string(),
+                        });
+                    }
+                }
+            }
+            layer::get_or_create_package_layer(package, &bind_path_arg)?;
         }
         LayerAction::Delete { package } => {
             layer::delete_package_layer(package)?;
@@ -120,7 +119,7 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
             let status = layer::package_layer_status(package)?;
             match status {
                 layer::PackageLayerStatus::Exist => {
-                    let l = layer::get_or_create_package_layer(package, None)?;
+                    let l = layer::get_or_create_package_layer(package, &vec![])?;
                     l.export(dest)?;
                 }
                 layer::PackageLayerStatus::NotInStore => {

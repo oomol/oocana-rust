@@ -4,6 +4,7 @@ mod query;
 mod parser;
 use std::collections::HashSet;
 use cache::CacheAction;
+use ::layer::BindPath;
 use one_shot::one_shot::{run_block, BlockArgs};
 
 use clap::{Parser, Subcommand};
@@ -143,6 +144,21 @@ pub fn cli_match() -> Result<()> {
     debug!("run cli args: {command:#?} in version: {VERSION}");
     match command {
         Commands::Run { block, broker, block_search_paths, session, reporter, use_cache, nodes, input_values, exclude_packages, default_package, extra_bind_paths, session_dir: session_path, retain_env_keys, env_files } => {
+
+
+            let mut bind_paths: Vec<BindPath> = vec![];
+            if let Some(paths) = extra_bind_paths {
+                for path in paths {
+                    let parts = path.split(':').collect::<Vec<&str>>();
+                    if parts.len() == 2 {
+                        bind_paths.push(BindPath {
+                            source: parts[0].to_string(),
+                            target: parts[1].to_string(),
+                        });
+                    }
+                }
+            }
+
             run_block(BlockArgs {
                 block_path: block,
                 broker_address: broker.to_owned(),
@@ -162,16 +178,7 @@ pub fn cli_match() -> Result<()> {
                 exclude_packages: exclude_packages.as_ref()
                 .map(|p| p.split(',').map(|s| s.to_string()).collect()),
                 session_dir: session_path.to_owned(),
-                bind_paths: extra_bind_paths.as_ref().map(|paths| {
-                    paths.iter().map(|path| {
-                        let parts = path.split(':').collect::<Vec<&str>>();
-                        if parts.len() == 2 {
-                            (parts[0].to_string(), parts[1].to_string())
-                        } else {
-                            ("".to_string(), "".to_string())
-                        }
-                    }).collect()
-                }),
+                bind_paths: Some(bind_paths),
                 retain_env_keys: retain_env_keys.to_owned(),
                 env_files: env_files.to_owned(),
             })?
