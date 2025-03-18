@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 use std::fs::{metadata, File};
 use std::path::PathBuf;
@@ -55,6 +55,7 @@ impl PackageLayer {
         bootstrap: Option<String>,
         bind_paths: &[BindPath],
         package_path: P,
+        envs: &HashMap<String, String>,
     ) -> Result<Self> {
         let package_path: PathBuf = package_path.into();
 
@@ -96,6 +97,7 @@ impl PackageLayer {
                 &cache_bind_paths,
                 &Some(pkg_path),
                 &bootstrap,
+                envs,
             )?;
             Some(bootstrap_layer)
         } else {

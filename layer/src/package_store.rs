@@ -8,6 +8,7 @@ use manifest_reader::path_finder::find_package_file;
 use manifest_reader::reader::read_package;
 use manifest_reader::Package;
 use serde::{Deserialize, Serialize};
+use std::env;
 use std::fs::File;
 use std::path::Path;
 use std::{collections::HashMap, fs};
@@ -68,6 +69,7 @@ pub fn package_layer_status<P: AsRef<Path>>(package_path: P) -> Result<PackageLa
 pub fn get_or_create_package_layer<P: AsRef<Path>>(
     package_path: P,
     bind_path: &[BindPath],
+    envs: &HashMap<String, String>,
 ) -> Result<PackageLayer> {
     let package_path = package_path.as_ref();
     let pkg = package_meta(package_path)?;
@@ -91,6 +93,7 @@ pub fn get_or_create_package_layer<P: AsRef<Path>>(
                     bootstrap,
                     bind_path,
                     package_path.to_path_buf(),
+                    envs,
                 )?;
                 let mut store = load_package_store()?;
                 store
@@ -107,6 +110,7 @@ pub fn get_or_create_package_layer<P: AsRef<Path>>(
                 bootstrap,
                 bind_path,
                 package_path.to_path_buf(),
+                envs,
             )?;
             let mut store = load_package_store()?;
             store

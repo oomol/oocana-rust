@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::env::temp_dir;
 use std::io::BufRead;
 use std::os::unix::fs::PermissionsExt;
@@ -107,6 +108,7 @@ pub fn run_script_unmerge(
     bind: &[BindPath],
     work_dir: &Option<String>,
     script: &str,
+    envs: &HashMap<String, String>,
 ) -> Result<()> {
     let merge_point = &random_merge_point();
     merge_layer(&layers, merge_point)?;
@@ -127,6 +129,7 @@ pub fn run_script_unmerge(
     tracing::info!("{cmd:?}");
 
     let child = cmd
+        .envs(envs)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())

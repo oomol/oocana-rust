@@ -2,7 +2,7 @@
 #[cfg(target_os = "linux")]
 mod tests {
 
-    use std::env::temp_dir;
+    use std::{collections::HashMap, env::temp_dir};
 
     use ctor::ctor;
     use layer::{convert_to_script, *};
@@ -32,10 +32,10 @@ mod tests {
     #[test]
     fn test_run_command_api() {
         let d = dirname().join("data").join("simple");
-        let r = get_or_create_package_layer(&d, &vec![]);
+        let r = get_or_create_package_layer(&d, &vec![], &HashMap::new());
         assert!(r.is_ok(), "Error: {:?}", r.unwrap_err());
 
-        let runtime_layer = create_runtime_layer(d.to_str().unwrap(), &vec![]);
+        let runtime_layer = create_runtime_layer(d.to_str().unwrap(), &vec![], &HashMap::new());
         assert!(
             runtime_layer.is_ok(),
             "Error: {:?}",

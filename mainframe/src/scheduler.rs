@@ -475,7 +475,7 @@ fn spawn_executor(
         session_dir,
         pass_through_env_keys,
         bind_paths: _bind_paths,
-        env_files,
+        envs: executor_envs,
     } = &executor_payload;
 
     // 后面加 -executor 尾缀是一种隐式约定。例如：如果 executor 是 "python"，那么实际上会执行 python-executor。
@@ -511,11 +511,6 @@ fn spawn_executor(
         if identifier.len() > 0 {
             exec_form_cmd.push("--package");
             exec_form_cmd.push(&identifier);
-        }
-
-        for env_file in env_files {
-            exec_form_cmd.push("--env-files");
-            exec_form_cmd.push(env_file);
         }
 
         executor_package = Some(package_path_str.to_string());
@@ -559,6 +554,14 @@ fn spawn_executor(
     }
 
     tracing::debug!("pass through these env keys: {:?}", envs.keys());
+
+    for (key, value) in executor_envs.iter() {
+        if envs.contains_key(key) {
+            warn!("env key {} is already in envs, skip", key);
+        } else {
+            envs.insert(key.to_owned(), value.to_owned());
+        }
+    }
 
     command
         .env("IS_FORKED", "1")
@@ -777,7 +780,8 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
             }
         }
         let path_str = pkg.to_string_lossy().to_string();
-        let mut runtime_layer = create_runtime_layer(&path_str, &bind_paths)?;
+        let mut runtime_layer =
+            create_runtime_layer(&path_str, &bind_paths, &executor_payload.envs)?;
 
         if let Some(store) = injection_store {
             if let Some(target) = scope.target() {
@@ -1181,7 +1185,7 @@ pub struct ExecutorPayload {
     session_dir: String,
     pass_through_env_keys: Vec<String>,
     bind_paths: Vec<BindPath>,
-    env_files: Vec<String>,
+    envs: HashMap<String, String>,
 }
 
 pub fn create<TT, TR>(
@@ -1194,7 +1198,7 @@ pub fn create<TT, TR>(
     exclude_packages: Option<Vec<String>>,
     session_dir: String,
     retain_env_keys: Vec<String>,
-    env_files: Vec<String>,
+    envs: HashMap<String, String>,
 ) -> (SchedulerTx, SchedulerRx<TT, TR>)
 where
     TT: SchedulerTxImpl,
@@ -1217,7 +1221,7 @@ where
                 session_dir: session_dir,
                 pass_through_env_keys: retain_env_keys,
                 bind_paths: bind_paths,
-                env_files: env_files,
+                envs,
             },
             tx,
             rx,
