@@ -1,9 +1,10 @@
 //! Run flow once and exit.
 
 use job::SessionId;
+use mainframe::BindPath;
 use manifest_meta::BlockResolver;
 use manifest_reader::path_finder::BlockPathFinder;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::env;
 use std::fs::{self, metadata};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
@@ -82,7 +83,7 @@ pub struct BlockArgs<'a> {
     pub default_package: Option<String>,
     pub exclude_packages: Option<Vec<String>>,
     pub session_dir: Option<String>,
-    pub bind_paths: Option<HashMap<String, String>>,
+    pub bind_paths: Option<Vec<BindPath>>,
     pub retain_env_keys: Option<Vec<String>>,
     pub env_files: Option<Vec<String>>,
 }

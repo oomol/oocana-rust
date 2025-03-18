@@ -11,7 +11,7 @@ use std::{
 };
 use utils::calculate_short_hash;
 
-use layer::{create_runtime_layer, InjectionParams, RuntimeLayer};
+use layer::{create_runtime_layer, BindPath, InjectionParams, RuntimeLayer};
 
 use job::{BlockInputs, BlockJobStackLevel, JobId, SessionId};
 
@@ -757,25 +757,27 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
             if let Some(target) = scope.target() {
                 if let Some(meta) = store.get(&target) {
                     for node in meta.nodes.iter() {
-                        // bind the parent directory of the node to avoid missing some files
-                        bind_paths.insert(
-                            node.absolute_entry
+                        bind_paths.push(BindPath {
+                            source: node
+                                .absolute_entry
                                 .parent()
-                                .unwrap()
-                                .to_string_lossy()
-                                .to_string(),
-                            format!(
+                                .map(|p| p.to_string_lossy().to_string())
+                                .unwrap_or_default(),
+                            target: format!(
                                 "{}/{}",
                                 pkg.to_string_lossy().to_string(),
-                                node.relative_entry.parent().unwrap().display()
+                                node.relative_entry
+                                    .parent()
+                                    .map(|p| p.to_string_lossy().to_string())
+                                    .unwrap_or_default()
                             ),
-                        );
+                        });
                     }
                 }
             }
         }
         let path_str = pkg.to_string_lossy().to_string();
-        let mut runtime_layer = create_runtime_layer(&path_str, bind_paths)?;
+        let mut runtime_layer = create_runtime_layer(&path_str, &bind_paths)?;
 
         if let Some(store) = injection_store {
             if let Some(target) = scope.target() {
@@ -1178,14 +1180,14 @@ pub struct ExecutorPayload {
     session_id: SessionId,
     session_dir: String,
     pass_through_env_keys: Vec<String>,
-    bind_paths: HashMap<String, String>,
+    bind_paths: Vec<BindPath>,
     env_files: Vec<String>,
 }
 
 pub fn create<TT, TR>(
     session_id: SessionId,
     addr: String,
-    bind_paths: HashMap<String, String>,
+    bind_paths: Vec<BindPath>,
     impl_tx: TT,
     impl_rx: TR,
     default_package: Option<String>,
