@@ -4,7 +4,7 @@ use job::SessionId;
 use mainframe::BindPath;
 use manifest_meta::BlockResolver;
 use manifest_reader::path_finder::BlockPathFinder;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fs::{self, metadata};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
@@ -85,6 +85,7 @@ pub struct BlockArgs<'a> {
     pub session_dir: Option<String>,
     pub bind_paths: Vec<BindPath>,
     pub retain_env_keys: Option<Vec<String>>,
+    pub envs: HashMap<String, String>,
 }
 
 async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
@@ -102,6 +103,7 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
         bind_paths,
         session_dir,
         retain_env_keys,
+        envs,
     } = block_args;
     let session_id = SessionId::new(session);
     tracing::info!("Session {} started", session_id);
@@ -140,6 +142,7 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
         exclude_packages,
         session_dir,
         retain_env_keys.unwrap_or_default(),
+        envs,
     );
     let scheduler_handle = scheduler_rx.event_loop();
 

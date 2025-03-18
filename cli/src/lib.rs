@@ -4,7 +4,7 @@ mod query;
 mod parser;
 mod fun;
 
-use fun::bind_path_file;
+use fun::{bind_path_file, env_file};
 use std::collections::HashSet;
 use cache::CacheAction;
 use one_shot::one_shot::{run_block, BlockArgs};
@@ -65,8 +65,8 @@ enum Commands {
         extra_bind_paths: Option<Vec<String>>,
         #[arg(help = "when spawn a new process, retain the environment variables(only accept variable name), accept multiple input. example: --retain-env-keys <env> --retain-env-keys <env>", long)]
         retain_env_keys: Option<Vec<String>>,
-        #[arg(help = "env files, only support json file for now, accept multiple input. example: --env-files <file> --env-files <file>. all env file will be processed. first root key will be env's key, the value will be pass through. Only available for python and nodejs executor.", long)]
-        env_files: Option<Vec<String>>,
+        #[arg(help = ".env file path, when spawn a executor, these env will pass to this executor. The file format is <key>=<value> line by line like traditional env file. if not provided, oocana will search OOCANA_ENV_FILE env variable", long, default_value_t = env_file())]
+        env_file: String,
         #[arg(help = "a file path contains multiple bind paths. The file format is <source_path>:<target_path> line by line, if not provided, it will be found in OOCANA_BIND_PATH_FILE env variable", long, default_value_t = bind_path_file())]
         bind_path_file: String,
     },
@@ -148,9 +148,10 @@ pub fn cli_match() -> Result<()> {
 
     debug!("run cli args: {command:#?} in version: {VERSION}");
     match command {
-        Commands::Run { block, broker, block_search_paths, session, reporter, use_cache, nodes, input_values, exclude_packages, default_package, extra_bind_paths, session_dir: session_path, retain_env_keys, env_files, bind_path_file } => {
+        Commands::Run { block, broker, block_search_paths, session, reporter, use_cache, nodes, input_values, exclude_packages, default_package, extra_bind_paths, session_dir: session_path, retain_env_keys, env_file, bind_path_file } => {
 
             let bind_paths = fun::bind_path(extra_bind_paths, bind_path_file);
+            let envs = fun::envs(&env_file);
 
             run_block(BlockArgs {
                 block_path: block,
@@ -173,7 +174,7 @@ pub fn cli_match() -> Result<()> {
                 session_dir: session_path.to_owned(),
                 bind_paths: bind_paths,
                 retain_env_keys: retain_env_keys.to_owned(),
-                env_files: env_files.to_owned(),
+                envs,
             })?
         },
         Commands::Cache { action } => {

@@ -475,6 +475,7 @@ fn spawn_executor(
         session_dir,
         pass_through_env_keys,
         bind_paths: _bind_paths,
+        envs: executor_envs,
     } = &executor_payload;
 
     // 后面加 -executor 尾缀是一种隐式约定。例如：如果 executor 是 "python"，那么实际上会执行 python-executor。
@@ -553,6 +554,14 @@ fn spawn_executor(
     }
 
     tracing::debug!("pass through these env keys: {:?}", envs.keys());
+
+    for (key, value) in executor_envs.iter() {
+        if envs.contains_key(key) {
+            warn!("env key {} is already in envs, skip", key);
+        } else {
+            envs.insert(key.to_owned(), value.to_owned());
+        }
+    }
 
     command
         .env("IS_FORKED", "1")
@@ -1175,6 +1184,7 @@ pub struct ExecutorPayload {
     session_dir: String,
     pass_through_env_keys: Vec<String>,
     bind_paths: Vec<BindPath>,
+    envs: HashMap<String, String>,
 }
 
 pub fn create<TT, TR>(
@@ -1187,6 +1197,7 @@ pub fn create<TT, TR>(
     exclude_packages: Option<Vec<String>>,
     session_dir: String,
     retain_env_keys: Vec<String>,
+    envs: HashMap<String, String>,
 ) -> (SchedulerTx, SchedulerRx<TT, TR>)
 where
     TT: SchedulerTxImpl,
@@ -1209,6 +1220,7 @@ where
                 session_dir: session_dir,
                 pass_through_env_keys: retain_env_keys,
                 bind_paths: bind_paths,
+                envs,
             },
             tx,
             rx,

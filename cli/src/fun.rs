@@ -1,6 +1,47 @@
-use std::io::BufRead;
-
 use layer::BindPath;
+
+use std::{collections::HashMap, io::BufRead};
+
+pub fn env_file() -> String {
+    std::env::var("OOCANA_ENV_FILE").unwrap_or_else(|_| "".to_string())
+}
+
+pub fn envs(file: &str) -> HashMap<String, String> {
+    let mut envs = HashMap::new();
+
+    if !file.is_empty() {
+        let path = std::path::Path::new(&file);
+        if path.is_file() {
+            let file = std::fs::File::open(path);
+
+            match file {
+                Ok(file) => {
+                    let reader = std::io::BufReader::new(file);
+                    for line in reader.lines() {
+                        match line {
+                            Ok(line) => {
+                                let parts = line.split('=').collect::<Vec<&str>>();
+                                if parts.len() == 2 {
+                                    envs.insert(parts[0].to_string(), parts[1].to_string());
+                                } else {
+                                    tracing::warn!("env file line format error: {line}");
+                                }
+                            }
+                            Err(e) => {
+                                tracing::warn!("env file read error: {:?}", e);
+                            }
+                        }
+                    }
+                }
+                Err(e) => {
+                    tracing::warn!("env file open error: {:?}", e);
+                }
+            }
+        }
+    }
+
+    envs
+}
 
 pub fn bind_path_file() -> String {
     std::env::var("OOCANA_BIND_PATH_FILE").unwrap_or_else(|_| "".to_string())
