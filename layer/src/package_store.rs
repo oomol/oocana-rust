@@ -1,6 +1,6 @@
 use crate::injection_store::load_injection_store;
 use crate::layer;
-use crate::ovmlayer::LayerType;
+use crate::ovmlayer::{BindPath, LayerType};
 use crate::package_layer::PackageLayer;
 
 use fs2::FileExt;
@@ -66,7 +66,8 @@ pub fn package_layer_status<P: AsRef<Path>>(package_path: P) -> Result<PackageLa
 }
 
 pub fn get_or_create_package_layer<P: AsRef<Path>>(
-    package_path: P, bind_path: Option<HashMap<String, String>>,
+    package_path: P,
+    bind_path: &[BindPath],
 ) -> Result<PackageLayer> {
     let package_path = package_path.as_ref();
     let pkg = package_meta(package_path)?;

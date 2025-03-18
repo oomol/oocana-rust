@@ -2,6 +2,9 @@ mod layer;
 mod cache;
 mod query;
 mod parser;
+mod fun;
+
+use fun::bind_path_file;
 use std::collections::HashSet;
 use cache::CacheAction;
 use one_shot::one_shot::{run_block, BlockArgs};
@@ -26,6 +29,7 @@ pub struct Cli {
 }
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
+
 
 #[derive(Subcommand, Debug)]
 enum Commands {
@@ -63,6 +67,8 @@ enum Commands {
         retain_env_keys: Option<Vec<String>>,
         #[arg(help = "env files, only support json file for now, accept multiple input. example: --env-files <file> --env-files <file>. all env file will be processed. first root key will be env's key, the value will be pass through. Only available for python and nodejs executor.", long)]
         env_files: Option<Vec<String>>,
+        #[arg(help = "a file path contains multiple bind paths. The file format is <source_path>:<target_path> line by line, if not provided, it will be found in OOCANA_BIND_PATH_FILE env variable", long, default_value_t = bind_path_file())]
+        bind_path_file: String,
     },
     Cache {
         #[command(subcommand)]
@@ -142,7 +148,10 @@ pub fn cli_match() -> Result<()> {
 
     debug!("run cli args: {command:#?} in version: {VERSION}");
     match command {
-        Commands::Run { block, broker, block_search_paths, session, reporter, use_cache, nodes, input_values, exclude_packages, default_package, extra_bind_paths, session_dir: session_path, retain_env_keys, env_files } => {
+        Commands::Run { block, broker, block_search_paths, session, reporter, use_cache, nodes, input_values, exclude_packages, default_package, extra_bind_paths, session_dir: session_path, retain_env_keys, env_files, bind_path_file } => {
+
+            let bind_paths = fun::bind_path(extra_bind_paths, bind_path_file);
+
             run_block(BlockArgs {
                 block_path: block,
                 broker_address: broker.to_owned(),
@@ -162,16 +171,7 @@ pub fn cli_match() -> Result<()> {
                 exclude_packages: exclude_packages.as_ref()
                 .map(|p| p.split(',').map(|s| s.to_string()).collect()),
                 session_dir: session_path.to_owned(),
-                bind_paths: extra_bind_paths.as_ref().map(|paths| {
-                    paths.iter().map(|path| {
-                        let parts = path.split(':').collect::<Vec<&str>>();
-                        if parts.len() == 2 {
-                            (parts[0].to_string(), parts[1].to_string())
-                        } else {
-                            ("".to_string(), "".to_string())
-                        }
-                    }).collect()
-                }),
+                bind_paths: bind_paths,
                 retain_env_keys: retain_env_keys.to_owned(),
                 env_files: env_files.to_owned(),
             })?

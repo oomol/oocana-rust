@@ -10,6 +10,7 @@ mod runtime_layer;
 
 use std::process::Command;
 
+pub use ovmlayer::BindPath;
 pub use package_layer::import_package_layer;
 pub use package_store::{
     delete_all_layer_data, delete_package_layer, get_or_create_package_layer, list_package_layers,
