@@ -85,7 +85,6 @@ pub struct BlockArgs<'a> {
     pub session_dir: Option<String>,
     pub bind_paths: Vec<BindPath>,
     pub retain_env_keys: Option<Vec<String>>,
-    pub env_files: Option<Vec<String>>,
 }
 
 async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
@@ -103,7 +102,6 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
         bind_paths,
         session_dir,
         retain_env_keys,
-        env_files,
     } = block_args;
     let session_id = SessionId::new(session);
     tracing::info!("Session {} started", session_id);
@@ -142,7 +140,6 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
         exclude_packages,
         session_dir,
         retain_env_keys.unwrap_or_default(),
-        env_files.unwrap_or_default(),
     );
     let scheduler_handle = scheduler_rx.event_loop();
 

@@ -475,7 +475,6 @@ fn spawn_executor(
         session_dir,
         pass_through_env_keys,
         bind_paths: _bind_paths,
-        env_files,
     } = &executor_payload;
 
     // 后面加 -executor 尾缀是一种隐式约定。例如：如果 executor 是 "python"，那么实际上会执行 python-executor。
@@ -511,11 +510,6 @@ fn spawn_executor(
         if identifier.len() > 0 {
             exec_form_cmd.push("--package");
             exec_form_cmd.push(&identifier);
-        }
-
-        for env_file in env_files {
-            exec_form_cmd.push("--env-files");
-            exec_form_cmd.push(env_file);
         }
 
         executor_package = Some(package_path_str.to_string());
@@ -1181,7 +1175,6 @@ pub struct ExecutorPayload {
     session_dir: String,
     pass_through_env_keys: Vec<String>,
     bind_paths: Vec<BindPath>,
-    env_files: Vec<String>,
 }
 
 pub fn create<TT, TR>(
@@ -1194,7 +1187,6 @@ pub fn create<TT, TR>(
     exclude_packages: Option<Vec<String>>,
     session_dir: String,
     retain_env_keys: Vec<String>,
-    env_files: Vec<String>,
 ) -> (SchedulerTx, SchedulerRx<TT, TR>)
 where
     TT: SchedulerTxImpl,
@@ -1217,7 +1209,6 @@ where
                 session_dir: session_dir,
                 pass_through_env_keys: retain_env_keys,
                 bind_paths: bind_paths,
-                env_files: env_files,
             },
             tx,
             rx,
