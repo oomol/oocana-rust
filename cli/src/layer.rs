@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 
+use crate::fun::{bind_path, bind_path_file};
 use clap::Subcommand;
-use layer::{import_package_layer, BindPath};
+use layer::import_package_layer;
 use manifest_reader::path_finder::find_package_file;
 use tracing::info;
 use utils::error::{Error, Result};
@@ -17,6 +18,8 @@ pub enum LayerAction {
             long
         )]
         bind_paths: Option<Vec<String>>,
+        #[arg(help = "bind path from file, format is <source_path>:<target_path> line by line, if not provided, it will be find env OOCANA_BIND_PATH_FILE variable", long, default_value_t = bind_path_file())]
+        bind_path_file: String,
     },
     #[command(about = "delete package layer")]
     Delete {
@@ -67,19 +70,9 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
         LayerAction::Create {
             package,
             bind_paths,
+            bind_path_file,
         } => {
-            let mut bind_path_arg: Vec<BindPath> = vec![];
-            if let Some(paths) = bind_paths {
-                for path in paths {
-                    let parts = path.split(':').collect::<Vec<&str>>();
-                    if parts.len() == 2 {
-                        bind_path_arg.push(BindPath {
-                            source: parts[0].to_string(),
-                            target: parts[1].to_string(),
-                        });
-                    }
-                }
-            }
+            let bind_path_arg = bind_path(bind_paths, bind_path_file);
             layer::get_or_create_package_layer(package, &bind_path_arg)?;
         }
         LayerAction::Delete { package } => {

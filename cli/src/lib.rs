@@ -2,13 +2,16 @@ mod layer;
 mod cache;
 mod query;
 mod parser;
-use std::collections::HashSet;
+mod fun;
+
+use fun::bind_path_file;
+use std::{collections::HashSet, io::BufRead};
 use cache::CacheAction;
 use ::layer::BindPath;
 use one_shot::one_shot::{run_block, BlockArgs};
 
 use clap::{Parser, Subcommand};
-use tracing::debug;
+use tracing::{debug, warn};
 use utils::{error::Result, logger::LogParams};
 use uuid::Uuid;
 
@@ -27,6 +30,7 @@ pub struct Cli {
 }
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
+
 
 #[derive(Subcommand, Debug)]
 enum Commands {
@@ -64,6 +68,8 @@ enum Commands {
         retain_env_keys: Option<Vec<String>>,
         #[arg(help = "env files, only support json file for now, accept multiple input. example: --env-files <file> --env-files <file>. all env file will be processed. first root key will be env's key, the value will be pass through. Only available for python and nodejs executor.", long)]
         env_files: Option<Vec<String>>,
+        #[arg(help = "bind path from file, format is <source_path>:<target_path> line by line, if not provided, it will be find env OOCANA_BIND_PATH_FILE variable", long, default_value_t = bind_path_file())]
+        bind_path_file: String,
     },
     Cache {
         #[command(subcommand)]
@@ -143,21 +149,9 @@ pub fn cli_match() -> Result<()> {
 
     debug!("run cli args: {command:#?} in version: {VERSION}");
     match command {
-        Commands::Run { block, broker, block_search_paths, session, reporter, use_cache, nodes, input_values, exclude_packages, default_package, extra_bind_paths, session_dir: session_path, retain_env_keys, env_files } => {
+        Commands::Run { block, broker, block_search_paths, session, reporter, use_cache, nodes, input_values, exclude_packages, default_package, extra_bind_paths, session_dir: session_path, retain_env_keys, env_files, bind_path_file } => {
 
-
-            let mut bind_paths: Vec<BindPath> = vec![];
-            if let Some(paths) = extra_bind_paths {
-                for path in paths {
-                    let parts = path.split(':').collect::<Vec<&str>>();
-                    if parts.len() == 2 {
-                        bind_paths.push(BindPath {
-                            source: parts[0].to_string(),
-                            target: parts[1].to_string(),
-                        });
-                    }
-                }
-            }
+            let bind_paths = fun::bind_path(extra_bind_paths, bind_path_file);
 
             run_block(BlockArgs {
                 block_path: block,
