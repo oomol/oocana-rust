@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::fun::{bind_path, bind_path_file};
+use crate::fun::{bind_path, bind_path_file, env_file, envs};
 use clap::Subcommand;
 use layer::import_package_layer;
 use manifest_reader::path_finder::find_package_file;
@@ -20,6 +20,8 @@ pub enum LayerAction {
         bind_paths: Option<Vec<String>>,
         #[arg(help = "bind path from file, format is <source_path>:<target_path> line by line, if not provided, it will be find env OOCANA_BIND_PATH_FILE variable", long, default_value_t = bind_path_file())]
         bind_path_file: String,
+        #[arg(help = ".env file path, when create a layer, these env will pass to this process. The file format is <key>=<value> line by line like traditional env file. if not provided, oocana will search OOCANA_ENV_FILE env variable", long, default_value_t = env_file())]
+        env_file: String,
     },
     #[command(about = "delete package layer")]
     Delete {
@@ -71,9 +73,11 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
             package,
             bind_paths,
             bind_path_file,
+            env_file,
         } => {
             let bind_path_arg = bind_path(bind_paths, bind_path_file);
-            layer::get_or_create_package_layer(package, &bind_path_arg)?;
+            let envs = envs(env_file);
+            layer::get_or_create_package_layer(package, &bind_path_arg, &envs)?;
         }
         LayerAction::Delete { package } => {
             layer::delete_package_layer(package)?;
@@ -112,7 +116,7 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
             let status = layer::package_layer_status(package)?;
             match status {
                 layer::PackageLayerStatus::Exist => {
-                    let l = layer::get_or_create_package_layer(package, &vec![])?;
+                    let l = layer::get_or_create_package_layer(package, &vec![], &HashMap::new())?;
                     l.export(dest)?;
                 }
                 layer::PackageLayerStatus::NotInStore => {

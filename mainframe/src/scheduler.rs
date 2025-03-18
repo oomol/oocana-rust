@@ -780,7 +780,8 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
             }
         }
         let path_str = pkg.to_string_lossy().to_string();
-        let mut runtime_layer = create_runtime_layer(&path_str, &bind_paths)?;
+        let mut runtime_layer =
+            create_runtime_layer(&path_str, &bind_paths, &executor_payload.envs)?;
 
         if let Some(store) = injection_store {
             if let Some(target) = scope.target() {

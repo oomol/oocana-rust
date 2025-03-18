@@ -6,6 +6,7 @@ use crate::layer::{
 use crate::ovmlayer::{self, BindPath};
 use crate::package_layer::{PackageLayer, CACHE_DIR};
 use crate::package_store::get_or_create_package_layer;
+use std::collections::HashMap;
 use std::env::temp_dir;
 use std::fmt::Debug;
 use std::fs::metadata;
@@ -34,8 +35,12 @@ pub struct RuntimeLayer {
     pub extra_layers: Option<Vec<String>>,
 }
 
-pub fn create_runtime_layer(package: &str, bind_paths: &[BindPath]) -> Result<RuntimeLayer> {
-    match get_or_create_package_layer(package, bind_paths) {
+pub fn create_runtime_layer(
+    package: &str,
+    bind_paths: &[BindPath],
+    envs: &HashMap<String, String>,
+) -> Result<RuntimeLayer> {
+    match get_or_create_package_layer(package, bind_paths, &envs) {
         Ok(layer) => match create_runtime_layer_from_package_layer(&layer) {
             Ok(mut runtime_layer) => {
                 runtime_layer.add_bind_paths(bind_paths);
