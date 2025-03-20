@@ -49,6 +49,8 @@ enum Commands {
         session: String,
         #[arg(help = "Enable reporter.", long)]
         reporter: bool,
+        #[arg(help = "Verbose output. If true oocana will print all log message to console output", long)]
+        verbose: bool,
         #[arg(help = "Use previous result cache if exist.", long)]
         use_cache: bool,
         #[arg(help = "Stop the flow after the node is finished.", long)]
@@ -61,12 +63,12 @@ enum Commands {
         exclude_packages: Option<String>,
         #[arg(help = "temporary session path,  It will be the return value of context.sessionDir or context.session_dir function. just a string, oocana just check if it is exist.", long)]
         session_dir: Option<String>,
-        #[arg(help = "extra bind paths, format <source_path>:<target_path>, accept multiple input. example: --bind-paths <source>:<target> --bind-paths <source>:<target>", long)]
-        extra_bind_paths: Option<Vec<String>>,
         #[arg(help = "when spawn a new process, retain the environment variables(only accept variable name), accept multiple input. example: --retain-env-keys <env> --retain-env-keys <env>", long)]
         retain_env_keys: Option<Vec<String>>,
         #[arg(help = ".env file path, when spawn a executor, these env will pass to this executor. The file format is <key>=<value> line by line like traditional env file. if not provided, oocana will search OOCANA_ENV_FILE env variable", long, default_value_t = env_file())]
         env_file: String,
+        #[arg(help = "bind paths, format <source_path>:<target_path>, accept multiple input. example: --bind-paths <source>:<target> --bind-paths <source>:<target>", long)]
+        bind_paths: Option<Vec<String>>,
         #[arg(help = "a file path contains multiple bind paths. The file format is <source_path>:<target_path> line by line, if not provided, it will be found in OOCANA_BIND_PATH_FILE env variable", long, default_value_t = bind_path_file())]
         bind_path_file: String,
     },
@@ -95,11 +97,11 @@ pub fn cli_match() -> Result<()> {
     let command = &cli.command;
 
     let _guard = match command {
-        Commands::Run { session, .. } => {
+        Commands::Run { session, verbose, .. } => {
             utils::logger::setup_logging(LogParams {
                 sub_dir: Some(format!("sessions/{session}")),
                 log_name: "oocana",
-                output_to_console: false,
+                output_to_console: *verbose,
                 capture_stdout_stderr_target: false,
             })?
         },
@@ -148,9 +150,9 @@ pub fn cli_match() -> Result<()> {
 
     debug!("run cli args: {command:#?} in version: {VERSION}");
     match command {
-        Commands::Run { block, broker, block_search_paths, session, reporter, use_cache, nodes, input_values, exclude_packages, default_package, extra_bind_paths, session_dir: session_path, retain_env_keys, env_file, bind_path_file } => {
+        Commands::Run { block, broker, block_search_paths, session, reporter, use_cache, nodes, input_values, exclude_packages, default_package, bind_paths, session_dir: session_path, retain_env_keys, env_file, bind_path_file, verbose: _verbose } => {
 
-            let bind_paths = fun::bind_path(extra_bind_paths, bind_path_file);
+            let bind_paths = fun::bind_path(bind_paths, bind_path_file);
             let envs = fun::envs(&env_file);
 
             run_block(BlockArgs {
