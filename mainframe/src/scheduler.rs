@@ -804,7 +804,7 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
 
         Some(runtime_layer)
     } else {
-        info!("final package is None, skip layer creation");
+        info!("final package is None, skip layer creation {:?}", scope);
         None
     };
 
