@@ -94,7 +94,8 @@ fn get_block_name_and_pkg(block_value: &str) -> (String, Option<String>) {
 }
 
 /// 如果能够把这个处理往上移，可能结构会更清晰
-enum BlockValueType {
+#[derive(Debug, PartialEq, Eq)]
+pub enum BlockValueType {
     /// start with self::, like self::<block_name> or self::<service_name>::<block_name>
     SelfBlock,
     /// <block_name> or manifest file path or a directory contains manifest file.
@@ -108,7 +109,7 @@ enum BlockValueType {
     RelPath,
 }
 
-fn get_block_value_type(block_value: &str) -> BlockValueType {
+pub fn get_block_value_type(block_value: &str) -> BlockValueType {
     if block_value.starts_with("self::") {
         return BlockValueType::SelfBlock;
     }
@@ -183,5 +184,28 @@ fn is_normal_path_component(component: Component) -> bool {
     match component {
         Component::Normal(_) => true,
         _ => false,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_get_block_value_type() {
+        assert_eq!(
+            get_block_value_type("self::block1"),
+            BlockValueType::SelfBlock
+        );
+        assert_eq!(get_block_value_type("block1"), BlockValueType::Direct);
+        assert_eq!(get_block_value_type("pkg1::block1"), BlockValueType::Pkg);
+        assert_eq!(
+            get_block_value_type("/abs/path/block1"),
+            BlockValueType::AbsPath
+        );
+        assert_eq!(
+            get_block_value_type("./rel/path/block1"),
+            BlockValueType::RelPath
+        );
     }
 }

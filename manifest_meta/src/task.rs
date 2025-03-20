@@ -12,6 +12,7 @@ pub struct TaskBlock {
     /// block.oo.[yml|yaml] 的路径；如果是 inline block，这个字段为空。
     pub path: Option<PathBuf>,
     pub path_str: Option<String>,
+    // TODO: package_path is not reliable, it should be removed. use block type instead.
     pub package_path: Option<PathBuf>,
 }
 

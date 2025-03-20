@@ -31,7 +31,10 @@ impl<F: FnOnce()> Drop for Defer<F> {
 fn package_meta<P: AsRef<Path>>(dir: P) -> Result<Package> {
     let p = find_package_file(dir.as_ref());
     if p.is_none() {
-        return Err(Error::new("Failed to resolve package file"));
+        return Err(Error::new(&format!(
+            "no package file in {}",
+            dir.as_ref().display()
+        )));
     }
     return read_package(&p.unwrap());
 }

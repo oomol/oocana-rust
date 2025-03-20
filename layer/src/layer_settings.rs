@@ -43,7 +43,12 @@ pub fn load_base_rootfs() -> Result<Vec<String>> {
         let reader = std::io::BufReader::new(f);
 
         match serde_json::from_reader::<_, LayerSettings>(reader) {
-            Ok(base) => Ok(base.base_rootfs),
+            Ok(base) => Ok(base
+                .base_rootfs
+                .iter()
+                .filter(|s| !s.is_empty())
+                .cloned()
+                .collect()),
             Err(e) => Err(Error::new(&format!(
                 "Failed to load_package_store: {:?}",
                 e
