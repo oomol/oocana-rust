@@ -49,6 +49,8 @@ enum Commands {
         session: String,
         #[arg(help = "Enable reporter.", long)]
         reporter: bool,
+        #[arg(help = "Verbose output. If true oocana will print all log message to console output", long)]
+        verbose: bool,
         #[arg(help = "Use previous result cache if exist.", long)]
         use_cache: bool,
         #[arg(help = "Stop the flow after the node is finished.", long)]
@@ -95,11 +97,11 @@ pub fn cli_match() -> Result<()> {
     let command = &cli.command;
 
     let _guard = match command {
-        Commands::Run { session, .. } => {
+        Commands::Run { session, verbose, .. } => {
             utils::logger::setup_logging(LogParams {
                 sub_dir: Some(format!("sessions/{session}")),
                 log_name: "oocana",
-                output_to_console: false,
+                output_to_console: *verbose,
                 capture_stdout_stderr_target: false,
             })?
         },
@@ -148,7 +150,7 @@ pub fn cli_match() -> Result<()> {
 
     debug!("run cli args: {command:#?} in version: {VERSION}");
     match command {
-        Commands::Run { block, broker, block_search_paths, session, reporter, use_cache, nodes, input_values, exclude_packages, default_package, bind_paths, session_dir: session_path, retain_env_keys, env_file, bind_path_file } => {
+        Commands::Run { block, broker, block_search_paths, session, reporter, use_cache, nodes, input_values, exclude_packages, default_package, bind_paths, session_dir: session_path, retain_env_keys, env_file, bind_path_file, verbose: _verbose } => {
 
             let bind_paths = fun::bind_path(bind_paths, bind_path_file);
             let envs = fun::envs(&env_file);
