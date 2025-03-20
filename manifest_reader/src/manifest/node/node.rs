@@ -1,5 +1,8 @@
 use super::input_from::NodeInputFrom;
-use crate::manifest::{InputHandle, SlotBlock, TaskBlock};
+use crate::{
+    manifest::{InputHandle, SlotBlock, TaskBlock},
+    path_finder::{get_block_value_type, BlockValueType},
+};
 use serde::{Deserialize, Serialize};
 use tracing::warn;
 
@@ -213,6 +216,13 @@ impl TaskNodeBlock {
                     None
                 }
             }
+        }
+    }
+
+    pub fn block_type(&self) -> BlockValueType {
+        match self {
+            TaskNodeBlock::File(f) => get_block_value_type(&f),
+            TaskNodeBlock::Inline(_) => BlockValueType::SelfBlock,
         }
     }
 }

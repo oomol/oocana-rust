@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use manifest_reader::manifest::NodeId;
+use manifest_reader::{manifest::NodeId, path_finder::BlockValueType};
 
 use crate::InjectionTarget;
 
@@ -72,13 +72,15 @@ pub fn calculate_running_scope(
     node: &manifest_reader::manifest::Node,
     injection: &Option<manifest_reader::manifest::Injection>,
     package_path: &Option<PathBuf>,
+    block_type: BlockValueType,
 ) -> RunningTarget {
     if node.should_spawn() {
         return RunningTarget::Node(node.node_id().to_owned());
     }
 
-    if let Some(pkg_path) = package_path {
-        return RunningTarget::PackagePath(pkg_path.to_owned());
+    // package path is some not means the block is package block
+    if block_type == BlockValueType::Pkg && package_path.is_some() {
+        return RunningTarget::PackagePath(package_path.as_ref().unwrap().to_owned());
     }
 
     match injection {

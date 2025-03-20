@@ -9,3 +9,4 @@ mod service;
 pub use flow::find_flow;
 pub use package::find_package_file;
 pub use path_finder::BlockPathFinder;
+pub use search_paths::{get_block_value_type, BlockValueType};
