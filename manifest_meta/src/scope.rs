@@ -36,13 +36,13 @@ impl RunningScope {
         match self {
             RunningScope::Global { node_id } => {
                 if let Some(node_id) = node_id {
-                    Some(format!("global-{}", node_id))
+                    Some(format!("{}", node_id))
                 } else {
                     None
                 }
             }
             RunningScope::Package { path, .. } => {
-                Some(format!("package-{}", path.to_string_lossy().to_string()))
+                Some(format!("{}", path.to_string_lossy().to_string()))
             }
         }
     }
