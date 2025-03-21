@@ -128,6 +128,7 @@ pub enum ExecutePayload<'a> {
         executor: &'a TaskBlockExecutor,
         #[serde(skip_serializing_if = "Option::is_none")]
         outputs: &'a Option<OutputHandles>,
+        #[serde(skip_serializing_if = "Option::is_none")]
         identifier: &'a Option<String>,
     },
     ServiceBlockPayload {
@@ -141,6 +142,7 @@ pub enum ExecutePayload<'a> {
         #[serde(skip_serializing_if = "Option::is_none")]
         outputs: &'a Option<OutputHandles>,
         service_hash: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
         identifier: &'a Option<String>,
     },
 }
@@ -489,7 +491,6 @@ fn spawn_executor(
     let mut log_filename = None;
 
     let mut executor_package: Option<String> = None;
-    let mut spawn_suffix = None;
 
     let identifier = scope.identifier().unwrap_or_default();
     let scope_package = scope
@@ -499,9 +500,6 @@ fn spawn_executor(
     let mut command = if let Some(ref pkg_layer) = layer {
         let package_path_str = pkg_layer.package_path.to_string_lossy();
 
-        let hash = calculate_short_hash(&package_path_str, 8);
-        spawn_suffix = Some(hash.clone());
-
         let mut exec_form_cmd: Vec<&str> = vec![
             &executor_bin,
             "--session-id",
@@ -510,8 +508,6 @@ fn spawn_executor(
             addr,
             "--session-dir",
             session_dir,
-            "--suffix",
-            &hash,
         ];
 
         if identifier.len() > 0 {
@@ -526,7 +522,11 @@ fn spawn_executor(
 
         executor_package = Some(package_path_str.to_string());
 
-        log_filename = Some(format!("ovmlayer-{}-{}", executor_bin.to_owned(), hash));
+        log_filename = Some(format!(
+            "ovmlayer-{}-{}",
+            executor_bin.to_owned(),
+            identifier
+        ));
 
         let script_str = layer::convert_to_script(&exec_form_cmd);
         let cmd = pkg_layer.run_command(&script_str);
@@ -598,6 +598,7 @@ fn spawn_executor(
 
     let executor_bin_clone = executor_bin.clone();
     let executor_map_name_clone = executor_map_name.clone();
+    let identifier_clone = identifier.clone();
     tokio::spawn(async move {
         tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
         {
@@ -612,7 +613,7 @@ fn spawn_executor(
             txx.send(SchedulerCommand::SpawnExecutorTimeout {
                 executor: executor_bin_clone,
                 package: executor_package,
-                identifier: Some(identifier),
+                identifier: Some(identifier_clone),
             })
             .unwrap();
         }
@@ -631,20 +632,15 @@ fn spawn_executor(
             );
             drop(map);
 
-            let spawn_suffix = spawn_suffix;
             if let Some(stdout) = ch.stdout.take() {
                 let mut reader = tokio::io::BufReader::new(stdout).lines();
                 let executor_bin_clone = executor_bin.clone();
-                let spawn_suffix_clone = spawn_suffix.clone();
+                let identifier_clone = identifier.clone();
                 tokio::spawn(async move {
                     while let Ok(Some(line)) = reader.next_line().await {
                         debug!(
-                            "{}{} stdout: {}",
-                            executor_bin_clone,
-                            spawn_suffix_clone
-                                .as_ref()
-                                .map_or_else(|| "".to_string(), |suffix| format!("-{}", suffix)),
-                            line
+                            "{} ({}) stdout: {}",
+                            executor_bin_clone, identifier_clone, line
                         );
                     }
                 });
@@ -653,16 +649,13 @@ fn spawn_executor(
             if let Some(stderr) = ch.stderr.take() {
                 let mut reader = tokio::io::BufReader::new(stderr).lines();
                 let executor_bin_clone = executor_bin.clone();
-                let spawn_suffix_clone = spawn_suffix.clone();
+                let identifier_clone = identifier.clone();
+
                 tokio::spawn(async move {
                     while let Ok(Some(line)) = reader.next_line().await {
                         error!(
-                            "{}{} stderr: {}",
-                            executor_bin_clone,
-                            spawn_suffix_clone
-                                .as_ref()
-                                .map_or_else(|| "".to_string(), |suffix| format!("-{}", suffix)),
-                            line
+                            "{} ({}) stderr: {}",
+                            executor_bin_clone, identifier_clone, line
                         );
                     }
                 });

@@ -5,8 +5,27 @@
 
 [OOMOL studio](https://oomol.com) 的工作流的底层引擎，使用 Rust 实现。
 
-> 为了像在 OOMOL studio 中一样运行 JavaScript/TypeScript block，我们需要使用 [node-executor](https://github.com/oomol/oocana-node)。 请将 `nodejs-executor` 添加到 $PATH 以支持运行 JavaScript/TypeScript block。
-> 为了像在 OOMOL studio 中运行 Python block，我们需要使用 [python-executor](https://github.com/oomol/oocana-python)。 您可以通过 `pip install python-executor` 安装 `python-executor`。 通常，Python 依赖项会安装在虚拟环境中，并且包管理器会将 `python-executor` 添加到 $PATH（这种行为可能会因包管理器而异）。
+## Install executor
+
+> 为了像在 OOMOL Studio 中一样运行 `JavaScript/TypeScript` block，需要安装 [@oomol/node-executor](https://github.com/oomol/oocana-node)。
+
+```shell
+npm install -g @oomol/node-executor @oomol/oocana-sdk
+# check nodejs-executor is added to $PATH
+which nodejs-executor
+```
+
+---
+
+> 为了像 OOMOL Studio 中运行 Python block，我们需要安装 [oocana-python-executor](https://github.com/oomol/oocana-python)。 您可以通过 `pip install python-executor` 安装 `python-executor`。
+通常，Python 依赖项会安装在虚拟环境中，并且包管理器会将 `python-executor` 添加到 $PATH（这种行为可能会因包管理器而异）。
+
+```shell
+# activate python virtual environment
+pip install oocana-python-executor oocana
+# check python-executor is added to $PATH
+which python-executor
+```
 
 ## Demo
 
@@ -29,6 +48,8 @@ cargo run run examples/base
 
 > examples 中有多个示例，你可以尝试。
 
+> 你还可以从 [github release](https://github.com/oomol/oocana-rust/releases) 下载不同平台的 oocana 二进制。
+
 使用说明可以通过 `cargo run help` 查看。
 
 ## 构建当前系统架构的二进制
@@ -45,7 +66,9 @@ cargo clean
 
 ## 日志
 
-发布版本不会将日志打印到 stdout 和 stderr。对于想要在 stdout 和 stderr 中查看日志的用户，可以为 `run` 子命令传递 `--verbose`。您可以在 `~/.oocana/session/<session_id>/` 中找到所有 `run` 子命令的日志。如果未给出`session id`，oocana 将生成一个新的随机 ID。对于想要指定 ID 的用户，可以为 `run` 子命令传递 `--session-id <session_id>`。
+发布版本不会将日志打印到 stdout 和 stderr。对于想要在 stdout 和 stderr 中查看日志的用户，可以为 `run` 子命令传递 `--verbose`。
+
+您可以在 `~/.oocana/session/<session_id>/` 中找到所有 `run` 子命令的日志。如果未给出`session id`，oocana 将生成一个新的随机 ID。对于想要指定 ID 的用户，可以为 `run` 子命令传递 `--session-id <session_id>`。
 
 ## 项目结构
 

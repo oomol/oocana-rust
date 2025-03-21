@@ -4,14 +4,31 @@
 
 [OOMOL Studio](https://oomol.com)'s workflow engine, implemented in Rust.
 
-To support run `javascript`/`typescript` block as OOMOL Studio, we need to use [node-executor](https://github.com/oomol/oocana-node). Add `nodejs-executor`(build in oocana-node) to `$PATH` to support run `javascript`/`typescript` block.
+## Install Executor
 
-To support run `python` block as OOMOL Studio, we need to use [python-executor](https://github.com/oomol/oocana-python). you can install `python-executor` by `pip install python-executor`. Typically python dependencies are installed in a virtual environment and the package manager will add `python-executor` to `$PATH` (this behavior may vary depending on the package manager).
+> To run `JavaScript/TypeScript` blocks like in OOMOL Studio, you need to install [@oomol/node-executor](https://github.com/oomol/oocana-node).
+
+```shell
+npm install -g @oomol/node-executor @oomol/oocana-sdk
+# check nodejs-executor is added to $PATH
+which nodejs-executor
+```
+
+---
+
+> To run Python blocks like in OOMOL Studio, we need to install [oocana-python-executor](https://github.com/oomol/oocana-python). You can install `python-executor` via `pip install python-executor`.
+Typically, Python dependencies are installed in virtual environments, and package managers will add `python-executor` to $PATH (this behavior may vary depending on the package manager).
+
+```shell
+# activate python virtual environment
+pip install oocana-python-executor oocana
+# check python-executor is added to $PATH
+which python-executor
+```
 
 ## How to Use
 
 This project produces a CLI executable program that supports multiple subcommands, among which the `run` subcommand supports executing flow.
-
 
 * install a mqtt broker and start it
 
@@ -31,6 +48,7 @@ cargo run run examples/base
 
 > examples has multiple examples, you can try them.
 
+> you can download different platform oocana binary from [github release](https://github.com/oomol/oocana-rust/releases)
 
 Usage instructions can be viewed through `cargo run help`.
 
@@ -48,6 +66,7 @@ cargo clean
 ## Log
 
 release version won't print log to stdout and stderr. For user who want to see log in stdout and stderr, you can need pass `--verbose` for `run` subcommand.
+
 You can find all `run` subcommand logs in `~/.oocana/session/<session_id>/`. Session id need to be replaced with the actual session id, if not given, oocana will generate a new random session id. For user who want to specify session id, you can pass `--session <session_id>` for `run` subcommand.
 
 ## Project Structure
