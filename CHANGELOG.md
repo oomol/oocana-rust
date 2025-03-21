@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.25.1 (2025-03-21)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* feat: use identifier to distinguish executor instead of package by @leavesster in https://github.com/oomol/oocana-rust/pull/24
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.25.0...v0.25.1
+
 ## 0.25.0 (2025-03-20)
 
 ## What's Changed
