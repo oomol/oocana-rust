@@ -500,8 +500,6 @@ fn spawn_executor(
     let mut command = if let Some(ref pkg_layer) = layer {
         let package_path_str = pkg_layer.package_path.to_string_lossy();
 
-        let hash = calculate_short_hash(&package_path_str, 8);
-
         let mut exec_form_cmd: Vec<&str> = vec![
             &executor_bin,
             "--session-id",
@@ -524,7 +522,11 @@ fn spawn_executor(
 
         executor_package = Some(package_path_str.to_string());
 
-        log_filename = Some(format!("ovmlayer-{}-{}", executor_bin.to_owned(), hash));
+        log_filename = Some(format!(
+            "ovmlayer-{}-{}",
+            executor_bin.to_owned(),
+            identifier
+        ));
 
         let script_str = layer::convert_to_script(&exec_form_cmd);
         let cmd = pkg_layer.run_command(&script_str);

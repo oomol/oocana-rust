@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use manifest_reader::{manifest::NodeId, path_finder::BlockValueType};
+use utils::calculate_short_hash;
 
 use crate::InjectionTarget;
 
@@ -32,9 +33,8 @@ impl RunningScope {
         }
     }
 
-    // consider use hash instead of origin string or even global count
     pub fn identifier(&self) -> Option<String> {
-        match self {
+        let str = match self {
             RunningScope::Global { node_id } => {
                 if let Some(node_id) = node_id {
                     Some(format!("{}", node_id))
@@ -50,7 +50,8 @@ impl RunningScope {
                 Some(node_id) => Some(format!("{}-{}", path.display(), node_id)),
                 None => Some(format!("{}", path.display())),
             },
-        }
+        };
+        str.map(|s| calculate_short_hash(&s, 16))
     }
 
     pub fn target(&self) -> Option<InjectionTarget> {
