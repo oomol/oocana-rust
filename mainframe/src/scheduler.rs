@@ -128,6 +128,7 @@ pub enum ExecutePayload<'a> {
         executor: &'a TaskBlockExecutor,
         #[serde(skip_serializing_if = "Option::is_none")]
         outputs: &'a Option<OutputHandles>,
+        #[serde(skip_serializing_if = "Option::is_none")]
         identifier: &'a Option<String>,
     },
     ServiceBlockPayload {
@@ -141,6 +142,7 @@ pub enum ExecutePayload<'a> {
         #[serde(skip_serializing_if = "Option::is_none")]
         outputs: &'a Option<OutputHandles>,
         service_hash: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
         identifier: &'a Option<String>,
     },
 }
