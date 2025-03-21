@@ -37,6 +37,8 @@ pub fn envs(file: &str) -> HashMap<String, String> {
                     tracing::warn!("env file open error: {:?}", e);
                 }
             }
+        } else {
+            tracing::warn!("env file not found: {file}");
         }
     }
 
@@ -81,6 +83,8 @@ pub fn bind_path(bind_paths: &Option<Vec<String>>, bind_path_file: &str) -> Vec<
                     tracing::warn!("bind path file open error: {:?}", e);
                 }
             }
+        } else {
+            tracing::warn!("bind path file not found: {bind_path_file}");
         }
     }
 

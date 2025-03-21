@@ -11,9 +11,9 @@ pub enum RunningScope {
     },
     Package {
         path: PathBuf,
-        /// None means the block is package block, if Some, it means the block is inject to this package
+        /// for now None means the block is package block, if Some, it means the block is inject to this package
         name: Option<String>,
-        // node_id: Option<NodeId>,
+        node_id: Option<NodeId>,
     },
 }
 
@@ -32,6 +32,7 @@ impl RunningScope {
         }
     }
 
+    // consider use hash instead of origin string or even global count
     pub fn identifier(&self) -> Option<String> {
         match self {
             RunningScope::Global { node_id } => {
@@ -41,9 +42,14 @@ impl RunningScope {
                     None
                 }
             }
-            RunningScope::Package { path, .. } => {
-                Some(format!("{}", path.to_string_lossy().to_string()))
-            }
+            RunningScope::Package {
+                path,
+                node_id,
+                name: _name,
+            } => match node_id {
+                Some(node_id) => Some(format!("{}-{}", path.display(), node_id)),
+                None => Some(format!("{}", path.display())),
+            },
         }
     }
 
@@ -65,7 +71,10 @@ pub enum RunningTarget {
     Global,
     Node(NodeId),
     PackageName(String),
-    PackagePath(PathBuf),
+    PackagePath {
+        path: PathBuf,
+        node_id: Option<NodeId>,
+    },
 }
 
 pub fn calculate_running_scope(
@@ -80,7 +89,13 @@ pub fn calculate_running_scope(
 
     // package path is some not means the block is package block
     if block_type == BlockValueType::Pkg && package_path.is_some() {
-        return RunningTarget::PackagePath(package_path.as_ref().unwrap().to_owned());
+        return RunningTarget::PackagePath {
+            path: package_path.as_ref().unwrap().to_owned(),
+            node_id: injection.as_ref().and_then(|inj| match &inj.target {
+                manifest_reader::manifest::InjectionTarget::Node(node_id) => Some(node_id.clone()),
+                _ => None,
+            }),
+        };
     }
 
     match injection {

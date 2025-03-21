@@ -228,9 +228,10 @@ impl SubflowBlock {
 
                     let mut running_scope = match running_target {
                         RunningTarget::Global => RunningScope::default(),
-                        RunningTarget::PackagePath(pkg_path) => RunningScope::Package {
+                        RunningTarget::PackagePath { path, node_id } => RunningScope::Package {
                             name: None,
-                            path: pkg_path,
+                            path,
+                            node_id,
                         },
                         RunningTarget::Node(node_id) => match find_node(&node_id) {
                             Some(_) => RunningScope::Global {
@@ -283,6 +284,7 @@ impl SubflowBlock {
                                 RunningScope::Package {
                                     name: Some(name),
                                     path: pkg_path,
+                                    node_id: None,
                                 }
                             } else {
                                 warn!("package not found: {:?}", name);

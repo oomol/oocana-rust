@@ -56,12 +56,14 @@ pub enum ReceiveMessage {
         session_id: SessionId,
         executor_name: String,
         package: Option<String>,
+        identifier: Option<String>,
     },
     // --- 以下消息，是通过 scheduler 发送给 subscriber 的消息，而不是 mqtt 消息 --- //
     ExecutorTimeout {
         session_id: SessionId,
         executor_name: String,
         package: Option<String>,
+        identifier: Option<String>,
     },
     ExecutorExit {
         session_id: SessionId,
@@ -126,7 +128,7 @@ pub enum ExecutePayload<'a> {
         executor: &'a TaskBlockExecutor,
         #[serde(skip_serializing_if = "Option::is_none")]
         outputs: &'a Option<OutputHandles>,
-        package: &'a Option<String>,
+        identifier: &'a Option<String>,
     },
     ServiceBlockPayload {
         session_id: &'a SessionId,
@@ -139,7 +141,7 @@ pub enum ExecutePayload<'a> {
         #[serde(skip_serializing_if = "Option::is_none")]
         outputs: &'a Option<OutputHandles>,
         service_hash: String,
-        package: &'a Option<String>,
+        identifier: &'a Option<String>,
     },
 }
 
@@ -217,6 +219,7 @@ enum SchedulerCommand {
     SpawnExecutorTimeout {
         executor: String,
         package: Option<String>,
+        identifier: Option<String>,
     },
     ReceiveMessage(MessageData),
     Abort,
@@ -324,7 +327,7 @@ impl SchedulerTx {
     }
 
     /** TODO: generate default scope instead of default package. */
-    /** filter some scope, move then to defualt scope */
+    /** filter some scope, move then to default scope */
     pub fn calculate_scope(&self, scope: &RunningScope) -> RunningScope {
         match self.exclude_packages.as_ref() {
             Some(exclude_packages) => {
@@ -335,6 +338,7 @@ impl SchedulerTx {
                             Some(ref default_package) => RunningScope::Package {
                                 path: PathBuf::from(default_package.clone()),
                                 name: Some("default".to_string()),
+                                node_id: None,
                             },
                             None => RunningScope::Global { node_id: None },
                         }
@@ -488,8 +492,10 @@ fn spawn_executor(
     let mut spawn_suffix = None;
 
     let identifier = scope.identifier().unwrap_or_default();
+    let scope_package = scope
+        .package_path()
+        .map(|f| f.to_string_lossy().to_string());
 
-    // package layer 的 command 不能再添加 args
     let mut command = if let Some(ref pkg_layer) = layer {
         let package_path_str = pkg_layer.package_path.to_string_lossy();
 
@@ -509,8 +515,13 @@ fn spawn_executor(
         ];
 
         if identifier.len() > 0 {
-            exec_form_cmd.push("--package");
+            exec_form_cmd.push("--identifier");
             exec_form_cmd.push(&identifier);
+        }
+
+        if scope_package.is_some() {
+            exec_form_cmd.push("--package");
+            exec_form_cmd.push(&scope_package.as_ref().unwrap());
         }
 
         executor_package = Some(package_path_str.to_string());
@@ -532,8 +543,13 @@ fn spawn_executor(
         ];
 
         if identifier.len() > 0 {
-            args.push("--package");
+            args.push("--identifier");
             args.push(&identifier);
+        }
+
+        if scope_package.is_some() {
+            args.push("--package");
+            args.push(&scope_package.as_ref().unwrap());
         }
 
         let mut cmd = process::Command::new(executor_bin.to_owned());
@@ -596,6 +612,7 @@ fn spawn_executor(
             txx.send(SchedulerCommand::SpawnExecutorTimeout {
                 executor: executor_bin_clone,
                 package: executor_package,
+                identifier: Some(identifier),
             })
             .unwrap();
         }
@@ -948,7 +965,7 @@ where
                                 service_executor: &service_executor,
                                 outputs: &outputs,
                                 service_hash: service_hash,
-                                package: &identifier,
+                                identifier: &identifier,
                             })
                             .unwrap();
                             impl_tx.run_service_block(&executor_name, data).await;
@@ -1022,7 +1039,7 @@ where
                                 dir: &dir,
                                 executor: &executor,
                                 outputs: &outputs,
-                                package: &identifier,
+                                identifier: &identifier,
                             })
                             .unwrap();
                             impl_tx.run_block(&executor_name, data).await;
@@ -1044,13 +1061,18 @@ where
                             })
                         }
                     }
-                    Ok(SchedulerCommand::SpawnExecutorTimeout { executor, package }) => {
+                    Ok(SchedulerCommand::SpawnExecutorTimeout {
+                        executor,
+                        package,
+                        identifier,
+                    }) => {
                         for (_, sender) in subscribers.iter() {
                             sender
                                 .send(ReceiveMessage::ExecutorTimeout {
                                     session_id: session_id.clone(),
                                     executor_name: executor.clone(),
                                     package: package.clone(),
+                                    identifier: identifier.clone(),
                                 })
                                 .unwrap();
                         }
@@ -1078,10 +1100,11 @@ where
                             match msg {
                                 ReceiveMessage::ExecutorReady {
                                     executor_name,
-                                    package: identifier,
+                                    package,
                                     session_id,
+                                    identifier,
                                 } => {
-                                    // this logic is shoud keep the same with generate_executor_map_name bind
+                                    // same as generate_executor_map_name fn logic
                                     let executor_map_name = if let Some(ref id) = identifier {
                                         format!("{}-{}", executor_name, id)
                                     } else {
@@ -1111,8 +1134,9 @@ where
                                         sender
                                             .send(ReceiveMessage::ExecutorReady {
                                                 executor_name: executor_name.clone(),
-                                                package: identifier.clone(),
+                                                package: package.clone(),
                                                 session_id: session_id.clone(),
+                                                identifier: identifier.clone(),
                                             })
                                             .unwrap();
                                     }
