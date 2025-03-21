@@ -56,6 +56,7 @@ pub enum ReceiveMessage {
         session_id: SessionId,
         executor_name: String,
         package: Option<String>,
+        identifier: Option<String>,
     },
     // --- 以下消息，是通过 scheduler 发送给 subscriber 的消息，而不是 mqtt 消息 --- //
     ExecutorTimeout {
@@ -324,7 +325,7 @@ impl SchedulerTx {
     }
 
     /** TODO: generate default scope instead of default package. */
-    /** filter some scope, move then to defualt scope */
+    /** filter some scope, move then to default scope */
     pub fn calculate_scope(&self, scope: &RunningScope) -> RunningScope {
         match self.exclude_packages.as_ref() {
             Some(exclude_packages) => {
@@ -489,8 +490,10 @@ fn spawn_executor(
     let mut spawn_suffix = None;
 
     let identifier = scope.identifier().unwrap_or_default();
+    let scope_package = scope
+        .package_path()
+        .map(|f| f.to_string_lossy().to_string());
 
-    // package layer 的 command 不能再添加 args
     let mut command = if let Some(ref pkg_layer) = layer {
         let package_path_str = pkg_layer.package_path.to_string_lossy();
 
@@ -510,8 +513,13 @@ fn spawn_executor(
         ];
 
         if identifier.len() > 0 {
-            exec_form_cmd.push("--package");
+            exec_form_cmd.push("--identifier");
             exec_form_cmd.push(&identifier);
+        }
+
+        if scope_package.is_some() {
+            exec_form_cmd.push("--package");
+            exec_form_cmd.push(&scope_package.as_ref().unwrap());
         }
 
         executor_package = Some(package_path_str.to_string());
@@ -533,8 +541,13 @@ fn spawn_executor(
         ];
 
         if identifier.len() > 0 {
-            args.push("--package");
+            args.push("--identifier");
             args.push(&identifier);
+        }
+
+        if scope_package.is_some() {
+            args.push("--package");
+            args.push(&scope_package.as_ref().unwrap());
         }
 
         let mut cmd = process::Command::new(executor_bin.to_owned());

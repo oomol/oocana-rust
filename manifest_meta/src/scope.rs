@@ -32,6 +32,7 @@ impl RunningScope {
         }
     }
 
+    // consider use hash instead of origin string or even global count
     pub fn identifier(&self) -> Option<String> {
         match self {
             RunningScope::Global { node_id } => {
@@ -41,9 +42,14 @@ impl RunningScope {
                     None
                 }
             }
-            RunningScope::Package { path, .. } => {
-                Some(format!("{}", path.to_string_lossy().to_string()))
-            }
+            RunningScope::Package {
+                path,
+                node_id,
+                name: _name,
+            } => match node_id {
+                Some(node_id) => Some(format!("{}-{}", path.display(), node_id)),
+                None => Some(format!("{}", path.display())),
+            },
         }
     }
 
