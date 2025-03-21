@@ -19,6 +19,7 @@
   ],
   "pull-request-header": ":robot: I have created a release",
   "release-type": "rust",
+  "changelog-type": "github",
   "changelog-sections": [
     { "type": "feat", "section": "Features" },
     { "type": "feature", "section": "Features" },
