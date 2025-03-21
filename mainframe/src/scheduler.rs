@@ -1092,10 +1092,11 @@ where
                             match msg {
                                 ReceiveMessage::ExecutorReady {
                                     executor_name,
-                                    package: identifier,
+                                    package,
                                     session_id,
+                                    identifier,
                                 } => {
-                                    // this logic is shoud keep the same with generate_executor_map_name bind
+                                    // same as generate_executor_map_name fn logic
                                     let executor_map_name = if let Some(ref id) = identifier {
                                         format!("{}-{}", executor_name, id)
                                     } else {
@@ -1125,8 +1126,9 @@ where
                                         sender
                                             .send(ReceiveMessage::ExecutorReady {
                                                 executor_name: executor_name.clone(),
-                                                package: identifier.clone(),
+                                                package: package.clone(),
                                                 session_id: session_id.clone(),
+                                                identifier: identifier.clone(),
                                             })
                                             .unwrap();
                                     }
