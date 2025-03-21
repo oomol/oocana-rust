@@ -76,7 +76,7 @@ pub fn listen_to_worker(args: ListenerArgs) -> tokio::task::JoinHandle<()> {
                     identifier,
                     ..
                 } => {
-                    tracing::info!("{executor_name} ({executor_package:?}) executor is ready. block package: {block_scope:?}");
+                    tracing::info!("{executor_name} {identifier:?} ({executor_package:?}) executor is ready. block package: {block_scope:?}");
 
                     if block_scope.identifier() != identifier {
                         continue;
