@@ -63,6 +63,7 @@ pub enum ReceiveMessage {
         session_id: SessionId,
         executor_name: String,
         package: Option<String>,
+        identifier: Option<String>,
     },
     ExecutorExit {
         session_id: SessionId,
@@ -218,6 +219,7 @@ enum SchedulerCommand {
     SpawnExecutorTimeout {
         executor: String,
         package: Option<String>,
+        identifier: Option<String>,
     },
     ReceiveMessage(MessageData),
     Abort,
@@ -610,6 +612,7 @@ fn spawn_executor(
             txx.send(SchedulerCommand::SpawnExecutorTimeout {
                 executor: executor_bin_clone,
                 package: executor_package,
+                identifier: Some(identifier),
             })
             .unwrap();
         }
@@ -1058,13 +1061,18 @@ where
                             })
                         }
                     }
-                    Ok(SchedulerCommand::SpawnExecutorTimeout { executor, package }) => {
+                    Ok(SchedulerCommand::SpawnExecutorTimeout {
+                        executor,
+                        package,
+                        identifier,
+                    }) => {
                         for (_, sender) in subscribers.iter() {
                             sender
                                 .send(ReceiveMessage::ExecutorTimeout {
                                     session_id: session_id.clone(),
                                     executor_name: executor.clone(),
                                     package: package.clone(),
+                                    identifier: identifier.clone(),
                                 })
                                 .unwrap();
                         }

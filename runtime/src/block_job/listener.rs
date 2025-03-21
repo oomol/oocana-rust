@@ -142,11 +142,16 @@ pub fn listen_to_worker(args: ListenerArgs) -> tokio::task::JoinHandle<()> {
                 scheduler::ReceiveMessage::ExecutorTimeout {
                     executor_name,
                     package,
+                    identifier,
                     ..
                 } => {
+                    if block_scope.identifier() != identifier {
+                        continue;
+                    }
+
                     let error_message = Some(format!(
-                        "Executor {} for {:?} timeout after 5s",
-                        executor_name, package
+                        "Executor {} identifier {:?} for package {:?} timeout after 5s",
+                        executor_name, identifier, package
                     ));
 
                     reporter.done(&error_message);
