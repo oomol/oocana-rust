@@ -335,6 +335,7 @@ impl SchedulerTx {
                             Some(ref default_package) => RunningScope::Package {
                                 path: PathBuf::from(default_package.clone()),
                                 name: Some("default".to_string()),
+                                node_id: None,
                             },
                             None => RunningScope::Global { node_id: None },
                         }
