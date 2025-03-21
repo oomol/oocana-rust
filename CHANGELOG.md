@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.25.1](https://github.com/oomol/oocana-rust/compare/v0.25.0...v0.25.1) (2025-03-21)
+
+
+### Features
+
+* send package and identifier to executor ([349418b](https://github.com/oomol/oocana-rust/commit/349418b8b8e4269d8caacea88158e0bdaf953a8a))
+* use identifier to distinguish executor instead of package ([#24](https://github.com/oomol/oocana-rust/issues/24)) ([349418b](https://github.com/oomol/oocana-rust/commit/349418b8b8e4269d8caacea88158e0bdaf953a8a))
+
 ## 0.25.0 (2025-03-20)
 
 ## What's Changed

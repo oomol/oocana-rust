@@ -1152,7 +1152,7 @@ dependencies = [
 
 [[package]]
 name = "oocana"
-version = "0.25.0"
+version = "0.25.1"
 dependencies = [
  "assert_cmd",
  "better-panic",
