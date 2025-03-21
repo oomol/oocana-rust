@@ -916,7 +916,7 @@ where
                                 reason: Some(format!("{:?}", e)),
                             })
                             .unwrap();
-                            return;
+                            continue;
                         }
 
                         let ExecutorCheckResult {
@@ -991,7 +991,7 @@ where
                                 reason: Some(format!("{}", e)),
                             })
                             .unwrap();
-                            return;
+                            continue;
                         }
 
                         let ExecutorCheckResult {
