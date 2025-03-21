@@ -9,7 +9,6 @@
       "include-component-in-tag": false
     }
   },
-  "plugins": ["cargo-workspace"],
   "exclude-paths": [
     ".github",
     ".devcontainer",
@@ -18,7 +17,6 @@
     "tests",
     "npm"
   ],
-  "changelog-type": "github",
   "pull-request-header": ":robot: I have created a release",
   "release-type": "rust",
   "changelog-sections": [
