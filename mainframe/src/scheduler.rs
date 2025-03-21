@@ -128,7 +128,7 @@ pub enum ExecutePayload<'a> {
         executor: &'a TaskBlockExecutor,
         #[serde(skip_serializing_if = "Option::is_none")]
         outputs: &'a Option<OutputHandles>,
-        package: &'a Option<String>,
+        identifier: &'a Option<String>,
     },
     ServiceBlockPayload {
         session_id: &'a SessionId,
@@ -141,7 +141,7 @@ pub enum ExecutePayload<'a> {
         #[serde(skip_serializing_if = "Option::is_none")]
         outputs: &'a Option<OutputHandles>,
         service_hash: String,
-        package: &'a Option<String>,
+        identifier: &'a Option<String>,
     },
 }
 
@@ -965,7 +965,7 @@ where
                                 service_executor: &service_executor,
                                 outputs: &outputs,
                                 service_hash: service_hash,
-                                package: &identifier,
+                                identifier: &identifier,
                             })
                             .unwrap();
                             impl_tx.run_service_block(&executor_name, data).await;
@@ -1039,7 +1039,7 @@ where
                                 dir: &dir,
                                 executor: &executor,
                                 outputs: &outputs,
-                                package: &identifier,
+                                identifier: &identifier,
                             })
                             .unwrap();
                             impl_tx.run_block(&executor_name, data).await;
