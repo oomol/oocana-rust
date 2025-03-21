@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.25.2 (2025-03-21)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* refactor: remove suffix by @leavesster in https://github.com/oomol/oocana-rust/pull/27
+* fix: query spawn executor state fail make program quit event loop by @leavesster in https://github.com/oomol/oocana-rust/pull/29
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.25.1...v0.25.2
+
 ## 0.25.1 (2025-03-21)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
