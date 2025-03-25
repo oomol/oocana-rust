@@ -1,9 +1,13 @@
 use layer::BindPath;
 
-use std::{collections::HashMap, io::BufRead};
+use std::{collections::HashMap, env::temp_dir, io::BufRead};
 
 pub fn env_file() -> String {
     std::env::var("OOCANA_ENV_FILE").unwrap_or_else(|_| "".to_string())
+}
+
+pub fn temp_root() -> String {
+    std::env::var("OOCANA_TEMP_ROOT").unwrap_or_else(|_| temp_dir().to_string_lossy().to_string())
 }
 
 pub fn envs(file: &str) -> HashMap<String, String> {

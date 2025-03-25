@@ -11,6 +11,8 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::path::PathBuf;
 use std::process::exit;
 use std::sync::Arc;
+use tracing::{info, warn};
+use utils::calculate_short_hash;
 use utils::error::Result;
 
 const DEFAULT_PORT: u16 = 47688;
@@ -86,6 +88,7 @@ pub struct BlockArgs<'a> {
     pub bind_paths: Vec<BindPath>,
     pub retain_env_keys: Option<Vec<String>>,
     pub envs: HashMap<String, String>,
+    pub temp_root: String,
 }
 
 async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
@@ -104,6 +107,7 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
         session_dir,
         retain_env_keys,
         envs,
+        temp_root,
     } = block_args;
     let session_id = SessionId::new(session);
     tracing::info!("Session {} started", session_id);
@@ -132,6 +136,36 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
         fs::create_dir_all(&session_dir)?;
     }
 
+    let tmp_root_path = PathBuf::from(temp_root);
+
+    let temp_directory = {
+        let p = PathBuf::from(block_path);
+        p.file_stem()
+            .map(|f| f.to_string_lossy().to_string())
+            .map(|f| format!("{}-{}", f, calculate_short_hash(&f, 8)))
+            .unwrap_or_else(|| "tmp".to_string())
+    };
+
+    let tmp_dir = if tmp_root_path.is_dir() {
+        tmp_root_path.join(temp_directory)
+    } else {
+        PathBuf::from(format!(
+            "{}/{session_id}",
+            env::temp_dir().to_string_lossy()
+        ))
+        .join(temp_directory)
+    };
+
+    if tmp_dir.is_dir() {
+        info!("tmp_dir already exists: {:?}", tmp_dir);
+    } else if !tmp_dir.exists() {
+        info!("create tmp_dir: {:?}", tmp_dir);
+        fs::create_dir_all(&tmp_dir)?;
+    } else {
+        // TODO: do some clean up
+        warn!("tmp_dir is not a directory: {:?}", tmp_dir);
+    }
+
     let (scheduler_tx, scheduler_rx) = mainframe::scheduler::create(
         session_id.to_owned(),
         addr.to_string(),
@@ -143,6 +177,7 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
         session_dir,
         retain_env_keys.unwrap_or_default(),
         envs,
+        tmp_dir.clone(),
     );
     let scheduler_handle = scheduler_rx.event_loop();
 
@@ -196,6 +231,13 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
     _ = reporter_handle.await;
 
     tracing::info!("Session {} finished, result: {:?}", session_id, result);
+
+    if result.is_ok() {
+        info!("session finish successfully. remove tmp dir {:?}", tmp_dir);
+        fs::remove_dir_all(&tmp_dir)?;
+    } else {
+        info!("session finish with error. keep tmp dir {:?}", tmp_dir);
+    }
 
     result
 }

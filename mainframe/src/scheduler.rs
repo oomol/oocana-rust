@@ -482,6 +482,7 @@ fn spawn_executor(
         pass_through_env_keys,
         bind_paths: _bind_paths,
         envs: executor_envs,
+        tmp_dir,
     } = &executor_payload;
 
     // 后面加 -executor 尾缀是一种隐式约定。例如：如果 executor 是 "python"，那么实际上会执行 python-executor。
@@ -497,6 +498,8 @@ fn spawn_executor(
         .package_path()
         .map(|f| f.to_string_lossy().to_string());
 
+    let tmp_dir = tmp_dir.to_string_lossy().to_string();
+
     let mut command = if let Some(ref pkg_layer) = layer {
         let package_path_str = pkg_layer.package_path.to_string_lossy();
 
@@ -508,6 +511,8 @@ fn spawn_executor(
             addr,
             "--session-dir",
             session_dir,
+            "--tmp-dir",
+            tmp_dir.as_str(),
         ];
 
         if identifier.len() > 0 {
@@ -540,6 +545,8 @@ fn spawn_executor(
             addr,
             "--session-dir",
             session_dir,
+            "--tmp-dir",
+            tmp_dir.as_str(),
         ];
 
         if identifier.len() > 0 {
@@ -1203,6 +1210,7 @@ pub struct ExecutorPayload {
     pass_through_env_keys: Vec<String>,
     bind_paths: Vec<BindPath>,
     envs: HashMap<String, String>,
+    tmp_dir: PathBuf,
 }
 
 pub fn create<TT, TR>(
@@ -1216,6 +1224,7 @@ pub fn create<TT, TR>(
     session_dir: String,
     retain_env_keys: Vec<String>,
     envs: HashMap<String, String>,
+    tmp_dir: PathBuf,
 ) -> (SchedulerTx, SchedulerRx<TT, TR>)
 where
     TT: SchedulerTxImpl,
@@ -1239,6 +1248,7 @@ where
                 pass_through_env_keys: retain_env_keys,
                 bind_paths: bind_paths,
                 envs,
+                tmp_dir,
             },
             tx,
             rx,
