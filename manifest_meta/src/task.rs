@@ -12,6 +12,7 @@ pub struct TaskBlock {
     /// block.oo.[yml|yaml] 的路径；如果是 inline block，这个字段为空。
     pub path: Option<PathBuf>,
     pub path_str: Option<String>,
+    pub additional_inputs: bool,
     // TODO: package_path is not reliable, it should be removed. use block type instead.
     pub package_path: Option<PathBuf>,
 }
@@ -52,6 +53,7 @@ impl TaskBlock {
             executor,
             inputs_def,
             outputs_def,
+            additional_inputs,
         } = manifest;
 
         Self {
@@ -61,6 +63,7 @@ impl TaskBlock {
             path_str: path.as_ref().map(|path| path.to_string_lossy().to_string()),
             path,
             package_path: package,
+            additional_inputs,
         }
     }
 }
