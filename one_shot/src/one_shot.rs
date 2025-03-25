@@ -182,6 +182,7 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
             pass_through_env_keys: retain_env_keys.unwrap_or_default(),
             envs,
             tmp_dir: tmp_dir.clone(),
+            debug,
         },
     );
     let scheduler_handle = scheduler_rx.event_loop();
