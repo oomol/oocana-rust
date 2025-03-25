@@ -176,6 +176,7 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
         session_dir,
         retain_env_keys.unwrap_or_default(),
         envs,
+        tmp_dir,
     );
     let scheduler_handle = scheduler_rx.event_loop();
 
