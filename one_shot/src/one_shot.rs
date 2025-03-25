@@ -157,8 +157,9 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
     };
 
     if tmp_dir.is_dir() {
-        // do nothing
+        info!("tmp_dir already exists: {:?}", tmp_dir);
     } else if !tmp_dir.exists() {
+        info!("create tmp_dir: {:?}", tmp_dir);
         fs::create_dir_all(&tmp_dir)?;
     } else {
         // TODO: do some clean up
