@@ -61,8 +61,10 @@ enum Commands {
         default_package: Option<String>,
         #[arg(help = "exclude package, accept package path", long)]
         exclude_packages: Option<String>,
-        #[arg(help = "temporary session path,  It will be the return value of context.sessionDir or context.session_dir function. just a string, oocana just check if it is exist.", long)]
+        #[arg(help = "a directory which will pass to every block, oocana just check the if the path is exit, if not oocana will create one. Oocana won't do anything about this path, won't delete it. It will be the return value of context.sessionDir or context.session_dir function.", long)]
         session_dir: Option<String>,
+        #[arg(help = "a temporary root directory. oocana will create a sub directory (calculate with the block path hash) in the root directory. The sub directory path will be context.tempDir or context.temp_dir function's return value. This sub directory will be deleted if this session success and will retain if session failed. If not provided, oocana will search OOCANA_TEMP_ROOT. It no value the temp_root will be set to os's temp dir.", long, default_value_t = fun::temp_root())]
+        temp_root: String,
         #[arg(help = "when spawn a new process, retain the environment variables(only accept variable name), accept multiple input. example: --retain-env-keys <env> --retain-env-keys <env>", long)]
         retain_env_keys: Option<Vec<String>>,
         #[arg(help = ".env file path, when spawn a executor, these env will pass to this executor. The file format is <key>=<value> line by line like traditional env file. if not provided, oocana will search OOCANA_ENV_FILE env variable", long, default_value_t = env_file())]
@@ -150,7 +152,7 @@ pub fn cli_match() -> Result<()> {
 
     debug!("run cli args: {command:#?} in version: {VERSION}");
     match command {
-        Commands::Run { block, broker, block_search_paths, session, reporter, use_cache, nodes, input_values, exclude_packages, default_package, bind_paths, session_dir: session_path, retain_env_keys, env_file, bind_path_file, verbose: _verbose } => {
+        Commands::Run { block, broker, block_search_paths, session, reporter, use_cache, nodes, input_values, exclude_packages, default_package, bind_paths, session_dir: session_path, retain_env_keys, env_file, bind_path_file, verbose: _verbose, temp_root } => {
 
             let bind_paths = fun::bind_path(bind_paths, bind_path_file);
             let envs = fun::envs(&env_file);
