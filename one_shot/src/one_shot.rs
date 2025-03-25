@@ -1,6 +1,7 @@
 //! Run flow once and exit.
 
 use job::SessionId;
+use mainframe::scheduler::ExecutorParameters;
 use mainframe::BindPath;
 use manifest_meta::BlockResolver;
 use manifest_reader::path_finder::BlockPathFinder;
@@ -169,17 +170,19 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
     }
 
     let (scheduler_tx, scheduler_rx) = mainframe::scheduler::create(
-        session_id.to_owned(),
-        addr.to_string(),
-        bind_paths,
         _scheduler_impl_tx,
         _scheduler_impl_rx,
         default_pkg_path.and_then(|p| p.to_str().map(|s| s.to_owned())),
         exclude_packages,
-        session_dir,
-        retain_env_keys.unwrap_or_default(),
-        envs,
-        tmp_dir.clone(),
+        ExecutorParameters {
+            addr: addr.to_string(),
+            session_id: session_id.to_owned(),
+            session_dir: session_dir.clone(),
+            bind_paths,
+            pass_through_env_keys: retain_env_keys.unwrap_or_default(),
+            envs,
+            tmp_dir: tmp_dir.clone(),
+        },
     );
     let scheduler_handle = scheduler_rx.event_loop();
 

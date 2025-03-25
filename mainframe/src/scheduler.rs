@@ -293,7 +293,7 @@ pub struct ExecutorCheckParams<'a> {
     pub scope: &'a RunningScope,
     pub injection_store: &'a Option<InjectionStore>,
     pub flow: &'a Option<String>,
-    pub executor_payload: &'a ExecutorPayload,
+    pub executor_payload: &'a ExecutorParameters,
     pub executor_map: Arc<RwLock<HashMap<String, ExecutorState>>>,
 }
 
@@ -442,7 +442,7 @@ where
     impl_tx: TT,
     impl_rx: TR,
     executor_map: Arc<RwLock<HashMap<String, ExecutorState>>>,
-    executor_payload: ExecutorPayload,
+    executor_payload: ExecutorParameters,
     tx: Sender<SchedulerCommand>,
     rx: Receiver<SchedulerCommand>,
 }
@@ -452,7 +452,7 @@ fn spawn_executor(
     layer: Option<RuntimeLayer>,
     scope: &RunningScope,
     executor_map: Arc<RwLock<HashMap<String, ExecutorState>>>,
-    executor_payload: ExecutorPayload,
+    executor_payload: ExecutorParameters,
     tx: Sender<SchedulerCommand>,
 ) -> Result<()> {
     let executor_map_name = generate_executor_map_name(executor, scope);
@@ -475,7 +475,7 @@ fn spawn_executor(
     );
     drop(write_map);
 
-    let ExecutorPayload {
+    let ExecutorParameters {
         session_id,
         addr,
         session_dir,
@@ -1203,28 +1203,22 @@ fn parse_worker_message(data: MessageData, session_id: &SessionId) -> Option<Rec
 }
 
 #[derive(Debug, Clone)]
-pub struct ExecutorPayload {
-    addr: String,
-    session_id: SessionId,
-    session_dir: String,
-    pass_through_env_keys: Vec<String>,
-    bind_paths: Vec<BindPath>,
-    envs: HashMap<String, String>,
-    tmp_dir: PathBuf,
+pub struct ExecutorParameters {
+    pub addr: String,
+    pub session_id: SessionId,
+    pub session_dir: String,
+    pub pass_through_env_keys: Vec<String>,
+    pub bind_paths: Vec<BindPath>,
+    pub envs: HashMap<String, String>,
+    pub tmp_dir: PathBuf,
 }
 
 pub fn create<TT, TR>(
-    session_id: SessionId,
-    addr: String,
-    bind_paths: Vec<BindPath>,
     impl_tx: TT,
     impl_rx: TR,
     default_package: Option<String>,
     exclude_packages: Option<Vec<String>>,
-    session_dir: String,
-    retain_env_keys: Vec<String>,
-    envs: HashMap<String, String>,
-    tmp_dir: PathBuf,
+    executor_payload: ExecutorParameters,
 ) -> (SchedulerTx, SchedulerRx<TT, TR>)
 where
     TT: SchedulerTxImpl,
@@ -1241,15 +1235,7 @@ where
             impl_tx,
             impl_rx,
             executor_map: default::Default::default(),
-            executor_payload: ExecutorPayload {
-                addr: addr,
-                session_id: session_id,
-                session_dir: session_dir,
-                pass_through_env_keys: retain_env_keys,
-                bind_paths: bind_paths,
-                envs,
-                tmp_dir,
-            },
+            executor_payload: executor_payload,
             tx,
             rx,
         },
