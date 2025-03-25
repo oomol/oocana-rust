@@ -173,6 +173,8 @@ extend_node_common_field!(TaskNode {
     task: TaskNodeBlock,
     timeout_seconds: Option<u64>,
     inject: Option<Injection>,
+    // TODO: use from convert vec to hashmap
+    inputs_def: Option<Vec<InputHandle>>,
 });
 
 extend_node_common_field!(SubflowNode {

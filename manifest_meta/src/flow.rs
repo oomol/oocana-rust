@@ -298,8 +298,23 @@ impl SubflowBlock {
                         running_scope = RunningScope::default();
                     }
 
+                    let merge_inputs_def =
+                        if task.additional_inputs && task_node.inputs_def.is_some() {
+                            let mut inputs_def = task.inputs_def.clone().unwrap_or_default();
+                            if let Some(node_addition_inputs) = task_node.inputs_def.as_ref() {
+                                for input in node_addition_inputs.iter() {
+                                    if !inputs_def.contains_key(&input.handle) {
+                                        inputs_def.insert(input.handle.to_owned(), input.clone());
+                                    }
+                                }
+                            }
+                            Some(inputs_def)
+                        } else {
+                            task.inputs_def.clone()
+                        };
+
                     let mut inputs_def =
-                        parse_inputs_def(&task_node.inputs_from, &task.as_ref().inputs_def);
+                        parse_inputs_def(&task_node.inputs_from, &merge_inputs_def);
 
                     let inputs_def_patch = get_inputs_def_patch(&task_node.inputs_from);
 
