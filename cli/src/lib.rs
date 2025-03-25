@@ -179,6 +179,7 @@ pub fn cli_match() -> Result<()> {
                 bind_paths: bind_paths,
                 retain_env_keys: retain_env_keys.to_owned(),
                 envs,
+                temp_root: temp_root.to_owned(),
             })?
         },
         Commands::Cache { action } => {
