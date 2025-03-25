@@ -9,6 +9,7 @@ struct TmpTaskBlock {
     pub executor: Option<TaskBlockExecutor>,
     pub inputs_def: Option<Vec<InputHandle>>,
     pub outputs_def: Option<Vec<OutputHandle>>,
+    #[serde(default)]
     pub additional_inputs: bool,
 }
 
