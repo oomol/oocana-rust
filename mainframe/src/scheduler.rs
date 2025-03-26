@@ -502,20 +502,31 @@ fn spawn_executor(
 
     let tmp_dir = tmp_dir.to_string_lossy().to_string();
 
-    #[allow(unused_assignments)]
-    let mut port = None;
-
-    let debug_parameters = if *debug {
+    let debug_parameters: Vec<String> = if *debug {
         match executor {
-            "nodejs" => match *wait_for_client {
-                true => vec!["--enable-source-maps", "--inspect-wait"],
-                false => vec!["--enable-source-maps"],
-            }, // nodejs accept SIGUSR1 to debugging. just --enable-source-maps is for source map and typescript debugging support.
-            "python" => {
-                port = free_local_ipv4_port_in_range(5678..=9000).map(|p| format!("{}", p));
+            "nodejs" => {
+                let port = free_local_ipv4_port_in_range(9230..=9999)
+                    .map(|p| format!("{}", p))
+                    .ok_or(format!("Failed to get free port from 9230 to 9999"))?;
                 match *wait_for_client {
-                    true => vec!["--debug-port", port.as_ref().unwrap(), "--wait-for-client"],
-                    false => vec!["--debug-port", port.as_ref().unwrap()],
+                    true => vec![
+                        "--enable-source-maps".to_owned(),
+                        format!("--inspect-wait={}", port),
+                    ],
+                    false => vec!["--enable-source-maps".to_owned(), port],
+                }
+            } // nodejs accept SIGUSR1 to debugging. just --enable-source-maps is for source map and typescript debugging support.
+            "python" => {
+                let port = free_local_ipv4_port_in_range(5678..=9000)
+                    .map(|p| format!("{}", p))
+                    .ok_or(format!("Failed to get free port from 5678 to 9000"))?;
+                match *wait_for_client {
+                    true => vec![
+                        "--debug-port".to_owned(),
+                        port,
+                        "--wait-for-client".to_owned(),
+                    ],
+                    false => vec!["--debug-port".to_owned(), port],
                 }
             }
             _ => vec![],
