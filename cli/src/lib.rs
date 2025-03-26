@@ -51,9 +51,9 @@ enum Commands {
         reporter: bool,
         #[arg(help = "Verbose output. If true oocana will print all log message to console output", long)]
         verbose: bool,
-        #[arg(help = "Debug mode. If enable, when oocana spawn executor it will give some debugging message to every executor to make they support debugging.", long)]
+        #[arg(help = "Debug mode. If enable, when oocana spawn executor it will give some debugging message to every executor to make they support debugging. Only support in python-executor and nodejs-executor now", long)]
         debug: bool,
-        #[arg(help = "Wait for client to connect. If true, when oocana spawn executor, the executor will wait for client to connect before start the flow.", long)]
+        #[arg(help = "Wait for client to connect. If true, when oocana spawn executor, the executor will wait for client to connect before start the flow. Only support in python-executor and nodejs-executor now", long)]
         wait_for_client: bool,
         #[arg(help = "Use previous result cache if exist.", long)]
         use_cache: bool,
