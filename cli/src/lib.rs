@@ -51,8 +51,10 @@ enum Commands {
         reporter: bool,
         #[arg(help = "Verbose output. If true oocana will print all log message to console output", long)]
         verbose: bool,
-        #[arg(help = "Debug mode. If enable, when oocana spawn executor it will give some debugging message to every executor to make they support debugging.", long)]
+        #[arg(help = "Debug mode. If enable, when oocana spawn executor it will give some debugging message to every executor to make they support debugging. Only support in python-executor and nodejs-executor now", long)]
         debug: bool,
+        #[arg(help = "Wait for client to connect. If true, when oocana spawn executor, the executor will wait for client to connect before start the flow. Only support in python-executor and nodejs-executor now", long)]
+        wait_for_client: bool,
         #[arg(help = "Use previous result cache if exist.", long)]
         use_cache: bool,
         #[arg(help = "Stop the flow after the node is finished.", long)]
@@ -154,7 +156,7 @@ pub fn cli_match() -> Result<()> {
 
     debug!("run cli args: {command:#?} in version: {VERSION}");
     match command {
-        Commands::Run { block, broker, block_search_paths, session, reporter, debug, use_cache, nodes, input_values, exclude_packages, default_package, bind_paths, session_dir: session_path, retain_env_keys, env_file, bind_path_file, verbose: _verbose, temp_root } => {
+        Commands::Run { block, broker, block_search_paths, session, reporter, debug, wait_for_client, use_cache, nodes, input_values, exclude_packages, default_package, bind_paths, session_dir: session_path, retain_env_keys, env_file, bind_path_file, verbose: _verbose, temp_root } => {
 
             let bind_paths = fun::bind_path(bind_paths, bind_path_file);
             let envs = fun::envs(&env_file);
@@ -167,6 +169,7 @@ pub fn cli_match() -> Result<()> {
                 session: session.to_owned(),
                 reporter_enable: reporter.to_owned(),
                 debug: debug.to_owned(),
+                wait_for_client: wait_for_client.to_owned(),
                 use_cache: use_cache.to_owned(),
                 nodes: nodes.as_ref().map(|nodes| {
                     nodes

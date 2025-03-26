@@ -81,6 +81,7 @@ pub struct BlockArgs<'a> {
     pub session: String,
     pub reporter_enable: bool,
     pub debug: bool,
+    pub wait_for_client: bool,
     pub use_cache: bool,
     pub nodes: Option<HashSet<String>>,
     pub input_values: Option<String>,
@@ -101,6 +102,7 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
         session,
         reporter_enable,
         debug,
+        wait_for_client,
         use_cache,
         nodes,
         input_values,
@@ -183,6 +185,7 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
             envs,
             tmp_dir: tmp_dir.clone(),
             debug,
+            wait_for_client,
         },
     );
     let scheduler_handle = scheduler_rx.event_loop();

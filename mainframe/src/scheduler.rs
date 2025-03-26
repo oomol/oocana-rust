@@ -1,5 +1,7 @@
 use async_trait::async_trait;
 use flume::{Receiver, Sender};
+use layer::{create_runtime_layer, BindPath, InjectionParams, RuntimeLayer};
+use port_check::free_local_ipv4_port_in_range;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
@@ -10,8 +12,6 @@ use std::{
     vec,
 };
 use utils::calculate_short_hash;
-
-use layer::{create_runtime_layer, BindPath, InjectionParams, RuntimeLayer};
 
 use job::{BlockInputs, BlockJobStackLevel, JobId, SessionId};
 
@@ -484,6 +484,7 @@ fn spawn_executor(
         envs: executor_envs,
         tmp_dir,
         debug,
+        wait_for_client,
     } = &executor_payload;
 
     // 后面加 -executor 尾缀是一种隐式约定。例如：如果 executor 是 "python"，那么实际上会执行 python-executor。
@@ -501,10 +502,22 @@ fn spawn_executor(
 
     let tmp_dir = tmp_dir.to_string_lossy().to_string();
 
+    #[allow(unused_assignments)]
+    let mut port = None;
+
     let debug_parameters = if *debug {
         match executor {
-            "nodejs" => vec!["--enable-source-maps"], // nodejs accept SIGUSR1 to debugging. --enable-source-maps is for source map and typescript debugging support.
-            "python" => vec!["--debug"],              // require python-executor to support.
+            "nodejs" => match *wait_for_client {
+                true => vec!["--enable-source-maps", "--inspect-wait"],
+                false => vec!["--enable-source-maps"],
+            }, // nodejs accept SIGUSR1 to debugging. just --enable-source-maps is for source map and typescript debugging support.
+            "python" => {
+                port = free_local_ipv4_port_in_range(5678..=9000).map(|p| format!("{}", p));
+                match *wait_for_client {
+                    true => vec!["--debug-port", port.as_ref().unwrap(), "--wait-for-client"],
+                    false => vec!["--debug-port", port.as_ref().unwrap()],
+                }
+            }
             _ => vec![],
         }
     } else {
@@ -1231,6 +1244,7 @@ pub struct ExecutorParameters {
     pub envs: HashMap<String, String>,
     pub tmp_dir: PathBuf,
     pub debug: bool,
+    pub wait_for_client: bool,
 }
 
 pub fn create<TT, TR>(
