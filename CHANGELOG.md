@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.26.0 (2025-03-26)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* feat!: add tmp root parameter by @leavesster in https://github.com/oomol/oocana-rust/pull/30
+* feat: enable debugger parameters by @leavesster in https://github.com/oomol/oocana-rust/pull/32
+* feat: addition inputs by @leavesster in https://github.com/oomol/oocana-rust/pull/33
+* feat: improve debug feature by @leavesster in https://github.com/oomol/oocana-rust/pull/34
+* refactor: inspect wait need unused port by @leavesster in https://github.com/oomol/oocana-rust/pull/35
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.25.2...v0.26.0
+
 ## 0.25.2 (2025-03-21)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
