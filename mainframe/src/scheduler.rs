@@ -484,6 +484,7 @@ fn spawn_executor(
         envs: executor_envs,
         tmp_dir,
         debug,
+        wait_for_client,
     } = &executor_payload;
 
     // 后面加 -executor 尾缀是一种隐式约定。例如：如果 executor 是 "python"，那么实际上会执行 python-executor。
@@ -503,8 +504,14 @@ fn spawn_executor(
 
     let debug_parameters = if *debug {
         match executor {
-            "nodejs" => vec!["--enable-source-maps"], // nodejs accept SIGUSR1 to debugging. --enable-source-maps is for source map and typescript debugging support.
-            "python" => vec!["--debug"],              // require python-executor to support.
+            "nodejs" => match *wait_for_client {
+                true => vec!["--enable-source-maps", "--inspect-wait"],
+                false => vec!["--enable-source-maps"],
+            }, // nodejs accept SIGUSR1 to debugging. --enable-source-maps is for source map and typescript debugging support.
+            "python" => match *wait_for_client {
+                true => vec!["--debug", "--wait-for-client"],
+                false => vec!["--debug"],
+            }, // require python-executor to support.
             _ => vec![],
         }
     } else {
@@ -1231,6 +1238,7 @@ pub struct ExecutorParameters {
     pub envs: HashMap<String, String>,
     pub tmp_dir: PathBuf,
     pub debug: bool,
+    pub wait_for_client: bool,
 }
 
 pub fn create<TT, TR>(
