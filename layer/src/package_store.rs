@@ -30,13 +30,13 @@ impl<F: FnOnce()> Drop for Defer<F> {
 
 fn package_meta<P: AsRef<Path>>(dir: P) -> Result<Package> {
     let p = find_package_file(dir.as_ref());
-    if p.is_none() {
-        return Err(Error::new(&format!(
+    match p {
+        None => Err(Error::new(&format!(
             "no package file in {}",
             dir.as_ref().display()
-        )));
+        ))),
+        Some(path) => read_package(&path),
     }
-    return read_package(&p.unwrap());
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -246,8 +246,12 @@ pub fn load_package_store() -> Result<PackageLayerStore> {
             .unwrap();
     }));
 
-    let store: PackageLayerStore =
-        serde_json::from_reader(reader).map_err(|e| format!("Failed to deserialize: {:?}", e))?;
+    let store: PackageLayerStore = serde_json::from_reader(reader).map_err(|e| {
+        format!(
+            "Failed to deserialize package store from {}: {:?}",
+            PACKAGE_STORE, e
+        )
+    })?;
 
     drop(_defer);
 
