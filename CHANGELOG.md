@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.26.1 (2025-03-28)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* fix: truncate file before save by @leavesster in https://github.com/oomol/oocana-rust/pull/36
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.26.0...v0.26.1
+
 ## 0.26.0 (2025-03-26)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
