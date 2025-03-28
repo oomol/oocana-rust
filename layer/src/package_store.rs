@@ -297,6 +297,9 @@ pub fn save_package_store(store: &PackageLayerStore, f: Option<File>) -> Result<
         FileExt::lock_exclusive(&f).map_err(|e| format!("Failed to lock file: {:?}", e))?;
     }
 
+    f.set_len(0)
+        .map_err(|e| format!("Failed to truncate package store file: {:?}", e))?;
+
     let writer = std::io::BufWriter::new(&f);
 
     serde_json::to_writer_pretty(writer, store)
