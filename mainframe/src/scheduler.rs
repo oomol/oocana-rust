@@ -500,6 +500,23 @@ fn spawn_executor(
         .package_path()
         .map(|f| f.to_string_lossy().to_string());
 
+    // this dir won't pass to executor. the executor generate tmp pkg dir by package parameter.
+    let tmp_pkg_dir = if let Some(pkg) = scope.package_path() {
+        tmp_dir.join(pkg.file_name().unwrap_or_default())
+    } else {
+        tmp_dir.join("workspace")
+    };
+
+    if !tmp_pkg_dir.exists() {
+        std::fs::create_dir_all(&tmp_pkg_dir).unwrap_or_else(|e| {
+            tracing::warn!(
+                "Failed to create tmp_pkg_dir: {:?}, error: {}",
+                tmp_pkg_dir,
+                e
+            );
+        });
+    }
+
     let tmp_dir = tmp_dir.to_string_lossy().to_string();
 
     let debug_parameters: Vec<String> = if *debug {
