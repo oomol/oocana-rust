@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.26.3 (2025-03-31)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* fix: should always calculate hash from entire path by @leavesster in https://github.com/oomol/oocana-rust/pull/40
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.26.2...v0.26.3
+
 ## 0.26.2 (2025-03-31)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
