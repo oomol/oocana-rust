@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.26.2 (2025-03-31)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* feat: create tmp pkg dir by @leavesster in https://github.com/oomol/oocana-rust/pull/39
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.26.1...v0.26.2
+
 ## 0.26.1 (2025-03-28)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
