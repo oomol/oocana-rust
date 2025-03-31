@@ -17,6 +17,7 @@ use utils::calculate_short_hash;
 use utils::error::Result;
 
 const DEFAULT_PORT: u16 = 47688;
+const OOCANA_RESULT_FILE: &str = ".oocana_result.json";
 
 pub fn run_block(run_args: BlockArgs) -> Result<()> {
     let r = tokio::runtime::Builder::new_multi_thread()
@@ -173,13 +174,21 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
         .join(temp_directory)
     };
 
+    if tmp_dir.join(OOCANA_RESULT_FILE).exists() {
+        let r = fs::remove_dir_all(&tmp_dir);
+        if r.is_err() {
+            warn!("Failed to remove tmp dir: {:?}", r);
+        } else {
+            info!("Remove successful tmp dir: {:?}", tmp_dir);
+        }
+    }
+
     if tmp_dir.is_dir() {
         info!("tmp_dir already exists: {:?}", tmp_dir);
     } else if !tmp_dir.exists() {
         info!("create tmp_dir: {:?}", tmp_dir);
         fs::create_dir_all(&tmp_dir)?;
     } else {
-        // TODO: do some clean up
         warn!("tmp_dir is not a directory: {:?}", tmp_dir);
     }
 
@@ -255,7 +264,22 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
 
     if result.is_ok() {
         info!("session finish successfully. remove tmp dir {:?}", tmp_dir);
-        fs::remove_dir_all(&tmp_dir)?;
+        // write .oocana_result.json to tmp dir
+        let result_file = tmp_dir.join(OOCANA_RESULT_FILE);
+        if let Err(err) = fs::write(&result_file, "0") {
+            warn!(
+                "Failed to write result file at {:?}: {:?}",
+                result_file, err
+            );
+            // Retry writing the result file
+            if let Err(retry_err) = fs::write(&result_file, "0") {
+                warn!(
+                    "Retry failed to write result file at {:?}: {:?}",
+                    result_file, retry_err
+                );
+                // Additional follow-up action can be added here, e.g., alerting the user/administrator
+            }
+        }
     } else {
         info!("session finish with error. keep tmp dir {:?}", tmp_dir);
     }
