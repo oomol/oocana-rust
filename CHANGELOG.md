@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.26.4 (2025-03-31)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* feat: add result file and move remove tmp when success behavior to next running session by @leavesster in https://github.com/oomol/oocana-rust/pull/42
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.26.3...v0.26.4
+
 ## 0.26.3 (2025-03-31)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
