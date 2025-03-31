@@ -267,7 +267,18 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
         // write .oocana_result.json to tmp dir
         let result_file = tmp_dir.join(OOCANA_RESULT_FILE);
         if let Err(err) = fs::write(&result_file, "0") {
-            warn!("Failed to write result file: {:?}", err);
+            warn!(
+                "Failed to write result file at {:?}: {:?}",
+                result_file, err
+            );
+            // Retry writing the result file
+            if let Err(retry_err) = fs::write(&result_file, "0") {
+                warn!(
+                    "Retry failed to write result file at {:?}: {:?}",
+                    result_file, retry_err
+                );
+                // Additional follow-up action can be added here, e.g., alerting the user/administrator
+            }
         }
     } else {
         info!("session finish with error. keep tmp dir {:?}", tmp_dir);
