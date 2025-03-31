@@ -145,10 +145,22 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
 
     let temp_directory = {
         let p = PathBuf::from(block_path);
-        p.file_stem()
-            .map(|f| f.to_string_lossy().to_string())
-            .map(|f| format!("{}-{}", f, calculate_short_hash(&f, 8)))
-            .unwrap_or_else(|| "tmp".to_string())
+        if p.file_name().is_some_and(|f| {
+            f.to_string_lossy().to_string() == "flow.oo.yaml"
+                || f.to_string_lossy().to_string() == "flow.oo.yml"
+        }) {
+            p.parent()
+                .map(|p| p.file_name())
+                .flatten()
+                .map(|f| f.to_string_lossy().to_string())
+                .map(|f| format!("{}-{}", f, calculate_short_hash(&block_path, 8)))
+                .unwrap_or_else(|| "tmp".to_string())
+        } else {
+            p.file_name()
+                .map(|f| f.to_string_lossy().to_string())
+                .map(|f| format!("{}-{}", f, calculate_short_hash(&block_path, 8)))
+                .unwrap_or_else(|| "tmp".to_string())
+        }
     };
 
     let tmp_dir = if tmp_root_path.is_dir() {
