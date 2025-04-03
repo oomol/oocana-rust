@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use config::Config;
 use dirs::home_dir;
@@ -42,22 +42,28 @@ lazy_static! {
     });
 }
 
-pub fn load_config(file: Option<&str>) -> Result<AppConfig, String> {
-    let path = match file {
-        Some(p) => p.to_string(),
+pub fn load_config<P: AsRef<Path>>(file: Option<P>) -> Result<AppConfig, String> {
+    let p: PathBuf = match file {
+        Some(p) => p.as_ref().to_path_buf(),
         None => {
             let mut default_path = home_dir().ok_or("Failed to get home dir")?;
             default_path.push("oocana");
             default_path.push("config");
-            default_path
-                .to_str()
-                .ok_or("Failed to convert path to str")?
-                .to_string()
+            default_path.to_path_buf()
         }
     };
 
+    let path = if p.is_relative() {
+        let mut current_dir =
+            std::env::current_dir().map_err(|e| format!("Failed to get current dir: {:?}", e))?;
+        current_dir.push(&p);
+        current_dir
+    } else {
+        p.to_path_buf()
+    };
+
     Config::builder()
-        .add_source(config::File::with_name(&path))
+        .add_source(config::File::with_name(&path.to_string_lossy()))
         .build()
         .map_err(|e| format!("Failed to load config: {:?}", e))?
         .try_deserialize::<AppConfig>()
