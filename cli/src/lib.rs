@@ -24,6 +24,8 @@ use uuid::Uuid;
     subcommand_required = true,
 )]
 pub struct Cli {
+    #[arg(help = "oocana configuration file path", long)]
+    config: Option<String>,
     #[command(subcommand)]
     command: Commands,
 }
