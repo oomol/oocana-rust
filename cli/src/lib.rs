@@ -45,7 +45,7 @@ enum Commands {
         block: String,
         #[arg(help = "message report Address. format is ip:port", long)]
         broker: Option<String>,
-        #[arg(help = "Paths to search for Packages. Fallback to the directory of current flow block.", long)]
+        #[arg(help = "Paths to search for Packages. Fallback to the directory of current flow block.", long, alias = "block-search-paths")]
         search_paths: Option<String>,
         #[arg(help = "id to mark this execution session. If not provided, a UUID will be randomly generated different value as the default value for that run.", long, default_value_t = Uuid::new_v4().to_string())]
         session: String,
