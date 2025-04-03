@@ -73,7 +73,6 @@ pub fn load_config<P: AsRef<Path>>(file: Option<P>) -> Result<AppConfig, String>
             *global_config = config;
             global_config.clone()
         })
-        .map_err(|e| format!("Failed to load config: {:?}", e))
 }
 
 pub fn store_dir() -> Option<PathBuf> {
