@@ -5,7 +5,7 @@ use std::{
 };
 use tracing::info;
 
-use crate::settings;
+use crate::config;
 
 use super::error::Result;
 
@@ -15,7 +15,7 @@ use tracing_appender::non_blocking;
 use tracing_subscriber::{fmt, layer::SubscriberExt, EnvFilter, Layer, Registry};
 
 lazy_static::lazy_static! {
-    static ref LOGGER_DIR: Mutex<PathBuf> = Mutex::new(settings::oocana_dir().unwrap_or(std::env::temp_dir()));
+    static ref LOGGER_DIR: Mutex<PathBuf> = Mutex::new(config::oocana_dir().unwrap_or(std::env::temp_dir()));
 }
 
 pub fn logger_dir() -> PathBuf {
@@ -42,7 +42,7 @@ pub fn setup_logging<P: AsRef<Path>>(params: LogParams<P>) -> Result<non_blockin
         capture_stdout_stderr_target,
     } = params;
 
-    let mut logger_dir = settings::oocana_dir().unwrap_or_else(std::env::temp_dir);
+    let mut logger_dir = config::oocana_dir().unwrap_or_else(std::env::temp_dir);
 
     if let Some(sub_dir) = sub_dir {
         logger_dir.push(sub_dir);
