@@ -6,10 +6,10 @@ env_file = ".env"
 bind_path_file = "bind_path.env"
 
 [run]
-search_path = []
+search_paths = []
 exclude_packages = []
 reporter = true
 debug = true
 
 [run.extra]
-search_path = []
+search_paths = []

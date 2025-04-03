@@ -42,13 +42,13 @@ pub struct GlobalConfig {
 }
 
 struct TmpRunExtraConfig {
-    pub search_path: Option<Vec<String>>,
+    pub search_paths: Option<Vec<String>>,
 }
 
 impl From<TmpRunExtraConfig> for RunExtraConfig {
     fn from(tmp: TmpRunExtraConfig) -> Self {
         RunExtraConfig {
-            search_path: tmp.search_path.map(|paths| {
+            search_paths: tmp.search_paths.map(|paths| {
                 paths
                     .into_iter()
                     .map(|s| expand_home(&s))
@@ -60,13 +60,13 @@ impl From<TmpRunExtraConfig> for RunExtraConfig {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct RunExtraConfig {
-    pub search_path: Option<Vec<String>>,
+    pub search_paths: Option<Vec<String>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(from = "TmpRunConfig")]
 struct TmpRunConfig {
-    pub search_path: Option<Vec<String>>,
+    pub search_paths: Option<Vec<String>>,
     pub exclude_packages: Option<Vec<String>>,
     pub reporter: Option<bool>,
     pub debug: Option<bool>,
@@ -76,10 +76,10 @@ struct TmpRunConfig {
 impl From<TmpRunConfig> for RunConfig {
     fn from(tmp: TmpRunConfig) -> Self {
         let extra = tmp.extra.map(|e| RunExtraConfig {
-            search_path: e.search_path,
+            search_paths: e.search_paths,
         });
 
-        let search_path = tmp.search_path.map(|s| {
+        let search_paths = tmp.search_paths.map(|s| {
             s.into_iter()
                 .map(|s| expand_home(&s))
                 .collect::<Vec<String>>()
@@ -91,7 +91,7 @@ impl From<TmpRunConfig> for RunConfig {
         });
 
         RunConfig {
-            search_path: search_path,
+            search_paths: search_paths,
             exclude_packages: exclude_packages,
             reporter: tmp.reporter,
             debug: tmp.debug,
@@ -102,7 +102,7 @@ impl From<TmpRunConfig> for RunConfig {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct RunConfig {
-    pub search_path: Option<Vec<String>>,
+    pub search_paths: Option<Vec<String>>,
     pub exclude_packages: Option<Vec<String>>,
     pub reporter: Option<bool>,
     pub debug: Option<bool>,
