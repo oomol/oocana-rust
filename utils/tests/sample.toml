@@ -2,8 +2,8 @@
 store_dir = "~/.oomol-studio/oocana"
 oocana_dir = "~/.oocana"
 
-env_file = ".env"
-bind_path_file = "bind_path.env"
+env_file = "~/.env"
+bind_path_file = "~/bind_path.env"
 
 [run]
 search_paths = []
