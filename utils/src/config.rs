@@ -1,13 +1,39 @@
 use std::path::{Path, PathBuf};
 
 use config::Config;
-use dirs::home_dir;
 use lazy_static::lazy_static;
 use std::sync::Mutex;
 
+use crate::path::expand_home;
+use dirs::home_dir;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+struct TmpGlobalConfig {
+    pub store_dir: Option<String>,
+    pub oocana_dir: Option<String>,
+    pub env_file: Option<String>,
+    pub bind_path_file: Option<String>,
+}
+
+impl From<TmpGlobalConfig> for GlobalConfig {
+    fn from(tmp: TmpGlobalConfig) -> Self {
+        let store_dir = tmp.store_dir.map(|s| expand_home(&s));
+        let oocana_dir = tmp.oocana_dir.map(|s| expand_home(&s));
+        let env_file = tmp.env_file.map(|s| expand_home(&s));
+        let bind_path_file = tmp.bind_path_file.map(|s| expand_home(&s));
+
+        GlobalConfig {
+            store_dir: store_dir,
+            oocana_dir: oocana_dir,
+            env_file: env_file,
+            bind_path_file: bind_path_file,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(from = "TmpGlobalConfig")]
 pub struct GlobalConfig {
     pub store_dir: Option<String>,
     pub oocana_dir: Option<String>,
@@ -15,9 +41,63 @@ pub struct GlobalConfig {
     pub bind_path_file: Option<String>,
 }
 
+struct TmpRunExtraConfig {
+    pub search_path: Option<Vec<String>>,
+}
+
+impl From<TmpRunExtraConfig> for RunExtraConfig {
+    fn from(tmp: TmpRunExtraConfig) -> Self {
+        RunExtraConfig {
+            search_path: tmp.search_path.map(|paths| {
+                paths
+                    .into_iter()
+                    .map(|s| expand_home(&s))
+                    .collect::<Vec<String>>()
+            }),
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct RunExtraConfig {
     pub search_path: Option<Vec<String>>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(from = "TmpRunConfig")]
+struct TmpRunConfig {
+    pub search_path: Option<Vec<String>>,
+    pub exclude_packages: Option<Vec<String>>,
+    pub reporter: Option<bool>,
+    pub debug: Option<bool>,
+    pub extra: Option<RunExtraConfig>,
+}
+
+impl From<TmpRunConfig> for RunConfig {
+    fn from(tmp: TmpRunConfig) -> Self {
+        let extra = tmp.extra.map(|e| RunExtraConfig {
+            search_path: e.search_path,
+        });
+
+        let search_path = tmp.search_path.map(|s| {
+            s.into_iter()
+                .map(|s| expand_home(&s))
+                .collect::<Vec<String>>()
+        });
+        let exclude_packages = tmp.exclude_packages.map(|s| {
+            s.into_iter()
+                .map(|s| expand_home(&s))
+                .collect::<Vec<String>>()
+        });
+
+        RunConfig {
+            search_path: search_path,
+            exclude_packages: exclude_packages,
+            reporter: tmp.reporter,
+            debug: tmp.debug,
+            extra: extra,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

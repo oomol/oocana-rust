@@ -11,10 +11,11 @@ mod tests {
         assert!(config.is_ok(), "Error: {:?}", config.unwrap_err());
 
         let config = config.unwrap();
+        let home_dir = dirs::home_dir().unwrap().to_string_lossy().to_string();
 
         assert_eq!(
             config.global.clone().map(|g| g.store_dir.clone()).flatten(),
-            Some("~/.oomol-studio/oocana".to_string())
+            Some(format!("{}/.oomol-studio/oocana", home_dir))
         );
         assert_eq!(
             config
@@ -22,7 +23,7 @@ mod tests {
                 .clone()
                 .map(|g| g.oocana_dir.clone())
                 .flatten(),
-            Some("~/.oocana".to_string())
+            Some(format!("{}/.oocana", home_dir))
         );
     }
 }
