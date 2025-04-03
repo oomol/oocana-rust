@@ -53,7 +53,19 @@ pub fn load_config<P: AsRef<Path>>(file: Option<P>) -> Result<AppConfig, String>
         }
     };
 
-    let path = if p.is_relative() {
+    let path = if p.starts_with("~") || p.starts_with("$HOME") {
+        let home = home_dir().ok_or_else(|| "Failed to get home dir".to_string())?;
+        let stripped_path = if p.starts_with("~") {
+            p.strip_prefix("~").unwrap()
+        } else {
+            p.strip_prefix("$HOME").unwrap()
+        };
+        let mut home_path = home;
+        home_path.push(stripped_path);
+        home_path
+    } else if p.is_absolute() {
+        p.to_path_buf()
+    } else if p.is_relative() {
         let mut current_dir =
             std::env::current_dir().map_err(|e| format!("Failed to get current dir: {:?}", e))?;
         current_dir.push(&p);
