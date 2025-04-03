@@ -43,8 +43,8 @@ enum Commands {
         block: String,
         #[arg(help = "message report Address. format is ip:port", long)]
         broker: Option<String>,
-        #[arg(help = "Paths to search for blocks. Fallback to the directory of current flow block.", long)]
-        block_search_paths: Option<String>,
+        #[arg(help = "Paths to search for Packages. Fallback to the directory of current flow block.", long)]
+        search_paths: Option<String>,
         #[arg(help = "id to mark this execution session. If not provided, a UUID will be randomly generated different value as the default value for that run.", long, default_value_t = Uuid::new_v4().to_string())]
         session: String,
         #[arg(help = "Enable reporter.", long)]
@@ -156,7 +156,7 @@ pub fn cli_match() -> Result<()> {
 
     debug!("run cli args: {command:#?} in version: {VERSION}");
     match command {
-        Commands::Run { block, broker, block_search_paths, session, reporter, debug, wait_for_client, use_cache, nodes, input_values, exclude_packages, default_package, bind_paths, session_dir: session_path, retain_env_keys, env_file, bind_path_file, verbose: _verbose, temp_root } => {
+        Commands::Run { block, broker, search_paths, session, reporter, debug, wait_for_client, use_cache, nodes, input_values, exclude_packages, default_package, bind_paths, session_dir: session_path, retain_env_keys, env_file, bind_path_file, verbose: _verbose, temp_root } => {
 
             let bind_paths = fun::bind_path(bind_paths, bind_path_file);
             let envs = fun::envs(&env_file);
@@ -164,7 +164,7 @@ pub fn cli_match() -> Result<()> {
             run_block(BlockArgs {
                 block_path: block,
                 broker_address: broker.to_owned(),
-                block_search_paths: block_search_paths.as_ref()
+                search_paths: search_paths.as_ref()
                 .map(|p| p.split(',').map(|s| parser::expand_tilde(s)).collect()),
                 session: session.to_owned(),
                 reporter_enable: reporter.to_owned(),
