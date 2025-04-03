@@ -78,7 +78,7 @@ pub fn find_upstream<'a>(
 pub struct BlockArgs<'a> {
     pub block_path: &'a str,
     pub broker_address: Option<String>,
-    pub block_search_paths: Option<Vec<PathBuf>>,
+    pub search_paths: Option<Vec<PathBuf>>,
     pub session: String,
     pub reporter_enable: bool,
     pub debug: bool,
@@ -99,7 +99,7 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
     let BlockArgs {
         block_path,
         broker_address,
-        block_search_paths,
+        search_paths,
         session,
         reporter_enable,
         debug,
@@ -126,7 +126,7 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
     let (_scheduler_impl_tx, _scheduler_impl_rx) =
         mainframe_mqtt::scheduler::connect(&addr, session_id.to_owned()).await;
 
-    let block_path_finder = BlockPathFinder::new(env::current_dir().unwrap(), block_search_paths);
+    let block_path_finder = BlockPathFinder::new(env::current_dir().unwrap(), search_paths);
     let default_pkg_path = if let Some(ref default_pkg) = default_package {
         block_path_finder.find_package_file_path(default_pkg).ok()
     } else {

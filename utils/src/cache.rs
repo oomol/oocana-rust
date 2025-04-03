@@ -1,4 +1,4 @@
-use crate::settings;
+use crate::config;
 use std::path::PathBuf;
 
 /// 文件内容结构
@@ -8,7 +8,7 @@ use std::path::PathBuf;
 pub const CACHE_META_FILE: &str = "cache_meta.json";
 
 pub fn cache_meta_file_path() -> Option<PathBuf> {
-    match settings::oocana_dir() {
+    match config::oocana_dir() {
         Some(mut path) => {
             path.push(CACHE_META_FILE);
             Some(path)
@@ -18,7 +18,7 @@ pub fn cache_meta_file_path() -> Option<PathBuf> {
 }
 
 pub fn cache_dir() -> Option<PathBuf> {
-    match settings::oocana_dir() {
+    match config::oocana_dir() {
         Some(mut path) => {
             path.push("cache");
             Some(path)

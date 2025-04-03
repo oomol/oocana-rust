@@ -13,8 +13,8 @@ use std::fs::File;
 use std::path::Path;
 use std::{collections::HashMap, fs};
 use utils::{
+    config,
     error::{Error, Result},
-    settings,
 };
 
 static PACKAGE_STORE: &str = "package_store.json";
@@ -206,7 +206,7 @@ pub fn list_package_layers() -> Result<Vec<PackageLayer>> {
 }
 
 fn package_store_file(write: bool) -> Result<File> {
-    let dir = settings::global_dir().ok_or("Failed to get home dir")?;
+    let dir = config::store_dir().ok_or("Failed to get home dir")?;
 
     std::fs::create_dir_all(&dir).map_err(|e| format!("Failed to create dir: {:?}", e))?;
 
@@ -262,7 +262,7 @@ pub fn load_package_store() -> Result<PackageLayerStore> {
     // 0.1.0 更新了 server-base，所有 layer 都被清空，干脆删除
     // 0.2.0 版本丢失了部分 layer 信息，也重新生成
     if store.version == "0.2.0" || store.version == "0.1.0" {
-        let dir = settings::global_dir().ok_or("Failed to get home dir")?;
+        let dir = config::store_dir().ok_or("Failed to get home dir")?;
 
         std::fs::create_dir_all(&dir).map_err(|e| format!("Failed to create dir: {:?}", e))?;
 

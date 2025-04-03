@@ -21,7 +21,7 @@ pub struct BlockPathFinder {
 }
 
 impl BlockPathFinder {
-    pub fn new<P: Into<PathBuf>>(base_dir: P, block_search_paths: Option<Vec<PathBuf>>) -> Self {
+    pub fn new<P: Into<PathBuf>>(base_dir: P, search_paths: Option<Vec<PathBuf>>) -> Self {
         let base_dir = base_dir.into();
 
         let pkg_version = find_package_file(&base_dir)
@@ -32,7 +32,7 @@ impl BlockPathFinder {
         Self {
             base_dir: base_dir,
             cache: HashMap::new(),
-            search_paths: Arc::new(block_search_paths.unwrap_or_default()),
+            search_paths: Arc::new(search_paths.unwrap_or_default()),
             pkg_version,
         }
     }
