@@ -4,11 +4,11 @@ oocana_dir = "~/.oocana"
 
 env_file = "~/.env"
 bind_path_file = "~/bind_path.env"
+search_paths = []
 
 [run]
 
 broker = "127.0.0.1:47688"
-search_paths = []
 exclude_packages = []
 reporter = true
 debug = true

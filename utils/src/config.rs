@@ -16,6 +16,7 @@ struct TmpGlobalConfig {
     pub oocana_dir: String,
     pub env_file: Option<String>,
     pub bind_path_file: Option<String>,
+    pub search_paths: Option<Vec<String>>,
 }
 
 fn default_store_dir() -> String {
@@ -33,6 +34,7 @@ impl Default for TmpGlobalConfig {
             oocana_dir: default_oocana_dir(),
             env_file: None,
             bind_path_file: None,
+            search_paths: None,
         }
     }
 }
@@ -49,6 +51,12 @@ impl From<TmpGlobalConfig> for GlobalConfig {
             oocana_dir: oocana_dir,
             env_file: env_file,
             bind_path_file: bind_path_file,
+            search_paths: tmp.search_paths.map(|paths| {
+                paths
+                    .into_iter()
+                    .map(|s| expand_home(&s))
+                    .collect::<Vec<String>>()
+            }),
         }
     }
 }
@@ -60,6 +68,7 @@ pub struct GlobalConfig {
     pub oocana_dir: String,
     pub env_file: Option<String>,
     pub bind_path_file: Option<String>,
+    pub search_paths: Option<Vec<String>>,
 }
 
 impl Default for GlobalConfig {
@@ -94,7 +103,6 @@ pub struct RunExtraConfig {
 struct TmpRunConfig {
     #[serde(default = "default_broker")]
     pub broker: String,
-    pub search_paths: Option<Vec<String>>,
     pub exclude_packages: Option<Vec<String>>,
     pub reporter: Option<bool>,
     pub debug: Option<bool>,
@@ -107,11 +115,6 @@ impl From<TmpRunConfig> for RunConfig {
             search_paths: e.search_paths,
         });
 
-        let search_paths = tmp.search_paths.map(|s| {
-            s.into_iter()
-                .map(|s| expand_home(&s))
-                .collect::<Vec<String>>()
-        });
         let exclude_packages = tmp.exclude_packages.map(|s| {
             s.into_iter()
                 .map(|s| expand_home(&s))
@@ -120,7 +123,6 @@ impl From<TmpRunConfig> for RunConfig {
 
         RunConfig {
             broker: default_broker(),
-            search_paths: search_paths,
             exclude_packages: exclude_packages,
             reporter: tmp.reporter,
             debug: tmp.debug,
@@ -138,7 +140,6 @@ fn default_broker() -> String {
 pub struct RunConfig {
     #[serde(default = "default_broker")]
     pub broker: String,
-    pub search_paths: Option<Vec<String>>,
     pub exclude_packages: Option<Vec<String>>,
     pub reporter: Option<bool>,
     pub debug: Option<bool>,

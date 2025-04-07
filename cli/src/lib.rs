@@ -171,7 +171,7 @@ pub fn cli_match() -> Result<()> {
                         .map(|s| parser::expand_tilde(s))
                         .collect::<Vec<PathBuf>>()
                 )
-            } else if let Some(search_paths) = app_config.run.search_paths {
+            } else if let Some(search_paths) = app_config.global.search_paths {
                 Some(
                     search_paths
                         .iter()

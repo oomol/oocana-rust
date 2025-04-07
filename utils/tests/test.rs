@@ -40,9 +40,10 @@ mod tests {
             Some(format!("{}/bind_path.env", home_dir))
         );
 
+        assert_eq!(global.search_paths.is_some(), true);
+        assert_eq!(global.search_paths.unwrap().len(), 0);
+
         let run = config.run.clone();
-        assert_eq!(run.search_paths.is_some(), true);
-        assert_eq!(run.search_paths.unwrap().len(), 0);
 
         assert_eq!(run.exclude_packages.is_some(), true);
         assert_eq!(run.exclude_packages.unwrap().len(), 0);
