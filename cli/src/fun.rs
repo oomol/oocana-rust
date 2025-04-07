@@ -1,6 +1,7 @@
+use crate::parser;
 use layer::BindPath;
 
-use std::{collections::HashMap, env::temp_dir, io::BufRead};
+use std::{collections::HashMap, env::temp_dir, io::BufRead, path::PathBuf};
 
 pub fn env_file() -> String {
     std::env::var("OOCANA_ENV_FILE").unwrap_or_else(|_| "".to_string())
@@ -109,4 +110,31 @@ pub fn bind_path(bind_paths: &Option<Vec<String>>, bind_path_file: &str) -> Vec<
     }
 
     bind_path_arg
+}
+
+pub fn parse_search_paths(search_paths: &Option<String>) -> Option<Vec<PathBuf>> {
+    let mut search_paths = if let Some(search_paths) = search_paths {
+        Some(
+            search_paths
+                .split(',')
+                .map(|s| parser::expand_tilde(s))
+                .collect::<Vec<PathBuf>>(),
+        )
+    } else if let Some(search_paths) = utils::config::search_paths() {
+        Some(
+            search_paths
+                .iter()
+                .map(|s| parser::expand_tilde(s))
+                .collect(),
+        )
+    } else {
+        None
+    };
+
+    if let Some(paths) = &mut search_paths {
+        paths.push(parser::expand_tilde(
+            &utils::config::oocana_dir().unwrap_or_default(),
+        ));
+    }
+    search_paths
 }

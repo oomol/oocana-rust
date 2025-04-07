@@ -1,9 +1,10 @@
-use std::collections::HashSet;
+use crate::fun;
 
 use clap::Subcommand;
 use manifest_meta::{read_flow_or_block, BlockResolver};
 use manifest_reader::path_finder::BlockPathFinder;
 use one_shot::one_shot::{find_upstream, UpstreamArgs};
+use std::collections::HashSet;
 use std::env;
 use utils::error::Result;
 
@@ -69,9 +70,7 @@ pub fn query(action: &QueryAction) -> Result<()> {
         } => {
             let (r, w, whole) = find_upstream(UpstreamArgs {
                 block_path: block,
-                search_paths: search_paths
-                    .as_ref()
-                    .map(|p| p.split(',').map(|s| parser::expand_tilde(s)).collect()),
+                search_paths: fun::parse_search_paths(search_paths),
                 use_cache: use_cache.to_owned(),
                 nodes: Some(
                     nodes
@@ -92,9 +91,7 @@ pub fn query(action: &QueryAction) -> Result<()> {
             search_paths,
             use_cache: _,
         } => {
-            let search_paths = search_paths
-                .as_ref()
-                .map(|p| p.split(',').map(|s| parser::expand_tilde(s)).collect());
+            let search_paths = fun::parse_search_paths(search_paths);
 
             let block_reader = BlockResolver::new();
             let path_finder = BlockPathFinder::new(env::current_dir().unwrap(), search_paths);
@@ -112,12 +109,11 @@ pub fn query(action: &QueryAction) -> Result<()> {
             block,
             search_paths,
         } => {
-            let search_paths = search_paths
-                .as_ref()
-                .map(|p| p.split(',').map(|s| parser::expand_tilde(s)).collect());
-
             let block_reader = BlockResolver::new();
-            let block_path_finder = BlockPathFinder::new(env::current_dir().unwrap(), search_paths);
+            let block_path_finder = BlockPathFinder::new(
+                env::current_dir().unwrap(),
+                fun::parse_search_paths(search_paths),
+            );
 
             let block_or_flow = read_flow_or_block(&block, block_reader, block_path_finder)?;
 
