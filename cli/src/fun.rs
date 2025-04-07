@@ -10,6 +10,10 @@ pub fn temp_root() -> String {
     std::env::var("OOCANA_TEMP_ROOT").unwrap_or_else(|_| temp_dir().to_string_lossy().to_string())
 }
 
+pub fn config() -> String {
+    std::env::var("OOCANA_CONFIG").unwrap_or_else(|_| "~/.oocana/config".to_string())
+}
+
 pub fn envs(file: &str) -> HashMap<String, String> {
     let mut envs = HashMap::new();
 
