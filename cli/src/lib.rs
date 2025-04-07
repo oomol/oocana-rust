@@ -5,7 +5,7 @@ mod parser;
 mod fun;
 
 
-use std::collections::HashSet;
+use std::{collections::HashSet, path::PathBuf};
 use cache::CacheAction;
 use one_shot::one_shot::{run_block, BlockArgs};
 
@@ -164,12 +164,12 @@ pub fn cli_match() -> Result<()> {
             let bind_paths = fun::bind_path(bind_paths, bind_path_file);
             let envs = fun::envs(&env_file);
 
-            let search_paths = if let Some(search_paths) = search_paths {
+            let mut search_paths = if let Some(search_paths) = search_paths {
                 Some(
                     search_paths
                         .split(',')
                         .map(|s| parser::expand_tilde(s))
-                        .collect()
+                        .collect::<Vec<PathBuf>>()
                 )
             } else if let Some(search_paths) = app_config.run.search_paths {
                 Some(
@@ -181,6 +181,14 @@ pub fn cli_match() -> Result<()> {
             } else {
                 None
             };
+
+            if let Some(ref extra_search_path) = app_config.run.extra.map(|e| e.search_paths).flatten() {
+                if let Some(ref mut paths) = search_paths {
+                    paths.extend(extra_search_path.iter().map(|s| parser::expand_tilde(s)));
+                } else {
+                    search_paths = Some(extra_search_path.iter().map(|s| parser::expand_tilde(s)).collect());
+                }
+            }
 
             run_block(BlockArgs {
                 block_path: block,
