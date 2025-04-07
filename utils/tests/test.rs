@@ -34,7 +34,10 @@ mod tests {
             format!("{}/.oomol-studio/oocana", home_dir)
         );
         assert_eq!(global.oocana_dir.clone(), format!("{}/.oocana", home_dir));
-        assert_eq!(global.env_file.clone(), Some(format!("{}/.env", home_dir)));
+        assert_eq!(
+            global.env_file.clone(),
+            Some(format!("{}/.oocana/.env", home_dir))
+        );
         assert_eq!(
             global.bind_path_file.clone(),
             Some(format!("{}/bind_path.env", home_dir))
