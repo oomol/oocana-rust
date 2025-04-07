@@ -53,7 +53,7 @@ pub fn load_config<P: AsRef<Path>>(file: Option<P>) -> Result<AppConfig, String>
         p.to_path_buf()
     };
 
-    if !p.exists() {
+    if !path.exists() {
         let app_config = GLOBAL_CONFIG.lock().unwrap();
         return Ok(app_config.clone());
     }
