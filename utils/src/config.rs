@@ -109,6 +109,18 @@ struct TmpRunConfig {
     pub extra: Option<RunExtraConfig>,
 }
 
+impl Default for TmpRunConfig {
+    fn default() -> Self {
+        TmpRunConfig {
+            broker: default_broker(),
+            exclude_packages: None,
+            reporter: None,
+            debug: None,
+            extra: None,
+        }
+    }
+}
+
 impl From<TmpRunConfig> for RunConfig {
     fn from(tmp: TmpRunConfig) -> Self {
         let extra = tmp.extra.map(|e| RunExtraConfig {
@@ -122,7 +134,7 @@ impl From<TmpRunConfig> for RunConfig {
         });
 
         RunConfig {
-            broker: default_broker(),
+            broker: tmp.broker,
             exclude_packages: exclude_packages,
             reporter: tmp.reporter,
             debug: tmp.debug,
@@ -131,14 +143,19 @@ impl From<TmpRunConfig> for RunConfig {
     }
 }
 
+impl Default for RunConfig {
+    fn default() -> Self {
+        TmpRunConfig::default().into()
+    }
+}
+
 fn default_broker() -> String {
     "127.0.0.1:47688".to_string()
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(from = "TmpRunConfig")]
 pub struct RunConfig {
-    #[serde(default = "default_broker")]
     pub broker: String,
     pub exclude_packages: Option<Vec<String>>,
     pub reporter: Option<bool>,
