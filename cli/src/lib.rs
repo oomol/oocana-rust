@@ -73,12 +73,12 @@ enum Commands {
         temp_root: String,
         #[arg(help = "when spawn a new process, retain the environment variables(only accept variable name), accept multiple input. example: --retain-env-keys <env> --retain-env-keys <env>", long)]
         retain_env_keys: Option<Vec<String>>,
-        #[arg(help = ".env file path, when spawn a executor, these env will pass to this executor. The file format is <key>=<value> line by line like traditional env file. if not provided, oocana will search OOCANA_ENV_FILE env variable", long, default_value_t = fun::env_file())]
-        env_file: String,
+        #[arg(help = ".env file path, when spawn a executor, these env will pass to this executor. The file format is <key>=<value> line by line like traditional env file. if not provided, oocana will search OOCANA_ENV_FILE env variable", long)]
+        env_file: Option<String>,
         #[arg(help = "bind paths, format <source_path>:<target_path>, accept multiple input. example: --bind-paths <source>:<target> --bind-paths <source>:<target>", long)]
         bind_paths: Option<Vec<String>>,
-        #[arg(help = "a file path contains multiple bind paths. The file format is <source_path>:<target_path> line by line, if not provided, it will be found in OOCANA_BIND_PATH_FILE env variable", long, default_value_t = fun::bind_path_file())]
-        bind_path_file: String,
+        #[arg(help = "a file path contains multiple bind paths. The file format is <source_path>:<target_path> line by line, if not provided, it will be found in OOCANA_BIND_PATH_FILE env variable", long)]
+        bind_path_file: Option<String>,
     },
     Cache {
         #[command(subcommand)]
@@ -161,8 +161,8 @@ pub fn cli_match() -> Result<()> {
     match command {
         Commands::Run { block, broker, search_paths, session, reporter, debug, wait_for_client, use_cache, nodes, input_values, exclude_packages, default_package, bind_paths, session_dir: session_path, retain_env_keys, env_file, bind_path_file, verbose: _verbose, temp_root } => {
 
-            let bind_paths = fun::bind_path(bind_paths, bind_path_file);
-            let envs = fun::envs(&env_file);
+            let bind_paths = fun::load_bind_paths(bind_paths, bind_path_file);
+            let envs = fun::load_envs(&env_file);
 
             let search_paths = fun::parse_search_paths(search_paths);
 

@@ -233,3 +233,13 @@ pub fn extra_search_path() -> Option<Vec<String>> {
         .as_ref()
         .and_then(|e| e.search_paths.clone())
 }
+
+pub fn env_file() -> Option<String> {
+    let global_config = GLOBAL_CONFIG.lock().unwrap();
+    global_config.global.env_file.clone()
+}
+
+pub fn bind_path_file() -> Option<String> {
+    let global_config = GLOBAL_CONFIG.lock().unwrap();
+    global_config.global.bind_path_file.clone()
+}

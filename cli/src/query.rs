@@ -8,8 +8,6 @@ use std::collections::HashSet;
 use std::env;
 use utils::error::Result;
 
-use crate::parser;
-
 #[derive(Debug, Subcommand)]
 pub enum QueryAction {
     #[command(about = "query upstream")]

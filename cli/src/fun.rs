@@ -3,8 +3,8 @@ use layer::BindPath;
 
 use std::{collections::HashMap, env::temp_dir, io::BufRead, path::PathBuf};
 
-pub fn env_file() -> String {
-    std::env::var("OOCANA_ENV_FILE").unwrap_or_else(|_| "".to_string())
+fn find_env_file() -> Option<String> {
+    std::env::var("OOCANA_ENV_FILE").ok()
 }
 
 pub fn temp_root() -> String {
@@ -15,53 +15,74 @@ pub fn config() -> String {
     std::env::var("OOCANA_CONFIG").unwrap_or_else(|_| "~/.oocana/config".to_string())
 }
 
-pub fn envs(file: &str) -> HashMap<String, String> {
+pub fn load_envs(file: &Option<String>) -> HashMap<String, String> {
     let mut envs = HashMap::new();
 
-    if !file.is_empty() {
-        let path = std::path::Path::new(&file);
-        if path.is_file() {
-            let file = std::fs::File::open(path);
+    let file_path = if let Some(file) = file {
+        file.to_string()
+    } else if let Some(file) = find_env_file() {
+        file
+    } else if let Some(file) = utils::config::env_file() {
+        file
+    } else {
+        return HashMap::new();
+    };
 
-            match file {
-                Ok(file) => {
-                    let reader = std::io::BufReader::new(file);
-                    for line in reader.lines() {
-                        match line {
-                            Ok(line) => {
-                                let parts = line.split('=').collect::<Vec<&str>>();
-                                if parts.len() == 2 {
-                                    envs.insert(parts[0].to_string(), parts[1].to_string());
-                                } else {
-                                    tracing::warn!("env file line format error: {line}");
-                                }
+    let path = std::path::Path::new(&file_path);
+    if path.is_file() {
+        let file = std::fs::File::open(path);
+
+        match file {
+            Ok(file) => {
+                let reader = std::io::BufReader::new(file);
+                for line in reader.lines() {
+                    match line {
+                        Ok(line) => {
+                            let parts = line.split('=').collect::<Vec<&str>>();
+                            if parts.len() == 2 {
+                                envs.insert(parts[0].to_string(), parts[1].to_string());
+                            } else {
+                                tracing::warn!("env file line format error: {line}");
                             }
-                            Err(e) => {
-                                tracing::warn!("env file read error: {:?}", e);
-                            }
+                        }
+                        Err(e) => {
+                            tracing::warn!("env file read error: {:?}", e);
                         }
                     }
                 }
-                Err(e) => {
-                    tracing::warn!("env file open error: {:?}", e);
-                }
             }
-        } else {
-            tracing::warn!("env file not found: {file}");
+            Err(e) => {
+                tracing::warn!("env file open error: {:?}", e);
+            }
         }
+    } else {
+        tracing::warn!("env file not found: {file_path}");
     }
 
     envs
 }
 
-pub fn bind_path_file() -> String {
-    std::env::var("OOCANA_BIND_PATH_FILE").unwrap_or_else(|_| "".to_string())
+fn find_bind_path_file() -> Option<String> {
+    std::env::var("OOCANA_BIND_PATH_FILE").ok()
 }
 
-pub fn bind_path(bind_paths: &Option<Vec<String>>, bind_path_file: &str) -> Vec<BindPath> {
+pub fn load_bind_paths(
+    bind_paths: &Option<Vec<String>>,
+    bind_path_file: &Option<String>,
+) -> Vec<BindPath> {
     let mut bind_path_arg: Vec<BindPath> = vec![];
 
-    if !bind_path_file.is_empty() {
+    let bind_path_file = if let Some(bind_path_file) = bind_path_file {
+        Some(bind_path_file.to_string())
+    } else if let Some(bind_path_file) = find_bind_path_file() {
+        Some(bind_path_file)
+    } else if let Some(bind_path_file) = utils::config::bind_path_file() {
+        Some(bind_path_file)
+    } else {
+        None
+    };
+
+    if let Some(bind_path_file) = bind_path_file {
         let path = std::path::Path::new(&bind_path_file);
         if path.is_file() {
             let file = std::fs::File::open(path);
