@@ -44,7 +44,7 @@ where
 
 pub struct UpstreamArgs<'a> {
     pub block_path: &'a str,
-    pub block_search_paths: Option<Vec<PathBuf>>,
+    pub search_paths: Option<Vec<PathBuf>>,
     pub use_cache: bool,
     pub nodes: Option<HashSet<String>>,
 }
@@ -55,13 +55,13 @@ pub fn find_upstream<'a>(
 ) -> Result<(Vec<String>, Vec<String>, Vec<String>)> {
     let UpstreamArgs {
         block_path,
-        block_search_paths,
+        search_paths,
         use_cache,
         nodes,
     } = args;
 
     let block_reader = BlockResolver::new();
-    let block_path_finder = BlockPathFinder::new(env::current_dir().unwrap(), block_search_paths);
+    let block_path_finder = BlockPathFinder::new(env::current_dir().unwrap(), search_paths);
 
     let upstream_args = runtime::FindUpstreamArgs {
         block_name: block_path,
