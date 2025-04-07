@@ -31,6 +31,7 @@ pub struct Cli {
 }
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
+const DEFAULT_PORT: u16 = 47688;
 
 
 #[derive(Subcommand, Debug)]
@@ -43,8 +44,8 @@ enum Commands {
     Run {
         #[arg(help = "Absolute Path to the Oocana Block Manifest file or a directory with flow.oo.yaml.")]
         block: String,
-        #[arg(help = "message report Address. format is ip:port", long)]
-        broker: Option<String>,
+        #[arg(help = "message report Address. format is ip:port. default is 127.0.0.1:47688", long, default_value_t = format!("127.0.0.1:{DEFAULT_PORT}"))]
+        broker: String,
         #[arg(help = "Paths to search for Packages. Fallback to the directory of current flow block.", long, alias = "block-search-paths")]
         search_paths: Option<String>,
         #[arg(help = "id to mark this execution session. If not provided, a UUID will be randomly generated different value as the default value for that run.", long, default_value_t = Uuid::new_v4().to_string())]

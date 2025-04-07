@@ -8,7 +8,7 @@ use manifest_reader::path_finder::BlockPathFinder;
 use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fs::{self, metadata};
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::process::exit;
 use std::sync::Arc;
@@ -16,7 +16,6 @@ use tracing::{info, warn};
 use utils::calculate_short_hash;
 use utils::error::Result;
 
-const DEFAULT_PORT: u16 = 47688;
 const OOCANA_RESULT_FILE: &str = ".oocana_result.json";
 
 pub fn run_block(run_args: BlockArgs) -> Result<()> {
@@ -77,7 +76,7 @@ pub fn find_upstream<'a>(
 
 pub struct BlockArgs<'a> {
     pub block_path: &'a str,
-    pub broker_address: Option<String>,
+    pub broker_address: String,
     pub search_paths: Option<Vec<PathBuf>>,
     pub session: String,
     pub reporter_enable: bool,
@@ -118,10 +117,8 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
     let session_id = SessionId::new(session);
     tracing::info!("Session {} started", session_id);
 
-    let addr = match broker_address {
-        Some(address) => address.parse().unwrap(),
-        None => SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), DEFAULT_PORT),
-    };
+    let addr = broker_address.parse::<SocketAddr>().unwrap();
+    // .unwrap_or_else(|_| SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), DEFAULT_PORT));
 
     let (_scheduler_impl_tx, _scheduler_impl_rx) =
         mainframe_mqtt::scheduler::connect(&addr, session_id.to_owned()).await;
