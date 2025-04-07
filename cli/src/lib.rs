@@ -49,11 +49,11 @@ enum Commands {
         search_paths: Option<String>,
         #[arg(help = "id to mark this execution session. If not provided, a UUID will be randomly generated different value as the default value for that run.", long, default_value_t = Uuid::new_v4().to_string())]
         session: String,
-        #[arg(help = "Enable reporter.", long, default_missing_value = "true")]
+        #[arg(help = "Enable reporter.", long, num_args =0..=1, require_equals=true, default_missing_value = "true")]
         reporter: Option<bool>,
         #[arg(help = "Verbose output. If true oocana will print all log message to console output", long)]
         verbose: bool,
-        #[arg(help = "Debug mode. If enable, when oocana spawn executor it will give some debugging message to every executor to make they support debugging. Only support in python-executor and nodejs-executor now", long, default_missing_value = "true")]
+        #[arg(help = "Debug mode. If enable, when oocana spawn executor it will give some debugging message to every executor to make they support debugging. Only support in python-executor and nodejs-executor now", long, num_args =0..=1, require_equals=true, default_missing_value = "true")]
         debug: Option<bool>,
         #[arg(help = "Wait for client to connect. If true, when oocana spawn executor, the executor will wait for client to connect before start the flow. Only support in python-executor and nodejs-executor now", long)]
         wait_for_client: bool,
