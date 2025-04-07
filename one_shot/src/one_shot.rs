@@ -117,8 +117,13 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
     let session_id = SessionId::new(session);
     tracing::info!("Session {} started", session_id);
 
-    let addr = broker_address.parse::<SocketAddr>().unwrap();
-    // .unwrap_or_else(|_| SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), DEFAULT_PORT));
+    let addr = broker_address.parse::<SocketAddr>().unwrap_or_else(|_| {
+        warn!("Invalid broker address: {broker_address:?}, using default");
+        SocketAddr::new(
+            std::net::IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1)),
+            utils::config::default_broker_port(),
+        )
+    });
 
     let (_scheduler_impl_tx, _scheduler_impl_rx) =
         mainframe_mqtt::scheduler::connect(&addr, session_id.to_owned()).await;

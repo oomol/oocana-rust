@@ -4,6 +4,10 @@ use std::path::PathBuf;
 
 pub use app::*;
 
+pub fn default_broker_port() -> u16 {
+    47688
+}
+
 pub fn store_dir() -> Option<PathBuf> {
     let global_config = GLOBAL_CONFIG.lock().unwrap();
     Some(PathBuf::from(global_config.global.store_dir.clone()))
