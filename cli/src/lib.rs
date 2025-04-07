@@ -4,7 +4,7 @@ mod query;
 mod parser;
 mod fun;
 
-use fun::{bind_path_file, env_file};
+
 use std::collections::HashSet;
 use cache::CacheAction;
 use one_shot::one_shot::{run_block, BlockArgs};
@@ -31,7 +31,6 @@ pub struct Cli {
 }
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
-const DEFAULT_PORT: u16 = 47688;
 
 
 #[derive(Subcommand, Debug)]
@@ -44,18 +43,18 @@ enum Commands {
     Run {
         #[arg(help = "Absolute Path to the Oocana Block Manifest file or a directory with flow.oo.yaml.")]
         block: String,
-        #[arg(help = "message report Address. format is ip:port. default is 127.0.0.1:47688", long, default_value_t = format!("127.0.0.1:{DEFAULT_PORT}"))]
-        broker: String,
+        #[arg(help = "message report Address. format is ip:port. default is 127.0.0.1:47688", long)]
+        broker: Option<String>,
         #[arg(help = "Paths to search for Packages. Fallback to the directory of current flow block.", long, alias = "block-search-paths")]
         search_paths: Option<String>,
         #[arg(help = "id to mark this execution session. If not provided, a UUID will be randomly generated different value as the default value for that run.", long, default_value_t = Uuid::new_v4().to_string())]
         session: String,
         #[arg(help = "Enable reporter.", long)]
-        reporter: bool,
+        reporter: Option<bool>,
         #[arg(help = "Verbose output. If true oocana will print all log message to console output", long)]
         verbose: bool,
         #[arg(help = "Debug mode. If enable, when oocana spawn executor it will give some debugging message to every executor to make they support debugging. Only support in python-executor and nodejs-executor now", long)]
-        debug: bool,
+        debug: Option<bool>,
         #[arg(help = "Wait for client to connect. If true, when oocana spawn executor, the executor will wait for client to connect before start the flow. Only support in python-executor and nodejs-executor now", long)]
         wait_for_client: bool,
         #[arg(help = "Use previous result cache if exist.", long)]
@@ -74,11 +73,11 @@ enum Commands {
         temp_root: String,
         #[arg(help = "when spawn a new process, retain the environment variables(only accept variable name), accept multiple input. example: --retain-env-keys <env> --retain-env-keys <env>", long)]
         retain_env_keys: Option<Vec<String>>,
-        #[arg(help = ".env file path, when spawn a executor, these env will pass to this executor. The file format is <key>=<value> line by line like traditional env file. if not provided, oocana will search OOCANA_ENV_FILE env variable", long, default_value_t = env_file())]
+        #[arg(help = ".env file path, when spawn a executor, these env will pass to this executor. The file format is <key>=<value> line by line like traditional env file. if not provided, oocana will search OOCANA_ENV_FILE env variable", long, default_value_t = fun::env_file())]
         env_file: String,
         #[arg(help = "bind paths, format <source_path>:<target_path>, accept multiple input. example: --bind-paths <source>:<target> --bind-paths <source>:<target>", long)]
         bind_paths: Option<Vec<String>>,
-        #[arg(help = "a file path contains multiple bind paths. The file format is <source_path>:<target_path> line by line, if not provided, it will be found in OOCANA_BIND_PATH_FILE env variable", long, default_value_t = bind_path_file())]
+        #[arg(help = "a file path contains multiple bind paths. The file format is <source_path>:<target_path> line by line, if not provided, it will be found in OOCANA_BIND_PATH_FILE env variable", long, default_value_t = fun::bind_path_file())]
         bind_path_file: String,
     },
     Cache {
@@ -104,6 +103,7 @@ pub fn cli_match() -> Result<()> {
     let cli = Cli::parse();
 
     let command = &cli.command;
+    let app_config = utils::config::load_config(Some(cli.config))?;
 
     let _guard = match command {
         Commands::Run { session, verbose, .. } => {
@@ -164,14 +164,31 @@ pub fn cli_match() -> Result<()> {
             let bind_paths = fun::bind_path(bind_paths, bind_path_file);
             let envs = fun::envs(&env_file);
 
+            let search_paths = if let Some(search_paths) = search_paths {
+                Some(
+                    search_paths
+                        .split(',')
+                        .map(|s| parser::expand_tilde(s))
+                        .collect()
+                )
+            } else if let Some(search_paths) = app_config.run.search_paths {
+                Some(
+                    search_paths
+                        .iter()
+                        .map(|s| parser::expand_tilde(s))
+                        .collect()
+                )
+            } else {
+                None
+            };
+
             run_block(BlockArgs {
                 block_path: block,
-                broker_address: broker.to_owned(),
-                search_paths: search_paths.as_ref()
-                .map(|p| p.split(',').map(|s| parser::expand_tilde(s)).collect()),
+                broker_address: broker.clone().unwrap_or(app_config.run.broker),
+                search_paths: search_paths,
                 session: session.to_owned(),
-                reporter_enable: reporter.to_owned(),
-                debug: debug.to_owned(),
+                reporter_enable: reporter.unwrap_or(app_config.run.reporter.unwrap_or_default()),
+                debug: debug.unwrap_or(app_config.run.debug.unwrap_or_default()),
                 wait_for_client: wait_for_client.to_owned(),
                 use_cache: use_cache.to_owned(),
                 nodes: nodes.as_ref().map(|nodes| {
@@ -183,7 +200,8 @@ pub fn cli_match() -> Result<()> {
                 input_values: input_values.to_owned(),
                 default_package: default_package.to_owned(),
                 exclude_packages: exclude_packages.as_ref()
-                .map(|p| p.split(',').map(|s| s.to_string()).collect()),
+                .map(|p| p.split(',').map(|s| s.to_string()).collect())
+                .or_else(|| app_config.run.exclude_packages.clone()),
                 session_dir: session_path.to_owned(),
                 bind_paths: bind_paths,
                 retain_env_keys: retain_env_keys.to_owned(),

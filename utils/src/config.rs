@@ -10,16 +10,37 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct TmpGlobalConfig {
-    pub store_dir: Option<String>,
-    pub oocana_dir: Option<String>,
+    #[serde(default = "default_store_dir")]
+    pub store_dir: String,
+    #[serde(default = "default_oocana_dir")]
+    pub oocana_dir: String,
     pub env_file: Option<String>,
     pub bind_path_file: Option<String>,
 }
 
+fn default_store_dir() -> String {
+    "~/.oomol-studio/oocana".to_string()
+}
+
+fn default_oocana_dir() -> String {
+    "~/.oocana".to_string()
+}
+
+impl Default for TmpGlobalConfig {
+    fn default() -> Self {
+        TmpGlobalConfig {
+            store_dir: default_store_dir(),
+            oocana_dir: default_oocana_dir(),
+            env_file: None,
+            bind_path_file: None,
+        }
+    }
+}
+
 impl From<TmpGlobalConfig> for GlobalConfig {
     fn from(tmp: TmpGlobalConfig) -> Self {
-        let store_dir = tmp.store_dir.map(|s| expand_home(&s));
-        let oocana_dir = tmp.oocana_dir.map(|s| expand_home(&s));
+        let store_dir = expand_home(&tmp.store_dir);
+        let oocana_dir = expand_home(&tmp.oocana_dir);
         let env_file = tmp.env_file.map(|s| expand_home(&s));
         let bind_path_file = tmp.bind_path_file.map(|s| expand_home(&s));
 
@@ -35,10 +56,16 @@ impl From<TmpGlobalConfig> for GlobalConfig {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(from = "TmpGlobalConfig")]
 pub struct GlobalConfig {
-    pub store_dir: Option<String>,
-    pub oocana_dir: Option<String>,
+    pub store_dir: String,
+    pub oocana_dir: String,
     pub env_file: Option<String>,
     pub bind_path_file: Option<String>,
+}
+
+impl Default for GlobalConfig {
+    fn default() -> Self {
+        TmpGlobalConfig::default().into()
+    }
 }
 
 struct TmpRunExtraConfig {
@@ -64,8 +91,9 @@ pub struct RunExtraConfig {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(from = "TmpRunConfig")]
 struct TmpRunConfig {
+    #[serde(default = "default_broker")]
+    pub broker: String,
     pub search_paths: Option<Vec<String>>,
     pub exclude_packages: Option<Vec<String>>,
     pub reporter: Option<bool>,
@@ -91,6 +119,7 @@ impl From<TmpRunConfig> for RunConfig {
         });
 
         RunConfig {
+            broker: default_broker(),
             search_paths: search_paths,
             exclude_packages: exclude_packages,
             reporter: tmp.reporter,
@@ -100,8 +129,15 @@ impl From<TmpRunConfig> for RunConfig {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+fn default_broker() -> String {
+    "127.0.0.1:47688".to_string()
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[serde(from = "TmpRunConfig")]
 pub struct RunConfig {
+    #[serde(default = "default_broker")]
+    pub broker: String,
     pub search_paths: Option<Vec<String>>,
     pub exclude_packages: Option<Vec<String>>,
     pub reporter: Option<bool>,
@@ -111,14 +147,14 @@ pub struct RunConfig {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct AppConfig {
-    pub global: Option<GlobalConfig>,
-    pub run: Option<RunConfig>,
+    pub global: GlobalConfig,
+    pub run: RunConfig,
 }
 
 lazy_static! {
     pub static ref GLOBAL_CONFIG: Mutex<AppConfig> = Mutex::new(AppConfig {
-        global: None,
-        run: None,
+        global: GlobalConfig::default(),
+        run: RunConfig::default(),
     });
 }
 
@@ -154,6 +190,11 @@ pub fn load_config<P: AsRef<Path>>(file: Option<P>) -> Result<AppConfig, String>
         p.to_path_buf()
     };
 
+    if !p.exists() {
+        let app_config = GLOBAL_CONFIG.lock().unwrap();
+        return Ok(app_config.clone());
+    }
+
     Config::builder()
         .add_source(config::File::with_name(&path.to_string_lossy()))
         .build()
@@ -169,37 +210,11 @@ pub fn load_config<P: AsRef<Path>>(file: Option<P>) -> Result<AppConfig, String>
 
 pub fn store_dir() -> Option<PathBuf> {
     let global_config = GLOBAL_CONFIG.lock().unwrap();
-
-    let store_dir = global_config
-        .global
-        .as_ref()
-        .and_then(|g| g.store_dir.as_ref())
-        .map(|s| PathBuf::from(s));
-
-    match store_dir {
-        Some(store_dir) => Some(store_dir),
-        None => home_dir().map(|mut h| {
-            h.push(".oomol-studio");
-            h.push("oocana");
-            h
-        }),
-    }
+    Some(PathBuf::from(global_config.global.store_dir.clone()))
 }
 
 pub fn oocana_dir() -> Option<PathBuf> {
     let global_config = GLOBAL_CONFIG.lock().unwrap();
 
-    let oocana_dir = global_config
-        .global
-        .as_ref()
-        .and_then(|g| g.oocana_dir.as_ref())
-        .map(|s| PathBuf::from(s));
-
-    match oocana_dir {
-        Some(oocana_dir) => Some(oocana_dir),
-        None => home_dir().map(|mut h| {
-            h.push(".oocana");
-            h
-        }),
-    }
+    Some(PathBuf::from(global_config.global.oocana_dir.clone()))
 }

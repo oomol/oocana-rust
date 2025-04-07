@@ -6,6 +6,8 @@ env_file = "~/.env"
 bind_path_file = "~/bind_path.env"
 
 [run]
+
+broker = "127.0.0.1:47688"
 search_paths = []
 exclude_packages = []
 reporter = true
