@@ -79,6 +79,8 @@ enum Commands {
         bind_paths: Option<Vec<String>>,
         #[arg(help = "a file path contains multiple bind paths. The file format is <source_path>:<target_path> line by line, if not provided, it will be found in OOCANA_BIND_PATH_FILE env variable", long)]
         bind_path_file: Option<String>,
+        #[arg(help = "dry run, if true, oocana will not execute the flow, just print all parsed parameters", long)]
+        dry_run: bool,
     },
     Cache {
         #[command(subcommand)]
@@ -103,8 +105,7 @@ pub fn cli_match() -> Result<()> {
     let cli = Cli::parse();
 
     let command = &cli.command;
-    let app_config = utils::config::load_config(Some(cli.config))?;
-
+    
     let _guard = match command {
         Commands::Run { session, verbose, .. } => {
             utils::logger::setup_logging(LogParams {
@@ -157,14 +158,26 @@ pub fn cli_match() -> Result<()> {
         }
     };
 
-    debug!("run cli args: {command:#?} in version: {VERSION}");
+    let app_config = utils::config::load_config(Some(&cli.config))?;
+    debug!("config {:?} command args: {command:#?} in version: {VERSION}", cli.config);
     match command {
-        Commands::Run { block, broker, search_paths, session, reporter, debug, wait_for_client, use_cache, nodes, input_values, exclude_packages, default_package, bind_paths, session_dir: session_path, retain_env_keys, env_file, bind_path_file, verbose: _verbose, temp_root } => {
+        Commands::Run { block, broker, search_paths, session, reporter, debug, wait_for_client, use_cache, nodes, input_values, exclude_packages, default_package, bind_paths, session_dir: session_path, retain_env_keys, env_file, bind_path_file, verbose: _verbose, temp_root, dry_run } => {
 
             let bind_paths = fun::load_bind_paths(bind_paths, bind_path_file);
             let envs = fun::load_envs(&env_file);
 
             let search_paths = fun::parse_search_paths(search_paths);
+
+            if *dry_run {
+                // print the parameters
+                println!("bind_paths: {:?}", bind_paths);
+                println!("envs: {:?}", envs);
+                println!("search_paths: {:?}", search_paths);
+
+                println!("dry_run is enabled, exiting without execution.");
+
+                return  Ok(());
+            }
 
             run_block(BlockArgs {
                 block_path: block,

@@ -1,5 +1,6 @@
 use crate::parser;
 use layer::BindPath;
+use utils::config;
 
 use std::{collections::HashMap, env::temp_dir, io::BufRead, path::PathBuf};
 
@@ -152,10 +153,19 @@ pub fn parse_search_paths(search_paths: &Option<String>) -> Option<Vec<PathBuf>>
         None
     };
 
-    if let Some(paths) = &mut search_paths {
-        paths.push(parser::expand_tilde(
-            &utils::config::oocana_dir().unwrap_or_default(),
-        ));
+    if let Some(ref extra_paths) = config::extra_search_path() {
+        if let Some(ref mut paths) = search_paths {
+            for extra_path in extra_paths {
+                paths.push(parser::expand_tilde(extra_path));
+            }
+        } else {
+            search_paths = Some(
+                extra_paths
+                    .iter()
+                    .map(|s| parser::expand_tilde(s))
+                    .collect(),
+            );
+        }
     }
     search_paths
 }
