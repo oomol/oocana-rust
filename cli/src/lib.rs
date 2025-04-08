@@ -105,8 +105,7 @@ pub fn cli_match() -> Result<()> {
     let cli = Cli::parse();
 
     let command = &cli.command;
-    let app_config = utils::config::load_config(Some(cli.config))?;
-
+    
     let _guard = match command {
         Commands::Run { session, verbose, .. } => {
             utils::logger::setup_logging(LogParams {
@@ -159,7 +158,8 @@ pub fn cli_match() -> Result<()> {
         }
     };
 
-    debug!("run cli args: {command:#?} in version: {VERSION}");
+    let app_config = utils::config::load_config(Some(&cli.config))?;
+    debug!("config {:?} command args: {command:#?} in version: {VERSION}", cli.config);
     match command {
         Commands::Run { block, broker, search_paths, session, reporter, debug, wait_for_client, use_cache, nodes, input_values, exclude_packages, default_package, bind_paths, session_dir: session_path, retain_env_keys, env_file, bind_path_file, verbose: _verbose, temp_root, dry_run } => {
 
@@ -169,30 +169,12 @@ pub fn cli_match() -> Result<()> {
             let search_paths = fun::parse_search_paths(search_paths);
 
             if *dry_run {
-                println!("dry run, oocana will not execute the flow, just print the parameters");
-
                 // print the parameters
-                println!("block: {block}");
-                println!("broker: {:?}", broker);
-                println!("search_paths: {:?}", search_paths);
-                println!("session: {session}");
-                println!("reporter: {:?}", reporter);
-                println!("debug: {:?}", debug);
-                println!("wait_for_client: {wait_for_client}");
-                println!("use_cache: {use_cache}");
-                println!("nodes: {:?}", nodes);
-                println!("input_values: {:?}", input_values);
-                println!("default_package: {:?}", default_package);
-                println!("exclude_packages: {:?}", exclude_packages);
-                println!("session_dir: {:?}", session_path);
-                println!("temp_root: {temp_root}");
                 println!("bind_paths: {:?}", bind_paths);
-                println!("retain_env_keys: {:?}", retain_env_keys);
                 println!("envs: {:?}", envs);
-                println!("env_file: {:?}", env_file);
-                println!("bind_path_file: {:?}", bind_path_file);
-                println!("dry_run: {dry_run}");
-                println!("dry run finished, oocana will not execute the flow, just print the parameters");
+                println!("search_paths: {:?}", search_paths);
+
+                println!("dry_run is enabled, exiting without execution.");
 
                 return  Ok(());
             }
