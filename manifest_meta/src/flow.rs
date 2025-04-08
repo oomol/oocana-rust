@@ -11,10 +11,7 @@ use manifest_reader::{
     reader::read_package,
 };
 
-use crate::{
-    flow,
-    scope::{calculate_running_scope, RunningScope, RunningTarget},
-};
+use crate::scope::{calculate_running_scope, RunningScope, RunningTarget};
 
 use tracing::warn;
 use utils::error::Result;
@@ -241,7 +238,10 @@ impl SubflowBlock {
                     };
 
                     let mut running_scope = match running_target {
-                        RunningTarget::Global => RunningScope::default(),
+                        RunningTarget::Global => RunningScope::Global {
+                            node_id: None,
+                            workspace: workspace.map(|p| p.to_path_buf()),
+                        },
                         RunningTarget::PackagePath { path, node_id } => RunningScope::Package {
                             name: None,
                             path,
@@ -316,7 +316,10 @@ impl SubflowBlock {
                     };
 
                     if !layer::feature_enabled() && running_scope.package_path().is_some() {
-                        running_scope = RunningScope::default();
+                        running_scope = RunningScope::Global {
+                            node_id: None,
+                            workspace: workspace.map(|p| p.to_path_buf()),
+                        };
                     }
 
                     let merge_inputs_def =
