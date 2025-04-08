@@ -53,6 +53,7 @@ pub fn load_config<P: AsRef<Path>>(file: Option<P>) -> Result<AppConfig, String>
         p.to_path_buf()
     };
 
+    // TODO: use config set_default to set default value
     if !config_path.with_extension("json").exists()
         && !config_path.with_extension("toml").exists()
         && !config_path.with_extension("json5").exists()
