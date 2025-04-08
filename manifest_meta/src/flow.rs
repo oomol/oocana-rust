@@ -11,7 +11,10 @@ use manifest_reader::{
     reader::read_package,
 };
 
-use crate::scope::{calculate_running_scope, RunningScope, RunningTarget};
+use crate::{
+    flow,
+    scope::{calculate_running_scope, RunningScope, RunningTarget},
+};
 
 use tracing::warn;
 use utils::error::Result;
@@ -226,6 +229,13 @@ impl SubflowBlock {
                         task_node_block.block_type(),
                     );
 
+                    // if flow_paths s [/a/b/c]/flows/AAA/flow.oo.yaml return [/a/b/c]
+                    // else return flow_paths's grandparent dir
+                    let mut workspace = flow_path.parent().map(|p| p.parent()).flatten();
+                    if workspace.is_some_and(|p| p.file_name().is_some_and(|f| f == "flows")) {
+                        workspace = workspace.and_then(|p| p.parent());
+                    }
+
                     let mut running_scope = match running_target {
                         RunningTarget::Global => RunningScope::default(),
                         RunningTarget::PackagePath { path, node_id } => RunningScope::Package {
@@ -236,10 +246,14 @@ impl SubflowBlock {
                         RunningTarget::Node(node_id) => match find_node(&node_id) {
                             Some(_) => RunningScope::Global {
                                 node_id: Some(node_id),
+                                workspace: workspace.map(|p| p.to_path_buf()),
                             },
                             None => {
                                 warn!("target node not found: {:?}", node_id);
-                                RunningScope::default()
+                                RunningScope::Global {
+                                    node_id: None,
+                                    workspace: workspace.map(|p| p.to_path_buf()),
+                                }
                             }
                         },
                         RunningTarget::PackageName(name) => {
@@ -289,7 +303,10 @@ impl SubflowBlock {
                             } else {
                                 warn!("package not found: {:?}", name);
                                 // maybe just throw error and exit will be better
-                                RunningScope::default()
+                                RunningScope::Global {
+                                    node_id: None,
+                                    workspace: workspace.map(|p| p.to_path_buf()),
+                                }
                             }
                         }
                     };
