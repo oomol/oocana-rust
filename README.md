@@ -63,7 +63,7 @@ clean:
 cargo clean
 ```
 
-## configuration
+## Configuration
 
 oocana supports loading configuration from files. The configuration file formats can be `toml`, `json`, or `json5`. By default, it will look for configuration files `config.toml`, `config.json`, or `config.json5` under `~/.oocana/`. If none are found, the default configuration will be used. You can also specify the configuration file path using the `--config` parameter.
 
