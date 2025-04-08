@@ -344,7 +344,7 @@ impl SchedulerTx {
                                 name: Some("default".to_string()),
                                 node_id: None,
                             },
-                            None => RunningScope::Global { node_id: None },
+                            None => RunningScope::default(),
                         }
                     } else {
                         return scope.clone();
