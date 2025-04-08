@@ -179,6 +179,10 @@ pub trait SchedulerRxImpl {
     async fn recv(&mut self) -> MessageData;
 }
 
+const PKG_DIR: &str = ".oomol/pkg-dir";
+// TODO: this is a hard code, better to get from somewhere.
+const DEFAULT_WORKSPACE: &str = "/app/workspace";
+
 enum SchedulerCommand {
     RegisterSubscriber(JobId, Sender<ReceiveMessage>),
     UnregisterSubscriber(JobId),
@@ -552,8 +556,32 @@ fn spawn_executor(
         vec![]
     };
 
+    let mut envs: HashMap<String, String> = std::env::vars()
+        .filter(|(key, _)| key.starts_with("OOMOL_") || pass_through_env_keys.contains(key))
+        .collect();
+
+    tracing::debug!("pass through these env keys: {:?}", envs.keys());
+
+    for (key, value) in executor_envs.iter() {
+        // TODO: consider whether to skip the env key or not.
+        if envs.contains_key(key) {
+            warn!("env key {} is already in envs, skip", key);
+        } else {
+            envs.insert(key.to_owned(), value.to_owned());
+        }
+    }
+
     let mut command = if let Some(ref pkg_layer) = layer {
         let package_path_str = pkg_layer.package_path.to_string_lossy();
+
+        envs.insert(
+            "OOCANA_PKG_DIR".to_string(),
+            pkg_layer
+                .package_path
+                .join(PKG_DIR)
+                .to_string_lossy()
+                .to_string(),
+        );
 
         let mut exec_form_cmd: Vec<&str> = vec![
             &executor_bin,
@@ -594,6 +622,14 @@ fn spawn_executor(
 
         cmd
     } else {
+        envs.insert(
+            "OOCANA_PKG_DIR".to_string(),
+            PathBuf::from(DEFAULT_WORKSPACE)
+                .join(PKG_DIR)
+                .to_string_lossy()
+                .to_string(),
+        );
+
         let mut args = vec![
             "--session-id",
             session_id,
@@ -624,26 +660,12 @@ fn spawn_executor(
         cmd
     };
 
-    let mut envs: HashMap<String, String> = std::env::vars()
-        .filter(|(key, _)| key.starts_with("OOMOL_") || pass_through_env_keys.contains(key))
-        .collect();
-
     if let Some(log_file) = log_filename {
         let log_dir = utils::logger::logger_dir();
         envs.insert(
             layer::OVMLAYER_LOG_ENV_KEY.to_owned(),
             log_dir.join(log_file).to_string_lossy().to_string(),
         );
-    }
-
-    tracing::debug!("pass through these env keys: {:?}", envs.keys());
-
-    for (key, value) in executor_envs.iter() {
-        if envs.contains_key(key) {
-            warn!("env key {} is already in envs, skip", key);
-        } else {
-            envs.insert(key.to_owned(), value.to_owned());
-        }
     }
 
     command
@@ -856,6 +878,19 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
                 }
             }
         }
+
+        let pkg_dir = pkg.join(PKG_DIR);
+        if !pkg_dir.exists() {
+            std::fs::create_dir_all(&pkg_dir).unwrap_or_else(|e| {
+                tracing::warn!("Failed to create pkg_dir: {:?}, error: {}", pkg_dir, e);
+            });
+        }
+
+        bind_paths.push(BindPath {
+            source: pkg_dir.to_string_lossy().to_string(),
+            target: pkg_dir.to_string_lossy().to_string(),
+        });
+
         let path_str = pkg.to_string_lossy().to_string();
         let mut runtime_layer =
             create_runtime_layer(&path_str, &bind_paths, &executor_payload.envs)?;
@@ -881,6 +916,13 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
 
         Some(runtime_layer)
     } else {
+        let pkg_dir = PathBuf::from(DEFAULT_WORKSPACE).join(PKG_DIR);
+        if !pkg_dir.exists() {
+            std::fs::create_dir_all(&pkg_dir).unwrap_or_else(|e| {
+                tracing::warn!("Failed to create pkg_dir: {:?}, error: {}", pkg_dir, e);
+            });
+        }
+
         info!("final package is None, skip layer creation {:?}", scope);
         None
     };
