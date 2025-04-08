@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.26.7 (2025-04-08)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* fix: global scope forgot to use workspace by @leavesster in https://github.com/oomol/oocana-rust/pull/54
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.26.6...v0.26.7
+
 ## 0.26.6 (2025-04-08)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
