@@ -19,6 +19,13 @@ pub enum RunningScope {
 }
 
 impl RunningScope {
+    pub fn workspace(&self) -> PathBuf {
+        match self {
+            RunningScope::Global { .. } => PathBuf::from("/app/workspace"),
+            RunningScope::Package { path, .. } => path.clone(),
+        }
+    }
+
     pub fn package_path(&self) -> Option<&Path> {
         match self {
             RunningScope::Package { path, .. } => Some(&path),
