@@ -230,11 +230,15 @@ impl SubflowBlock {
                     );
 
                     // if flow_paths s [/a/b/c]/flows/AAA/flow.oo.yaml return [/a/b/c]
-                    // else return flow_paths's grandparent dir
-                    let mut workspace = flow_path.parent().map(|p| p.parent()).flatten();
-                    if workspace.is_some_and(|p| p.file_name().is_some_and(|f| f == "flows")) {
-                        workspace = workspace.and_then(|p| p.parent());
-                    }
+                    // else return flow_paths's parent dir
+                    let grandparent_dir = flow_path.parent().map(|p| p.parent()).flatten();
+                    let workspace = if grandparent_dir
+                        .is_some_and(|p| p.exists() && p.file_name() == Some("flows".as_ref()))
+                    {
+                        grandparent_dir.map(|p| p.parent()).flatten()
+                    } else {
+                        flow_path.parent()
+                    };
 
                     let mut running_scope = match running_target {
                         RunningTarget::Global => RunningScope::default(),
