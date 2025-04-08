@@ -7,7 +7,7 @@ Currently, the config supports the following options:
 * Global-level configuration options:
 
 - `store_dir`: Directory for saving some globally shared storage, default is `~/.oomol-studio/oocana`.
-- `oocana_dir`: Directory for a single run of oocana, default is `~/.oocana`.
+- `oocana_dir`: Directory for storing information during a single run of oocana, default is `~/.oocana`.
 - `env_file`: Path to the env file used when running flows or creating layers. No default value. It can be overridden by the `OOCANA_ENV_FILE` environment variable or the `--env-file` CLI parameter. (Only used in the Run and Layer functionalities.)
 - `bind_path_file`: Path to the file that reads `bind_paths` when using the Layer functionality. No default value. It can be overridden by the `OOCANA_BIND_PATH_FILE` environment variable or the `--bind-path-file` CLI parameter. (Only used in the Run and Layer functionalities.)
 - `search_paths`: An array of paths used to search for packages. No default value.
@@ -29,7 +29,7 @@ oocana 支持从文件加载配置。配置文件的格式可以为 toml、json�
 * global 级别配置项：
 
 - store_dir: 保存部分全局公用的存储，默认为 `~/.oomol-studio/oocana`
-- oocana_dir: oocana 单次运行时的目录，默认为 `~/.oocana`
+- oocana_dir: oocana 单次运行时，存储信息的目录，默认为 `~/.oocana`
 - env_file: 运行 flow，创建 layer 时，使用的 env 文件路径。不存在默认值。会被 OOCANA_ENV_FILE 环境变量和 cli 参数 `--env-file` 覆盖。（仅在 Run 和 layer 功能中使用）
 - bind_path_file: 使用 layer 功能时，读取 bind_paths 的文件路径，不存在默认值。会被 OOCANA_BIND_PATH_FILE 环境变量和 cli 参数 `--bind-path-file` 覆盖。（仅在 Run 和 layer 功能中使用）
 - search_paths: 用于搜索 package 的查找路径，为数组，不存在默认值。
