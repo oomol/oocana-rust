@@ -32,7 +32,7 @@ pub fn load_config<P: AsRef<Path>>(file: Option<P>) -> Result<AppConfig, String>
         }
     };
 
-    let path = if p.starts_with("~") || p.starts_with("$HOME") {
+    let config_path = if p.starts_with("~") || p.starts_with("$HOME") {
         let home = home_dir().ok_or_else(|| "Failed to get home dir".to_string())?;
         let stripped_path = if p.starts_with("~") {
             p.strip_prefix("~").unwrap()
@@ -53,13 +53,20 @@ pub fn load_config<P: AsRef<Path>>(file: Option<P>) -> Result<AppConfig, String>
         p.to_path_buf()
     };
 
-    if !path.exists() {
+    if !config_path.with_extension("json").exists()
+        && !config_path.with_extension("toml").exists()
+        && !config_path.with_extension("json5").exists()
+    {
         let app_config = GLOBAL_CONFIG.lock().unwrap();
+        tracing::info!(
+            "No config file found at {:?}, return default config",
+            config_path
+        );
         return Ok(app_config.clone());
     }
 
     Config::builder()
-        .add_source(config::File::with_name(&path.to_string_lossy()))
+        .add_source(config::File::with_name(&config_path.to_string_lossy()))
         .build()
         .map_err(|e| format!("Failed to load config: {:?}", e))?
         .try_deserialize::<AppConfig>()
