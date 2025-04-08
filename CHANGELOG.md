@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.26.6 (2025-04-08)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* fix: use workspace instead of hardcode path and reduce hardcode usage by @leavesster in https://github.com/oomol/oocana-rust/pull/52
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.26.5...v0.26.6
+
 ## 0.26.5 (2025-04-08)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
