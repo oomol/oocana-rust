@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.26.5 (2025-04-08)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* feat: support load config from file by @leavesster in https://github.com/oomol/oocana-rust/pull/44
+* fix: config file check missing extension and extra search paths is not added by @leavesster in https://github.com/oomol/oocana-rust/pull/48
+* docs: add configuration docs by @leavesster in https://github.com/oomol/oocana-rust/pull/49
+* feat: add pkg dir by @leavesster in https://github.com/oomol/oocana-rust/pull/50
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.26.4...v0.26.5
+
 ## 0.26.4 (2025-03-31)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
