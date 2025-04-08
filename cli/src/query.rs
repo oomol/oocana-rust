@@ -1,13 +1,12 @@
-use std::collections::HashSet;
+use crate::fun;
 
 use clap::Subcommand;
 use manifest_meta::{read_flow_or_block, BlockResolver};
 use manifest_reader::path_finder::BlockPathFinder;
 use one_shot::one_shot::{find_upstream, UpstreamArgs};
+use std::collections::HashSet;
 use std::env;
 use utils::error::Result;
-
-use crate::parser;
 
 #[derive(Debug, Subcommand)]
 pub enum QueryAction {
@@ -21,9 +20,10 @@ pub enum QueryAction {
         nodes: String,
         #[arg(
             help = "Paths to search for blocks. Fallback to the directory of current flow block.",
-            long
+            long,
+            alias = "block-search-paths"
         )]
-        block_search_paths: Option<String>,
+        search_paths: Option<String>,
         #[arg(help = "Use previous result cache if exist.", long)]
         use_cache: bool,
     },
@@ -32,9 +32,10 @@ pub enum QueryAction {
         block: String,
         #[arg(
             help = "Paths to search for blocks. Fallback to the directory of current flow block.",
-            long
+            long,
+            alias = "block-search-paths"
         )]
-        block_search_paths: Option<String>,
+        search_paths: Option<String>,
         // #[arg(help = "Stop the flow after the node is finished.", long)]
         // nodes: Option<HashSet<String>>,
         #[arg(help = "Use previous result cache if exist.", long)]
@@ -50,9 +51,10 @@ pub enum QueryAction {
         block: String,
         #[arg(
             help = "Paths to search for blocks. Fallback to the directory of current flow block.",
-            long
+            long,
+            alias = "block-search-paths"
         )]
-        block_search_paths: Option<String>,
+        search_paths: Option<String>,
     },
 }
 
@@ -61,14 +63,12 @@ pub fn query(action: &QueryAction) -> Result<()> {
         QueryAction::Upstream {
             block,
             nodes,
-            block_search_paths,
+            search_paths,
             use_cache,
         } => {
             let (r, w, whole) = find_upstream(UpstreamArgs {
                 block_path: block,
-                block_search_paths: block_search_paths
-                    .as_ref()
-                    .map(|p| p.split(',').map(|s| parser::expand_tilde(s)).collect()),
+                search_paths: fun::parse_search_paths(search_paths),
                 use_cache: use_cache.to_owned(),
                 nodes: Some(
                     nodes
@@ -86,15 +86,13 @@ pub fn query(action: &QueryAction) -> Result<()> {
         }
         QueryAction::Package {
             block,
-            block_search_paths,
+            search_paths,
             use_cache: _,
         } => {
-            let block_search_paths = block_search_paths
-                .as_ref()
-                .map(|p| p.split(',').map(|s| parser::expand_tilde(s)).collect());
+            let search_paths = fun::parse_search_paths(search_paths);
 
             let block_reader = BlockResolver::new();
-            let path_finder = BlockPathFinder::new(env::current_dir().unwrap(), block_search_paths);
+            let path_finder = BlockPathFinder::new(env::current_dir().unwrap(), search_paths);
             let package_status = runtime::get_packages(runtime::GetPackageArgs {
                 block,
                 block_reader,
@@ -107,15 +105,13 @@ pub fn query(action: &QueryAction) -> Result<()> {
         }
         QueryAction::Service {
             block,
-            block_search_paths,
+            search_paths,
         } => {
-            let block_search_paths = block_search_paths
-                .as_ref()
-                .map(|p| p.split(',').map(|s| parser::expand_tilde(s)).collect());
-
             let block_reader = BlockResolver::new();
-            let block_path_finder =
-                BlockPathFinder::new(env::current_dir().unwrap(), block_search_paths);
+            let block_path_finder = BlockPathFinder::new(
+                env::current_dir().unwrap(),
+                fun::parse_search_paths(search_paths),
+            );
 
             let block_or_flow = read_flow_or_block(&block, block_reader, block_path_finder)?;
 

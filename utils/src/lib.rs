@@ -7,8 +7,7 @@ pub mod error;
 pub mod logger;
 pub mod output;
 pub mod path;
-pub mod settings;
-pub mod types;
+pub mod config;
 
 pub fn log_error(err: impl std::fmt::Debug) {
     tracing::error!("{:?}", err)

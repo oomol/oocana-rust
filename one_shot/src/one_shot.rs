@@ -8,7 +8,7 @@ use manifest_reader::path_finder::BlockPathFinder;
 use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fs::{self, metadata};
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::process::exit;
 use std::sync::Arc;
@@ -16,7 +16,6 @@ use tracing::{info, warn};
 use utils::calculate_short_hash;
 use utils::error::Result;
 
-const DEFAULT_PORT: u16 = 47688;
 const OOCANA_RESULT_FILE: &str = ".oocana_result.json";
 
 pub fn run_block(run_args: BlockArgs) -> Result<()> {
@@ -45,7 +44,7 @@ where
 
 pub struct UpstreamArgs<'a> {
     pub block_path: &'a str,
-    pub block_search_paths: Option<Vec<PathBuf>>,
+    pub search_paths: Option<Vec<PathBuf>>,
     pub use_cache: bool,
     pub nodes: Option<HashSet<String>>,
 }
@@ -56,13 +55,13 @@ pub fn find_upstream<'a>(
 ) -> Result<(Vec<String>, Vec<String>, Vec<String>)> {
     let UpstreamArgs {
         block_path,
-        block_search_paths,
+        search_paths,
         use_cache,
         nodes,
     } = args;
 
     let block_reader = BlockResolver::new();
-    let block_path_finder = BlockPathFinder::new(env::current_dir().unwrap(), block_search_paths);
+    let block_path_finder = BlockPathFinder::new(env::current_dir().unwrap(), search_paths);
 
     let upstream_args = runtime::FindUpstreamArgs {
         block_name: block_path,
@@ -77,8 +76,8 @@ pub fn find_upstream<'a>(
 
 pub struct BlockArgs<'a> {
     pub block_path: &'a str,
-    pub broker_address: Option<String>,
-    pub block_search_paths: Option<Vec<PathBuf>>,
+    pub broker_address: String,
+    pub search_paths: Option<Vec<PathBuf>>,
     pub session: String,
     pub reporter_enable: bool,
     pub debug: bool,
@@ -99,7 +98,7 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
     let BlockArgs {
         block_path,
         broker_address,
-        block_search_paths,
+        search_paths,
         session,
         reporter_enable,
         debug,
@@ -118,15 +117,18 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
     let session_id = SessionId::new(session);
     tracing::info!("Session {} started", session_id);
 
-    let addr = match broker_address {
-        Some(address) => address.parse().unwrap(),
-        None => SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), DEFAULT_PORT),
-    };
+    let addr = broker_address.parse::<SocketAddr>().unwrap_or_else(|_| {
+        warn!("Invalid broker address: {broker_address:?}, using default");
+        SocketAddr::new(
+            std::net::IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1)),
+            utils::config::default_broker_port(),
+        )
+    });
 
     let (_scheduler_impl_tx, _scheduler_impl_rx) =
         mainframe_mqtt::scheduler::connect(&addr, session_id.to_owned()).await;
 
-    let block_path_finder = BlockPathFinder::new(env::current_dir().unwrap(), block_search_paths);
+    let block_path_finder = BlockPathFinder::new(env::current_dir().unwrap(), search_paths);
     let default_pkg_path = if let Some(ref default_pkg) = default_package {
         block_path_finder.find_package_file_path(default_pkg).ok()
     } else {

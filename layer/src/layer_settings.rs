@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 use std::{fs::File, path::PathBuf};
 use utils::{
+    config,
     error::{Error, Result},
-    settings,
 };
 
 /// 所有 merge layers 时，都会将这个 layers 中的作为 layers 中的最开始部分。
@@ -17,7 +17,7 @@ pub struct LayerSettings {
 }
 
 pub fn layer_setting_file() -> Result<PathBuf> {
-    let settings_dir = settings::global_dir().ok_or("Failed to get home dir")?;
+    let settings_dir = config::store_dir().ok_or("Failed to get home dir")?;
     std::fs::create_dir_all(&settings_dir).map_err(|e| format!("Failed to create dir: {:?}", e))?;
 
     let file = settings_dir.join(LAYER_SETTING);
