@@ -179,6 +179,8 @@ pub trait SchedulerRxImpl {
     async fn recv(&mut self) -> MessageData;
 }
 
+const PKG_DIR: &str = ".oomol/pkg-dir";
+
 enum SchedulerCommand {
     RegisterSubscriber(JobId, Sender<ReceiveMessage>),
     UnregisterSubscriber(JobId),
@@ -856,6 +858,19 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
                 }
             }
         }
+
+        let pkg_dir = pkg.join(PKG_DIR);
+        if !pkg_dir.exists() {
+            std::fs::create_dir_all(&pkg_dir).unwrap_or_else(|e| {
+                tracing::warn!("Failed to create pkg_dir: {:?}, error: {}", pkg_dir, e);
+            });
+        }
+
+        bind_paths.push(BindPath {
+            source: pkg_dir.to_string_lossy().to_string(),
+            target: pkg_dir.to_string_lossy().to_string(),
+        });
+
         let path_str = pkg.to_string_lossy().to_string();
         let mut runtime_layer =
             create_runtime_layer(&path_str, &bind_paths, &executor_payload.envs)?;
