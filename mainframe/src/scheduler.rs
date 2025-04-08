@@ -180,6 +180,8 @@ pub trait SchedulerRxImpl {
 }
 
 const PKG_DIR: &str = ".oomol/pkg-dir";
+// TODO: this is a hard code, better to get from somewhere.
+const DEFAULT_WORKSPACE: &str = "/app/workspace";
 
 enum SchedulerCommand {
     RegisterSubscriber(JobId, Sender<ReceiveMessage>),
@@ -896,6 +898,13 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
 
         Some(runtime_layer)
     } else {
+        let pkg_dir = PathBuf::from(DEFAULT_WORKSPACE).join(PKG_DIR);
+        if !pkg_dir.exists() {
+            std::fs::create_dir_all(&pkg_dir).unwrap_or_else(|e| {
+                tracing::warn!("Failed to create pkg_dir: {:?}, error: {}", pkg_dir, e);
+            });
+        }
+
         info!("final package is None, skip layer creation {:?}", scope);
         None
     };
