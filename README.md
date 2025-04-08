@@ -63,6 +63,12 @@ clean:
 cargo clean
 ```
 
+## Configuration
+
+oocana supports loading configuration from files. The configuration file formats can be `toml`, `json`, or `json5`. By default, it will look for configuration files `config.toml`, `config.json`, or `config.json5` under `~/.oocana/`. If none are found, the default configuration will be used. You can also specify the configuration file path using the `--config` parameter.
+
+more details can be found in [configuration](docs/configuration.md)
+
 ## Log
 
 release version won't print log to stdout and stderr. For user who want to see log in stdout and stderr, you can need pass `--verbose` for `run` subcommand.

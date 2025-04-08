@@ -64,6 +64,12 @@ cargo run run examples/base
 cargo clean
 ```
 
+## 配置文件
+
+oocana 支持从文件加载配置。配置文件的格式可以为 toml、json、json5 三种文件后缀，默认会在 `~/.oocana/` 下查找配置文件 `config.toml`, `config.json`, `config.json5`。如果没有找到，则会使用默认配置。你也可以通过 `--config` 参数指定配置文件的路径。
+
+更多配置项请查看 [configuration#配置项](docs/configuration.md#配置项)。
+
 ## 日志
 
 发布版本不会将日志打印到 stdout 和 stderr。对于想要在 stdout 和 stderr 中查看日志的用户，可以为 `run` 子命令传递 `--verbose`。
