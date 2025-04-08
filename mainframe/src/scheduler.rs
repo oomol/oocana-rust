@@ -180,8 +180,6 @@ pub trait SchedulerRxImpl {
 }
 
 const PKG_DIR: &str = ".oomol/pkg-dir";
-// TODO: this is a hard code, better to get from somewhere.
-const DEFAULT_WORKSPACE: &str = "/app/workspace";
 
 enum SchedulerCommand {
     RegisterSubscriber(JobId, Sender<ReceiveMessage>),
@@ -346,7 +344,7 @@ impl SchedulerTx {
                                 name: Some("default".to_string()),
                                 node_id: None,
                             },
-                            None => RunningScope::Global { node_id: None },
+                            None => RunningScope::default(),
                         }
                     } else {
                         return scope.clone();
@@ -624,7 +622,7 @@ fn spawn_executor(
     } else {
         envs.insert(
             "OOCANA_PKG_DIR".to_string(),
-            PathBuf::from(DEFAULT_WORKSPACE)
+            PathBuf::from(scope.workspace())
                 .join(PKG_DIR)
                 .to_string_lossy()
                 .to_string(),
@@ -844,6 +842,13 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
             layer: None,
         });
     } else if no_layer_feature {
+        let pkg_dir = PathBuf::from(scope.workspace()).join(PKG_DIR);
+        if !pkg_dir.exists() {
+            std::fs::create_dir_all(&pkg_dir).unwrap_or_else(|e| {
+                tracing::warn!("Failed to create pkg_dir: {:?}, error: {}", pkg_dir, e);
+            });
+        }
+
         return Ok(ExecutorCheckResult {
             executor_state,
             executor_map_name,
@@ -916,7 +921,7 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
 
         Some(runtime_layer)
     } else {
-        let pkg_dir = PathBuf::from(DEFAULT_WORKSPACE).join(PKG_DIR);
+        let pkg_dir = PathBuf::from(scope.workspace()).join(PKG_DIR);
         if !pkg_dir.exists() {
             std::fs::create_dir_all(&pkg_dir).unwrap_or_else(|e| {
                 tracing::warn!("Failed to create pkg_dir: {:?}, error: {}", pkg_dir, e);
