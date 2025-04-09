@@ -71,7 +71,7 @@ fn find_bind_path_file() -> Option<String> {
 }
 
 pub fn load_bind_paths(
-    bind_paths: &Option<Vec<String>>,
+    bind_path_args: &Option<Vec<String>>,
     bind_path_file: &Option<String>,
 ) -> Vec<BindPath> {
     let mut bind_path_arg: Vec<BindPath> = vec![];
@@ -100,14 +100,14 @@ pub fn load_bind_paths(
                     for line in reader.lines() {
                         match line {
                             Ok(line) => {
-                                let parts = line.split(':').collect::<Vec<&str>>();
-                                if parts.len() == 2 {
-                                    bind_path_arg.push(BindPath {
-                                        source: parts[0].to_string(),
-                                        target: parts[1].to_string(),
-                                    });
-                                } else {
-                                    tracing::warn!("bind path file line format error: {line}");
+                                let result = TryInto::<BindPath>::try_into(line.trim());
+                                match result {
+                                    Ok(bind_path) => {
+                                        bind_path_arg.push(bind_path);
+                                    }
+                                    Err(e) => {
+                                        tracing::warn!("bind path file line format error: {e}");
+                                    }
                                 }
                             }
                             Err(e) => {
@@ -125,14 +125,16 @@ pub fn load_bind_paths(
         }
     }
 
-    if let Some(paths) = bind_paths {
+    if let Some(paths) = bind_path_args {
         for path in paths {
-            let parts = path.split(':').collect::<Vec<&str>>();
-            if parts.len() == 2 {
-                bind_path_arg.push(BindPath {
-                    source: parts[0].to_string(),
-                    target: parts[1].to_string(),
-                });
+            let result = TryInto::<BindPath>::try_into(path.trim());
+            match result {
+                Ok(bind_path) => {
+                    bind_path_arg.push(bind_path);
+                }
+                Err(e) => {
+                    tracing::warn!("bind_path_args format error: {e}");
+                }
             }
         }
     }

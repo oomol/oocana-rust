@@ -14,12 +14,12 @@ pub enum LayerAction {
         #[arg(help = "package path")]
         package: String,
         #[arg(
-            help = "some bind paths, format <source_path>:<target_path>, accept multiple input. example: --bind-paths <source>:<target> --bind-paths <source>:<target>",
+            help = "bind paths, format src=<source_path>,dst=<target_path>,rw/ro,recursive/nonrecursive (rw,nonrecursive is default value), accept multiple input. example: --bind-paths src=<source_path>,dst=<target_path>,rw/ro,recursive/nonrecursive --bind-paths src=<source_path>,dst=<target_path>,rw/ro,recursive/nonrecursive",
             long
         )]
         bind_paths: Option<Vec<String>>,
         #[arg(
-            help = "bind path from file, format is <source_path>:<target_path> line by line, if not provided, it will be find env OOCANA_BIND_PATH_FILE variable",
+            help = "a file path contains multiple bind paths. The file format is src=<source_path>,dst=<target_path>,rw/ro,recursive/nonrecursive (rw,nonrecursive is default value) line by line, if not provided, it will be found in OOCANA_BIND_PATH_FILE env variable",
             long
         )]
         bind_path_file: Option<String>,
