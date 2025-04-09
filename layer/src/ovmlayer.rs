@@ -72,9 +72,10 @@ pub fn merge_cmd(layers: &Vec<String>, merge_point: &str) -> Command {
     let mut binding = ovmlayer_bin();
     let mut options = vec!["merge"];
     for layer in layers {
+        options.push("-l");
         options.push(layer);
     }
-    options.push(":");
+    options.push("-m");
     options.push(merge_point);
     binding.args(&options);
     binding
