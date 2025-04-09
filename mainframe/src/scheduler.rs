@@ -556,6 +556,8 @@ fn spawn_executor(
         .filter(|(key, _)| key.starts_with("OOMOL_") || pass_through_env_keys.contains(key))
         .collect();
 
+    envs.insert(format!("IS_FORKED"), format!("1"));
+
     tracing::debug!("pass through these env keys: {:?}", envs.keys());
 
     for (key, value) in executor_envs.iter() {
@@ -659,7 +661,6 @@ fn spawn_executor(
     };
 
     command
-        .env("IS_FORKED", "1")
         .envs(envs)
         .stdin(process::Stdio::null())
         .stdout(process::Stdio::piped())
