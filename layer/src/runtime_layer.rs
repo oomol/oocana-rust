@@ -88,13 +88,10 @@ impl RuntimeLayer {
 
     pub fn add_bind_paths(&mut self, bind_paths: &[BindPath]) {
         for b in bind_paths {
-            if metadata(&b.source).is_ok() {
+            if metadata(&b.src).is_ok() {
                 self.extra_bind_paths.push(b.clone());
             } else {
-                warn!(
-                    "add_bind_paths skip paths {:?} which is not exist",
-                    b.source
-                );
+                warn!("add_bind_paths skip paths {:?} which is not exist", b.src);
             }
         }
     }
@@ -105,10 +102,10 @@ impl RuntimeLayer {
         let mut bind_paths: Vec<BindPath> = vec![];
 
         for b in &self.extra_bind_paths {
-            if metadata(&b.source).is_ok() {
+            if metadata(&b.src).is_ok() {
                 bind_paths.push(b.clone());
             } else {
-                warn!("bind paths {:?} is not exist", b.source);
+                warn!("bind paths {:?} is not exist", b.src);
             }
         }
 
@@ -223,8 +220,8 @@ impl RuntimeLayer {
                 continue;
             }
             bind_paths.push(BindPath {
-                source: cache.to_string(),
-                target: cache.to_string(),
+                src: cache.to_string(),
+                dst: cache.to_string(),
             });
         }
 
@@ -264,8 +261,8 @@ impl RuntimeLayer {
             std::fs::set_permissions(&script_path, perms)?;
 
             bind_paths.push(BindPath {
-                source: script_path.clone(),
-                target: script_run_path_str.to_owned(),
+                src: script_path.clone(),
+                dst: script_run_path_str.to_owned(),
             });
             scripts_files.push(script_run_path_str.to_string());
         }

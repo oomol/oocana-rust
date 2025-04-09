@@ -68,14 +68,14 @@ impl PackageLayer {
                 continue;
             }
             cache_bind_paths.push(BindPath {
-                source: cache.to_string(),
-                target: cache.to_string(),
+                src: cache.to_string(),
+                dst: cache.to_string(),
             });
         }
 
         for bind_path in bind_paths {
-            if metadata(&bind_path.source).is_err() {
-                tracing::warn!("passing bind paths {:?} is not exist", bind_path.source);
+            if metadata(&bind_path.src).is_err() {
+                tracing::warn!("passing bind paths {:?} is not exist", bind_path.src);
                 continue;
             }
             cache_bind_paths.push(bind_path.clone());
