@@ -1,4 +1,3 @@
-use serde::{Deserialize, Serialize};
 use std::{fmt, process::Command};
 
 fn ovmlayer_bin() -> Command {
@@ -172,12 +171,9 @@ impl fmt::Display for BindPath {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(untagged)]
+#[derive(Debug, Clone)]
 pub enum Permission {
-    #[serde(rename = "ro")]
     Readonly,
-    #[serde(rename = "rw")]
     ReadWrite,
 }
 
@@ -190,12 +186,9 @@ impl fmt::Display for Permission {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(untagged)]
+#[derive(Debug, Clone)]
 pub enum BindOption {
-    #[serde(rename = "recursive")]
     Recursive,
-    #[serde(rename = "nonrecursive")]
     NonRecursive,
 }
 
