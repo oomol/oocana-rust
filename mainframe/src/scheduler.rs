@@ -864,13 +864,13 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
             if let Some(target) = scope.target() {
                 if let Some(meta) = store.get(&target) {
                     for node in meta.nodes.iter() {
-                        bind_paths.push(BindPath {
-                            source: node
-                                .absolute_entry
+                        bind_paths.push(BindPath::new(
+                            node.absolute_entry
                                 .parent()
                                 .map(|p| p.to_string_lossy().to_string())
-                                .unwrap_or_default(),
-                            target: format!(
+                                .unwrap_or_default()
+                                .as_ref(),
+                            &format!(
                                 "{}/{}",
                                 pkg.to_string_lossy().to_string(),
                                 node.relative_entry
@@ -878,7 +878,9 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
                                     .map(|p| p.to_string_lossy().to_string())
                                     .unwrap_or_default()
                             ),
-                        });
+                            false,
+                            false,
+                        ));
                     }
                 }
             }
@@ -891,10 +893,12 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
             });
         }
 
-        bind_paths.push(BindPath {
-            source: pkg_dir.to_string_lossy().to_string(),
-            target: pkg_dir.to_string_lossy().to_string(),
-        });
+        bind_paths.push(BindPath::new(
+            pkg_dir.to_string_lossy().as_ref(),
+            pkg_dir.to_string_lossy().as_ref(),
+            false,
+            false,
+        ));
 
         let path_str = pkg.to_string_lossy().to_string();
         let mut runtime_layer =

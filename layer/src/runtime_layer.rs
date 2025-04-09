@@ -219,10 +219,7 @@ impl RuntimeLayer {
                 tracing::warn!("cache path: {cache:?} not exist. skip this bind path");
                 continue;
             }
-            bind_paths.push(BindPath {
-                src: cache.to_string(),
-                dst: cache.to_string(),
-            });
+            bind_paths.push(BindPath::new(&cache, &cache, false, false));
         }
 
         let pkg_path = self.package_path.to_string_lossy().to_string();
@@ -260,10 +257,12 @@ impl RuntimeLayer {
             perms.set_mode(0o755);
             std::fs::set_permissions(&script_path, perms)?;
 
-            bind_paths.push(BindPath {
-                src: script_path.clone(),
-                dst: script_run_path_str.to_owned(),
-            });
+            bind_paths.push(BindPath::new(
+                &script_path,
+                &script_run_path_str,
+                false,
+                false,
+            ));
             scripts_files.push(script_run_path_str.to_string());
         }
 

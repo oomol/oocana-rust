@@ -67,10 +67,7 @@ impl PackageLayer {
                 tracing::debug!("cache path: {cache:?} not exist. skip this bind path");
                 continue;
             }
-            cache_bind_paths.push(BindPath {
-                src: cache.to_string(),
-                dst: cache.to_string(),
-            });
+            cache_bind_paths.push(BindPath::new(cache, cache, false, false));
         }
 
         for bind_path in bind_paths {
