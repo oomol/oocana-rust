@@ -560,15 +560,6 @@ fn spawn_executor(
 
     tracing::debug!("pass through these env keys: {:?}", envs.keys());
 
-    for (key, value) in utils::env::load_env_from_file(&env_file) {
-        if envs.contains_key(&key) {
-            // TODO: consider whether to skip the env key or not.
-            warn!("env key {} is already in envs, skip", key);
-        } else {
-            envs.insert(key.to_owned(), value.to_owned());
-        }
-    }
-
     let mut command = if let Some(ref pkg_layer) = layer {
         let package_path_str = pkg_layer.package_path.to_string_lossy();
 
@@ -618,7 +609,7 @@ fn spawn_executor(
         );
 
         let script_str = layer::convert_to_script(&exec_form_cmd);
-        let cmd = pkg_layer.run_command(&script_str, &envs);
+        let cmd = pkg_layer.run_command(&script_str, &envs, &env_file);
 
         cmd
     } else {
@@ -629,6 +620,14 @@ fn spawn_executor(
                 .to_string_lossy()
                 .to_string(),
         );
+        for (key, value) in utils::env::load_env_from_file(&env_file) {
+            if envs.contains_key(&key) {
+                // TODO: consider whether to skip the env key or not.
+                warn!("env key {} is already in envs, skip", key);
+            } else {
+                envs.insert(key.to_owned(), value.to_owned());
+            }
+        }
 
         let mut args = vec![
             "--session-id",
@@ -894,8 +893,12 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
         ));
 
         let path_str = pkg.to_string_lossy().to_string();
-        let mut runtime_layer =
-            create_runtime_layer(&path_str, &bind_paths, &executor_payload.envs)?;
+        let mut runtime_layer = create_runtime_layer(
+            &path_str,
+            &bind_paths,
+            &HashMap::default(),
+            &executor_payload.env_file,
+        )?;
 
         if let Some(store) = injection_store {
             if let Some(target) = scope.target() {

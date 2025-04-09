@@ -5,7 +5,7 @@ use mainframe::scheduler::ExecutorParameters;
 use mainframe::BindPath;
 use manifest_meta::BlockResolver;
 use manifest_reader::path_finder::BlockPathFinder;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::env;
 use std::fs::{self, metadata};
 use std::net::SocketAddr;

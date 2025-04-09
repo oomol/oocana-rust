@@ -220,7 +220,7 @@ pub fn run_cmd(
     mount_paths: &[BindPath],
     work_dir: &Option<String>,
     envs: &HashMap<String, String>,
-    // env_file: Option<String>,
+    env_file: &Option<String>,
 ) -> Command {
     let mut binding = ovmlayer_bin();
     let mut options = vec![format!("run"), format!("--all-device")];
@@ -236,9 +236,9 @@ pub fn run_cmd(
     for (env_key, env_value) in envs {
         options.push(format!("--env {}={}", env_key, env_value));
     }
-    // if let Some(env_file) = env_file {
-    //     options.push(format!("--env-file {}", env_file));
-    // }
+    if let Some(env_file) = env_file {
+        options.push(format!("--env-file {}", env_file));
+    }
 
     let merged_point = format!("--merged-point={}", merge_point);
     options.push(merged_point);

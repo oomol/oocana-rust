@@ -109,6 +109,7 @@ pub fn run_script_unmerge(
     work_dir: &Option<String>,
     script: &str,
     envs: &HashMap<String, String>,
+    env_file: &Option<String>,
 ) -> Result<()> {
     let merge_point = &random_merge_point();
     merge_layer(&layers, merge_point)?;
@@ -124,7 +125,7 @@ pub fn run_script_unmerge(
     let cp_cmd = cp_to_merge_point(&merge_point, &file_path, &script_target_path);
     exec(cp_cmd)?;
 
-    let mut cmd = run_cmd(merge_point, &bind, work_dir, envs);
+    let mut cmd = run_cmd(merge_point, &bind, work_dir, envs, env_file);
     cmd.arg(format!("{script_target_path}"));
     tracing::info!("{cmd:?}");
 

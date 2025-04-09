@@ -97,7 +97,9 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
                 })
                 .collect();
 
-            layer::get_or_create_package_layer(package, &bind_path_arg, &envs)?;
+            let env_file = find_env_file(&env_file);
+
+            layer::get_or_create_package_layer(package, &bind_path_arg, &envs, &env_file)?;
         }
         LayerAction::Delete { package } => {
             layer::delete_package_layer(package)?;
@@ -136,7 +138,12 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
             let status = layer::package_layer_status(package)?;
             match status {
                 layer::PackageLayerStatus::Exist => {
-                    let l = layer::get_or_create_package_layer(package, &vec![], &HashMap::new())?;
+                    let l = layer::get_or_create_package_layer(
+                        package,
+                        &vec![],
+                        &HashMap::new(),
+                        &None,
+                    )?;
                     l.export(dest)?;
                 }
                 layer::PackageLayerStatus::NotInStore => {

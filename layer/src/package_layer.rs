@@ -56,6 +56,7 @@ impl PackageLayer {
         bind_paths: &[BindPath],
         package_path: P,
         envs: &HashMap<String, String>,
+        env_file: &Option<String>,
     ) -> Result<Self> {
         let package_path: PathBuf = package_path.into();
 
@@ -95,6 +96,7 @@ impl PackageLayer {
                 &Some(pkg_path),
                 &bootstrap,
                 envs,
+                env_file,
             )?;
             Some(bootstrap_layer)
         } else {
