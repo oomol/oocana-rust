@@ -132,8 +132,10 @@ pub fn run_cmd(merge_point: &str, bind_paths: &[BindPath], work_dir: &Option<Str
 pub fn cp_to_layer(layer: &str, src: &str, dest: &str) -> Command {
     let mut binding = ovmlayer_bin();
     let options = vec![
-        "cp-layer".to_string(),
-        src.to_string(),
+        format!("cp"),
+        format!("--mode"),
+        format!("host2layer"),
+        format!("{src}"),
         format!("{layer}:{dest}",),
     ];
     binding.args(&options);
@@ -143,8 +145,10 @@ pub fn cp_to_layer(layer: &str, src: &str, dest: &str) -> Command {
 pub fn cp_to_merge_point(merge_point: &str, src: &str, dest: &str) -> Command {
     let mut binding = ovmlayer_bin();
     let options = vec![
-        "cp-merged".to_string(),
-        src.to_string(),
+        format!("cp"),
+        format!("--mode"),
+        format!("host2merged"),
+        format!("{src}"),
         format!("{merge_point}:{dest}",),
     ];
     binding.args(&options);
