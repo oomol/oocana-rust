@@ -30,10 +30,10 @@ pub enum LayerType {
 pub fn list_layer_cmd(t: Option<LayerType>) -> Command {
     let mut binding = ovmlayer_bin();
     let list_type = match t {
-        Some(LayerType::Layers) => vec!["layer"],
-        Some(LayerType::UsedLayers) => vec!["layer", "--used"],
-        Some(LayerType::UnusedLayers) => vec!["layer", "--unused"],
-        None => vec!["layer"],
+        Some(LayerType::Layers) => vec!["layers"],
+        Some(LayerType::UsedLayers) => vec!["layers", "--used"],
+        Some(LayerType::UnusedLayers) => vec!["layers", "--unused"],
+        None => vec!["layers"],
     };
     binding.arg("list");
     binding.args(&list_type);
