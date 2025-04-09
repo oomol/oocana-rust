@@ -24,16 +24,16 @@ pub fn create_layer_cmd(name: &str) -> Command {
 pub enum LayerType {
     Layers,
     UsedLayers,
-    Merged,
+    UnusedLayers,
 }
 
 pub fn list_layer_cmd(t: Option<LayerType>) -> Command {
     let mut binding = ovmlayer_bin();
     let list_type = match t {
-        Some(LayerType::Layers) => vec!["--layers"],
-        Some(LayerType::UsedLayers) => vec!["--layers", "--used"],
-        Some(LayerType::Merged) => vec!["--merged"],
-        None => vec!["--layers"],
+        Some(LayerType::Layers) => vec!["layer"],
+        Some(LayerType::UsedLayers) => vec!["layer", "--used"],
+        Some(LayerType::UnusedLayers) => vec!["layer", "--unused"],
+        None => vec!["layer"],
     };
     binding.arg("list");
     binding.args(&list_type);
