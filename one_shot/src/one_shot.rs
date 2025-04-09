@@ -90,7 +90,7 @@ pub struct BlockArgs<'a> {
     pub session_dir: Option<String>,
     pub bind_paths: Vec<BindPath>,
     pub retain_env_keys: Option<Vec<String>>,
-    pub envs: HashMap<String, String>,
+    pub env_file: Option<String>,
     pub temp_root: String,
 }
 
@@ -111,7 +111,7 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
         bind_paths,
         session_dir,
         retain_env_keys,
-        envs,
+        env_file,
         temp_root,
     } = block_args;
     let session_id = SessionId::new(session);
@@ -205,7 +205,7 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
             session_dir: session_dir.clone(),
             bind_paths,
             pass_through_env_keys: retain_env_keys.unwrap_or_default(),
-            envs,
+            env_file,
             tmp_dir: tmp_dir.clone(),
             debug,
             wait_for_client,

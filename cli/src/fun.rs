@@ -2,9 +2,9 @@ use crate::parser;
 use layer::BindPath;
 use utils::config;
 
-use std::{collections::HashMap, env::temp_dir, io::BufRead, path::PathBuf};
+use std::{env::temp_dir, io::BufRead, path::PathBuf};
 
-fn find_env_file() -> Option<String> {
+fn get_env_file() -> Option<String> {
     std::env::var("OOCANA_ENV_FILE").ok()
 }
 
@@ -16,54 +16,23 @@ pub fn config() -> String {
     std::env::var("OOCANA_CONFIG").unwrap_or_else(|_| "~/.oocana/config".to_string())
 }
 
-pub fn load_envs(file: &Option<String>) -> HashMap<String, String> {
-    let mut envs = HashMap::new();
-
-    let file_path = if let Some(file) = file {
+pub fn find_env_file(file: &Option<String>) -> Option<String> {
+    if let Some(file) = file {
         tracing::debug!("env file found by parameters: {file}");
-        file.to_string()
-    } else if let Some(file) = find_env_file() {
-        tracing::debug!("env file found by OOCANA_ENV_FILE: {file}");
-        file
-    } else if let Some(file) = utils::config::env_file() {
-        tracing::debug!("env file found by config: {file}");
-        file
-    } else {
-        return HashMap::new();
-    };
-
-    let path = std::path::Path::new(&file_path);
-    if path.is_file() {
-        let file = std::fs::File::open(path);
-
-        match file {
-            Ok(file) => {
-                let reader = std::io::BufReader::new(file);
-                for line in reader.lines() {
-                    match line {
-                        Ok(line) => {
-                            let parts = line.split('=').collect::<Vec<&str>>();
-                            if parts.len() == 2 {
-                                envs.insert(parts[0].to_string(), parts[1].to_string());
-                            } else {
-                                tracing::warn!("env file line format error: {line}");
-                            }
-                        }
-                        Err(e) => {
-                            tracing::warn!("env file read error: {:?}", e);
-                        }
-                    }
-                }
-            }
-            Err(e) => {
-                tracing::warn!("env file open error: {:?}", e);
-            }
-        }
-    } else {
-        tracing::warn!("env file not found: {file_path}");
+        return Some(file.to_string());
     }
 
-    envs
+    if let Some(file) = get_env_file() {
+        tracing::debug!("env file found by OOCANA_ENV_FILE: {file}");
+        return Some(file);
+    }
+
+    if let Some(file) = utils::config::env_file() {
+        tracing::debug!("env file found by config: {file}");
+        return Some(file);
+    }
+
+    None
 }
 
 fn find_bind_path_file() -> Option<String> {

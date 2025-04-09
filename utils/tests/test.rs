@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use utils::config::load_config;
+    use utils::{config::load_config, env::load_env_from_file};
 
     #[test]
     fn test_default_config() {
@@ -54,5 +54,13 @@ mod tests {
         let extra = run.extra.clone().unwrap();
         assert_eq!(extra.search_paths.is_some(), true);
         assert_eq!(extra.search_paths.unwrap().len(), 0);
+    }
+
+    #[test]
+    fn test_load_env_from_file() {
+        let file_path = Some("tests/test.env");
+        let env_vars = load_env_from_file(&file_path);
+        assert!(!env_vars.is_empty());
+        assert_eq!(env_vars.get("TEST_KEY"), Some(&"TEST_VALUE".to_string()));
     }
 }

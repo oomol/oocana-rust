@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::fun::{load_bind_paths, load_envs};
+use crate::fun::{find_env_file, load_bind_paths};
 use clap::Subcommand;
 use layer::import_package_layer;
 use manifest_reader::path_finder::find_package_file;
@@ -23,6 +23,11 @@ pub enum LayerAction {
             long
         )]
         bind_path_file: Option<String>,
+        #[arg(
+            help = "pass the environment variables(only accept variable name) to layer creation. accept multiple input. example: --retain-env-keys <env> --retain-env-keys <env>",
+            long
+        )]
+        retain_env_keys: Option<Vec<String>>,
         #[arg(
             help = ".env file path, when create a layer, these env will pass to this process. The file format is <key>=<value> line by line like traditional env file. if not provided, oocana will search OOCANA_ENV_FILE env variable",
             long
@@ -79,10 +84,19 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
             package,
             bind_paths,
             bind_path_file,
+            retain_env_keys,
             env_file,
         } => {
             let bind_path_arg = load_bind_paths(bind_paths, bind_path_file);
-            let envs = load_envs(env_file);
+            let envs: HashMap<String, String> = std::env::vars()
+                .filter(|(key, _)| {
+                    key.starts_with("OOMOL_")
+                        || retain_env_keys
+                            .as_ref()
+                            .is_some_and(|list| list.contains(key))
+                })
+                .collect();
+
             layer::get_or_create_package_layer(package, &bind_path_arg, &envs)?;
         }
         LayerAction::Delete { package } => {

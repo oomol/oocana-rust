@@ -483,7 +483,7 @@ fn spawn_executor(
         session_dir,
         pass_through_env_keys,
         bind_paths: _bind_paths,
-        envs: executor_envs,
+        env_file,
         tmp_dir,
         debug,
         wait_for_client,
@@ -560,9 +560,9 @@ fn spawn_executor(
 
     tracing::debug!("pass through these env keys: {:?}", envs.keys());
 
-    for (key, value) in executor_envs.iter() {
-        // TODO: consider whether to skip the env key or not.
-        if envs.contains_key(key) {
+    for (key, value) in utils::env::load_env_from_file(&env_file) {
+        if envs.contains_key(&key) {
+            // TODO: consider whether to skip the env key or not.
             warn!("env key {} is already in envs, skip", key);
         } else {
             envs.insert(key.to_owned(), value.to_owned());
@@ -1313,7 +1313,7 @@ pub struct ExecutorParameters {
     pub session_dir: String,
     pub pass_through_env_keys: Vec<String>,
     pub bind_paths: Vec<BindPath>,
-    pub envs: HashMap<String, String>,
+    pub env_file: Option<String>,
     pub tmp_dir: PathBuf,
     pub debug: bool,
     pub wait_for_client: bool,

@@ -7,6 +7,7 @@ mod fun;
 
 use std::collections::HashSet;
 use cache::CacheAction;
+use fun::find_env_file;
 use one_shot::one_shot::{run_block, BlockArgs};
 
 use clap::{Parser, Subcommand};
@@ -164,14 +165,12 @@ pub fn cli_match() -> Result<()> {
         Commands::Run { block, broker, search_paths, session, reporter, debug, wait_for_client, use_cache, nodes, input_values, exclude_packages, default_package, bind_paths, session_dir: session_path, retain_env_keys, env_file, bind_path_file, verbose: _verbose, temp_root, dry_run } => {
 
             let bind_paths = fun::load_bind_paths(bind_paths, bind_path_file);
-            let envs = fun::load_envs(&env_file);
-
             let search_paths = fun::parse_search_paths(search_paths);
+            let env_file = find_env_file(env_file);
 
             if *dry_run {
                 // print the parameters
                 println!("bind_paths: {:?}", bind_paths);
-                println!("envs: {:?}", envs);
                 println!("search_paths: {:?}", search_paths);
 
                 println!("dry_run is enabled, exiting without execution.");
@@ -204,7 +203,7 @@ pub fn cli_match() -> Result<()> {
                 session_dir: session_path.to_owned(),
                 bind_paths: bind_paths,
                 retain_env_keys: retain_env_keys.to_owned(),
-                envs,
+                env_file: env_file.to_owned(),
                 temp_root: temp_root.to_owned(),
             })?
         },
