@@ -77,10 +77,13 @@ pub fn load_bind_paths(
     let mut bind_path_arg: Vec<BindPath> = vec![];
 
     let bind_path_file = if let Some(bind_path_file) = bind_path_file {
+        tracing::debug!("bind path file found by parameters: {bind_path_file}");
         Some(bind_path_file.to_string())
     } else if let Some(bind_path_file) = find_bind_path_file() {
+        tracing::debug!("bind path file found by OOCANA_BIND_PATH_FILE: {bind_path_file}");
         Some(bind_path_file)
     } else if let Some(bind_path_file) = utils::config::bind_path_file() {
+        tracing::debug!("bind path file found by config: {bind_path_file}");
         Some(bind_path_file)
     } else {
         None
