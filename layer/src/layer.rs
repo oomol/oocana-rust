@@ -124,12 +124,11 @@ pub fn run_script_unmerge(
     let cp_cmd = cp_to_merge_point(&merge_point, &file_path, &script_target_path);
     exec(cp_cmd)?;
 
-    let mut cmd = run_cmd(merge_point, &bind, work_dir);
+    let mut cmd = run_cmd(merge_point, &bind, work_dir, envs);
     cmd.arg(format!("{script_target_path}"));
     tracing::info!("{cmd:?}");
 
     let child = cmd
-        .envs(envs)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())

@@ -1,4 +1,4 @@
-use std::{fmt, process::Command};
+use std::{collections::HashMap, fmt, process::Command};
 
 fn ovmlayer_bin() -> Command {
     const BIN: &str = "ovmlayer";
@@ -215,7 +215,13 @@ impl fmt::Display for BindOption {
 /// cmd.arg("shell.sh"); // 只能再传入一个参数，这个参数会作为 Command 执行，后续再传入的参数，都是第一个参数执行时的参数内容（以$1, $2, $3...的形式传入），可以参考 zsh -c 的文档。
 /// cmd.output().unwrap();
 /// ```
-pub fn run_cmd(merge_point: &str, mount_paths: &[BindPath], work_dir: &Option<String>) -> Command {
+pub fn run_cmd(
+    merge_point: &str,
+    mount_paths: &[BindPath],
+    work_dir: &Option<String>,
+    envs: &HashMap<String, String>,
+    // env_file: Option<String>,
+) -> Command {
     let mut binding = ovmlayer_bin();
     let mut options = vec![format!("run"), format!("--all-device")];
 
@@ -226,6 +232,13 @@ pub fn run_cmd(merge_point: &str, mount_paths: &[BindPath], work_dir: &Option<St
     if let Some(work_dir) = work_dir {
         options.push(format!("--workdir={}", work_dir).to_string());
     }
+
+    for (env_key, env_value) in envs {
+        options.push(format!("--env {}={}", env_key, env_value));
+    }
+    // if let Some(env_file) = env_file {
+    //     options.push(format!("--env-file {}", env_file));
+    // }
 
     let merged_point = format!("--merged-point={}", merge_point);
     options.push(merged_point);

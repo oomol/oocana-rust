@@ -98,7 +98,7 @@ impl RuntimeLayer {
 
     /// this Command is immutable. because lifetime limit, we can't add more arguments to it.
     #[instrument(skip_all)]
-    pub fn run_command(&self, script: &str) -> Command {
+    pub fn run_command(&self, script: &str, envs: &HashMap<String, String>) -> Command {
         let mut bind_paths: Vec<BindPath> = vec![];
 
         for b in &self.extra_bind_paths {
@@ -110,7 +110,7 @@ impl RuntimeLayer {
         }
 
         let work_dir = self.package_path.to_string_lossy().to_string();
-        let mut cmd = ovmlayer::run_cmd(&self.merge_point, &bind_paths, &Some(work_dir));
+        let mut cmd = ovmlayer::run_cmd(&self.merge_point, &bind_paths, &Some(work_dir), envs);
         cmd.arg(script);
         cmd
     }
@@ -200,7 +200,12 @@ impl RuntimeLayer {
                 new_injection_layer.layer_name.clone()
             };
 
-        self.run_injection_scripts(injection_layer_name, scripts.clone(), &package_path)?;
+        self.run_injection_scripts(
+            injection_layer_name,
+            scripts.clone(),
+            &package_path,
+            &HashMap::default(), // TODO: implement envs for injection runtime layer
+        )?;
 
         Ok(())
     }
@@ -211,6 +216,7 @@ impl RuntimeLayer {
         extra_layer: String,
         scripts: Vec<String>,
         package_path: &str,
+        envs: &HashMap<String, String>,
     ) -> Result<()> {
         let mut bind_paths: Vec<BindPath> = vec![];
 
@@ -269,7 +275,8 @@ impl RuntimeLayer {
         let pkg_path_arg = Some(pkg_path.clone());
 
         for script in scripts_files {
-            let mut cmd = ovmlayer::run_cmd(&script_run_merge_point, &bind_paths, &pkg_path_arg);
+            let mut cmd =
+                ovmlayer::run_cmd(&script_run_merge_point, &bind_paths, &pkg_path_arg, envs);
             cmd.arg(format!("{script}"));
             let child = cmd.spawn()?;
 

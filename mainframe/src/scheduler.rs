@@ -618,7 +618,7 @@ fn spawn_executor(
         );
 
         let script_str = layer::convert_to_script(&exec_form_cmd);
-        let cmd = pkg_layer.run_command(&script_str);
+        let cmd = pkg_layer.run_command(&script_str, &envs);
 
         cmd
     } else {
