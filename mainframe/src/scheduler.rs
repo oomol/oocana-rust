@@ -493,8 +493,6 @@ fn spawn_executor(
     // 目前约定 executor 执行文件在 PATH 环境变量中。
     let executor_bin = executor.to_owned() + "-executor";
 
-    let mut log_filename = None;
-
     let mut executor_package: Option<String> = None;
 
     let identifier = scope.identifier().unwrap_or_default();
@@ -609,11 +607,13 @@ fn spawn_executor(
 
         executor_package = Some(package_path_str.to_string());
 
-        log_filename = Some(format!(
-            "ovmlayer-{}-{}",
-            executor_bin.to_owned(),
-            identifier
-        ));
+        let log_filename = format!("ovmlayer-{}-{}", executor_bin.to_owned(), identifier);
+
+        let log_dir = utils::logger::logger_dir();
+        envs.insert(
+            layer::OVMLAYER_LOG_ENV_KEY.to_owned(),
+            log_dir.join(&log_filename).to_string_lossy().to_string(),
+        );
 
         let script_str = layer::convert_to_script(&exec_form_cmd);
         let cmd = pkg_layer.run_command(&script_str);
@@ -657,14 +657,6 @@ fn spawn_executor(
         cmd.args(args);
         cmd
     };
-
-    if let Some(log_file) = log_filename {
-        let log_dir = utils::logger::logger_dir();
-        envs.insert(
-            layer::OVMLAYER_LOG_ENV_KEY.to_owned(),
-            log_dir.join(log_file).to_string_lossy().to_string(),
-        );
-    }
 
     command
         .env("IS_FORKED", "1")
