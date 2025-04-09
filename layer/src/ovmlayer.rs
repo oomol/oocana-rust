@@ -96,6 +96,72 @@ pub struct BindPath {
     pub bind_option: BindOption,
 }
 
+impl BindPath {
+    pub fn new(src: &str, dst: &str, readonly: bool, recursive: bool) -> Self {
+        let permission = if readonly {
+            Permission::Readonly
+        } else {
+            Permission::ReadWrite
+        };
+        let bind_option = if recursive {
+            BindOption::Recursive
+        } else {
+            BindOption::NonRecursive
+        };
+        BindPath {
+            src: src.to_string(),
+            dst: dst.to_string(),
+            permission,
+            bind_option,
+        }
+    }
+}
+
+impl TryFrom<&str> for BindPath {
+    type Error = String;
+
+    fn try_from(path: &str) -> Result<Self, String> {
+        let parts: Vec<&str> = path.split(',').collect();
+
+        let mut src = None;
+        let mut dst = None;
+        let mut readonly = None;
+        let mut recursive = None;
+        for part in &parts {
+            if part.starts_with("src=") {
+                src = Some(part[4..].to_string());
+            } else if part.starts_with("dst=") {
+                dst = Some(part[4..].to_string());
+            }
+            if *part == "ro" && readonly.is_none() {
+                readonly = Some(true)
+            } else if *part == "rw" && readonly.is_none() {
+                readonly = Some(false);
+            } else if *part == "recursive" && recursive.is_none() {
+                recursive = Some(true);
+            } else if *part == "nonrecursive" && recursive.is_none() {
+                recursive = Some(false);
+            } else {
+                return Err(format!("Invalid BindPath format: {}", path));
+            }
+        }
+
+        if let (Some(src), Some(dst), readonly, recursive) = (
+            src,
+            dst,
+            readonly.unwrap_or(false),
+            recursive.unwrap_or(false),
+        ) {
+            Ok(BindPath::new(&src, &dst, readonly, recursive))
+        } else {
+            Err(format!(
+                "Invalid BindPath format: {}. Missing src or dst",
+                path
+            ))
+        }
+    }
+}
+
 impl fmt::Display for BindPath {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
