@@ -177,6 +177,8 @@ pub fn cli_match() -> Result<()> {
                 println!("dry_run is enabled, exiting without execution.");
 
                 return  Ok(());
+            } else {
+                tracing::debug!("bind_paths: {:?} search_paths: {:?}", bind_paths, search_paths);
             }
 
             run_block(BlockArgs {

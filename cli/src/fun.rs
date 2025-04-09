@@ -20,10 +20,13 @@ pub fn load_envs(file: &Option<String>) -> HashMap<String, String> {
     let mut envs = HashMap::new();
 
     let file_path = if let Some(file) = file {
+        tracing::debug!("env file found by parameters: {file}");
         file.to_string()
     } else if let Some(file) = find_env_file() {
+        tracing::debug!("env file found by OOCANA_ENV_FILE: {file}");
         file
     } else if let Some(file) = utils::config::env_file() {
+        tracing::debug!("env file found by config: {file}");
         file
     } else {
         return HashMap::new();
