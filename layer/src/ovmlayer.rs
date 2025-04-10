@@ -226,7 +226,7 @@ pub fn run_cmd(
     let mut options = vec![format!("run"), format!("--all-device")];
 
     for bind_path in mount_paths {
-        options.push(format!("--mount {}", bind_path));
+        options.push(format!("--mount={}", bind_path));
     }
 
     if let Some(work_dir) = work_dir {
@@ -237,7 +237,7 @@ pub fn run_cmd(
         options.push(format!("--env {}={}", env_key, env_value));
     }
     if let Some(env_file) = env_file {
-        options.push(format!("--env-file {}", env_file));
+        options.push(format!("--env-file={}", env_file));
     }
 
     let merged_point = format!("--merged-point={}", merge_point);
