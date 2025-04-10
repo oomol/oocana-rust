@@ -131,8 +131,7 @@ impl TryFrom<&str> for BindPath {
                 src = Some(part[4..].to_string());
             } else if part.starts_with("dst=") {
                 dst = Some(part[4..].to_string());
-            }
-            if *part == "ro" && readonly.is_none() {
+            } else if *part == "ro" && readonly.is_none() {
                 readonly = Some(true)
             } else if *part == "rw" && readonly.is_none() {
                 readonly = Some(false);
