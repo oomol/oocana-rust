@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.27.0 (2025-04-10)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* feat: add more detail log by @leavesster in https://github.com/oomol/oocana-rust/pull/56
+* feat!: upgrade to new ovmlayer api by @leavesster in https://github.com/oomol/oocana-rust/pull/58
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.26.7...v0.27.0
+
 ## 0.26.7 (2025-04-08)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
