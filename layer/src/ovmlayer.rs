@@ -170,7 +170,7 @@ impl fmt::Display for BindPath {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Permission {
     Readonly,
     ReadWrite,
@@ -185,7 +185,7 @@ impl fmt::Display for Permission {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum BindOption {
     Recursive,
     NonRecursive,
@@ -277,4 +277,59 @@ pub fn cp_to_merge_point(merge_point: &str, src: &str, dest: &str) -> Command {
     ];
     binding.args(&options);
     binding
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_bind_path() {
+        let path = "src=/tmp,dst=/tmp,ro,recursive";
+        let bind_path = BindPath::try_from(path).unwrap();
+        assert_eq!(bind_path.src, "/tmp");
+        assert_eq!(bind_path.dst, "/tmp");
+        assert_eq!(bind_path.permission, Permission::Readonly);
+        assert_eq!(bind_path.bind_option, BindOption::Recursive);
+    }
+
+    #[test]
+    fn test_bind_path_with_default() {
+        let path = "src=/tmp,dst=/tmp";
+        let bind_path = BindPath::try_from(path).unwrap();
+        assert_eq!(bind_path.src, "/tmp");
+        assert_eq!(bind_path.dst, "/tmp");
+        assert_eq!(bind_path.permission, Permission::ReadWrite);
+        assert_eq!(bind_path.bind_option, BindOption::NonRecursive);
+    }
+
+    #[test]
+    fn test_bind_path_invalid() {
+        let path = "src=/tmp,dst=/tmp,invalid_option";
+        let bind_path = BindPath::try_from(path);
+        assert!(bind_path.is_err());
+    }
+
+    #[test]
+    fn test_bind_path_missing_src() {
+        let path = "dst=/tmp,ro,recursive";
+        let bind_path = BindPath::try_from(path);
+        assert!(bind_path.is_err());
+    }
+
+    #[test]
+    fn test_bind_path_missing_dst() {
+        let path = "src=/tmp,ro,recursive";
+        let bind_path = BindPath::try_from(path);
+        assert!(bind_path.is_err());
+    }
+
+    #[test]
+    fn test_bind_path_display() {
+        let bind_path = BindPath::new("/tmp", "/tmp", true, true);
+        assert_eq!(
+            bind_path.to_string(),
+            "type=bind,src=/tmp,dst=/tmp,ro,recursive"
+        );
+    }
 }
