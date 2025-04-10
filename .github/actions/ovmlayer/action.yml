@@ -5,6 +5,10 @@ inputs:
     description: "GitHub token"
     required: true
     default: ${{ github.token }}
+  ref:
+    description: "GitHub ref"
+    required: false
+    default: ""
 
 runs:
   using: "composite"
@@ -14,6 +18,7 @@ runs:
       with:
         repository: oomol/ovmlayer
         path: ovmlayer
+        ref: ${{ inputs.ref }}
         token: ${{ inputs.token }}
     - name: move ovmlayer to PATH
       run: |
