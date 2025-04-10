@@ -21,8 +21,8 @@ pub use runtime_layer::{create_runtime_layer, InjectionParams, RuntimeLayer};
 // TODO: use ovmlayer test api instead of this command
 pub fn feature_enabled() -> bool {
     let mut cmd = Command::new("ovmlayer");
-    cmd.arg("list");
-    cmd.arg("layers");
+    cmd.arg("test");
+    cmd.arg("system");
     cli::exec(cmd).is_ok()
 }
 
