@@ -68,6 +68,7 @@ mod tests {
 
         // 把 omvlayer 的日志输出到文件中，避免干扰。
         cmd.env("OVMLAYER_LOG", log.to_str().unwrap());
+        println!("cmd: {:?}", cmd);
 
         let out = cmd.output().expect("run command failed");
         assert_eq!(out.status.success(), true);
