@@ -483,7 +483,7 @@ fn spawn_executor(
         session_dir,
         pass_through_env_keys,
         bind_paths: _bind_paths,
-        envs: executor_envs,
+        env_file,
         tmp_dir,
         debug,
         wait_for_client,
@@ -492,8 +492,6 @@ fn spawn_executor(
     // 后面加 -executor 尾缀是一种隐式约定。例如：如果 executor 是 "python"，那么实际上会执行 python-executor。
     // 目前约定 executor 执行文件在 PATH 环境变量中。
     let executor_bin = executor.to_owned() + "-executor";
-
-    let mut log_filename = None;
 
     let mut executor_package: Option<String> = None;
 
@@ -558,16 +556,9 @@ fn spawn_executor(
         .filter(|(key, _)| key.starts_with("OOMOL_") || pass_through_env_keys.contains(key))
         .collect();
 
-    tracing::debug!("pass through these env keys: {:?}", envs.keys());
+    envs.insert(format!("IS_FORKED"), format!("1"));
 
-    for (key, value) in executor_envs.iter() {
-        // TODO: consider whether to skip the env key or not.
-        if envs.contains_key(key) {
-            warn!("env key {} is already in envs, skip", key);
-        } else {
-            envs.insert(key.to_owned(), value.to_owned());
-        }
-    }
+    tracing::debug!("pass through these env keys: {:?}", envs.keys());
 
     let mut command = if let Some(ref pkg_layer) = layer {
         let package_path_str = pkg_layer.package_path.to_string_lossy();
@@ -609,14 +600,16 @@ fn spawn_executor(
 
         executor_package = Some(package_path_str.to_string());
 
-        log_filename = Some(format!(
-            "ovmlayer-{}-{}",
-            executor_bin.to_owned(),
-            identifier
-        ));
+        let log_filename = format!("ovmlayer-{}-{}", executor_bin.to_owned(), identifier);
+
+        let log_dir = utils::logger::logger_dir();
+        envs.insert(
+            layer::OVMLAYER_LOG_ENV_KEY.to_owned(),
+            log_dir.join(&log_filename).to_string_lossy().to_string(),
+        );
 
         let script_str = layer::convert_to_script(&exec_form_cmd);
-        let cmd = pkg_layer.run_command(&script_str);
+        let cmd = pkg_layer.run_command(&script_str, &envs, &env_file);
 
         cmd
     } else {
@@ -627,6 +620,14 @@ fn spawn_executor(
                 .to_string_lossy()
                 .to_string(),
         );
+        for (key, value) in utils::env::load_env_from_file(&env_file) {
+            if envs.contains_key(&key) {
+                // TODO: consider whether to skip the env key or not.
+                warn!("env key {} is already in envs, skip", key);
+            } else {
+                envs.insert(key.to_owned(), value.to_owned());
+            }
+        }
 
         let mut args = vec![
             "--session-id",
@@ -658,16 +659,7 @@ fn spawn_executor(
         cmd
     };
 
-    if let Some(log_file) = log_filename {
-        let log_dir = utils::logger::logger_dir();
-        envs.insert(
-            layer::OVMLAYER_LOG_ENV_KEY.to_owned(),
-            log_dir.join(log_file).to_string_lossy().to_string(),
-        );
-    }
-
     command
-        .env("IS_FORKED", "1")
         .envs(envs)
         .stdin(process::Stdio::null())
         .stdout(process::Stdio::piped())
@@ -863,14 +855,15 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
         if let Some(store) = injection_store {
             if let Some(target) = scope.target() {
                 if let Some(meta) = store.get(&target) {
+                    tracing::info!("found injection store for target: {:?}", target);
                     for node in meta.nodes.iter() {
-                        bind_paths.push(BindPath {
-                            source: node
-                                .absolute_entry
+                        bind_paths.push(BindPath::new(
+                            node.absolute_entry
                                 .parent()
                                 .map(|p| p.to_string_lossy().to_string())
-                                .unwrap_or_default(),
-                            target: format!(
+                                .unwrap_or_default()
+                                .as_ref(),
+                            &format!(
                                 "{}/{}",
                                 pkg.to_string_lossy().to_string(),
                                 node.relative_entry
@@ -878,7 +871,9 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
                                     .map(|p| p.to_string_lossy().to_string())
                                     .unwrap_or_default()
                             ),
-                        });
+                            false,
+                            false,
+                        ));
                     }
                 }
             }
@@ -891,14 +886,20 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
             });
         }
 
-        bind_paths.push(BindPath {
-            source: pkg_dir.to_string_lossy().to_string(),
-            target: pkg_dir.to_string_lossy().to_string(),
-        });
+        bind_paths.push(BindPath::new(
+            pkg_dir.to_string_lossy().as_ref(),
+            pkg_dir.to_string_lossy().as_ref(),
+            false,
+            false,
+        ));
 
         let path_str = pkg.to_string_lossy().to_string();
-        let mut runtime_layer =
-            create_runtime_layer(&path_str, &bind_paths, &executor_payload.envs)?;
+        let mut runtime_layer = create_runtime_layer(
+            &path_str,
+            &bind_paths,
+            &HashMap::default(),
+            &executor_payload.env_file,
+        )?;
 
         if let Some(store) = injection_store {
             if let Some(target) = scope.target() {
@@ -1316,7 +1317,7 @@ pub struct ExecutorParameters {
     pub session_dir: String,
     pub pass_through_env_keys: Vec<String>,
     pub bind_paths: Vec<BindPath>,
-    pub envs: HashMap<String, String>,
+    pub env_file: Option<String>,
     pub tmp_dir: PathBuf,
     pub debug: bool,
     pub wait_for_client: bool,

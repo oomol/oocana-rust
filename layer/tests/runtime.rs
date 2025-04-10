@@ -32,10 +32,11 @@ mod tests {
     #[test]
     fn test_run_command_api() {
         let d = dirname().join("data").join("simple");
-        let r = get_or_create_package_layer(&d, &vec![], &HashMap::new());
+        let r = get_or_create_package_layer(&d, &vec![], &HashMap::new(), &None);
         assert!(r.is_ok(), "Error: {:?}", r.unwrap_err());
 
-        let runtime_layer = create_runtime_layer(d.to_str().unwrap(), &vec![], &HashMap::new());
+        let runtime_layer =
+            create_runtime_layer(d.to_str().unwrap(), &vec![], &HashMap::new(), &None);
         assert!(
             runtime_layer.is_ok(),
             "Error: {:?}",
@@ -53,23 +54,21 @@ mod tests {
         std::fs::write(&work_dir, "hello aaa").expect("write file failed");
         let bind_dir = work_dir.parent().unwrap().to_str().unwrap().to_string();
 
-        runtime_layer.add_bind_paths(&vec![BindPath {
-            source: bind_dir.clone(),
-            target: bind_dir.clone(),
-        }]);
+        runtime_layer.add_bind_paths(&vec![BindPath::new(&bind_dir, &bind_dir, false, false)]);
 
         let exec_form_cmd = vec!["ls", work_dir.parent().unwrap().to_str().unwrap()];
 
         let exec_string = convert_to_script(&exec_form_cmd);
         println!("exec_string: {}", exec_string);
 
-        let mut cmd = runtime_layer.run_command(&exec_string);
+        let mut cmd = runtime_layer.run_command(&exec_string, &HashMap::new(), &None);
 
         let mut log = temp_dir();
         log.push("ovmlayer.log");
 
         // 把 omvlayer 的日志输出到文件中，避免干扰。
         cmd.env("OVMLAYER_LOG", log.to_str().unwrap());
+        println!("cmd: {:?}", cmd);
 
         let out = cmd.output().expect("run command failed");
         assert_eq!(out.status.success(), true);

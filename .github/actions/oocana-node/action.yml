@@ -9,6 +9,10 @@ inputs:
     description: "create layer"
     required: false
     default: "false"
+  ref:
+    description: "GitHub ref"
+    required: false
+    default: ""
 
 runs:
   using: "composite"
@@ -17,6 +21,7 @@ runs:
       with:
         repository: oomol/oocana-node
         path: oocana-node
+        ref: ${{ inputs.ref }}
         token: ${{ inputs.token }}
     - uses: pnpm/action-setup@v4
       with:

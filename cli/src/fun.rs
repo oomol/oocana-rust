@@ -2,9 +2,9 @@ use crate::parser;
 use layer::BindPath;
 use utils::config;
 
-use std::{collections::HashMap, env::temp_dir, io::BufRead, path::PathBuf};
+use std::{env::temp_dir, io::BufRead, path::PathBuf};
 
-fn find_env_file() -> Option<String> {
+fn get_env_file() -> Option<String> {
     std::env::var("OOCANA_ENV_FILE").ok()
 }
 
@@ -16,54 +16,23 @@ pub fn config() -> String {
     std::env::var("OOCANA_CONFIG").unwrap_or_else(|_| "~/.oocana/config".to_string())
 }
 
-pub fn load_envs(file: &Option<String>) -> HashMap<String, String> {
-    let mut envs = HashMap::new();
-
-    let file_path = if let Some(file) = file {
+pub fn find_env_file(file: &Option<String>) -> Option<String> {
+    if let Some(file) = file {
         tracing::debug!("env file found by parameters: {file}");
-        file.to_string()
-    } else if let Some(file) = find_env_file() {
-        tracing::debug!("env file found by OOCANA_ENV_FILE: {file}");
-        file
-    } else if let Some(file) = utils::config::env_file() {
-        tracing::debug!("env file found by config: {file}");
-        file
-    } else {
-        return HashMap::new();
-    };
-
-    let path = std::path::Path::new(&file_path);
-    if path.is_file() {
-        let file = std::fs::File::open(path);
-
-        match file {
-            Ok(file) => {
-                let reader = std::io::BufReader::new(file);
-                for line in reader.lines() {
-                    match line {
-                        Ok(line) => {
-                            let parts = line.split('=').collect::<Vec<&str>>();
-                            if parts.len() == 2 {
-                                envs.insert(parts[0].to_string(), parts[1].to_string());
-                            } else {
-                                tracing::warn!("env file line format error: {line}");
-                            }
-                        }
-                        Err(e) => {
-                            tracing::warn!("env file read error: {:?}", e);
-                        }
-                    }
-                }
-            }
-            Err(e) => {
-                tracing::warn!("env file open error: {:?}", e);
-            }
-        }
-    } else {
-        tracing::warn!("env file not found: {file_path}");
+        return Some(file.to_string());
     }
 
-    envs
+    if let Some(file) = get_env_file() {
+        tracing::debug!("env file found by OOCANA_ENV_FILE: {file}");
+        return Some(file);
+    }
+
+    if let Some(file) = utils::config::env_file() {
+        tracing::debug!("env file found by config: {file}");
+        return Some(file);
+    }
+
+    None
 }
 
 fn find_bind_path_file() -> Option<String> {
@@ -71,7 +40,7 @@ fn find_bind_path_file() -> Option<String> {
 }
 
 pub fn load_bind_paths(
-    bind_paths: &Option<Vec<String>>,
+    bind_path_args: &Option<Vec<String>>,
     bind_path_file: &Option<String>,
 ) -> Vec<BindPath> {
     let mut bind_path_arg: Vec<BindPath> = vec![];
@@ -100,14 +69,14 @@ pub fn load_bind_paths(
                     for line in reader.lines() {
                         match line {
                             Ok(line) => {
-                                let parts = line.split(':').collect::<Vec<&str>>();
-                                if parts.len() == 2 {
-                                    bind_path_arg.push(BindPath {
-                                        source: parts[0].to_string(),
-                                        target: parts[1].to_string(),
-                                    });
-                                } else {
-                                    tracing::warn!("bind path file line format error: {line}");
+                                let result = TryInto::<BindPath>::try_into(line.trim());
+                                match result {
+                                    Ok(bind_path) => {
+                                        bind_path_arg.push(bind_path);
+                                    }
+                                    Err(e) => {
+                                        tracing::warn!("bind path file line format error: {e}");
+                                    }
                                 }
                             }
                             Err(e) => {
@@ -125,14 +94,16 @@ pub fn load_bind_paths(
         }
     }
 
-    if let Some(paths) = bind_paths {
+    if let Some(paths) = bind_path_args {
         for path in paths {
-            let parts = path.split(':').collect::<Vec<&str>>();
-            if parts.len() == 2 {
-                bind_path_arg.push(BindPath {
-                    source: parts[0].to_string(),
-                    target: parts[1].to_string(),
-                });
+            let result = TryInto::<BindPath>::try_into(path.trim());
+            match result {
+                Ok(bind_path) => {
+                    bind_path_arg.push(bind_path);
+                }
+                Err(e) => {
+                    tracing::warn!("bind_path_args format error: {e}");
+                }
             }
         }
     }

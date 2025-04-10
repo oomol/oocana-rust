@@ -109,6 +109,7 @@ pub fn run_script_unmerge(
     work_dir: &Option<String>,
     script: &str,
     envs: &HashMap<String, String>,
+    env_file: &Option<String>,
 ) -> Result<()> {
     let merge_point = &random_merge_point();
     merge_layer(&layers, merge_point)?;
@@ -116,20 +117,28 @@ pub fn run_script_unmerge(
     let (file_path, script_filename) = convert_script_to_shell(script)?;
     let script_target_path = {
         if let Some(work_dir) = work_dir {
-            work_dir.clone() + &script_filename
+            std::path::Path::new(work_dir)
+                .join(script_filename)
+                .to_string_lossy()
+                .to_string()
         } else {
             file_path.clone()
         }
     };
-    let cp_cmd = cp_to_merge_point(&merge_point, &file_path, &script_target_path);
+
+    let script_parant_dir = std::path::Path::new(&script_target_path)
+        .parent()
+        .ok_or_else(|| Error::from("Failed to get script parent dir"))?
+        .to_string_lossy()
+        .to_string();
+    let cp_cmd = cp_to_merge_point(&merge_point, &file_path, &script_parant_dir);
     exec(cp_cmd)?;
 
-    let mut cmd = run_cmd(merge_point, &bind, work_dir);
+    let mut cmd = run_cmd(merge_point, &bind, work_dir, envs, env_file);
     cmd.arg(format!("{script_target_path}"));
     tracing::info!("{cmd:?}");
 
     let child = cmd
-        .envs(envs)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())

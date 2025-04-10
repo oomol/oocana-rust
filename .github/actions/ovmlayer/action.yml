@@ -5,6 +5,10 @@ inputs:
     description: "GitHub token"
     required: true
     default: ${{ github.token }}
+  ref:
+    description: "GitHub ref"
+    required: false
+    default: ""
 
 runs:
   using: "composite"
@@ -14,16 +18,19 @@ runs:
       with:
         repository: oomol/ovmlayer
         path: ovmlayer
+        ref: ${{ inputs.ref }}
         token: ${{ inputs.token }}
     - name: move ovmlayer to PATH
       run: |
         mv ovmlayer ../ovmlayer
-        cd ..
-        ln -sf $(pwd)/ovmlayer/ovmlayer /usr/local/bin/ovmlayer
+        cd ../ovmlayer
+        $(pwd)/build.sh $(uname -m)
+        bin=$(find $(pwd) -name ovmlayer -type f)
+        ln -sf $bin /usr/local/bin/ovmlayer
       shell: bash
     - name: setup ovmlayer environment
       run: |
-        sudo apt update && sudo apt install -y --no-install-recommends locales-all tar xz-utils uuid-runtime
+        sudo apt update && sudo apt install -y --no-install-recommends tar xz-utils zstd
       shell: bash
     - name: download base rootfs
       run: |

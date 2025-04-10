@@ -30,7 +30,7 @@ jobs:
         with:
           token: ${{ secrets.ACCESS_REPO }}
       - name: test layer api
-        run: cargo test --package layer -- --test-threads=1 # 部分单测 API 互相干扰，需要一个个测试
+        run: cargo test --package layer -- --nocapture --test-threads=1 # 部分单测 API 互相干扰，需要一个个测试
       - name: Start MQTT Broker
         run: |
           sudo apt update && sudo apt install -y --no-install-recommends mosquitto

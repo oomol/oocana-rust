@@ -39,8 +39,9 @@ pub fn create_runtime_layer(
     package: &str,
     bind_paths: &[BindPath],
     envs: &HashMap<String, String>,
+    env_file: &Option<String>,
 ) -> Result<RuntimeLayer> {
-    match get_or_create_package_layer(package, bind_paths, &envs) {
+    match get_or_create_package_layer(package, bind_paths, &envs, env_file) {
         Ok(layer) => match create_runtime_layer_from_package_layer(&layer) {
             Ok(mut runtime_layer) => {
                 runtime_layer.add_bind_paths(bind_paths);
@@ -88,32 +89,40 @@ impl RuntimeLayer {
 
     pub fn add_bind_paths(&mut self, bind_paths: &[BindPath]) {
         for b in bind_paths {
-            if metadata(&b.source).is_ok() {
+            if metadata(&b.src).is_ok() {
                 self.extra_bind_paths.push(b.clone());
             } else {
-                warn!(
-                    "add_bind_paths skip paths {:?} which is not exist",
-                    b.source
-                );
+                warn!("add_bind_paths skip paths {:?} which does not exist", b.src);
             }
         }
     }
 
     /// this Command is immutable. because lifetime limit, we can't add more arguments to it.
     #[instrument(skip_all)]
-    pub fn run_command(&self, script: &str) -> Command {
+    pub fn run_command(
+        &self,
+        script: &str,
+        envs: &HashMap<String, String>,
+        env_file: &Option<String>,
+    ) -> Command {
         let mut bind_paths: Vec<BindPath> = vec![];
 
         for b in &self.extra_bind_paths {
-            if metadata(&b.source).is_ok() {
+            if metadata(&b.src).is_ok() {
                 bind_paths.push(b.clone());
             } else {
-                warn!("bind paths {:?} is not exist", b.source);
+                warn!("bind paths {:?} is not exist", b.src);
             }
         }
 
         let work_dir = self.package_path.to_string_lossy().to_string();
-        let mut cmd = ovmlayer::run_cmd(&self.merge_point, &bind_paths, &Some(work_dir));
+        let mut cmd = ovmlayer::run_cmd(
+            &self.merge_point,
+            &bind_paths,
+            &Some(work_dir),
+            envs,
+            env_file,
+        );
         cmd.arg(script);
         cmd
     }
@@ -203,7 +212,13 @@ impl RuntimeLayer {
                 new_injection_layer.layer_name.clone()
             };
 
-        self.run_injection_scripts(injection_layer_name, scripts.clone(), &package_path)?;
+        self.run_injection_scripts(
+            injection_layer_name,
+            scripts.clone(),
+            &package_path,
+            &HashMap::default(), // TODO: implement envs for injection runtime layer
+            &None,               // TODO: implement env_file for injection runtime layer
+        )?;
 
         Ok(())
     }
@@ -214,6 +229,8 @@ impl RuntimeLayer {
         extra_layer: String,
         scripts: Vec<String>,
         package_path: &str,
+        envs: &HashMap<String, String>,
+        env_file: &Option<String>,
     ) -> Result<()> {
         let mut bind_paths: Vec<BindPath> = vec![];
 
@@ -222,10 +239,7 @@ impl RuntimeLayer {
                 tracing::warn!("cache path: {cache:?} not exist. skip this bind path");
                 continue;
             }
-            bind_paths.push(BindPath {
-                source: cache.to_string(),
-                target: cache.to_string(),
-            });
+            bind_paths.push(BindPath::new(&cache, &cache, false, false));
         }
 
         let pkg_path = self.package_path.to_string_lossy().to_string();
@@ -263,17 +277,25 @@ impl RuntimeLayer {
             perms.set_mode(0o755);
             std::fs::set_permissions(&script_path, perms)?;
 
-            bind_paths.push(BindPath {
-                source: script_path.clone(),
-                target: script_run_path_str.to_owned(),
-            });
+            bind_paths.push(BindPath::new(
+                &script_path,
+                &script_run_path_str,
+                false,
+                false,
+            ));
             scripts_files.push(script_run_path_str.to_string());
         }
 
         let pkg_path_arg = Some(pkg_path.clone());
 
         for script in scripts_files {
-            let mut cmd = ovmlayer::run_cmd(&script_run_merge_point, &bind_paths, &pkg_path_arg);
+            let mut cmd = ovmlayer::run_cmd(
+                &script_run_merge_point,
+                &bind_paths,
+                &pkg_path_arg,
+                envs,
+                env_file,
+            );
             cmd.arg(format!("{script}"));
             let child = cmd.spawn()?;
 

@@ -18,6 +18,7 @@
     "mknod",
     "mosquitto",
     "MQTT",
+    "nonrecursive",
     "omvlayer",
     "oneshot",
     "oocana",

@@ -56,33 +56,37 @@ impl PackageLayer {
         bind_paths: &[BindPath],
         package_path: P,
         envs: &HashMap<String, String>,
+        env_file: &Option<String>,
     ) -> Result<Self> {
         let package_path: PathBuf = package_path.into();
 
         let mut cache_bind_paths: Vec<BindPath> = Vec::new();
         let pkg_path = package_path.to_string_lossy().to_string();
+        let pkg_parent_path = package_path
+            .parent()
+            .map(|p| p.to_path_buf())
+            .unwrap_or_else(|| PathBuf::from("/"))
+            .to_string_lossy()
+            .to_string();
 
         for cache in &*CACHE_DIR {
             if metadata(cache).is_err() {
                 tracing::debug!("cache path: {cache:?} not exist. skip this bind path");
                 continue;
             }
-            cache_bind_paths.push(BindPath {
-                source: cache.to_string(),
-                target: cache.to_string(),
-            });
+            cache_bind_paths.push(BindPath::new(cache, cache, false, false));
         }
 
         for bind_path in bind_paths {
-            if metadata(&bind_path.source).is_err() {
-                tracing::warn!("passing bind paths {:?} is not exist", bind_path.source);
+            if metadata(&bind_path.src).is_err() {
+                tracing::warn!("passing bind paths {:?} is not exist", bind_path.src);
                 continue;
             }
             cache_bind_paths.push(bind_path.clone());
         }
 
         let source_layer = create_random_layer()?;
-        let cmd = cp_to_layer(&source_layer, &pkg_path, &pkg_path);
+        let cmd = cp_to_layer(&source_layer, &pkg_path, &pkg_parent_path);
         exec(cmd)?;
 
         let bootstrap_layer = if let Some(bootstrap) = &bootstrap {
@@ -98,6 +102,7 @@ impl PackageLayer {
                 &Some(pkg_path),
                 &bootstrap,
                 envs,
+                env_file,
             )?;
             Some(bootstrap_layer)
         } else {

@@ -3,11 +3,12 @@
 use hex;
 use sha2::{Digest, Sha256};
 pub mod cache;
+pub mod config;
+pub mod env;
 pub mod error;
 pub mod logger;
 pub mod output;
 pub mod path;
-pub mod config;
 
 pub fn log_error(err: impl std::fmt::Debug) {
     tracing::error!("{:?}", err)

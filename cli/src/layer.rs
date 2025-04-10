@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::fun::{load_bind_paths, load_envs};
+use crate::fun::{find_env_file, load_bind_paths};
 use clap::Subcommand;
 use layer::import_package_layer;
 use manifest_reader::path_finder::find_package_file;
@@ -14,15 +14,20 @@ pub enum LayerAction {
         #[arg(help = "package path")]
         package: String,
         #[arg(
-            help = "some bind paths, format <source_path>:<target_path>, accept multiple input. example: --bind-paths <source>:<target> --bind-paths <source>:<target>",
+            help = "bind paths, format src=<source_path>,dst=<target_path>,rw/ro,recursive/nonrecursive (rw,nonrecursive is default value), accept multiple input. example: --bind-paths src=<source_path>,dst=<target_path>,rw/ro,recursive/nonrecursive --bind-paths src=<source_path>,dst=<target_path>,rw/ro,recursive/nonrecursive",
             long
         )]
         bind_paths: Option<Vec<String>>,
         #[arg(
-            help = "bind path from file, format is <source_path>:<target_path> line by line, if not provided, it will be find env OOCANA_BIND_PATH_FILE variable",
+            help = "a file path contains multiple bind paths. The file format is src=<source_path>,dst=<target_path>,rw/ro,recursive/nonrecursive (rw,nonrecursive is default value) line by line, if not provided, it will be found in OOCANA_BIND_PATH_FILE env variable",
             long
         )]
         bind_path_file: Option<String>,
+        #[arg(
+            help = "pass the environment variables(only accept variable name) to layer creation. accept multiple input. example: --retain-env-keys <env> --retain-env-keys <env>",
+            long
+        )]
+        retain_env_keys: Option<Vec<String>>,
         #[arg(
             help = ".env file path, when create a layer, these env will pass to this process. The file format is <key>=<value> line by line like traditional env file. if not provided, oocana will search OOCANA_ENV_FILE env variable",
             long
@@ -79,11 +84,22 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
             package,
             bind_paths,
             bind_path_file,
+            retain_env_keys,
             env_file,
         } => {
             let bind_path_arg = load_bind_paths(bind_paths, bind_path_file);
-            let envs = load_envs(env_file);
-            layer::get_or_create_package_layer(package, &bind_path_arg, &envs)?;
+            let envs: HashMap<String, String> = std::env::vars()
+                .filter(|(key, _)| {
+                    key.starts_with("OOMOL_")
+                        || retain_env_keys
+                            .as_ref()
+                            .is_some_and(|list| list.contains(key))
+                })
+                .collect();
+
+            let env_file = find_env_file(&env_file);
+
+            layer::get_or_create_package_layer(package, &bind_path_arg, &envs, &env_file)?;
         }
         LayerAction::Delete { package } => {
             layer::delete_package_layer(package)?;
@@ -122,7 +138,12 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
             let status = layer::package_layer_status(package)?;
             match status {
                 layer::PackageLayerStatus::Exist => {
-                    let l = layer::get_or_create_package_layer(package, &vec![], &HashMap::new())?;
+                    let l = layer::get_or_create_package_layer(
+                        package,
+                        &vec![],
+                        &HashMap::new(),
+                        &None,
+                    )?;
                     l.export(dest)?;
                 }
                 layer::PackageLayerStatus::NotInStore => {
