@@ -62,6 +62,12 @@ impl PackageLayer {
 
         let mut cache_bind_paths: Vec<BindPath> = Vec::new();
         let pkg_path = package_path.to_string_lossy().to_string();
+        let pkg_parent_path = package_path
+            .parent()
+            .map(|p| p.to_path_buf())
+            .unwrap_or_else(|| PathBuf::from("/"))
+            .to_string_lossy()
+            .to_string();
 
         for cache in &*CACHE_DIR {
             if metadata(cache).is_err() {
@@ -80,7 +86,7 @@ impl PackageLayer {
         }
 
         let source_layer = create_random_layer()?;
-        let cmd = cp_to_layer(&source_layer, &pkg_path, &pkg_path);
+        let cmd = cp_to_layer(&source_layer, &pkg_path, &pkg_parent_path);
         exec(cmd)?;
 
         let bootstrap_layer = if let Some(bootstrap) = &bootstrap {
