@@ -117,7 +117,10 @@ pub fn run_script_unmerge(
     let (file_path, script_filename) = convert_script_to_shell(script)?;
     let script_target_path = {
         if let Some(work_dir) = work_dir {
-            work_dir.clone() + &script_filename
+            std::path::Path::new(work_dir)
+                .join(script_filename)
+                .to_string_lossy()
+                .to_string()
         } else {
             file_path.clone()
         }
