@@ -23,8 +23,10 @@ runs:
     - name: move ovmlayer to PATH
       run: |
         mv ovmlayer ../ovmlayer
-        cd ..
-        ln -sf $(pwd)/ovmlayer/ovmlayer /usr/local/bin/ovmlayer
+        cd ../ovmlayer
+        $(pwd)/build.sh $(uname -m)
+        bin=$(find $(pwd) -name ovmlayer -type f)
+        ln -sf $bin /usr/local/bin/ovmlayer
       shell: bash
     - name: setup ovmlayer environment
       run: |
