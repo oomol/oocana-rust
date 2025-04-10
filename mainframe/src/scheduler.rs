@@ -855,6 +855,7 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
         if let Some(store) = injection_store {
             if let Some(target) = scope.target() {
                 if let Some(meta) = store.get(&target) {
+                    tracing::info!("found injection store for target: {:?}", target);
                     for node in meta.nodes.iter() {
                         bind_paths.push(BindPath::new(
                             node.absolute_entry
