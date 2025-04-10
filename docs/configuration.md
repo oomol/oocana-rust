@@ -12,6 +12,8 @@ Currently, the config supports the following options:
 - `bind_path_file`: Path to the file that reads `bind_paths` when using the Layer functionality. No default value. It can be overridden by the `OOCANA_BIND_PATH_FILE` environment variable or the `--bind-path-file` CLI parameter. (Only used in the Run and Layer functionalities.)
 - `search_paths`: An array of paths used to search for packages. No default value.
 
+> oocana will read bind_path_file line by line, and each line will be treated as a bind_path. The bind_path format should be `src=<source>,dst=<destination>,[ro|wr],[nonrecursive|recursive]`, default is `ro,nonrecursive`.
+
 * Run flow configuration:
 
 - `broker`: MQTT broker address, default is `127.0.0.1:47688`.
@@ -33,6 +35,8 @@ oocana 支持从文件加载配置。配置文件的格式可以为 toml、json�
 - env_file: 运行 flow，创建 layer 时，使用的 env 文件路径。不存在默认值。会被 OOCANA_ENV_FILE 环境变量和 cli 参数 `--env-file` 覆盖。（仅在 Run 和 layer 功能中使用）
 - bind_path_file: 使用 layer 功能时，读取 bind_paths 的文件路径，不存在默认值。会被 OOCANA_BIND_PATH_FILE 环境变量和 cli 参数 `--bind-path-file` 覆盖。（仅在 Run 和 layer 功能中使用）
 - search_paths: 用于搜索 package 的查找路径，为数组，不存在默认值。
+
+> oocana 会逐行读取 bind_path_file，每一行会被当做一个 bind_path。bind_path 的格式为 `src=<source>,dst=<destination>,[ro|wr],[nonrecursive|recursive]`，默认是 `ro,nonrecursive`。
 
 * Run flow 配置
 
