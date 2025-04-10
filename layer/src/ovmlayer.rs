@@ -263,6 +263,9 @@ pub fn cp_to_layer(layer: &str, src: &str, dest: &str) -> Command {
     binding
 }
 
+/// dest must be directory not filepath
+/// if src is file, it will be copy to dest directory, the target file is <dest>/<file_name of src>
+/// if src is directory, it will be copy to dest directory the target directory is <dest>/<dir_name of src>
 pub fn cp_to_merge_point(merge_point: &str, src: &str, dest: &str) -> Command {
     let mut binding = ovmlayer_bin();
     let options = vec![

@@ -125,7 +125,13 @@ pub fn run_script_unmerge(
             file_path.clone()
         }
     };
-    let cp_cmd = cp_to_merge_point(&merge_point, &file_path, &script_target_path);
+
+    let script_parant_dir = std::path::Path::new(&script_target_path)
+        .parent()
+        .ok_or_else(|| Error::from("Failed to get script parent dir"))?
+        .to_string_lossy()
+        .to_string();
+    let cp_cmd = cp_to_merge_point(&merge_point, &file_path, &script_parant_dir);
     exec(cp_cmd)?;
 
     let mut cmd = run_cmd(merge_point, &bind, work_dir, envs, env_file);
