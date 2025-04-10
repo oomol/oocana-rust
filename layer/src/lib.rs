@@ -17,9 +17,12 @@ pub use package_store::{
     package_layer_status, PackageLayerStatus,
 };
 pub use runtime_layer::{create_runtime_layer, InjectionParams, RuntimeLayer};
+
+// TODO: use ovmlayer test api instead of this command
 pub fn feature_enabled() -> bool {
     let mut cmd = Command::new("ovmlayer");
-    cmd.arg("version");
+    cmd.arg("list");
+    cmd.arg("layers");
     cli::exec(cmd).is_ok()
 }
 
