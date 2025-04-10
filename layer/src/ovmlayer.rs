@@ -242,7 +242,6 @@ pub fn run_cmd(
 
     let merged_point = format!("--merged-point={}", merge_point);
     options.push(merged_point);
-    options.push("--".to_string());
     // 使用 zsh -i 来加载 zshrc 获取 PATH 环境变量，绕开 sudo 导致的 PATH 改变问题。
     options.push("zsh".to_string());
     options.push("-i".to_string());
