@@ -223,7 +223,7 @@ pub fn run_cmd(
     env_file: &Option<String>,
 ) -> Command {
     let mut binding = ovmlayer_bin();
-    let mut options = vec![format!("run"), format!("--all-device")];
+    let mut options = vec![format!("run"), format!("--all-devices")];
 
     for bind_path in mount_paths {
         options.push(format!("--mount={}", bind_path));
