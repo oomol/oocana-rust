@@ -92,7 +92,7 @@ impl RuntimeLayer {
             if metadata(&b.src).is_ok() {
                 self.extra_bind_paths.push(b.clone());
             } else {
-                warn!("add_bind_paths skip paths {:?} which is not exist", b.src);
+                warn!("add_bind_paths skip paths {:?} which does not exist", b.src);
             }
         }
     }
