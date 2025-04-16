@@ -18,115 +18,153 @@ pub use block_reporter::BlockReporterTx;
 pub use flow_reporter::FlowReporterTx;
 
 #[derive(Serialize, Debug, Clone)]
+pub struct SessionStarted<'a> {
+    pub session_id: &'a str,
+    pub create_at: u128,
+    pub path: &'a str,
+    pub partial: bool,
+}
+
+#[derive(Serialize, Debug, Clone)]
+pub struct SessionFinished<'a> {
+    pub session_id: &'a str,
+    pub finish_at: u128,
+    pub path: &'a str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: &'a Option<String>,
+}
+
+#[derive(Serialize, Debug, Clone)]
+pub struct FlowStarted<'a> {
+    pub session_id: &'a str,
+    pub job_id: &'a str,
+    pub flow_path: &'a Option<String>,
+    pub stacks: &'a Vec<BlockJobStackLevel>,
+    pub create_at: u128,
+}
+
+#[derive(Serialize, Debug, Clone)]
+pub struct FlowFinished<'a> {
+    pub session_id: &'a str,
+    pub job_id: &'a str,
+    pub flow_path: &'a Option<String>,
+    pub stacks: &'a Vec<BlockJobStackLevel>,
+    pub error: &'a Option<String>,
+    pub finish_at: u128,
+}
+
+#[derive(Serialize, Debug, Clone)]
+pub struct FlowNodesWillRun<'a> {
+    pub session_id: &'a str,
+    pub job_id: &'a str,
+    pub flow_path: &'a Option<String>,
+    pub stacks: &'a Vec<BlockJobStackLevel>,
+    pub start_nodes: &'a Vec<String>,
+    pub mid_nodes: &'a Vec<String>,
+    pub end_nodes: &'a Vec<String>,
+}
+
+#[derive(Serialize, Debug, Clone)]
+pub struct SubflowBlockStarted<'a> {
+    pub session_id: &'a str,
+    pub job_id: &'a str,
+    pub block_path: &'a Option<String>,
+    pub inputs: &'a Option<BlockInputs>,
+    pub stacks: &'a Vec<BlockJobStackLevel>,
+    pub create_at: u128,
+}
+
+#[derive(Serialize, Debug, Clone)]
+pub struct SubflowBlockFinished<'a> {
+    pub session_id: &'a str,
+    pub job_id: &'a str,
+    pub block_path: &'a Option<String>,
+    pub stacks: &'a Vec<BlockJobStackLevel>,
+    pub error: &'a Option<String>,
+    pub finish_at: u128,
+}
+
+#[derive(Serialize, Debug, Clone)]
+pub struct SubflowBlockOutput<'a> {
+    pub session_id: &'a str,
+    pub job_id: &'a str,
+    pub block_path: &'a Option<String>,
+    pub stacks: &'a Vec<BlockJobStackLevel>,
+    pub output: Arc<OutputValue>,
+    pub handle: &'a str,
+}
+
+#[derive(Serialize, Debug, Clone)]
+pub struct BlockStarted<'a> {
+    pub session_id: &'a str,
+    pub job_id: &'a str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub block_path: &'a Option<String>,
+    pub stacks: &'a Vec<BlockJobStackLevel>,
+    pub inputs: &'a Option<BlockInputs>,
+    pub create_at: u128,
+}
+
+#[derive(Serialize, Debug, Clone)]
+pub struct BlockFinished<'a> {
+    pub session_id: &'a str,
+    pub job_id: &'a str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub block_path: &'a Option<String>,
+    pub stacks: &'a Vec<BlockJobStackLevel>,
+    pub error: &'a Option<String>,
+    pub finish_at: u128,
+}
+
+#[derive(Serialize, Debug, Clone)]
+pub struct BlockOutput<'a> {
+    pub session_id: &'a str,
+    pub job_id: &'a str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub block_path: &'a Option<String>,
+    pub stacks: &'a Vec<BlockJobStackLevel>,
+    pub output: &'a JsonValue,
+    pub handle: &'a str,
+    pub done: bool,
+}
+
+#[derive(Serialize, Debug, Clone)]
+pub struct BlockLog<'a> {
+    pub session_id: &'a str,
+    pub job_id: &'a str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub block_path: &'a Option<String>,
+    pub stacks: &'a Vec<BlockJobStackLevel>,
+    pub log: &'a str,
+    pub stdio: &'a str,
+}
+
+#[derive(Serialize, Debug, Clone)]
+pub struct BlockError<'a> {
+    pub session_id: &'a str,
+    pub job_id: &'a str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub block_path: &'a Option<String>,
+    pub stacks: &'a Vec<BlockJobStackLevel>,
+    pub error: &'a str,
+}
+
+#[derive(Serialize, Debug, Clone)]
 #[serde(tag = "type")]
 pub enum ReporterMessage<'a> {
-    SessionStarted {
-        session_id: &'a str,
-        create_at: u128,
-        path: &'a str,
-        partial: bool,
-    },
-    SessionFinished {
-        session_id: &'a str,
-        finish_at: u128,
-        path: &'a str,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        error: &'a Option<String>,
-    },
-    FlowStarted {
-        session_id: &'a str,
-        job_id: &'a str,
-        flow_path: &'a Option<String>,
-        stacks: &'a Vec<BlockJobStackLevel>,
-        create_at: u128,
-    },
-    FlowFinished {
-        session_id: &'a str,
-        job_id: &'a str,
-        flow_path: &'a Option<String>,
-        stacks: &'a Vec<BlockJobStackLevel>,
-        error: &'a Option<String>,
-        finish_at: u128,
-    },
-    // 使用指定 nodes 时，会通知，有哪些 nodes 会被执行
-    FlowNodesWillRun {
-        session_id: &'a str,
-        job_id: &'a str,
-        flow_path: &'a Option<String>,
-        stacks: &'a Vec<BlockJobStackLevel>,
-        start_nodes: &'a Vec<String>, // 马上就会运行的 nodes
-        mid_nodes: &'a Vec<String>,   // 之后会运行的 nodes，但不是最终运行的 nodes
-        end_nodes: &'a Vec<String>,   // 最后想要最终运行的 node
-    },
-    SubflowBlockStarted {
-        session_id: &'a str,
-        job_id: &'a str,
-        block_path: &'a Option<String>,
-        inputs: &'a Option<BlockInputs>,
-        stacks: &'a Vec<BlockJobStackLevel>,
-        create_at: u128,
-    },
-    SubflowBlockFinished {
-        session_id: &'a str,
-        job_id: &'a str,
-        block_path: &'a Option<String>,
-        stacks: &'a Vec<BlockJobStackLevel>,
-        error: &'a Option<String>,
-        finish_at: u128,
-    },
-    SubflowBlockOutput {
-        session_id: &'a str,
-        job_id: &'a str,
-        block_path: &'a Option<String>,
-        stacks: &'a Vec<BlockJobStackLevel>,
-        output: Arc<OutputValue>,
-        handle: &'a str,
-    },
-    BlockStarted {
-        session_id: &'a str,
-        job_id: &'a str,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        block_path: &'a Option<String>,
-        stacks: &'a Vec<BlockJobStackLevel>,
-        inputs: &'a Option<BlockInputs>,
-        create_at: u128,
-    },
-    BlockFinished {
-        session_id: &'a str,
-        job_id: &'a str,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        block_path: &'a Option<String>,
-        stacks: &'a Vec<BlockJobStackLevel>,
-        error: &'a Option<String>,
-        finish_at: u128,
-    },
-    BlockOutput {
-        session_id: &'a str,
-        job_id: &'a str,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        block_path: &'a Option<String>,
-        stacks: &'a Vec<BlockJobStackLevel>,
-        output: &'a JsonValue,
-        handle: &'a str,
-        done: bool,
-    },
-    BlockLog {
-        session_id: &'a str,
-        job_id: &'a str,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        block_path: &'a Option<String>,
-        stacks: &'a Vec<BlockJobStackLevel>,
-        log: &'a str,
-        stdio: &'a str,
-    },
-    BlockError {
-        session_id: &'a str,
-        job_id: &'a str,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        block_path: &'a Option<String>,
-        stacks: &'a Vec<BlockJobStackLevel>,
-        error: &'a str,
-    },
+    SessionStarted(SessionStarted<'a>),
+    SessionFinished(SessionFinished<'a>),
+    FlowStarted(FlowStarted<'a>),
+    FlowFinished(FlowFinished<'a>),
+    FlowNodesWillRun(FlowNodesWillRun<'a>),
+    SubflowBlockStarted(SubflowBlockStarted<'a>),
+    SubflowBlockFinished(SubflowBlockFinished<'a>),
+    SubflowBlockOutput(SubflowBlockOutput<'a>),
+    BlockStarted(BlockStarted<'a>),
+    BlockFinished(BlockFinished<'a>),
+    BlockOutput(BlockOutput<'a>),
+    BlockLog(BlockLog<'a>),
+    BlockError(BlockError<'a>),
 }
 
 impl<'a> ReporterMessage<'a> {
@@ -161,21 +199,21 @@ pub struct ReporterTx {
 
 impl ReporterTx {
     pub fn session_started(&self, path: &str, partial: bool) {
-        self.send(ReporterMessage::SessionStarted {
+        self.send(ReporterMessage::SessionStarted(SessionStarted {
             session_id: &self.session_id,
             create_at: ReporterMessage::now(),
             path,
             partial,
-        });
+        }));
     }
 
     pub fn session_finished(&self, path: &str, err: &Option<String>) {
-        self.send(ReporterMessage::SessionFinished {
+        self.send(ReporterMessage::SessionFinished(SessionFinished {
             session_id: &self.session_id,
             finish_at: ReporterMessage::now(),
             path,
             error: &err,
-        });
+        }));
     }
 
     pub fn send(&self, data: ReporterMessage) {

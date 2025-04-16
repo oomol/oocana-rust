@@ -1,7 +1,9 @@
 use job::{BlockInputs, BlockJobStacks, JobId};
 use manifest_meta::JsonValue;
 
-use super::{ReporterMessage, ReporterTx};
+use super::{
+    BlockError, BlockFinished, BlockLog, BlockOutput, BlockStarted, ReporterMessage, ReporterTx,
+};
 
 pub struct BlockReporterTx {
     job_id: JobId,
@@ -12,7 +14,10 @@ pub struct BlockReporterTx {
 
 impl BlockReporterTx {
     pub fn new(
-        job_id: JobId, block_path: Option<String>, stacks: BlockJobStacks, tx: ReporterTx,
+        job_id: JobId,
+        block_path: Option<String>,
+        stacks: BlockJobStacks,
+        tx: ReporterTx,
     ) -> Self {
         Self {
             job_id,
@@ -23,29 +28,29 @@ impl BlockReporterTx {
     }
 
     pub fn started(&self, inputs: &Option<BlockInputs>) {
-        self.tx.send(ReporterMessage::BlockStarted {
+        self.tx.send(ReporterMessage::BlockStarted(BlockStarted {
             session_id: &self.tx.session_id,
             job_id: &self.job_id,
             block_path: &self.block_path,
             stacks: &self.stacks.vec(),
             inputs,
             create_at: ReporterMessage::now(),
-        });
+        }));
     }
 
     pub fn done(&self, error: &Option<String>) {
-        self.tx.send(ReporterMessage::BlockFinished {
+        self.tx.send(ReporterMessage::BlockFinished(BlockFinished {
             session_id: &self.tx.session_id,
             job_id: &self.job_id,
             block_path: &self.block_path,
             stacks: &self.stacks.vec(),
             error,
             finish_at: ReporterMessage::now(),
-        });
+        }));
     }
 
     pub fn result(&self, result: &JsonValue, handle: &str, done: bool) {
-        self.tx.send(ReporterMessage::BlockOutput {
+        self.tx.send(ReporterMessage::BlockOutput(BlockOutput {
             session_id: &self.tx.session_id,
             job_id: &self.job_id,
             block_path: &self.block_path,
@@ -53,27 +58,27 @@ impl BlockReporterTx {
             output: result,
             handle,
             done,
-        });
+        }));
     }
 
     pub fn log(&self, log: &str, stdio: &str) {
-        self.tx.send(ReporterMessage::BlockLog {
+        self.tx.send(ReporterMessage::BlockLog(BlockLog {
             session_id: &self.tx.session_id,
             job_id: &self.job_id,
             block_path: &self.block_path,
             stacks: &self.stacks.vec(),
             log,
             stdio,
-        });
+        }));
     }
 
     pub fn error(&self, error: &str) {
-        self.tx.send(ReporterMessage::BlockError {
+        self.tx.send(ReporterMessage::BlockError(BlockError {
             session_id: &self.tx.session_id,
             job_id: &self.job_id,
             block_path: &self.block_path,
             stacks: &self.stacks.vec(),
             error,
-        });
+        }));
     }
 }
