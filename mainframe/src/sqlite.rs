@@ -1,6 +1,9 @@
+use std::{collections::HashMap, path::Path};
+
 use rusqlite;
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug)]
 pub struct SQLite {
     db: rusqlite::Connection,
 }
@@ -13,10 +16,41 @@ pub struct Event {
     pub event_type: String,
 }
 
+impl TryFrom<HashMap<String, serde_json::Value>> for Event {
+    type Error = rusqlite::Error;
+
+    fn try_from(value: HashMap<String, serde_json::Value>) -> Result<Self, Self::Error> {
+        // TODO: improve manifest_path parser logic
+        let manifest_path = value
+            .get("manifest_path")
+            .and_then(|v| v.as_str())
+            .ok_or(rusqlite::Error::InvalidQuery)?;
+        let session_id = value
+            .get("session_id")
+            .and_then(|v| v.as_str())
+            .ok_or(rusqlite::Error::InvalidQuery)?;
+        let node_id = value
+            .get("node_id")
+            .and_then(|v| v.as_str())
+            .map(String::from);
+        let event_type = value
+            .get("event_type")
+            .and_then(|v| v.as_str())
+            .ok_or(rusqlite::Error::InvalidQuery)?;
+
+        Ok(Event {
+            manifest_path: manifest_path.to_string(),
+            session_id: session_id.to_string(),
+            node_id: node_id.map(String::from),
+            event_type: event_type.to_string(),
+        })
+    }
+}
+
 const EVENT_TABLE: &str = "oocana_event";
 
 impl SQLite {
-    pub fn new(db_path: &str) -> rusqlite::Result<Self> {
+    pub fn new<P: AsRef<Path>>(db_path: P) -> rusqlite::Result<Self> {
         let db = rusqlite::Connection::open(db_path)?;
         Ok(SQLite { db })
     }
@@ -27,8 +61,10 @@ impl SQLite {
         Ok(())
     }
 
-    pub fn insert(&self, event: &Event) -> rusqlite::Result<()> {
-        let full_msg = serde_json::to_string(event)
+    pub fn insert(&self, msg: HashMap<String, serde_json::Value>) -> rusqlite::Result<()> {
+        let event: Event = msg.clone().try_into()?;
+
+        let full_msg = serde_json::to_string(&msg)
             .map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(e)))?;
 
         // skip some full_msg >= 512 kB only some event will bigger than 512 kB

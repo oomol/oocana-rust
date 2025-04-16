@@ -1,5 +1,7 @@
+use crate::sqlite::SQLite;
 use async_trait::async_trait;
 use flume::{Receiver, Sender};
+use job::{BlockInputs, BlockJobStackLevel, JobId, SessionId};
 use layer::{create_runtime_layer, BindPath, InjectionParams, RuntimeLayer};
 use port_check::free_local_ipv4_port_in_range;
 use serde::{Deserialize, Serialize};
@@ -12,8 +14,6 @@ use std::{
     vec,
 };
 use utils::calculate_short_hash;
-
-use job::{BlockInputs, BlockJobStackLevel, JobId, SessionId};
 
 use manifest_meta::{
     HandleName, InjectionStore, InputDefPatchMap, InputHandles, JsonValue, OutputHandles,
@@ -449,6 +449,7 @@ where
     executor_payload: ExecutorParameters,
     tx: Sender<SchedulerCommand>,
     rx: Receiver<SchedulerCommand>,
+    db_path: Option<PathBuf>,
 }
 
 fn spawn_executor(
@@ -957,7 +958,26 @@ where
             executor_payload,
             impl_tx,
             mut impl_rx,
+            db_path,
         } = self;
+
+        let mut sqlite = if let Some(db_path) = db_path {
+            let db = if let Ok(db) = SQLite::new(&db_path) {
+                Some(db)
+            } else {
+                None
+            };
+            db
+        } else {
+            None
+        };
+
+        if let Some(ref db) = sqlite {
+            db.setup().unwrap_or_else(|e| {
+                tracing::warn!("Failed to setup sqlite: {:?}. give up sqlite feature", e);
+                sqlite = None;
+            });
+        }
 
         let session_id = executor_payload.session_id.clone();
         let tx_clone = tx.clone();
@@ -1215,6 +1235,17 @@ where
                         }
                     }
                     Ok(SchedulerCommand::ReporterMessage(data)) => {
+                        let msg =
+                            serde_json::from_slice::<HashMap<String, serde_json::Value>>(&data);
+                        if let Ok(msg) = msg {
+                            sqlite.as_ref().map(|db| {
+                                db.insert(msg).unwrap_or_else(|e| {
+                                    tracing::warn!("Failed to insert event: {:?}", e);
+                                });
+                            });
+                        } else {
+                            error!("Failed to parse reporter message: {:?}", msg);
+                        }
                     }
                     Ok(SchedulerCommand::ReceiveMessage(data)) => {
                         if let Some(msg) = parse_worker_message(data, &session_id) {
@@ -1340,6 +1371,7 @@ pub struct ExecutorParameters {
 pub fn create<TT, TR>(
     impl_tx: TT,
     impl_rx: TR,
+    db_path: Option<PathBuf>,
     default_package: Option<String>,
     exclude_packages: Option<Vec<String>>,
     executor_payload: ExecutorParameters,
@@ -1362,6 +1394,7 @@ where
             executor_payload: executor_payload,
             tx,
             rx,
+            db_path,
         },
     )
 }

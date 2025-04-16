@@ -197,6 +197,7 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
     let (scheduler_tx, scheduler_rx) = mainframe::scheduler::create(
         _scheduler_impl_tx,
         _scheduler_impl_rx,
+        None, // TODO: get db_path from configuration
         default_pkg_path.and_then(|p| p.to_str().map(|s| s.to_owned())),
         exclude_packages,
         ExecutorParameters {
