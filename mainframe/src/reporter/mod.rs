@@ -165,6 +165,7 @@ pub enum ReporterMessage<'a> {
     BlockOutput(BlockOutput<'a>),
     BlockLog(BlockLog<'a>),
     BlockError(BlockError<'a>),
+    // TODO: BlockWarning
 }
 
 impl<'a> ReporterMessage<'a> {

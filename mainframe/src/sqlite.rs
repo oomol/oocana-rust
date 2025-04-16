@@ -1,7 +1,9 @@
 use std::{collections::HashMap, path::Path};
 
+use crate::reporter::ReporterMessage;
 use rusqlite;
 use serde::{Deserialize, Serialize};
+use serde_json;
 
 #[derive(Debug)]
 pub struct SQLite {
@@ -14,36 +16,145 @@ pub struct Event {
     pub session_id: String,
     pub node_id: Option<String>,
     pub event_type: String,
+    pub event: String,
 }
 
-impl TryFrom<HashMap<String, serde_json::Value>> for Event {
-    type Error = rusqlite::Error;
-
-    fn try_from(value: HashMap<String, serde_json::Value>) -> Result<Self, Self::Error> {
-        // TODO: improve manifest_path parser logic
-        let manifest_path = value
-            .get("manifest_path")
-            .and_then(|v| v.as_str())
-            .ok_or(rusqlite::Error::InvalidQuery)?;
-        let session_id = value
-            .get("session_id")
-            .and_then(|v| v.as_str())
-            .ok_or(rusqlite::Error::InvalidQuery)?;
-        let node_id = value
-            .get("node_id")
-            .and_then(|v| v.as_str())
-            .map(String::from);
-        let event_type = value
-            .get("event_type")
-            .and_then(|v| v.as_str())
-            .ok_or(rusqlite::Error::InvalidQuery)?;
-
-        Ok(Event {
-            manifest_path: manifest_path.to_string(),
-            session_id: session_id.to_string(),
-            node_id: node_id.map(String::from),
-            event_type: event_type.to_string(),
-        })
+impl From<ReporterMessage<'_>> for Event {
+    fn from(msg: ReporterMessage) -> Self {
+        match msg {
+            ReporterMessage::SessionStarted(msg) => Event {
+                manifest_path: msg.path.clone().to_owned(),
+                session_id: msg.session_id.clone().to_owned(),
+                node_id: None,
+                event_type: String::from("SessionStarted"),
+                event: serde_json::to_string(&msg).unwrap_or_else(|_| String::from("{}")),
+            },
+            ReporterMessage::SessionFinished(msg) => Event {
+                manifest_path: msg.path.clone().to_owned(),
+                session_id: msg.session_id.clone().to_owned(),
+                node_id: None,
+                event_type: String::from("SessionFinished"),
+                event: serde_json::to_string(&msg).unwrap_or_else(|_| String::from("{}")),
+            },
+            ReporterMessage::FlowStarted(msg) => Event {
+                manifest_path: msg
+                    .flow_path
+                    .clone()
+                    .unwrap_or_else(|| String::from("missing path")),
+                session_id: msg.session_id.clone().to_owned(),
+                node_id: None,
+                event_type: String::from("FlowStarted"),
+                event: serde_json::to_string(&msg).unwrap_or_else(|_| String::from("{}")),
+            },
+            ReporterMessage::FlowFinished(msg) => Event {
+                manifest_path: msg
+                    .flow_path
+                    .clone()
+                    .unwrap_or_else(|| String::from("missing path")),
+                session_id: msg.session_id.clone().to_owned(),
+                node_id: None,
+                event_type: String::from("FlowFinished"),
+                event: serde_json::to_string(&msg).unwrap_or_else(|_| String::from("{}")),
+            },
+            ReporterMessage::BlockStarted(msg) => Event {
+                manifest_path: msg
+                    .stacks
+                    .get(0)
+                    .map(|s| s.flow.clone())
+                    .unwrap_or_else(|| String::from("missing path")),
+                session_id: msg.session_id.clone().to_owned(),
+                node_id: None,
+                event_type: String::from("BlockStarted"),
+                event: serde_json::to_string(&msg).unwrap_or_else(|_| String::from("{}")),
+            },
+            ReporterMessage::BlockFinished(msg) => Event {
+                manifest_path: msg
+                    .stacks
+                    .get(0)
+                    .map(|s| s.flow.clone())
+                    .unwrap_or_else(|| String::from("missing path")),
+                session_id: msg.session_id.clone().to_owned(),
+                node_id: None,
+                event_type: String::from("BlockFinished"),
+                event: serde_json::to_string(&msg).unwrap_or_else(|_| String::from("{}")),
+            },
+            ReporterMessage::BlockOutput(msg) => Event {
+                manifest_path: msg
+                    .stacks
+                    .get(0)
+                    .map(|s| s.flow.clone())
+                    .unwrap_or_else(|| String::from("missing path")),
+                session_id: msg.session_id.clone().to_owned(),
+                node_id: None,
+                event_type: String::from("BlockOutput"),
+                event: serde_json::to_string(&msg).unwrap_or_else(|_| String::from("{}")),
+            },
+            ReporterMessage::BlockError(msg) => Event {
+                manifest_path: msg
+                    .stacks
+                    .get(0)
+                    .map(|s| s.flow.clone())
+                    .unwrap_or_else(|| String::from("missing path")),
+                session_id: msg.session_id.clone().to_owned(),
+                node_id: None,
+                event_type: String::from("BlockError"),
+                event: serde_json::to_string(&msg).unwrap_or_else(|_| String::from("{}")),
+            },
+            ReporterMessage::BlockLog(msg) => Event {
+                manifest_path: msg
+                    .stacks
+                    .get(0)
+                    .map(|s| s.flow.clone())
+                    .unwrap_or_else(|| String::from("missing path")),
+                session_id: msg.session_id.clone().to_owned(),
+                node_id: None,
+                event_type: String::from("BlockLog"),
+                event: serde_json::to_string(&msg).unwrap_or_else(|_| String::from("{}")),
+            },
+            ReporterMessage::SubflowBlockStarted(msg) => Event {
+                manifest_path: msg
+                    .stacks
+                    .get(0)
+                    .map(|s| s.flow.clone())
+                    .unwrap_or_else(|| String::from("missing path")),
+                session_id: msg.session_id.clone().to_owned(),
+                node_id: None,
+                event_type: String::from("SubflowBlockStarted"),
+                event: serde_json::to_string(&msg).unwrap_or_else(|_| String::from("{}")),
+            },
+            ReporterMessage::SubflowBlockFinished(msg) => Event {
+                manifest_path: msg
+                    .stacks
+                    .get(0)
+                    .map(|s| s.flow.clone())
+                    .unwrap_or_else(|| String::from("missing path")),
+                session_id: msg.session_id.clone().to_owned(),
+                node_id: None,
+                event_type: String::from("SubflowBlockFinished"),
+                event: serde_json::to_string(&msg).unwrap_or_else(|_| String::from("{}")),
+            },
+            ReporterMessage::SubflowBlockOutput(msg) => Event {
+                manifest_path: msg
+                    .stacks
+                    .get(0)
+                    .map(|s| s.flow.clone())
+                    .unwrap_or_else(|| String::from("missing path")),
+                session_id: msg.session_id.clone().to_owned(),
+                node_id: None,
+                event_type: String::from("SubflowBlockOutput"),
+                event: serde_json::to_string(&msg).unwrap_or_else(|_| String::from("{}")),
+            },
+            ReporterMessage::FlowNodesWillRun(msg) => Event {
+                manifest_path: msg
+                    .flow_path
+                    .clone()
+                    .unwrap_or_else(|| String::from("missing path")),
+                session_id: msg.session_id.clone().to_owned(),
+                node_id: None,
+                event_type: String::from("FlowNodesWillRun"),
+                event: serde_json::to_string(&msg).unwrap_or_else(|_| String::from("{}")),
+            },
+        }
     }
 }
 
