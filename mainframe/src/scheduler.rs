@@ -176,7 +176,8 @@ pub trait SchedulerTxImpl {
 
 #[async_trait]
 pub trait SchedulerRxImpl {
-    async fn recv(&mut self) -> MessageData;
+    // (topic, payload)
+    async fn recv(&mut self) -> (String, MessageData);
 }
 
 const PKG_DIR: &str = ".oomol/pkg-dir";
@@ -962,7 +963,7 @@ where
 
         tokio::spawn(async move {
             loop {
-                let data = impl_rx.recv().await;
+                let (topic, data) = impl_rx.recv().await;
                 // if data is empty, it means the impl_rx is closed.
                 if data.is_empty() {
                     break;
