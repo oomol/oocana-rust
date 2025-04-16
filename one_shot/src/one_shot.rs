@@ -92,6 +92,7 @@ pub struct BlockArgs<'a> {
     pub retain_env_keys: Option<Vec<String>>,
     pub env_file: Option<String>,
     pub temp_root: String,
+    pub db_path: Option<PathBuf>,
 }
 
 async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
@@ -113,6 +114,7 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
         retain_env_keys,
         env_file,
         temp_root,
+        db_path,
     } = block_args;
     let session_id = SessionId::new(session);
     tracing::info!("Session {} started", session_id);
@@ -197,7 +199,7 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
     let (scheduler_tx, scheduler_rx) = mainframe::scheduler::create(
         _scheduler_impl_tx,
         _scheduler_impl_rx,
-        None, // TODO: get db_path from configuration
+        db_path,
         default_pkg_path.and_then(|p| p.to_str().map(|s| s.to_owned())),
         exclude_packages,
         ExecutorParameters {

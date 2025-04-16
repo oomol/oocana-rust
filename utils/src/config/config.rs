@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use crate::path::expand_home;
 use serde::{Deserialize, Serialize};
 
@@ -7,6 +9,7 @@ struct TmpGlobalConfig {
     pub store_dir: String,
     #[serde(default = "default_oocana_dir")]
     pub oocana_dir: String,
+    pub session_db: Option<String>,
     pub env_file: Option<String>,
     pub bind_path_file: Option<String>,
     pub search_paths: Option<Vec<String>>,
@@ -25,6 +28,7 @@ impl Default for TmpGlobalConfig {
         TmpGlobalConfig {
             store_dir: default_store_dir(),
             oocana_dir: default_oocana_dir(),
+            session_db: None,
             env_file: None,
             bind_path_file: None,
             search_paths: None,
@@ -38,12 +42,14 @@ impl From<TmpGlobalConfig> for GlobalConfig {
         let oocana_dir = expand_home(&tmp.oocana_dir);
         let env_file = tmp.env_file.map(|s| expand_home(&s));
         let bind_path_file = tmp.bind_path_file.map(|s| expand_home(&s));
+        let session_db = tmp.session_db.map(|s| expand_home(&s));
 
         GlobalConfig {
             store_dir: store_dir,
             oocana_dir: oocana_dir,
             env_file: env_file,
             bind_path_file: bind_path_file,
+            session_db: session_db.map(|s| PathBuf::from(s)),
             search_paths: tmp.search_paths.map(|paths| {
                 paths
                     .into_iter()
@@ -59,6 +65,8 @@ impl From<TmpGlobalConfig> for GlobalConfig {
 pub struct GlobalConfig {
     pub store_dir: String,
     pub oocana_dir: String,
+    // enable session database save
+    pub session_db: Option<PathBuf>,
     pub env_file: Option<String>,
     pub bind_path_file: Option<String>,
     pub search_paths: Option<Vec<String>>,

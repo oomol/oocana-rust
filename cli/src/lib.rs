@@ -205,6 +205,7 @@ pub fn cli_match() -> Result<()> {
                 retain_env_keys: retain_env_keys.to_owned(),
                 env_file: env_file.to_owned(),
                 temp_root: temp_root.to_owned(),
+                db_path: app_config.global.session_db,
             })?
         },
         Commands::Cache { action } => {
