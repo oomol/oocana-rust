@@ -227,6 +227,7 @@ enum SchedulerCommand {
         identifier: Option<String>,
     },
     ReceiveMessage(MessageData),
+    ReporterMessage(MessageData),
     Abort,
 }
 
@@ -968,9 +969,19 @@ where
                 if data.is_empty() {
                     break;
                 }
-                tx_clone
-                    .send(SchedulerCommand::ReceiveMessage(data))
-                    .unwrap();
+
+                // todo: do not hard code the topic name
+                if topic.starts_with("session") {
+                    tx_clone
+                        .send(SchedulerCommand::ReceiveMessage(data))
+                        .unwrap();
+                } else if topic.starts_with("reporter") {
+                    tx_clone
+                        .send(SchedulerCommand::ReporterMessage(data))
+                        .unwrap();
+                } else {
+                    tracing::warn!("Received message with unexpected topic: {}", topic);
+                }
             }
         });
 
@@ -1202,6 +1213,8 @@ where
                                 })
                                 .unwrap();
                         }
+                    }
+                    Ok(SchedulerCommand::ReporterMessage(data)) => {
                     }
                     Ok(SchedulerCommand::ReceiveMessage(data)) => {
                         if let Some(msg) = parse_worker_message(data, &session_id) {
