@@ -18,3 +18,4 @@ rand = "0.8.5"
 flume = { version = "0.11.0", default-features = false, features = ["async"] }
 async-trait = "0.1.74"
 port_check = "0.2.1"
+rusqlite = "0.34.0"

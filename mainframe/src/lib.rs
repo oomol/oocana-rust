@@ -1,5 +1,6 @@
 pub mod reporter;
 pub mod scheduler;
+mod sqlite;
 pub mod worker;
 
 pub use layer::BindPath;
