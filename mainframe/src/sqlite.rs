@@ -1,15 +1,16 @@
 use rusqlite;
+use serde::{Deserialize, Serialize};
 
 pub struct SQLite {
     db: rusqlite::Connection,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Event {
     pub manifest_path: String,
     pub session_id: String,
     pub node_id: Option<String>,
     pub event_type: String,
-    pub event: String,
 }
 
 const EVENT_TABLE: &str = "oocana_event";
@@ -27,12 +28,20 @@ impl SQLite {
     }
 
     pub fn insert(&self, event: &Event) -> rusqlite::Result<()> {
+        let full_msg = serde_json::to_string(event)
+            .map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(e)))?;
+
+        // skip some full_msg >= 512 kB only some event will bigger than 512 kB
+        if full_msg.len() > 512 * 1024 {
+            return Ok(());
+        }
+
         self.db.execute(
             &format!(
                 "INSERT INTO {} (manifest_path, session_id, node_id, type, event) VALUES (?, ?, ?, ?, ?)",
                 EVENT_TABLE
             ),
-            rusqlite::params![event.manifest_path, event.session_id, event.node_id, event.event_type, event.event],
+            rusqlite::params![event.manifest_path, event.session_id, event.node_id, event.event_type, full_msg],
         )?;
         Ok(())
     }
