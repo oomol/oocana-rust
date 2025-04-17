@@ -46,7 +46,7 @@ impl BlockPathFinder {
             .parent()
             .and_then(|f| f.parent())
             .and_then(|f| f.parent())
-            .and_then(|f| find_package_file(f))
+            .and_then(find_package_file)
             .and_then(|pkg_path| read_package(pkg_path).ok())
             .and_then(|pkg| pkg.dependencies)
             .unwrap_or_default();
