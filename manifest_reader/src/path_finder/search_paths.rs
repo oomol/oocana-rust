@@ -50,17 +50,17 @@ pub fn search_block_manifest(params: BlockManifestParams) -> Option<PathBuf> {
                 if let Some(version) = pkg_version.get(pkg) {
                     // {pkg_name}-{version}
                     let pkg = format!("{}-{}", pkg, version);
-                    vec![pkg, block_dir.to_string(), block_name.to_string()]
+                    vec![pkg, block_dir.to_string(), block_name]
                 } else {
                     vec![
                         pkg.to_string(),
                         block_dir.to_string(),
-                        block_name.to_string(),
+                        block_name,
                     ]
                 }
             } else {
                 // 按理说，不应该走到这里，因为这种情况应该是直接的 block_name
-                vec![block_name.to_owned()]
+                vec![block_name]
             };
             return find_block_manifest_file(BlockSearchParams {
                 manifest_path: &manifest_path,

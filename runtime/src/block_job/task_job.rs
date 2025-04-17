@@ -504,7 +504,7 @@ fn bind_shell_stdio(
     if let Some(stderr) = child.stderr.take() {
         if let Ok(async_stderr) = tokio::process::ChildStderr::from_std(stderr) {
             let reporter = Arc::clone(reporter);
-            let job_id_clone = job_id.clone();
+            let job_id_clone = job_id;
             spawn_handles.push(tokio::spawn(async move {
                 let mut stderr_reader = BufReader::new(async_stderr).lines();
                 let mut stderr_output = String::new();

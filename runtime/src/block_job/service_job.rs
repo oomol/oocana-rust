@@ -70,7 +70,7 @@ pub fn run_service_block(args: RunServiceBlockArgs) -> Option<BlockJobHandle> {
         inputs,
         outputs_def: service_block.outputs_def.clone(),
         inputs_def: service_block.inputs_def.clone(),
-        block_status: block_status.clone(),
+        block_status: block_status,
         reporter: Arc::clone(&reporter),
         executor: None,
         scope: scope.clone(),
@@ -86,7 +86,7 @@ pub fn run_service_block(args: RunServiceBlockArgs) -> Option<BlockJobHandle> {
                 .clone()
                 .unwrap(),
         }),
-        block_dir: service_dir(&service_block).to_owned(),
+        block_dir: service_dir(&service_block),
         injection_store,
         flow: parent_flow.as_ref().map(|f| f.path_str.clone()),
         inputs_def_patch,

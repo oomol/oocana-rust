@@ -9,13 +9,13 @@ mod tests {
 
         let config = config.unwrap();
         let home_dir = dirs::home_dir().unwrap().to_string_lossy().to_string();
-        let global = config.global.clone();
+        let global = config.global;
 
         assert_eq!(
-            global.store_dir.clone(),
+            global.store_dir,
             format!("{}/.oomol-studio/oocana", home_dir)
         );
-        assert_eq!(global.oocana_dir.clone(), format!("{}/.oocana", home_dir));
+        assert_eq!(global.oocana_dir, format!("{}/.oocana", home_dir));
     }
 
     #[test]
@@ -30,28 +30,28 @@ mod tests {
         let home_dir = dirs::home_dir().unwrap().to_string_lossy().to_string();
         let global = config.global.clone();
         assert_eq!(
-            global.store_dir.clone(),
+            global.store_dir,
             format!("{}/.oomol-studio/oocana", home_dir)
         );
-        assert_eq!(global.oocana_dir.clone(), format!("{}/.oocana", home_dir));
+        assert_eq!(global.oocana_dir, format!("{}/.oocana", home_dir));
         assert_eq!(
-            global.env_file.clone(),
+            global.env_file,
             Some(format!("{}/.oocana/.env", home_dir))
         );
         assert_eq!(
-            global.bind_path_file.clone(),
+            global.bind_path_file,
             Some(format!("{}/bind_path.env", home_dir))
         );
 
         assert_eq!(global.search_paths.is_some(), true);
         assert_eq!(global.search_paths.unwrap().len(), 0);
 
-        let run = config.run.clone();
+        let run = config.run;
 
         assert_eq!(run.exclude_packages.is_some(), true);
         assert_eq!(run.exclude_packages.unwrap().len(), 0);
 
-        let extra = run.extra.clone().unwrap();
+        let extra = run.extra.unwrap();
         assert_eq!(extra.search_paths.is_some(), true);
         assert_eq!(extra.search_paths.unwrap().len(), 0);
     }

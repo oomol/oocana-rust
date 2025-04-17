@@ -203,7 +203,7 @@ pub fn cli_match() -> Result<()> {
                 session_dir: session_path.to_owned(),
                 bind_paths: bind_paths,
                 retain_env_keys: retain_env_keys.to_owned(),
-                env_file: env_file.to_owned(),
+                env_file: env_file,
                 temp_root: temp_root.to_owned(),
             })?
         },

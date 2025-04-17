@@ -547,7 +547,7 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
 
     let handle = run_block({
         RunBlockArgs {
-            block: node.block().to_owned(),
+            block: node.block(),
             shared: Arc::clone(&shared.shared),
             parent_flow: Some(Arc::clone(&shared.flow_block)),
             stacks: shared.stacks.stack(

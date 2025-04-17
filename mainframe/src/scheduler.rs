@@ -376,7 +376,7 @@ impl SchedulerTx {
             .send(SchedulerCommand::ExecuteBlock {
                 job_id,
                 executor_name: executor_name.to_owned(),
-                dir: dir.to_owned(),
+                dir: dir,
                 stacks: stacks.clone(),
                 scope,
                 outputs: outputs.clone(),
@@ -600,7 +600,7 @@ fn spawn_executor(
 
         executor_package = Some(package_path_str.to_string());
 
-        let log_filename = format!("ovmlayer-{}-{}", executor_bin.to_owned(), identifier);
+        let log_filename = format!("ovmlayer-{}-{}", executor_bin, identifier);
 
         let log_dir = utils::logger::logger_dir();
         envs.insert(
@@ -670,8 +670,6 @@ fn spawn_executor(
 
     let child = tokio_command.spawn();
 
-    let tx = tx.clone();
-
     let executor_map_clone = executor_map.clone();
     let txx = tx.clone();
 
@@ -728,18 +726,14 @@ fn spawn_executor(
             if let Some(stderr) = ch.stderr.take() {
                 let mut reader = tokio::io::BufReader::new(stderr).lines();
                 let executor_bin_clone = executor_bin.clone();
-                let identifier_clone = identifier.clone();
 
                 tokio::spawn(async move {
                     while let Ok(Some(line)) = reader.next_line().await {
-                        error!(
-                            "{} ({}) stderr: {}",
-                            executor_bin_clone, identifier_clone, line
-                        );
+                        error!("{} ({}) stderr: {}", executor_bin_clone, identifier, line);
                     }
                 });
             }
-            let executor_bin_clone = executor_bin.clone();
+            let executor_bin_clone = executor_bin;
             let executor_map_clone = executor_map.clone();
             let executor_map_name_clone = executor_map_name.clone();
 
@@ -786,7 +780,7 @@ fn spawn_executor(
         Err(e) => {
             let mut write_map = executor_map.write().unwrap();
             write_map.insert(
-                executor_map_name.clone(),
+                executor_map_name,
                 ExecutorState {
                     spawn_state: ExecutorSpawnState::None,
                     pid: None,
