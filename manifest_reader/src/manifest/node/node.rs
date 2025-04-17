@@ -118,10 +118,9 @@ impl From<TmpInjection> for Injection {
                 script: tmp.script,
             }
         } else if tmp.node_id.is_some() {
-            tmp.script.as_ref().map(|s| {
-                warn!("script will be ignored when injection target is node");
-                s
-            });
+            tmp.script
+                .as_ref()
+                .inspect(|_| warn!("script will be ignored when injection target is node"));
             Injection {
                 target: InjectionTarget::Node(NodeId(tmp.node_id.unwrap())),
                 script: None,
