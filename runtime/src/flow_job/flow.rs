@@ -130,22 +130,15 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
 
     // 暂时默认，不由外部参数来决定
     let save_cache = true;
-    let mut run_flow_ctx = if shared.use_cache && flow_cache_path.is_some() {
-        RunFlowContext {
-            node_input_values: NodeInputValues::recover_from(flow_cache_path.unwrap(), save_cache),
-            parent_block_status,
-            jobs: HashMap::new(),
-            block_status: block_status_tx,
-            node_queue_pool: HashMap::new(),
-        }
-    } else {
-        RunFlowContext {
-            node_input_values: NodeInputValues::new(save_cache),
-            parent_block_status,
-            jobs: HashMap::new(),
-            block_status: block_status_tx,
-            node_queue_pool: HashMap::new(),
-        }
+    let mut run_flow_ctx = RunFlowContext {
+        node_input_values: match (shared.use_cache, flow_cache_path) {
+            (true, Some(path)) => NodeInputValues::recover_from(path, save_cache),
+            _ => NodeInputValues::new(save_cache),
+        },
+        parent_block_status,
+        jobs: HashMap::new(),
+        block_status: block_status_tx,
+        node_queue_pool: HashMap::new(),
     };
 
     if let Some(node_input_values) = input_values {
