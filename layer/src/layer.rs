@@ -22,7 +22,7 @@ pub fn create_layer(name: &str) -> Result<()> {
 }
 
 #[instrument(skip_all)]
-pub fn merge_layer(layers: &Vec<String>, merge_point: &str) -> Result<()> {
+pub fn merge_layer(layers: &[String], merge_point: &str) -> Result<()> {
     let base_rootfs = crate::layer_settings::load_base_rootfs()?;
 
     let mut merged_layers = base_rootfs.clone();
@@ -104,7 +104,7 @@ pub fn convert_script_to_shell(script: &str) -> Result<(String, String)> {
 /// this function will automatically unmerge the merge point.
 #[instrument(skip_all)]
 pub fn run_script_unmerge(
-    layers: &Vec<String>,
+    layers: &[String],
     bind: &[BindPath],
     work_dir: &Option<String>,
     script: &str,
