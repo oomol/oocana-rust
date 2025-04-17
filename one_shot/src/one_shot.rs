@@ -153,8 +153,7 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
                 || f.to_string_lossy() == "flow.oo.yml"
         }) {
             p.parent()
-                .map(|p| p.file_name())
-                .flatten()
+                .and_then(|p| p.file_name())
                 .map(|f| f.to_string_lossy().to_string())
                 .map(|f| format!("{}-{}", f, calculate_short_hash(block_path, 8)))
                 .unwrap_or_else(|| "tmp".to_string())

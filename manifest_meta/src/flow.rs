@@ -228,11 +228,11 @@ impl SubflowBlock {
 
                     // if flow_paths s [/a/b/c]/flows/AAA/flow.oo.yaml return [/a/b/c]
                     // else return flow_paths's parent dir
-                    let grandparent_dir = flow_path.parent().map(|p| p.parent()).flatten();
+                    let grandparent_dir = flow_path.parent().and_then(|p| p.parent());
                     let workspace = if grandparent_dir
                         .is_some_and(|p| p.exists() && p.file_name() == Some("flows".as_ref()))
                     {
-                        grandparent_dir.map(|p| p.parent()).flatten()
+                        grandparent_dir.and_then(|p| p.parent())
                     } else {
                         flow_path.parent()
                     };
@@ -290,8 +290,7 @@ impl SubflowBlock {
                                     task_node
                                         .inject
                                         .as_ref()
-                                        .map(|injection| injection.script.clone())
-                                        .flatten()
+                                        .and_then(|injection| injection.script.clone())
                                         .map(|script| {
                                             injection_scripts
                                                 .entry(pkg_path.clone())
