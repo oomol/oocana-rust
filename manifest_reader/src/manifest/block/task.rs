@@ -98,10 +98,10 @@ impl TaskBlockExecutor {
     pub fn should_spawn(&self) -> bool {
         match self {
             TaskBlockExecutor::NodeJS(NodeJSExecutor { options }) => {
-                options.as_ref().map_or(false, |o| o.spawn)
+                options.as_ref().is_some_and(|o| o.spawn)
             }
             TaskBlockExecutor::Python(PythonExecutor { options }) => {
-                options.as_ref().map_or(false, |o| o.spawn)
+                options.as_ref().is_some_and(|o| o.spawn)
             }
             TaskBlockExecutor::Shell(_) => false,
             TaskBlockExecutor::Rust(_) => false,

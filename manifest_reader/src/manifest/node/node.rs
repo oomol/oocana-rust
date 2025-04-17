@@ -79,7 +79,7 @@ impl Node {
                 TaskNodeBlock::Inline(task) => task
                     .executor
                     .as_ref()
-                    .map_or(false, |executor| executor.should_spawn()),
+                    .is_some_and(|executor| executor.should_spawn()),
             },
             Node::Subflow(_) => false,
             Node::Slot(_) => false,
