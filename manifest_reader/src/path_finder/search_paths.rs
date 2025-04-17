@@ -52,11 +52,7 @@ pub fn search_block_manifest(params: BlockManifestParams) -> Option<PathBuf> {
                     let pkg = format!("{}-{}", pkg, version);
                     vec![pkg, block_dir.to_string(), block_name]
                 } else {
-                    vec![
-                        pkg.to_string(),
-                        block_dir.to_string(),
-                        block_name,
-                    ]
+                    vec![pkg.to_string(), block_dir.to_string(), block_name]
                 }
             } else {
                 // 按理说，不应该走到这里，因为这种情况应该是直接的 block_name
