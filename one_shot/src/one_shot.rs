@@ -149,8 +149,8 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
     let temp_directory = {
         let p = PathBuf::from(block_path);
         if p.file_name().is_some_and(|f| {
-            f.to_string_lossy().to_string() == "flow.oo.yaml"
-                || f.to_string_lossy().to_string() == "flow.oo.yml"
+            f.to_string_lossy() == "flow.oo.yaml"
+                || f.to_string_lossy() == "flow.oo.yml"
         }) {
             p.parent()
                 .map(|p| p.file_name())
