@@ -103,9 +103,9 @@ pub struct OutputHandle {
     pub name: Option<String>,
 }
 
-pub const OOMOL_VAR_DATA: &'static str = "oomol/var";
-pub const OOMOL_SECRET_DATA: &'static str = "oomol/secret";
-pub const OOMOL_BIN_DATA: &'static str = "oomol/bin";
+pub const OOMOL_VAR_DATA: &str = "oomol/var";
+pub const OOMOL_SECRET_DATA: &str = "oomol/secret";
+pub const OOMOL_BIN_DATA: &str = "oomol/bin";
 
 pub type InputHandles = HashMap<HandleName, InputHandle>;
 
