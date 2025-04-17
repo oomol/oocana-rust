@@ -589,9 +589,9 @@ fn spawn_executor(
             exec_form_cmd.push(&identifier);
         }
 
-        if scope_package.is_some() {
+        if let Some(ref scope_package) = scope_package {
             exec_form_cmd.push("--package");
-            exec_form_cmd.push(scope_package.as_ref().unwrap());
+            exec_form_cmd.push(scope_package.as_str());
         }
 
         for p in debug_parameters.iter() {
@@ -649,9 +649,9 @@ fn spawn_executor(
             args.push(p);
         }
 
-        if scope_package.is_some() {
+        if let Some(ref scope_package) = scope_package {
             args.push("--package");
-            args.push(scope_package.as_ref().unwrap());
+            args.push(scope_package.as_str());
         }
 
         let mut cmd = process::Command::new(&executor_bin);
