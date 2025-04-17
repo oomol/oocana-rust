@@ -66,7 +66,7 @@ pub fn setup_logging<P: AsRef<Path>>(params: LogParams<P>) -> Result<non_blockin
 
     // 主动要求输出时，不使用 ansi color
     #[allow(unused_assignments, unused_mut)]
-    let mut show_ansi_color = if output_to_console { false } else { true };
+    let mut show_ansi_color = !output_to_console;
 
     #[cfg(debug_assertions)]
     {
