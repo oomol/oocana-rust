@@ -1,6 +1,6 @@
 #![cfg_attr(feature = "nightly", feature(backtrace))]
 
-use hex;
+use hex::encode;
 use sha2::{Digest, Sha256};
 pub mod cache;
 pub mod config;
@@ -30,7 +30,7 @@ pub fn calculate_short_hash(input: &str, length: usize) -> String {
     let result = hasher.finalize();
 
     // Convert the hash to a hexadecimal string
-    let hex_result = hex::encode(result);
+    let hex_result = encode(result);
 
     // Return the first `length` characters of the hash
     hex_result[..length].to_string()
