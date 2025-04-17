@@ -971,7 +971,7 @@ where
             loop {
                 match rx.recv_async().await {
                     Ok(SchedulerCommand::RegisterSubscriber(job_id, sender)) => {
-                        debug_assert!(subscribers.get(&job_id).is_none());
+                        debug_assert!(!subscribers.contains_key(&job_id));
                         subscribers.insert(job_id, sender);
                     }
                     Ok(SchedulerCommand::UnregisterSubscriber(job_id)) => {
