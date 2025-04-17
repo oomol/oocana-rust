@@ -101,8 +101,7 @@ pub fn run_service_block(args: RunServiceBlockArgs) -> Option<BlockJobHandle> {
         parent_flow.as_ref().map(|f| f.path_str.clone()),
     );
 
-    let mut spawn_handles: Vec<tokio::task::JoinHandle<()>> = Vec::new();
-    spawn_handles.push(worker_listener_handle);
+    let spawn_handles: Vec<tokio::task::JoinHandle<()>> = vec![worker_listener_handle];
 
     Some(BlockJobHandle::new(
         job_id.to_owned(),
