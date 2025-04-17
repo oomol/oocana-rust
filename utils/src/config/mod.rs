@@ -1,8 +1,9 @@
 mod app;
-mod config;
-use std::path::PathBuf;
-
+mod global_config;
+mod run_config;
 pub use app::*;
+
+use std::path::PathBuf;
 
 pub fn default_broker_port() -> u16 {
     47688

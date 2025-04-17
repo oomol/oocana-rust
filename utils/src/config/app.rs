@@ -1,4 +1,3 @@
-use super::config::{GlobalConfig, RunConfig};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
@@ -7,6 +6,8 @@ use lazy_static::lazy_static;
 use std::sync::Mutex;
 
 use dirs::home_dir;
+
+use super::{global_config::GlobalConfig, run_config::RunConfig};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct AppConfig {
