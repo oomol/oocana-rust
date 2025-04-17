@@ -274,7 +274,7 @@ pub fn load_package_store() -> Result<PackageLayerStore> {
         return load_package_store();
     }
 
-    return Ok(store);
+    Ok(store)
 }
 
 pub fn add_import_package(pkg: &PackageLayer) -> Result<()> {

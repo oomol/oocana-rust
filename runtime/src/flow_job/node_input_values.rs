@@ -160,7 +160,7 @@ impl NodeInputValues {
             }
             return count;
         }
-        return 0;
+        0
     }
 
     pub fn save_last_value(&self, path: PathBuf) -> Result<(), String> {

@@ -32,17 +32,17 @@ pub fn search_block_manifest(params: BlockManifestParams) -> Option<PathBuf> {
             self_manifest_path.pop();
             self_manifest_path.push(block_dir);
             self_manifest_path.push(block_name);
-            return find_manifest_yaml_file(&self_manifest_path, base_name);
+            find_manifest_yaml_file(&self_manifest_path, base_name)
         }
         BlockValueType::Direct => {
             let manifest_path = vec![value.to_owned()];
-            return find_block_manifest_file(BlockSearchParams {
+            find_block_manifest_file(BlockSearchParams {
                 manifest_path: &manifest_path,
                 base_name,
                 flow_dir: working_dir,
                 search_paths,
                 manifest_maybe_file: true,
-            });
+            })
         }
         BlockValueType::Pkg => {
             let (block_name, pkg_name) = get_block_name_and_pkg(value);
@@ -58,21 +58,21 @@ pub fn search_block_manifest(params: BlockManifestParams) -> Option<PathBuf> {
                 // 按理说，不应该走到这里，因为这种情况应该是直接的 block_name
                 vec![block_name]
             };
-            return find_block_manifest_file(BlockSearchParams {
+            find_block_manifest_file(BlockSearchParams {
                 manifest_path: &manifest_path,
                 base_name,
                 flow_dir: working_dir,
                 search_paths,
                 manifest_maybe_file: false,
-            });
+            })
         }
         BlockValueType::AbsPath => {
             let block_manifest_path = Path::new(&value);
-            return find_manifest_yaml_file(block_manifest_path, base_name);
+            find_manifest_yaml_file(block_manifest_path, base_name)
         }
         BlockValueType::RelPath => {
             let block_manifest_path = working_dir.join(&value);
-            return find_manifest_yaml_file(&block_manifest_path, base_name);
+            find_manifest_yaml_file(&block_manifest_path, base_name)
         }
     }
 }
@@ -83,9 +83,9 @@ fn get_block_name_and_pkg(block_value: &str) -> (String, Option<String>) {
     let parts: Vec<&str> = block_value.split("::").filter(|s| s.len() > 0).collect();
 
     if parts.len() == 1 {
-        return (parts[0].to_string(), None);
+        (parts[0].to_string(), None)
     } else {
-        return (parts[1].to_string(), Some(parts[0].to_string()));
+        (parts[1].to_string(), Some(parts[0].to_string()))
     }
 }
 

@@ -43,7 +43,7 @@ pub fn find_task_block(params: TaskBlockManifestParams) -> Result<PathBuf> {
         return Ok(path.clean());
     }
 
-    return Err(utils::error::Error::new(&format!(
+    Err(utils::error::Error::new(&format!(
         "Task Block {} not found from {}. Search paths: {}",
         value,
         base_dir.to_str().unwrap_or_default(),
@@ -52,7 +52,7 @@ pub fn find_task_block(params: TaskBlockManifestParams) -> Result<PathBuf> {
             .filter_map(|p| p.to_str())
             .collect::<Vec<&str>>()
             .join(", ")
-    )));
+    )))
 }
 
 pub struct SubflowBlockManifestParams<'a> {

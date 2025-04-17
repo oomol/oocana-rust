@@ -146,7 +146,7 @@ impl PackageLayer {
                 }
                 Ok(())
             }
-            Err(e) => return Err(e),
+            Err(e) => Err(e),
         }
     }
 

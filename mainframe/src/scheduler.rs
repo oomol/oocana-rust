@@ -347,10 +347,10 @@ impl SchedulerTx {
                             None => RunningScope::default(),
                         }
                     } else {
-                        return scope.clone();
+                        scope.clone()
                     }
                 } else {
-                    return scope.clone();
+                    scope.clone()
                 }
             }
             None => scope.clone(),
@@ -775,7 +775,7 @@ fn spawn_executor(
                 }
             });
             info!("{} spawn success", executor_map_name);
-            return Result::Ok(());
+            Result::Ok(())
         }
         Err(e) => {
             let mut write_map = executor_map.write().unwrap();
@@ -792,7 +792,7 @@ fn spawn_executor(
             }
             let message = format!("Failed to spawn {}. {}", executor_bin, e);
             error!(message);
-            return Result::Err(Error::new(&message));
+            Result::Err(Error::new(&message))
         }
     }
 }

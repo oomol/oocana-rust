@@ -36,9 +36,9 @@ impl TaskBlock {
         }
 
         if let Some(path) = self.path.as_ref() {
-            return path.parent().map(|parent| parent.to_path_buf());
+            path.parent().map(|parent| parent.to_path_buf())
         } else {
-            return None;
+            None
         }
     }
 }

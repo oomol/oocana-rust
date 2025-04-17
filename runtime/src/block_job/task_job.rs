@@ -193,7 +193,7 @@ pub fn run_task_block(args: RunTaskBlockArgs) -> Option<BlockJobHandle> {
 
                         spawn_handles.push(exit_handler);
 
-                        return Some(BlockJobHandle::new(
+                        Some(BlockJobHandle::new(
                             job_id.to_owned(),
                             TaskJobHandle {
                                 job_id,
@@ -201,7 +201,7 @@ pub fn run_task_block(args: RunTaskBlockArgs) -> Option<BlockJobHandle> {
                                 child: None, // TODO: keep child and also wait exit code
                                 spawn_handles,
                             },
-                        ));
+                        ))
                     }
                     Err(e) => {
                         block_status.done(job_id.clone(), Some(e.to_string()));
@@ -232,7 +232,7 @@ pub fn run_task_block(args: RunTaskBlockArgs) -> Option<BlockJobHandle> {
 
                 spawn_handles.push(worker_listener_handle);
 
-                return Some(BlockJobHandle::new(
+                Some(BlockJobHandle::new(
                     job_id.to_owned(),
                     TaskJobHandle {
                         job_id,
@@ -240,7 +240,7 @@ pub fn run_task_block(args: RunTaskBlockArgs) -> Option<BlockJobHandle> {
                         child: None,
                         spawn_handles,
                     },
-                ));
+                ))
             }
         }
     } else {
@@ -255,7 +255,7 @@ fn block_dir(
     scope: &RunningScope,
 ) -> String {
     if scope.name().is_some() && scope.package_path().is_some() {
-        return scope.package_path().unwrap().to_string_lossy().to_string();
+        scope.package_path().unwrap().to_string_lossy().to_string()
     } else if let Some(block_dir) = task_block.block_dir() {
         block_dir.to_string_lossy().to_string()
     } else {

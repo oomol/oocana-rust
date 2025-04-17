@@ -156,9 +156,9 @@ pub fn get_packages(args: GetPackageArgs<'_>) -> Result<HashMap<PathBuf, String>
                     .iter()
                     .filter_map(|node| {
                         if filter_nodes.is_empty() || filter_nodes.contains(&node.0.to_string()) {
-                            return Some(node);
+                            Some(node)
                         } else {
-                            return None;
+                            None
                         }
                     })
                     .for_each(|node| {
@@ -230,11 +230,11 @@ pub fn find_upstream(
                 nodes: nodes.map(|nodes| nodes.into_iter().map(NodeId::new).collect()),
             };
 
-            return Ok(block_job::find_upstream(args));
+            Ok(block_job::find_upstream(args))
         }
         _ => {
             log_error!("Block is not a flow block: {}", block_path);
-            return Err("wrong block type. except flow get others".into());
+            Err("wrong block type. except flow get others".into())
         }
-    };
+    }
 }

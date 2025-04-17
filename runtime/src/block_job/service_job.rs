@@ -155,7 +155,7 @@ fn send_to_service(
 
     let service_executor_option = service_executor_options(service_block);
 
-    return scheduler_tx.send_to_service(ServiceParams {
+    scheduler_tx.send_to_service(ServiceParams {
         executor_name: &executor_name,
         block_name: &service_block.name,
         job_id: job_id.to_owned(),
@@ -165,5 +165,5 @@ fn send_to_service(
         outputs: &service_block.outputs_def,
         scope,
         flow: &flow,
-    });
+    })
 }

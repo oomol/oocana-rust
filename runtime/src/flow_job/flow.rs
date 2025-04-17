@@ -96,7 +96,7 @@ pub fn find_upstream(upstream_args: UpstreamArgs) -> (Vec<String>, Vec<String>, 
         &flow_block,
         &mut node_input_values,
     );
-    return (node_will_run, waiting_nodes, upstream_nodes);
+    (node_will_run, waiting_nodes, upstream_nodes)
 }
 
 pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
@@ -405,7 +405,7 @@ fn find_upstream_nodes<'a>(
         }
     }
 
-    return (nodes_will_run, waiting_nodes, upstream_nodes);
+    (nodes_will_run, waiting_nodes, upstream_nodes)
 }
 
 fn calc_nodes<'a>(
