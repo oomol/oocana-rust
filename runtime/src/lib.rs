@@ -51,10 +51,9 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
             // 解析文件失败时，不会运行任何 block。汇报一次 session 开始结束。
             // 错误信息会输出在 stderr 同时 exit code 会以非零状态输出。
             shared.reporter.session_started(block_name, partial);
-            shared.reporter.session_finished(
-                block_name,
-                &Some(format!("Failed to read block {:?}", err)),
-            );
+            shared
+                .reporter
+                .session_finished(block_name, &Some(format!("Failed to read block {:?}", err)));
             return Err(err);
         }
     };
@@ -154,12 +153,8 @@ pub fn get_packages(args: GetPackageArgs<'_>) -> Result<HashMap<PathBuf, String>
             Block::Flow(flow) => {
                 flow.nodes
                     .iter()
-                    .filter_map(|node| {
-                        if filter_nodes.is_empty() || filter_nodes.contains(&node.0.to_string()) {
-                            Some(node)
-                        } else {
-                            None
-                        }
+                    .filter(|node| {
+                        filter_nodes.is_empty() || filter_nodes.contains(&node.0.to_string())
                     })
                     .for_each(|node| {
                         if let Some(package_path) = node.1.package_path() {
