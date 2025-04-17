@@ -237,22 +237,22 @@ mod tests {
 
     #[test]
     fn test_diff() {
-        let a = vec!["a", "b", "c"];
-        let b = vec!["a", "b", "d"];
+        let a = ["a", "b", "c"];
+        let b = ["a", "b", "d"];
         let a: std::collections::HashSet<String> = a.iter().map(|s| s.to_string()).collect();
         let b: std::collections::HashSet<String> = b.iter().map(|s| s.to_string()).collect();
         let diff = super::diff(a, b);
         assert_eq!(diff, vec!["c"]);
 
-        let a = vec!["a", "b", "c"];
-        let b = vec!["a", "b", "c"];
+        let a = ["a", "b", "c"];
+        let b = ["a", "b", "c"];
         let a: std::collections::HashSet<String> = a.iter().map(|s| s.to_string()).collect();
         let b: std::collections::HashSet<String> = b.iter().map(|s| s.to_string()).collect();
         let diff = super::diff(a, b);
         assert_eq!(diff.len(), 0);
 
-        let a = vec!["a", "b", "c"];
-        let b = vec!["a", "b", "c", "d"];
+        let a = ["a", "b", "c"];
+        let b = ["a", "b", "c", "d"];
         let a: std::collections::HashSet<String> = a.iter().map(|s| s.to_string()).collect();
         let b: std::collections::HashSet<String> = b.iter().map(|s| s.to_string()).collect();
         let diff = super::diff(a, b);

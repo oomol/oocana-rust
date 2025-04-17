@@ -140,7 +140,7 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
                 layer::PackageLayerStatus::Exist => {
                     let l = layer::get_or_create_package_layer(
                         package,
-                        &vec![],
+                        &[],
                         &HashMap::new(),
                         &None,
                     )?;
