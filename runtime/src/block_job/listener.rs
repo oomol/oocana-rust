@@ -149,13 +149,13 @@ pub fn listen_to_worker(args: ListenerArgs) -> tokio::task::JoinHandle<()> {
                         continue;
                     }
 
-                    let error_message = Some(format!(
+                    let error_message = format!(
                         "Executor {} identifier {:?} for package {:?} timeout after 5s",
                         executor_name, identifier, package
-                    ));
+                    );
 
-                    reporter.done(&error_message);
-                    block_status.error(error_message.unwrap_or_default());
+                    block_status.error(error_message.clone());
+                    reporter.done(&Some(error_message));
                 }
                 scheduler::ReceiveMessage::BlockReady { job_id, .. } => {
                     has_executor_response = true;
