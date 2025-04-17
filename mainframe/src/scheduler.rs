@@ -609,13 +609,13 @@ fn spawn_executor(
         );
 
         let script_str = layer::convert_to_script(&exec_form_cmd);
-        
 
         pkg_layer.run_command(&script_str, &envs, env_file)
     } else {
         envs.insert(
             "OOCANA_PKG_DIR".to_string(),
-            scope.workspace()
+            scope
+                .workspace()
                 .join(PKG_DIR)
                 .to_string_lossy()
                 .to_string(),
