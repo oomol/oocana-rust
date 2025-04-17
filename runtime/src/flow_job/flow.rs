@@ -261,23 +261,20 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
 
                         for froms in flow_shared.flow_block.flow_outputs_froms.values() {
                             for from in froms {
-                                match from {
-                                    HandleFrom::FromNodeOutput {
+                                if let HandleFrom::FromNodeOutput {
                                         node_id,
                                         node_output_handle,
-                                    } => {
-                                        if node_output_handle.eq(&handle) && node_id == &job_node_id
-                                        {
-                                            run_flow_ctx.parent_block_status.result(
-                                                flow_shared.job_id.to_owned(),
-                                                Arc::clone(&result),
-                                                handle.to_owned(),
-                                                done,
-                                            );
-                                            reporter.result(Arc::clone(&result), &handle)
-                                        }
+                                    } = from {
+                                    if node_output_handle.eq(&handle) && node_id == &job_node_id
+                                    {
+                                        run_flow_ctx.parent_block_status.result(
+                                            flow_shared.job_id.to_owned(),
+                                            Arc::clone(&result),
+                                            handle.to_owned(),
+                                            done,
+                                        );
+                                        reporter.result(Arc::clone(&result), &handle)
                                     }
-                                    _ => {}
                                 }
                             }
                         }

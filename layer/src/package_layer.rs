@@ -128,7 +128,7 @@ impl PackageLayer {
             .collect();
 
         // 兼容操作，以前没有 source_layer 字段。但是这个字段实际是必须的。
-        if self.source_layer.len() > 0 {
+        if !self.source_layer.is_empty() {
             layers.insert(self.source_layer.clone());
         }
         if let Some(bootstrap_layer) = &self.bootstrap_layer {
@@ -140,7 +140,7 @@ impl PackageLayer {
         match list {
             Ok(list) => {
                 let diff = diff(layers, list.into_iter().collect());
-                if diff.len() > 0 {
+                if !diff.is_empty() {
                     tracing::debug!("layer not exist: {:?}", diff);
                     return Err(format!("layer not exist: {:?}", diff).into());
                 }
@@ -157,9 +157,8 @@ impl PackageLayer {
 
         let mut layers = self.base_layers.clone().unwrap_or_default();
         layers.push(self.source_layer.clone());
-        self.bootstrap_layer
-            .as_ref()
-            .map(|l| layers.push(l.clone()));
+        if let Some(l) = self.bootstrap_layer
+            .as_ref() { layers.push(l.clone()) }
 
         let mut export_layers = vec![];
         for layer in layers.iter() {

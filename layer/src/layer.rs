@@ -135,7 +135,7 @@ pub fn run_script_unmerge(
     exec(cp_cmd)?;
 
     let mut cmd = run_cmd(merge_point, bind, work_dir, envs, env_file);
-    cmd.arg(format!("{script_target_path}"));
+    cmd.arg(&script_target_path);
     tracing::info!("{cmd:?}");
 
     let child = cmd
@@ -148,8 +148,8 @@ pub fn run_script_unmerge(
         Ok(mut child) => {
             let stdout_handler = child.stdout.take().map(|stdout| {
                 thread::spawn(move || {
-                    let mut reader = std::io::BufReader::new(stdout).lines();
-                    while let Some(line) = reader.next() {
+                    let reader = std::io::BufReader::new(stdout).lines();
+                    for line in reader {
                         if let Ok(line) = line {
                             tracing::info!(target: STDOUT_TARGET, "{}", line);
                         }
@@ -159,8 +159,8 @@ pub fn run_script_unmerge(
 
             let stderr_handler = child.stderr.take().map(|stderr| {
                 thread::spawn(move || {
-                    let mut reader = std::io::BufReader::new(stderr).lines();
-                    while let Some(line) = reader.next() {
+                    let reader = std::io::BufReader::new(stderr).lines();
+                    for line in reader {
                         if let Ok(line) = line {
                             tracing::info!(target: STDERR_TARGET, "{}", line);
                         }

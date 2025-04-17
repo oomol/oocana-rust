@@ -148,7 +148,7 @@ impl SubflowBlock {
                 pkg_file_path = pkg_file_path.parent().unwrap().to_path_buf();
                 injection_scripts
                     .entry(pkg_file_path)
-                    .or_insert_with(Vec::new)
+                    .or_default()
                     .push(script);
             }
         }
@@ -280,23 +280,20 @@ impl SubflowBlock {
                                     // update injection store for later use
                                     injection_nodes
                                         .entry(InjectionTarget::Package(pkg_path.clone()))
-                                        .or_insert_with(HashSet::new)
+                                        .or_default()
                                         .insert(InjectionNode {
                                             node_id: task_node.node_id.clone(),
                                             absolute_entry: node_file,
                                             relative_entry: task_node_file.into(),
                                         });
 
-                                    task_node
+                                    if let Some(script) = task_node
                                         .inject
                                         .as_ref()
-                                        .and_then(|injection| injection.script.clone())
-                                        .map(|script| {
-                                            injection_scripts
+                                        .and_then(|injection| injection.script.clone()) { injection_scripts
                                                 .entry(pkg_path.clone())
-                                                .or_insert_with(Vec::new)
-                                                .push(script);
-                                        });
+                                                .or_default()
+                                                .push(script); }
                                 }
                                 RunningScope::Package {
                                     name: Some(name),
@@ -498,39 +495,32 @@ impl SubflowBlock {
     pub fn get_services(&self) -> HashSet<ServiceQueryResult> {
         let mut services = HashSet::new();
 
-        self.nodes.iter().for_each(|node| match node.1 {
-            Node::Service(service) => {
-                let service_block_path = service.block.dir();
-                let entry = if let Some(executor) = &service.block.service_executor.as_ref() {
-                    executor.entry.clone()
-                } else {
-                    None
-                };
-                let package = if let Some(package_path) = &service.block.package_path {
-                    if let Some(package_path) = package_path.to_str() {
-                        Some(package_path.to_string())
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                };
+        self.nodes.iter().for_each(|node| if let Node::Service(service) = node.1 {
+            let service_block_path = service.block.dir();
+            let entry = if let Some(executor) = &service.block.service_executor.as_ref() {
+                executor.entry.clone()
+            } else {
+                None
+            };
+            let package = if let Some(package_path) = &service.block.package_path {
+                package_path.to_str().map(|package_path| package_path.to_string())
+            } else {
+                None
+            };
 
-                let is_global = if let Some(e) = service.block.service_executor.as_ref() {
-                    e.is_global()
-                } else {
-                    false
-                };
+            let is_global = if let Some(e) = service.block.service_executor.as_ref() {
+                e.is_global()
+            } else {
+                false
+            };
 
-                services.insert(ServiceQueryResult {
-                    entry,
-                    service_hash: utils::calculate_short_hash(&service_block_path, 16),
-                    dir: service_block_path,
-                    package,
-                    is_global,
-                });
-            }
-            _ => {}
+            services.insert(ServiceQueryResult {
+                entry,
+                service_hash: utils::calculate_short_hash(&service_block_path, 16),
+                dir: service_block_path,
+                package,
+                is_global,
+            });
         });
 
         services
