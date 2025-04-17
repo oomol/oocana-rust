@@ -58,12 +58,12 @@ pub struct SchedulerRx {
 
 #[async_trait]
 impl SchedulerRxImpl for SchedulerRx {
-    async fn recv(&mut self) -> MessageData {
+    async fn recv(&mut self) -> (String, MessageData) {
         loop {
             match self.rx.poll().await {
                 Ok(notification) => {
                     if let Event::Incoming(Incoming::Publish(packet)) = notification {
-                        return packet.payload.into();
+                        return (packet.topic.clone(), packet.payload.into());
                     }
                 }
                 Err(e) => {
@@ -78,7 +78,7 @@ impl SchedulerRxImpl for SchedulerRx {
                 }
             }
         }
-        MessageData::default()
+        ("".to_string(), MessageData::default())
     }
 }
 
@@ -96,6 +96,12 @@ pub async fn connect(addr: &SocketAddr, session_id: SessionId) -> (SchedulerTx, 
     let channel = format!("session/{}", &session_id);
 
     tx.subscribe(&channel, QoS::AtLeastOnce).await.unwrap();
+
+    let report_channel = format!("report");
+    tx.subscribe(&report_channel, QoS::AtMostOnce)
+        .await
+        .unwrap();
+
     let (shutdown_tx, shutdown_rx) = watch::channel(false);
 
     (

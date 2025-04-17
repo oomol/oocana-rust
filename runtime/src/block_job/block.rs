@@ -1,7 +1,7 @@
 use std::{collections::HashSet, sync::Arc};
 
 use job::{BlockInputs, BlockJobStacks, JobId};
-use mainframe::reporter::ReporterMessage;
+use mainframe::reporter::{BlockFinished, ReporterMessage};
 use manifest_meta::{Block, InputDefPatchMap, NodeId, RunningScope, SubflowBlock};
 
 use super::{service_job, task_job};
@@ -126,17 +126,19 @@ pub fn run_block(block_args: RunBlockArgs) -> Option<BlockJobHandle> {
         Block::Slot(slot_block) => {
             shared
                 .reporter
-                .send(mainframe::reporter::ReporterMessage::BlockFinished {
-                    session_id: &shared.session_id,
-                    job_id: &job_id,
-                    block_path: &slot_block
-                        .path
-                        .as_ref()
-                        .map(|path| path.to_string_lossy().to_string()),
-                    stacks: stacks.vec(),
-                    error: &Some("Cannot run Slot Block directly".to_string()),
-                    finish_at: ReporterMessage::now(),
-                });
+                .send(mainframe::reporter::ReporterMessage::BlockFinished(
+                    BlockFinished {
+                        session_id: &shared.session_id,
+                        job_id: &job_id,
+                        block_path: &slot_block
+                            .path
+                            .as_ref()
+                            .map(|path| path.to_string_lossy().to_string()),
+                        stacks: stacks.vec(),
+                        error: &Some("Cannot run Slot Block directly".to_string()),
+                        finish_at: ReporterMessage::now(),
+                    },
+                ));
 
             None
         }

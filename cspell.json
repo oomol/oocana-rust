@@ -29,6 +29,7 @@
     "rpath",
     "rumqttc",
     "rumqttd",
+    "rusqlite",
     "rustup",
     "serde",
     "stdlog",
