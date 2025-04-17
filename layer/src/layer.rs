@@ -149,10 +149,8 @@ pub fn run_script_unmerge(
             let stdout_handler = child.stdout.take().map(|stdout| {
                 thread::spawn(move || {
                     let reader = std::io::BufReader::new(stdout).lines();
-                    for line in reader {
-                        if let Ok(line) = line {
-                            tracing::info!(target: STDOUT_TARGET, "{}", line);
-                        }
+                    for line in reader.flatten() {
+                        tracing::info!(target: STDOUT_TARGET, "{}", line);
                     }
                 })
             });
@@ -160,10 +158,8 @@ pub fn run_script_unmerge(
             let stderr_handler = child.stderr.take().map(|stderr| {
                 thread::spawn(move || {
                     let reader = std::io::BufReader::new(stderr).lines();
-                    for line in reader {
-                        if let Ok(line) = line {
-                            tracing::info!(target: STDERR_TARGET, "{}", line);
-                        }
+                    for line in reader.flatten() {
+                        tracing::info!(target: STDERR_TARGET, "{}", line);
                     }
                 })
             });
