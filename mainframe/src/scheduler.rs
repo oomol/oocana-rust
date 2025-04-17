@@ -321,11 +321,11 @@ impl SchedulerTx {
         self.tx
             .send(SchedulerCommand::SendInputs {
                 job_id,
-                stacks: stacks,
+                stacks,
                 block_path,
-                inputs: inputs,
+                inputs,
                 inputs_def,
-                inputs_def_patch: inputs_def_patch,
+                inputs_def_patch,
             })
             .unwrap();
     }
@@ -376,7 +376,7 @@ impl SchedulerTx {
             .send(SchedulerCommand::ExecuteBlock {
                 job_id,
                 executor_name: executor_name.to_owned(),
-                dir: dir,
+                dir,
                 stacks: stacks.clone(),
                 scope,
                 outputs: outputs.clone(),
@@ -1066,7 +1066,7 @@ where
                                 block_name: &block_name,
                                 service_executor: &service_executor,
                                 outputs: &outputs,
-                                service_hash: service_hash,
+                                service_hash,
                                 identifier: &identifier,
                             })
                             .unwrap();
@@ -1227,7 +1227,7 @@ where
                                         executor_map_name,
                                         ExecutorState {
                                             spawn_state: ExecutorSpawnState::Ready,
-                                            pid: pid,
+                                            pid,
                                         },
                                     );
 
@@ -1339,7 +1339,7 @@ where
             impl_tx,
             impl_rx,
             executor_map: default::Default::default(),
-            executor_payload: executor_payload,
+            executor_payload,
             tx,
             rx,
         },

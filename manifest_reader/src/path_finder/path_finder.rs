@@ -30,7 +30,7 @@ impl BlockPathFinder {
             .unwrap_or_default();
 
         Self {
-            base_dir: base_dir,
+            base_dir,
             cache: HashMap::new(),
             search_paths: Arc::new(search_paths.unwrap_or_default()),
             pkg_version,

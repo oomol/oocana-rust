@@ -70,7 +70,7 @@ pub fn run_service_block(args: RunServiceBlockArgs) -> Option<BlockJobHandle> {
         inputs,
         outputs_def: service_block.outputs_def.clone(),
         inputs_def: service_block.inputs_def.clone(),
-        block_status: block_status,
+        block_status,
         reporter: Arc::clone(&reporter),
         executor: None,
         scope: scope.clone(),
@@ -163,7 +163,7 @@ fn send_to_service(
         dir,
         options: &service_executor_option,
         outputs: &service_block.outputs_def,
-        scope: scope,
+        scope,
         flow: &flow,
     });
 }

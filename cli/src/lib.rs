@@ -183,7 +183,7 @@ pub fn cli_match() -> Result<()> {
             run_block(BlockArgs {
                 block_path: block,
                 broker_address: broker.clone().unwrap_or(app_config.run.broker),
-                search_paths: search_paths,
+                search_paths,
                 session: session.to_owned(),
                 reporter_enable: reporter.unwrap_or(app_config.run.reporter.unwrap_or_default()),
                 debug: debug.unwrap_or(app_config.run.debug.unwrap_or_default()),
@@ -201,9 +201,9 @@ pub fn cli_match() -> Result<()> {
                 .map(|p| p.split(',').map(|s| s.to_string()).collect())
                 .or_else(|| app_config.run.exclude_packages.clone()),
                 session_dir: session_path.to_owned(),
-                bind_paths: bind_paths,
+                bind_paths,
                 retain_env_keys: retain_env_keys.to_owned(),
-                env_file: env_file,
+                env_file,
                 temp_root: temp_root.to_owned(),
             })?
         },

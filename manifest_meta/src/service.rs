@@ -27,8 +27,8 @@ impl ServiceBlock {
 
         Self {
             name,
-            inputs_def: inputs_def,
-            outputs_def: outputs_def,
+            inputs_def,
+            outputs_def,
             service_path: Some(service_path),
             service_executor: executor,
             package_path,

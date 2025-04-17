@@ -40,10 +40,10 @@ impl From<TmpGlobalConfig> for GlobalConfig {
         let bind_path_file = tmp.bind_path_file.map(|s| expand_home(&s));
 
         GlobalConfig {
-            store_dir: store_dir,
-            oocana_dir: oocana_dir,
-            env_file: env_file,
-            bind_path_file: bind_path_file,
+            store_dir,
+            oocana_dir,
+            env_file,
+            bind_path_file,
             search_paths: tmp.search_paths.map(|paths| {
                 paths
                     .into_iter()
@@ -128,10 +128,10 @@ impl From<TmpRunConfig> for RunConfig {
 
         RunConfig {
             broker: tmp.broker,
-            exclude_packages: exclude_packages,
+            exclude_packages,
             reporter: tmp.reporter,
             debug: tmp.debug,
-            extra: extra,
+            extra,
         }
     }
 }

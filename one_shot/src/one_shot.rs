@@ -65,7 +65,7 @@ pub fn find_upstream<'a>(
 
     let upstream_args = runtime::FindUpstreamArgs {
         block_name: block_path,
-        block_reader: block_reader,
+        block_reader,
         path_finder: block_path_finder,
         use_cache,
         nodes,

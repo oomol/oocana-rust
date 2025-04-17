@@ -38,7 +38,7 @@ pub fn search_block_manifest(params: BlockManifestParams) -> Option<PathBuf> {
             let manifest_path = vec![value.to_owned()];
             return find_block_manifest_file(BlockSearchParams {
                 manifest_path: &manifest_path,
-                base_name: base_name,
+                base_name,
                 flow_dir: working_dir,
                 search_paths,
                 manifest_maybe_file: true,
@@ -64,7 +64,7 @@ pub fn search_block_manifest(params: BlockManifestParams) -> Option<PathBuf> {
             };
             return find_block_manifest_file(BlockSearchParams {
                 manifest_path: &manifest_path,
-                base_name: base_name,
+                base_name,
                 flow_dir: working_dir,
                 search_paths,
                 manifest_maybe_file: false,

@@ -27,8 +27,8 @@ impl SlotBlock {
         } = manifest;
 
         Self {
-            inputs_def: inputs_def,
-            outputs_def: outputs_def,
+            inputs_def,
+            outputs_def,
             path_str: path.as_ref().map(|path| path.to_string_lossy().to_string()),
             path,
             package_path,

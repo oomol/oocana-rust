@@ -481,8 +481,8 @@ impl SubflowBlock {
 
         Ok(Self {
             nodes: new_nodes,
-            inputs_def: inputs_def,
-            outputs_def: outputs_def,
+            inputs_def,
+            outputs_def,
             path_str: flow_path.to_string_lossy().to_string(),
             path: flow_path.clone(),
             flow_inputs_tos: connections.flow_inputs_tos.restore(),
