@@ -148,7 +148,7 @@ impl SubflowBlock {
                 pkg_file_path = pkg_file_path.parent().unwrap().to_path_buf();
                 injection_scripts
                     .entry(pkg_file_path)
-                    .or_insert_with(Vec::new)
+                    .or_default()
                     .push(script);
             }
         }
@@ -220,7 +220,7 @@ impl SubflowBlock {
                     let task = block_resolver
                         .resolve_task_node_block(task_node_block.clone(), &mut path_finder)?;
                     let running_target = calculate_running_scope(
-                        &node,
+                        node,
                         &task_node.inject,
                         &task.package_path,
                         task_node_block.block_type(),
@@ -228,11 +228,11 @@ impl SubflowBlock {
 
                     // if flow_paths s [/a/b/c]/flows/AAA/flow.oo.yaml return [/a/b/c]
                     // else return flow_paths's parent dir
-                    let grandparent_dir = flow_path.parent().map(|p| p.parent()).flatten();
+                    let grandparent_dir = flow_path.parent().and_then(|p| p.parent());
                     let workspace = if grandparent_dir
                         .is_some_and(|p| p.exists() && p.file_name() == Some("flows".as_ref()))
                     {
-                        grandparent_dir.map(|p| p.parent()).flatten()
+                        grandparent_dir.and_then(|p| p.parent())
                     } else {
                         flow_path.parent()
                     };
@@ -280,24 +280,20 @@ impl SubflowBlock {
                                     // update injection store for later use
                                     injection_nodes
                                         .entry(InjectionTarget::Package(pkg_path.clone()))
-                                        .or_insert_with(HashSet::new)
+                                        .or_default()
                                         .insert(InjectionNode {
                                             node_id: task_node.node_id.clone(),
                                             absolute_entry: node_file,
                                             relative_entry: task_node_file.into(),
                                         });
 
-                                    task_node
+                                    if let Some(script) = task_node
                                         .inject
                                         .as_ref()
-                                        .map(|injection| injection.script.clone())
-                                        .flatten()
-                                        .map(|script| {
-                                            injection_scripts
+                                        .and_then(|injection| injection.script.clone()) { injection_scripts
                                                 .entry(pkg_path.clone())
-                                                .or_insert_with(Vec::new)
-                                                .push(script);
-                                        });
+                                                .or_default()
+                                                .push(script); }
                                 }
                                 RunningScope::Package {
                                     name: Some(name),
@@ -481,8 +477,8 @@ impl SubflowBlock {
 
         Ok(Self {
             nodes: new_nodes,
-            inputs_def: inputs_def,
-            outputs_def: outputs_def,
+            inputs_def,
+            outputs_def,
             path_str: flow_path.to_string_lossy().to_string(),
             path: flow_path.clone(),
             flow_inputs_tos: connections.flow_inputs_tos.restore(),
@@ -499,39 +495,32 @@ impl SubflowBlock {
     pub fn get_services(&self) -> HashSet<ServiceQueryResult> {
         let mut services = HashSet::new();
 
-        self.nodes.iter().for_each(|node| match node.1 {
-            Node::Service(service) => {
-                let service_block_path = service.block.dir();
-                let entry = if let Some(executor) = &service.block.service_executor.as_ref() {
-                    executor.entry.clone()
-                } else {
-                    None
-                };
-                let package = if let Some(package_path) = &service.block.package_path {
-                    if let Some(package_path) = package_path.to_str() {
-                        Some(package_path.to_string())
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                };
+        self.nodes.iter().for_each(|node| if let Node::Service(service) = node.1 {
+            let service_block_path = service.block.dir();
+            let entry = if let Some(executor) = &service.block.service_executor.as_ref() {
+                executor.entry.clone()
+            } else {
+                None
+            };
+            let package = if let Some(package_path) = &service.block.package_path {
+                package_path.to_str().map(|package_path| package_path.to_string())
+            } else {
+                None
+            };
 
-                let is_global = if let Some(e) = service.block.service_executor.as_ref() {
-                    e.is_global()
-                } else {
-                    false
-                };
+            let is_global = if let Some(e) = service.block.service_executor.as_ref() {
+                e.is_global()
+            } else {
+                false
+            };
 
-                services.insert(ServiceQueryResult {
-                    entry,
-                    service_hash: utils::calculate_short_hash(&service_block_path, 16),
-                    dir: service_block_path,
-                    package,
-                    is_global,
-                });
-            }
-            _ => {}
+            services.insert(ServiceQueryResult {
+                entry,
+                service_hash: utils::calculate_short_hash(&service_block_path, 16),
+                dir: service_block_path,
+                package,
+                is_global,
+            });
         });
 
         services

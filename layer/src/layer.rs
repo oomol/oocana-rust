@@ -22,7 +22,7 @@ pub fn create_layer(name: &str) -> Result<()> {
 }
 
 #[instrument(skip_all)]
-pub fn merge_layer(layers: &Vec<String>, merge_point: &str) -> Result<()> {
+pub fn merge_layer(layers: &[String], merge_point: &str) -> Result<()> {
     let base_rootfs = crate::layer_settings::load_base_rootfs()?;
 
     let mut merged_layers = base_rootfs.clone();
@@ -104,7 +104,7 @@ pub fn convert_script_to_shell(script: &str) -> Result<(String, String)> {
 /// this function will automatically unmerge the merge point.
 #[instrument(skip_all)]
 pub fn run_script_unmerge(
-    layers: &Vec<String>,
+    layers: &[String],
     bind: &[BindPath],
     work_dir: &Option<String>,
     script: &str,
@@ -112,7 +112,7 @@ pub fn run_script_unmerge(
     env_file: &Option<String>,
 ) -> Result<()> {
     let merge_point = &random_merge_point();
-    merge_layer(&layers, merge_point)?;
+    merge_layer(layers, merge_point)?;
 
     let (file_path, script_filename) = convert_script_to_shell(script)?;
     let script_target_path = {
@@ -126,16 +126,16 @@ pub fn run_script_unmerge(
         }
     };
 
-    let script_parant_dir = std::path::Path::new(&script_target_path)
+    let script_parent_dir = std::path::Path::new(&script_target_path)
         .parent()
         .ok_or_else(|| Error::from("Failed to get script parent dir"))?
         .to_string_lossy()
         .to_string();
-    let cp_cmd = cp_to_merge_point(&merge_point, &file_path, &script_parant_dir);
+    let cp_cmd = cp_to_merge_point(merge_point, &file_path, &script_parent_dir);
     exec(cp_cmd)?;
 
-    let mut cmd = run_cmd(merge_point, &bind, work_dir, envs, env_file);
-    cmd.arg(format!("{script_target_path}"));
+    let mut cmd = run_cmd(merge_point, bind, work_dir, envs, env_file);
+    cmd.arg(&script_target_path);
     tracing::info!("{cmd:?}");
 
     let child = cmd
@@ -148,22 +148,18 @@ pub fn run_script_unmerge(
         Ok(mut child) => {
             let stdout_handler = child.stdout.take().map(|stdout| {
                 thread::spawn(move || {
-                    let mut reader = std::io::BufReader::new(stdout).lines();
-                    while let Some(line) = reader.next() {
-                        if let Ok(line) = line {
-                            tracing::info!(target: STDOUT_TARGET, "{}", line);
-                        }
+                    let reader = std::io::BufReader::new(stdout).lines();
+                    for line in reader.map_while(Result::ok) {
+                        tracing::info!(target: STDOUT_TARGET, "{}", line);
                     }
                 })
             });
 
             let stderr_handler = child.stderr.take().map(|stderr| {
                 thread::spawn(move || {
-                    let mut reader = std::io::BufReader::new(stderr).lines();
-                    while let Some(line) = reader.next() {
-                        if let Ok(line) = line {
-                            tracing::info!(target: STDERR_TARGET, "{}", line);
-                        }
+                    let reader = std::io::BufReader::new(stderr).lines();
+                    for line in reader.map_while(Result::ok) {
+                        tracing::info!(target: STDERR_TARGET, "{}", line);
                     }
                 })
             });

@@ -50,8 +50,8 @@ pub struct UpstreamArgs<'a> {
 }
 
 // TODO: 从 one_shot 中移除，这里不需要配置很多环境，简单裹一层意义不大。
-pub fn find_upstream<'a>(
-    args: UpstreamArgs<'a>,
+pub fn find_upstream(
+    args: UpstreamArgs<'_>,
 ) -> Result<(Vec<String>, Vec<String>, Vec<String>)> {
     let UpstreamArgs {
         block_path,
@@ -65,7 +65,7 @@ pub fn find_upstream<'a>(
 
     let upstream_args = runtime::FindUpstreamArgs {
         block_name: block_path,
-        block_reader: block_reader,
+        block_reader,
         path_finder: block_path_finder,
         use_cache,
         nodes,
@@ -149,19 +149,18 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
     let temp_directory = {
         let p = PathBuf::from(block_path);
         if p.file_name().is_some_and(|f| {
-            f.to_string_lossy().to_string() == "flow.oo.yaml"
-                || f.to_string_lossy().to_string() == "flow.oo.yml"
+            f.to_string_lossy() == "flow.oo.yaml"
+                || f.to_string_lossy() == "flow.oo.yml"
         }) {
             p.parent()
-                .map(|p| p.file_name())
-                .flatten()
+                .and_then(|p| p.file_name())
                 .map(|f| f.to_string_lossy().to_string())
-                .map(|f| format!("{}-{}", f, calculate_short_hash(&block_path, 8)))
+                .map(|f| format!("{}-{}", f, calculate_short_hash(block_path, 8)))
                 .unwrap_or_else(|| "tmp".to_string())
         } else {
             p.file_name()
                 .map(|f| f.to_string_lossy().to_string())
-                .map(|f| format!("{}-{}", f, calculate_short_hash(&block_path, 8)))
+                .map(|f| format!("{}-{}", f, calculate_short_hash(block_path, 8)))
                 .unwrap_or_else(|| "tmp".to_string())
         }
     };

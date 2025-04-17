@@ -113,7 +113,7 @@ pub fn query(action: &QueryAction) -> Result<()> {
                 fun::parse_search_paths(search_paths),
             );
 
-            let block_or_flow = read_flow_or_block(&block, block_reader, block_path_finder)?;
+            let block_or_flow = read_flow_or_block(block, block_reader, block_path_finder)?;
 
             match block_or_flow {
                 manifest_meta::Block::Flow(flow) => {

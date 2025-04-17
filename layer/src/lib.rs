@@ -50,7 +50,7 @@ mod tests {
         #[cfg(not(target_os = "linux"))]
         {
             use super::feature_enabled;
-            assert_eq!(feature_enabled(), false);
+            assert!(!feature_enabled());
         }
     }
 }

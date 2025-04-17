@@ -103,9 +103,9 @@ pub struct OutputHandle {
     pub name: Option<String>,
 }
 
-pub const OOMOL_VAR_DATA: &'static str = "oomol/var";
-pub const OOMOL_SECRET_DATA: &'static str = "oomol/secret";
-pub const OOMOL_BIN_DATA: &'static str = "oomol/bin";
+pub const OOMOL_VAR_DATA: &str = "oomol/var";
+pub const OOMOL_SECRET_DATA: &str = "oomol/secret";
+pub const OOMOL_BIN_DATA: &str = "oomol/bin";
 
 pub type InputHandles = HashMap<HandleName, InputHandle>;
 
@@ -156,7 +156,7 @@ mod tests {
     fn deserialize_content_media_type_output_handle() {
         use super::*;
         let serialized = r#"{"handle":"output","json_schema":{"contentMediaType":"oomol/secret"},"name":"var1"}"#;
-        let deserialized: OutputHandle = serde_json::from_str(&serialized).unwrap();
+        let deserialized: OutputHandle = serde_json::from_str(serialized).unwrap();
         assert_eq!(deserialized.handle, HandleName::new("output".to_string()));
 
         match deserialized.json_schema.unwrap() {
@@ -177,18 +177,18 @@ mod tests {
     fn deserialize_null_and_missing_value_in_input_handle() {
         use super::*;
         let serialized = r#"{"handle":"input"}"#;
-        let deserialized: InputHandle = serde_json::from_str(&serialized).unwrap();
+        let deserialized: InputHandle = serde_json::from_str(serialized).unwrap();
         assert_eq!(deserialized.handle, HandleName::new("input".to_string()));
         assert_eq!(deserialized.value, None);
 
         let serialized = r#"{"handle":"input","value":null}"#;
-        let deserialized: InputHandle = serde_json::from_str(&serialized).unwrap();
+        let deserialized: InputHandle = serde_json::from_str(serialized).unwrap();
         assert_eq!(deserialized.handle, HandleName::new("input".to_string()));
         assert_eq!(deserialized.value, Some(None));
 
         // yaml 中 只有 key，没有值的时候，应该被解析为 Null
         let serialized = r#"{"handle":"input","value":}"#;
-        let deserialized: InputHandle = serde_yaml::from_str(&serialized).unwrap();
+        let deserialized: InputHandle = serde_yaml::from_str(serialized).unwrap();
         assert_eq!(deserialized.handle, HandleName::new("input".to_string()));
         assert_eq!(deserialized.value, Some(None));
     }
@@ -197,32 +197,32 @@ mod tests {
     fn deserialize_nullable_field_modify_value_filed() {
         use super::*;
         let serialized = r#"{"handle":"input","nullable":true}"#;
-        let deserialized: InputHandle = serde_json::from_str(&serialized).unwrap();
+        let deserialized: InputHandle = serde_json::from_str(serialized).unwrap();
         assert_eq!(deserialized.handle, HandleName::new("input".to_string()));
         assert_eq!(deserialized.value, Some(None));
 
         let serialized = r#"{"handle":"input","nullable":false}"#;
-        let deserialized: InputHandle = serde_json::from_str(&serialized).unwrap();
+        let deserialized: InputHandle = serde_json::from_str(serialized).unwrap();
         assert_eq!(deserialized.handle, HandleName::new("input".to_string()));
         assert_eq!(deserialized.value, None);
 
         let serialized = r#"{"handle":"input","value":null,"nullable":true}"#;
-        let deserialized: InputHandle = serde_json::from_str(&serialized).unwrap();
+        let deserialized: InputHandle = serde_json::from_str(serialized).unwrap();
         assert_eq!(deserialized.handle, HandleName::new("input".to_string()));
         assert_eq!(deserialized.value, Some(None));
 
         let serialized = r#"{"handle":"input","value":null,"nullable":false}"#;
-        let deserialized: InputHandle = serde_json::from_str(&serialized).unwrap();
+        let deserialized: InputHandle = serde_json::from_str(serialized).unwrap();
         assert_eq!(deserialized.handle, HandleName::new("input".to_string()));
         assert_eq!(deserialized.value, Some(None));
 
         let serialized = r#"{"handle":"input","value":"a","nullable":false}"#;
-        let deserialized: InputHandle = serde_json::from_str(&serialized).unwrap();
+        let deserialized: InputHandle = serde_json::from_str(serialized).unwrap();
         assert_eq!(deserialized.handle, HandleName::new("input".to_string()));
         assert_eq!(deserialized.value, Some(Some("a".into())));
 
         let serialized = r#"{"handle":"input","value":"a","nullable":true}"#;
-        let deserialized: InputHandle = serde_json::from_str(&serialized).unwrap();
+        let deserialized: InputHandle = serde_json::from_str(serialized).unwrap();
         assert_eq!(deserialized.handle, HandleName::new("input".to_string()));
         assert_eq!(deserialized.value, Some(Some("a".into())));
     }
@@ -231,7 +231,7 @@ mod tests {
     fn deserialize_yaml_input_handle() {
         use super::*;
         let serialized = r#"{"handle":"input","value":,"nullable":false}"#;
-        let deserialized: InputHandle = serde_yaml::from_str(&serialized).unwrap();
+        let deserialized: InputHandle = serde_yaml::from_str(serialized).unwrap();
         assert_eq!(deserialized.handle, HandleName::new("input".to_string()));
         assert_eq!(deserialized.value, Some(None));
     }

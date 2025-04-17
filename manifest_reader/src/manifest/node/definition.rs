@@ -79,7 +79,7 @@ impl Node {
                 TaskNodeBlock::Inline(task) => task
                     .executor
                     .as_ref()
-                    .map_or(false, |executor| executor.should_spawn()),
+                    .is_some_and(|executor| executor.should_spawn()),
             },
             Node::Subflow(_) => false,
             Node::Slot(_) => false,
@@ -118,10 +118,9 @@ impl From<TmpInjection> for Injection {
                 script: tmp.script,
             }
         } else if tmp.node_id.is_some() {
-            tmp.script.as_ref().map(|s| {
-                warn!("script will be ignored when injection target is node");
-                s
-            });
+            tmp.script
+                .as_ref()
+                .inspect(|_| warn!("script will be ignored when injection target is node"));
             Injection {
                 target: InjectionTarget::Node(NodeId(tmp.node_id.unwrap())),
                 script: None,
@@ -223,7 +222,7 @@ impl TaskNodeBlock {
 
     pub fn block_type(&self) -> BlockValueType {
         match self {
-            TaskNodeBlock::File(f) => get_block_value_type(&f),
+            TaskNodeBlock::File(f) => get_block_value_type(f),
             TaskNodeBlock::Inline(_) => BlockValueType::SelfBlock,
         }
     }

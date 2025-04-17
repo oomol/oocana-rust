@@ -193,7 +193,7 @@ pub fn run_task_block(args: RunTaskBlockArgs) -> Option<BlockJobHandle> {
 
                         spawn_handles.push(exit_handler);
 
-                        return Some(BlockJobHandle::new(
+                        Some(BlockJobHandle::new(
                             job_id.to_owned(),
                             TaskJobHandle {
                                 job_id,
@@ -201,7 +201,7 @@ pub fn run_task_block(args: RunTaskBlockArgs) -> Option<BlockJobHandle> {
                                 child: None, // TODO: keep child and also wait exit code
                                 spawn_handles,
                             },
-                        ));
+                        ))
                     }
                     Err(e) => {
                         block_status.done(job_id.clone(), Some(e.to_string()));
@@ -232,7 +232,7 @@ pub fn run_task_block(args: RunTaskBlockArgs) -> Option<BlockJobHandle> {
 
                 spawn_handles.push(worker_listener_handle);
 
-                return Some(BlockJobHandle::new(
+                Some(BlockJobHandle::new(
                     job_id.to_owned(),
                     TaskJobHandle {
                         job_id,
@@ -240,7 +240,7 @@ pub fn run_task_block(args: RunTaskBlockArgs) -> Option<BlockJobHandle> {
                         child: None,
                         spawn_handles,
                     },
-                ));
+                ))
             }
         }
     } else {
@@ -255,7 +255,7 @@ fn block_dir(
     scope: &RunningScope,
 ) -> String {
     if scope.name().is_some() && scope.package_path().is_some() {
-        return scope.package_path().unwrap().to_string_lossy().to_string();
+        scope.package_path().unwrap().to_string_lossy().to_string()
     } else if let Some(block_dir) = task_block.block_dir() {
         block_dir.to_string_lossy().to_string()
     } else {
@@ -289,13 +289,13 @@ fn send_to_executor(args: ExecutorArgs) {
         scope,
         stacks,
     } = args;
-    let dir = block_dir(task_block, parent_flow, &scope);
+    let dir = block_dir(task_block, parent_flow, scope);
     scheduler_tx.send_to_executor(ExecutorParams {
         executor_name: executor.name(),
         job_id: job_id.to_owned(),
         stacks: stacks.vec(),
         dir,
-        executor: &executor,
+        executor,
         outputs: &task_block.outputs_def,
         scope,
         injection_store: &parent_flow.as_ref().and_then(|f| f.injection_store.clone()),
@@ -429,8 +429,7 @@ fn spawn(
             session_id,
             "--job-id",
             job_id,
-        ]
-        .into_iter(),
+        ],
     );
 
     // Execute the command
@@ -482,7 +481,7 @@ fn bind_shell_stdio(
                 while let Some(line) = stdout_reader.next_line().await.unwrap_or(None) {
                     reporter.log(&line, "stdout");
                     output.push_str(&line);
-                    output.push_str("\n");
+                    output.push('\n');
                 }
 
                 if output.ends_with('\n') {
@@ -504,14 +503,14 @@ fn bind_shell_stdio(
     if let Some(stderr) = child.stderr.take() {
         if let Ok(async_stderr) = tokio::process::ChildStderr::from_std(stderr) {
             let reporter = Arc::clone(reporter);
-            let job_id_clone = job_id.clone();
+            let job_id_clone = job_id;
             spawn_handles.push(tokio::spawn(async move {
                 let mut stderr_reader = BufReader::new(async_stderr).lines();
                 let mut stderr_output = String::new();
                 while let Some(line) = stderr_reader.next_line().await.unwrap_or(None) {
                     reporter.log(&line, "stderr");
                     stderr_output.push_str(&line);
-                    stderr_output.push_str("\n");
+                    stderr_output.push('\n');
                 }
                 if stderr_output.ends_with('\n') {
                     stderr_output.pop();
@@ -571,7 +570,7 @@ pub fn timeout_abort(
         tokio::time::sleep(timeout).await;
         reporter.error(&format!(
             "{} timeout after {:?}",
-            job_id.to_string(),
+            job_id,
             timeout
         ));
         block_status.done(job_id, Some("Timeout".to_owned()));

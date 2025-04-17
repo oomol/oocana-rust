@@ -66,7 +66,7 @@ mod tests {
     #[test]
     fn test_rootfs_file() {
         let file = layer_setting_file().unwrap();
-        assert_eq!(file.exists(), true);
+        assert!(file.exists());
     }
 
     #[test]

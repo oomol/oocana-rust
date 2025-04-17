@@ -36,9 +36,9 @@ impl TaskBlock {
         }
 
         if let Some(path) = self.path.as_ref() {
-            return path.parent().map(|parent| parent.to_path_buf());
+            path.parent().map(|parent| parent.to_path_buf())
         } else {
-            return None;
+            None
         }
     }
 }
@@ -58,8 +58,8 @@ impl TaskBlock {
 
         Self {
             executor,
-            inputs_def: inputs_def,
-            outputs_def: outputs_def,
+            inputs_def,
+            outputs_def,
             path_str: path.as_ref().map(|path| path.to_string_lossy().to_string()),
             path,
             package_path: package,

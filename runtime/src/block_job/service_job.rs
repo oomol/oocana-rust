@@ -70,7 +70,7 @@ pub fn run_service_block(args: RunServiceBlockArgs) -> Option<BlockJobHandle> {
         inputs,
         outputs_def: service_block.outputs_def.clone(),
         inputs_def: service_block.inputs_def.clone(),
-        block_status: block_status.clone(),
+        block_status,
         reporter: Arc::clone(&reporter),
         executor: None,
         scope: scope.clone(),
@@ -86,7 +86,7 @@ pub fn run_service_block(args: RunServiceBlockArgs) -> Option<BlockJobHandle> {
                 .clone()
                 .unwrap(),
         }),
-        block_dir: service_dir(&service_block).to_owned(),
+        block_dir: service_dir(&service_block),
         injection_store,
         flow: parent_flow.as_ref().map(|f| f.path_str.clone()),
         inputs_def_patch,
@@ -101,8 +101,7 @@ pub fn run_service_block(args: RunServiceBlockArgs) -> Option<BlockJobHandle> {
         parent_flow.as_ref().map(|f| f.path_str.clone()),
     );
 
-    let mut spawn_handles: Vec<tokio::task::JoinHandle<()>> = Vec::new();
-    spawn_handles.push(worker_listener_handle);
+    let spawn_handles: Vec<tokio::task::JoinHandle<()>> = vec![worker_listener_handle];
 
     Some(BlockJobHandle::new(
         job_id.to_owned(),
@@ -130,7 +129,7 @@ fn service_executor_options(service_block: &ServiceBlock) -> ServiceExecutorOpti
         function: executor.function.clone(),
         start_at: executor.start_at.clone(),
         stop_at: executor.stop_at.clone(),
-        keep_alive: executor.keep_alive.clone(),
+        keep_alive: executor.keep_alive,
     }
 }
 
@@ -155,15 +154,15 @@ fn send_to_service(
 
     let service_executor_option = service_executor_options(service_block);
 
-    return scheduler_tx.send_to_service(ServiceParams {
+    scheduler_tx.send_to_service(ServiceParams {
         executor_name: &executor_name,
         block_name: &service_block.name,
         job_id: job_id.to_owned(),
-        stacks: &stacks.vec(),
+        stacks: stacks.vec(),
         dir,
         options: &service_executor_option,
         outputs: &service_block.outputs_def,
-        scope: &scope,
+        scope,
         flow: &flow,
-    });
+    })
 }

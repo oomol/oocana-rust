@@ -1,3 +1,4 @@
+use core::str;
 use std::{collections::HashMap, fmt, process::Command};
 
 fn ovmlayer_bin() -> Command {
@@ -16,7 +17,7 @@ fn ovmlayer_bin() -> Command {
 
 pub fn create_layer_cmd(name: &str) -> Command {
     let mut binding = ovmlayer_bin();
-    binding.args(&["create", name]);
+    binding.args(["create", name]);
     binding
 }
 
@@ -42,7 +43,7 @@ pub fn list_layer_cmd(t: Option<LayerType>) -> Command {
 
 pub fn export_layer_cmd(name: &str, dest: &str) -> Command {
     let mut binding = ovmlayer_bin();
-    binding.args(&[
+    binding.args([
         "export",
         &format!("--layer={name}"),
         &format!("--dest={dest}"),
@@ -52,19 +53,19 @@ pub fn export_layer_cmd(name: &str, dest: &str) -> Command {
 
 pub fn import_layer_cmd(file: &str) -> Command {
     let mut binding = ovmlayer_bin();
-    binding.args(&["import", file]);
+    binding.args(["import", file]);
     binding
 }
 
 pub fn delete_layer_cmd(name: &str) -> Command {
     let mut binding = ovmlayer_bin();
-    binding.args(&["delete", name]);
+    binding.args(["delete", name]);
     binding
 }
 
 pub fn delete_all_layer_and_merge_point_cmd() -> Command {
     let mut binding = ovmlayer_bin();
-    binding.args(&["delete", "--all"]);
+    binding.args(["delete", "--all"]);
     binding
 }
 
@@ -83,7 +84,7 @@ pub fn merge_cmd(layers: &Vec<String>, merge_point: &str) -> Command {
 
 pub fn unmerge_cmd(merge_point: &str) -> Command {
     let mut binding = ovmlayer_bin();
-    binding.args(&["unmerge", merge_point]);
+    binding.args(["unmerge", merge_point]);
     binding
 }
 
@@ -127,10 +128,10 @@ impl TryFrom<&str> for BindPath {
         let mut readonly = None;
         let mut recursive = None;
         for part in &parts {
-            if part.starts_with("src=") {
-                src = Some(part[4..].to_string());
-            } else if part.starts_with("dst=") {
-                dst = Some(part[4..].to_string());
+            if let Some(stripped) = part.strip_prefix("src=") {
+                src = stripped.to_string().into();
+            } else if let Some(stripped) = part.strip_prefix("dst=") {
+                dst = stripped.to_string().into();
             } else if *part == "ro" && readonly.is_none() {
                 readonly = Some(true)
             } else if *part == "rw" && readonly.is_none() {
@@ -233,7 +234,7 @@ pub fn run_cmd(
     }
 
     for (env_key, env_value) in envs {
-        options.push(format!("--env"));
+        options.push("--env".to_string());
         options.push(format!("{}={}", env_key, env_value));
     }
     if let Some(env_file) = env_file {

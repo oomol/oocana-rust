@@ -129,7 +129,7 @@ pub enum ReporterMessage<'a> {
     },
 }
 
-impl<'a> ReporterMessage<'a> {
+impl ReporterMessage<'_> {
     pub fn now() -> u128 {
         SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -174,7 +174,7 @@ impl ReporterTx {
             session_id: &self.session_id,
             finish_at: ReporterMessage::now(),
             path,
-            error: &err,
+            error: err,
         });
     }
 

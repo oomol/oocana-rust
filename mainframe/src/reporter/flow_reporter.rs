@@ -33,7 +33,7 @@ impl FlowReporterTx {
             path,
             stacks,
             tx,
-            is_block: is_block,
+            is_block,
         }
     }
 
@@ -43,15 +43,15 @@ impl FlowReporterTx {
                 session_id: &self.tx.session_id,
                 job_id: &self.job_id,
                 block_path: &self.path,
-                inputs: &inputs,
-                stacks: &self.stacks.vec(),
+                inputs,
+                stacks: self.stacks.vec(),
                 create_at: ReporterMessage::now(),
             }),
             false => self.tx.send(ReporterMessage::FlowStarted {
                 session_id: &self.tx.session_id,
                 job_id: &self.job_id,
                 flow_path: &self.path,
-                stacks: &self.stacks.vec(),
+                stacks: self.stacks.vec(),
                 create_at: ReporterMessage::now(),
             }),
         }
@@ -64,7 +64,7 @@ impl FlowReporterTx {
                 session_id: &self.tx.session_id,
                 job_id: &self.job_id,
                 flow_path: &self.path,
-                stacks: &self.stacks.vec(),
+                stacks: self.stacks.vec(),
                 mid_nodes: mid,
                 start_nodes: start,
                 end_nodes: end,
@@ -78,16 +78,16 @@ impl FlowReporterTx {
                 session_id: &self.tx.session_id,
                 job_id: &self.job_id,
                 block_path: &self.path,
-                stacks: &self.stacks.vec(),
-                error: error,
+                stacks: self.stacks.vec(),
+                error,
                 finish_at: ReporterMessage::now(),
             }),
             false => self.tx.send(ReporterMessage::FlowFinished {
                 session_id: &self.tx.session_id,
                 job_id: &self.job_id,
                 flow_path: &self.path,
-                stacks: &self.stacks.vec(),
-                error: error,
+                stacks: self.stacks.vec(),
+                error,
                 finish_at: ReporterMessage::now(),
             }),
         }
@@ -99,7 +99,7 @@ impl FlowReporterTx {
                 session_id: &self.tx.session_id,
                 job_id: &self.job_id,
                 block_path: &self.path,
-                stacks: &self.stacks.vec(),
+                stacks: self.stacks.vec(),
                 output: result,
                 handle,
             })

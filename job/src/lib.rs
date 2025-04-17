@@ -62,6 +62,12 @@ pub struct BlockJobStackLevel {
 #[derive(Debug, Clone)]
 pub struct BlockJobStacks(Arc<Vec<BlockJobStackLevel>>);
 
+impl Default for BlockJobStacks {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl BlockJobStacks {
     pub fn new() -> Self {
         Self(Arc::new(Vec::new()))

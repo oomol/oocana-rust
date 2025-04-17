@@ -169,8 +169,8 @@ impl ExecutePayload<'_> {
 #[async_trait]
 pub trait SchedulerTxImpl {
     async fn send_inputs(&self, job_id: &JobId, data: MessageData);
-    async fn run_block(&self, executor_name: &String, data: MessageData);
-    async fn run_service_block(&self, executor_name: &String, data: MessageData);
+    async fn run_block(&self, executor_name: &str, data: MessageData);
+    async fn run_service_block(&self, executor_name: &str, data: MessageData);
     async fn disconnect(&self);
 }
 
@@ -321,11 +321,11 @@ impl SchedulerTx {
         self.tx
             .send(SchedulerCommand::SendInputs {
                 job_id,
-                stacks: stacks,
+                stacks,
                 block_path,
-                inputs: inputs,
+                inputs,
                 inputs_def,
-                inputs_def_patch: inputs_def_patch,
+                inputs_def_patch,
             })
             .unwrap();
     }
@@ -347,10 +347,10 @@ impl SchedulerTx {
                             None => RunningScope::default(),
                         }
                     } else {
-                        return scope.clone();
+                        scope.clone()
                     }
                 } else {
-                    return scope.clone();
+                    scope.clone()
                 }
             }
             None => scope.clone(),
@@ -376,7 +376,7 @@ impl SchedulerTx {
             .send(SchedulerCommand::ExecuteBlock {
                 job_id,
                 executor_name: executor_name.to_owned(),
-                dir: dir.to_owned(),
+                dir,
                 stacks: stacks.clone(),
                 scope,
                 outputs: outputs.clone(),
@@ -524,7 +524,7 @@ fn spawn_executor(
             "nodejs" => {
                 let port = free_local_ipv4_port_in_range(9230..=9999)
                     .map(|p| format!("{}", p))
-                    .ok_or(format!("Failed to get free port from 9230 to 9999"))?;
+                    .ok_or("Failed to get free port from 9230 to 9999".to_string())?;
                 match *wait_for_client {
                     true => vec![
                         "--enable-source-maps".to_owned(),
@@ -536,7 +536,7 @@ fn spawn_executor(
             "python" => {
                 let port = free_local_ipv4_port_in_range(5678..=9000)
                     .map(|p| format!("{}", p))
-                    .ok_or(format!("Failed to get free port from 5678 to 9000"))?;
+                    .ok_or("Failed to get free port from 5678 to 9000".to_string())?;
                 match *wait_for_client {
                     true => vec![
                         "--debug-port".to_owned(),
@@ -556,7 +556,7 @@ fn spawn_executor(
         .filter(|(key, _)| key.starts_with("OOMOL_") || pass_through_env_keys.contains(key))
         .collect();
 
-    envs.insert(format!("IS_FORKED"), format!("1"));
+    envs.insert("IS_FORKED".to_string(), "1".to_string());
 
     tracing::debug!("pass through these env keys: {:?}", envs.keys());
 
@@ -584,14 +584,14 @@ fn spawn_executor(
             tmp_dir.as_str(),
         ];
 
-        if identifier.len() > 0 {
+        if !identifier.is_empty() {
             exec_form_cmd.push("--identifier");
             exec_form_cmd.push(&identifier);
         }
 
-        if scope_package.is_some() {
+        if let Some(ref scope_package) = scope_package {
             exec_form_cmd.push("--package");
-            exec_form_cmd.push(&scope_package.as_ref().unwrap());
+            exec_form_cmd.push(scope_package.as_str());
         }
 
         for p in debug_parameters.iter() {
@@ -600,7 +600,7 @@ fn spawn_executor(
 
         executor_package = Some(package_path_str.to_string());
 
-        let log_filename = format!("ovmlayer-{}-{}", executor_bin.to_owned(), identifier);
+        let log_filename = format!("ovmlayer-{}-{}", executor_bin, identifier);
 
         let log_dir = utils::logger::logger_dir();
         envs.insert(
@@ -609,18 +609,18 @@ fn spawn_executor(
         );
 
         let script_str = layer::convert_to_script(&exec_form_cmd);
-        let cmd = pkg_layer.run_command(&script_str, &envs, &env_file);
 
-        cmd
+        pkg_layer.run_command(&script_str, &envs, env_file)
     } else {
         envs.insert(
             "OOCANA_PKG_DIR".to_string(),
-            PathBuf::from(scope.workspace())
+            scope
+                .workspace()
                 .join(PKG_DIR)
                 .to_string_lossy()
                 .to_string(),
         );
-        for (key, value) in utils::env::load_env_from_file(&env_file) {
+        for (key, value) in utils::env::load_env_from_file(env_file) {
             if envs.contains_key(&key) {
                 // TODO: consider whether to skip the env key or not.
                 warn!("env key {} is already in envs, skip", key);
@@ -640,7 +640,7 @@ fn spawn_executor(
             tmp_dir.as_str(),
         ];
 
-        if identifier.len() > 0 {
+        if !identifier.is_empty() {
             args.push("--identifier");
             args.push(&identifier);
         }
@@ -649,12 +649,12 @@ fn spawn_executor(
             args.push(p);
         }
 
-        if scope_package.is_some() {
+        if let Some(ref scope_package) = scope_package {
             args.push("--package");
-            args.push(&scope_package.as_ref().unwrap());
+            args.push(scope_package.as_str());
         }
 
-        let mut cmd = process::Command::new(executor_bin.to_owned());
+        let mut cmd = process::Command::new(&executor_bin);
         cmd.args(args);
         cmd
     };
@@ -669,8 +669,6 @@ fn spawn_executor(
     let mut tokio_command = tokioCommand::from(command);
 
     let child = tokio_command.spawn();
-
-    let tx = tx.clone();
 
     let executor_map_clone = executor_map.clone();
     let txx = tx.clone();
@@ -706,7 +704,7 @@ fn spawn_executor(
                 executor_map_name.clone(),
                 ExecutorState {
                     spawn_state: ExecutorSpawnState::Spawned,
-                    pid: pid.clone(),
+                    pid,
                 },
             );
             drop(map);
@@ -728,18 +726,14 @@ fn spawn_executor(
             if let Some(stderr) = ch.stderr.take() {
                 let mut reader = tokio::io::BufReader::new(stderr).lines();
                 let executor_bin_clone = executor_bin.clone();
-                let identifier_clone = identifier.clone();
 
                 tokio::spawn(async move {
                     while let Ok(Some(line)) = reader.next_line().await {
-                        error!(
-                            "{} ({}) stderr: {}",
-                            executor_bin_clone, identifier_clone, line
-                        );
+                        error!("{} ({}) stderr: {}", executor_bin_clone, identifier, line);
                     }
                 });
             }
-            let executor_bin_clone = executor_bin.clone();
+            let executor_bin_clone = executor_bin;
             let executor_map_clone = executor_map.clone();
             let executor_map_name_clone = executor_map_name.clone();
 
@@ -781,12 +775,12 @@ fn spawn_executor(
                 }
             });
             info!("{} spawn success", executor_map_name);
-            return Result::Ok(());
+            Result::Ok(())
         }
         Err(e) => {
             let mut write_map = executor_map.write().unwrap();
             write_map.insert(
-                executor_map_name.clone(),
+                executor_map_name,
                 ExecutorState {
                     spawn_state: ExecutorSpawnState::None,
                     pid: None,
@@ -798,7 +792,7 @@ fn spawn_executor(
             }
             let message = format!("Failed to spawn {}. {}", executor_bin, e);
             error!(message);
-            return Result::Err(Error::new(&message));
+            Result::Err(Error::new(&message))
         }
     }
 }
@@ -813,7 +807,7 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
         flow,
     } = params;
     let no_layer_feature = !layer::feature_enabled();
-    let executor_map_name = generate_executor_map_name(executor_name, &scope);
+    let executor_map_name = generate_executor_map_name(executor_name, scope);
 
     let executor_state = {
         let read_map = executor_map
@@ -834,7 +828,7 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
             layer: None,
         });
     } else if no_layer_feature {
-        let pkg_dir = PathBuf::from(scope.workspace()).join(PKG_DIR);
+        let pkg_dir = scope.workspace().join(PKG_DIR);
         if !pkg_dir.exists() {
             std::fs::create_dir_all(&pkg_dir).unwrap_or_else(|e| {
                 tracing::warn!("Failed to create pkg_dir: {:?}, error: {}", pkg_dir, e);
@@ -865,7 +859,7 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
                                 .as_ref(),
                             &format!(
                                 "{}/{}",
-                                pkg.to_string_lossy().to_string(),
+                                pkg.to_string_lossy(),
                                 node.relative_entry
                                     .parent()
                                     .map(|p| p.to_string_lossy().to_string())
@@ -910,7 +904,7 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
                         package_version: &meta.package_version,
                         package_path: &path_str,
                         scripts: &scripts,
-                        flow: &flow.as_ref().unwrap_or(&"".to_string()),
+                        flow: flow.as_ref().unwrap_or(&"".to_string()),
                     });
 
                     if let Err(e) = result {
@@ -922,7 +916,7 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
 
         Some(runtime_layer)
     } else {
-        let pkg_dir = PathBuf::from(scope.workspace()).join(PKG_DIR);
+        let pkg_dir = scope.workspace().join(PKG_DIR);
         if !pkg_dir.exists() {
             std::fs::create_dir_all(&pkg_dir).unwrap_or_else(|e| {
                 tracing::warn!("Failed to create pkg_dir: {:?}, error: {}", pkg_dir, e);
@@ -977,7 +971,7 @@ where
             loop {
                 match rx.recv_async().await {
                     Ok(SchedulerCommand::RegisterSubscriber(job_id, sender)) => {
-                        debug_assert!(subscribers.get(&job_id).is_none());
+                        debug_assert!(!subscribers.contains_key(&job_id));
                         subscribers.insert(job_id, sender);
                     }
                     Ok(SchedulerCommand::UnregisterSubscriber(job_id)) => {
@@ -1072,7 +1066,7 @@ where
                                 block_name: &block_name,
                                 service_executor: &service_executor,
                                 outputs: &outputs,
-                                service_hash: service_hash,
+                                service_hash,
                                 identifier: &identifier,
                             })
                             .unwrap();
@@ -1233,7 +1227,7 @@ where
                                         executor_map_name,
                                         ExecutorState {
                                             spawn_state: ExecutorSpawnState::Ready,
-                                            pid: pid,
+                                            pid,
                                         },
                                     );
 
@@ -1251,7 +1245,7 @@ where
                                 }
                                 _ => {
                                     if let Some(sender) =
-                                        msg.job_id().and_then(|f| subscribers.get(&f))
+                                        msg.job_id().and_then(|f| subscribers.get(f))
                                     {
                                         sender.send(msg).unwrap();
                                     }
@@ -1345,7 +1339,7 @@ where
             impl_tx,
             impl_rx,
             executor_map: default::Default::default(),
-            executor_payload: executor_payload,
+            executor_payload,
             tx,
             rx,
         },

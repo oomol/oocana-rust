@@ -10,7 +10,7 @@ pub use self::block::handle::{
 pub use self::block::{InputHandles, OutputHandles};
 pub use self::block::{ServiceBlock, SlotBlock, SubflowBlock, TaskBlock};
 pub use self::block::{SpawnOptions, TaskBlockExecutor};
-pub use self::node::node::{
+pub use self::node::definition::{
     Injection, InjectionTarget, Node, NodeId, ServiceNode, SlotNode, SlotNodeBlock, SubflowNode,
     SubflowNodeSlots, TaskNode, TaskNodeBlock, ValueNode,
 };

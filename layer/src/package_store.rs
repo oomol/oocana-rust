@@ -98,7 +98,7 @@ pub fn get_or_create_package_layer<P: AsRef<Path>>(
                     bind_path,
                     package_path.to_path_buf(),
                     envs,
-                    &env_file,
+                    env_file,
                 )?;
                 let mut store = load_package_store()?;
                 store
@@ -116,7 +116,7 @@ pub fn get_or_create_package_layer<P: AsRef<Path>>(
                 bind_path,
                 package_path.to_path_buf(),
                 envs,
-                &env_file,
+                env_file,
             )?;
             let mut store = load_package_store()?;
             store
@@ -274,7 +274,7 @@ pub fn load_package_store() -> Result<PackageLayerStore> {
         return load_package_store();
     }
 
-    return Ok(store);
+    Ok(store)
 }
 
 pub fn add_import_package(pkg: &PackageLayer) -> Result<()> {

@@ -51,7 +51,7 @@ pub fn setup_logging<P: AsRef<Path>>(params: LogParams<P>) -> Result<non_blockin
     *LOGGER_DIR.lock().unwrap() = logger_dir.clone();
     let file_path = logger_dir.join(format!("{}.log", log_name));
 
-    let f = create_file_with_dirs(file_path.to_owned())?;
+    let f = create_file_with_dirs(&file_path)?;
 
     let (non_blocking, guard) = non_blocking(f);
     let file_layer = fmt::Layer::default()
@@ -66,7 +66,7 @@ pub fn setup_logging<P: AsRef<Path>>(params: LogParams<P>) -> Result<non_blockin
 
     // 主动要求输出时，不使用 ansi color
     #[allow(unused_assignments, unused_mut)]
-    let mut show_ansi_color = if output_to_console { false } else { true };
+    let mut show_ansi_color = !output_to_console;
 
     #[cfg(debug_assertions)]
     {
@@ -130,7 +130,7 @@ fn create_file_with_dirs<P: AsRef<Path>>(file_path: P) -> io::Result<File> {
     }
     // File::create(file_path)
     File::options()
-        .write(true)
+        
         .create(true)
         .append(true)
         .open(file_path)

@@ -16,6 +16,12 @@ pub struct BlockResolver {
     service_cache: Option<HashMap<BlockPath, Service>>,
 }
 
+impl Default for BlockResolver {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl BlockResolver {
     pub fn new() -> Self {
         Self {

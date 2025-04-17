@@ -23,7 +23,7 @@ pub fn search_block_manifest(params: BlockManifestParams) -> Option<PathBuf> {
         pkg_version,
     } = params;
 
-    let block_type = get_block_value_type(&value);
+    let block_type = get_block_value_type(value);
     match block_type {
         BlockValueType::SelfBlock => {
             let block_name = &value[6..];
@@ -32,51 +32,47 @@ pub fn search_block_manifest(params: BlockManifestParams) -> Option<PathBuf> {
             self_manifest_path.pop();
             self_manifest_path.push(block_dir);
             self_manifest_path.push(block_name);
-            return find_manifest_yaml_file(&self_manifest_path, &base_name);
+            find_manifest_yaml_file(&self_manifest_path, base_name)
         }
         BlockValueType::Direct => {
             let manifest_path = vec![value.to_owned()];
-            return find_block_manifest_file(BlockSearchParams {
+            find_block_manifest_file(BlockSearchParams {
                 manifest_path: &manifest_path,
-                base_name: base_name,
+                base_name,
                 flow_dir: working_dir,
                 search_paths,
                 manifest_maybe_file: true,
-            });
+            })
         }
         BlockValueType::Pkg => {
-            let (block_name, pkg_name) = get_block_name_and_pkg(&value);
+            let (block_name, pkg_name) = get_block_name_and_pkg(value);
             let manifest_path = if let Some(ref pkg) = pkg_name {
                 if let Some(version) = pkg_version.get(pkg) {
                     // {pkg_name}-{version}
                     let pkg = format!("{}-{}", pkg, version);
-                    vec![pkg, block_dir.to_string(), block_name.to_string()]
+                    vec![pkg, block_dir.to_string(), block_name]
                 } else {
-                    vec![
-                        pkg.to_string(),
-                        block_dir.to_string(),
-                        block_name.to_string(),
-                    ]
+                    vec![pkg.to_string(), block_dir.to_string(), block_name]
                 }
             } else {
                 // 按理说，不应该走到这里，因为这种情况应该是直接的 block_name
-                vec![block_name.to_owned()]
+                vec![block_name]
             };
-            return find_block_manifest_file(BlockSearchParams {
+            find_block_manifest_file(BlockSearchParams {
                 manifest_path: &manifest_path,
-                base_name: base_name,
+                base_name,
                 flow_dir: working_dir,
                 search_paths,
                 manifest_maybe_file: false,
-            });
+            })
         }
         BlockValueType::AbsPath => {
             let block_manifest_path = Path::new(&value);
-            return find_manifest_yaml_file(&block_manifest_path, &base_name);
+            find_manifest_yaml_file(block_manifest_path, base_name)
         }
         BlockValueType::RelPath => {
-            let block_manifest_path = working_dir.join(&value);
-            return find_manifest_yaml_file(&block_manifest_path, &base_name);
+            let block_manifest_path = working_dir.join(value);
+            find_manifest_yaml_file(&block_manifest_path, base_name)
         }
     }
 }
@@ -84,12 +80,12 @@ pub fn search_block_manifest(params: BlockManifestParams) -> Option<PathBuf> {
 /// Parse block value to package name and block name.
 /// return block_name and pkg name(Option).
 fn get_block_name_and_pkg(block_value: &str) -> (String, Option<String>) {
-    let parts: Vec<&str> = block_value.split("::").filter(|s| s.len() > 0).collect();
+    let parts: Vec<&str> = block_value.split("::").filter(|s| !s.is_empty()).collect();
 
     if parts.len() == 1 {
-        return (parts[0].to_string(), None);
+        (parts[0].to_string(), None)
     } else {
-        return (parts[1].to_string(), Some(parts[0].to_string()));
+        (parts[1].to_string(), Some(parts[0].to_string()))
     }
 }
 
@@ -152,11 +148,8 @@ fn find_block_manifest_file(params: BlockSearchParams) -> Option<PathBuf> {
 
     for search_path in search_paths.iter() {
         let candidate_path = search_path.join(manifest_path.iter().collect::<PathBuf>());
-        let file_path = find_oo_yaml_in_dir(&candidate_path, &base_name);
-        match file_path {
-            Some(path) => return canonicalize(&path).ok(),
-            _ => {}
-        }
+        let file_path = find_oo_yaml_in_dir(&candidate_path, base_name);
+        if let Some(path) = file_path { return canonicalize(&path).ok() }
     }
 
     let candidate_path = flow_dir.join(manifest_path.iter().collect::<PathBuf>());
@@ -181,10 +174,7 @@ fn find_manifest_yaml_file(file_or_dir_path: &Path, base_name: &str) -> Option<P
 }
 
 fn is_normal_path_component(component: Component) -> bool {
-    match component {
-        Component::Normal(_) => true,
-        _ => false,
-    }
+    matches!(component, Component::Normal(_))
 }
 
 #[cfg(test)]

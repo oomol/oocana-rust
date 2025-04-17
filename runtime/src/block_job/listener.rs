@@ -149,13 +149,13 @@ pub fn listen_to_worker(args: ListenerArgs) -> tokio::task::JoinHandle<()> {
                         continue;
                     }
 
-                    let error_message = Some(format!(
+                    let error_message = format!(
                         "Executor {} identifier {:?} for package {:?} timeout after 5s",
                         executor_name, identifier, package
-                    ));
+                    );
 
-                    reporter.done(&error_message);
-                    block_status.error(error_message.unwrap_or_default());
+                    block_status.error(error_message.clone());
+                    reporter.done(&Some(error_message));
                 }
                 scheduler::ReceiveMessage::BlockReady { job_id, .. } => {
                     has_executor_response = true;
@@ -195,21 +195,22 @@ pub fn listen_to_worker(args: ListenerArgs) -> tokio::task::JoinHandle<()> {
                         .and_then(|outputs| outputs.get(&handle))
                         .and_then(|output| output.json_schema.as_ref())
                         .and_then(|schema| match schema {
-                            Value::Object(obj) => obj.get("contentMediaType").and_then(
-                                |media_type| match media_type {
-                                    Value::String(t) => {
-                                        let is_basic_type = result.is_boolean()
-                                            || result.is_number()
-                                            || result.is_string();
-                                        match t.as_str() {
-                                            OOMOL_VAR_DATA if !is_basic_type => Some(false),
-                                            OOMOL_BIN_DATA | OOMOL_SECRET_DATA => Some(false),
-                                            _ => Some(true),
+                            Value::Object(obj) => {
+                                obj.get("contentMediaType")
+                                    .map(|media_type| match media_type {
+                                        Value::String(t) => {
+                                            let is_basic_type = result.is_boolean()
+                                                || result.is_number()
+                                                || result.is_string();
+                                            match t.as_str() {
+                                                OOMOL_VAR_DATA if !is_basic_type => false,
+                                                OOMOL_BIN_DATA | OOMOL_SECRET_DATA => false,
+                                                _ => true,
+                                            }
                                         }
-                                    }
-                                    _ => Some(true),
-                                },
-                            ),
+                                        _ => true,
+                                    })
+                            }
                             _ => Some(true),
                         })
                         .unwrap_or(true);

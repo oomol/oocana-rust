@@ -30,7 +30,7 @@ impl BlockPathFinder {
             .unwrap_or_default();
 
         Self {
-            base_dir: base_dir,
+            base_dir,
             cache: HashMap::new(),
             search_paths: Arc::new(search_paths.unwrap_or_default()),
             pkg_version,
@@ -42,11 +42,11 @@ impl BlockPathFinder {
 
         // subflow should be in a/b/c/flows/flow1/flow.oo.yaml. package.oo.yaml is in a/b/c.
         let pkg_version = flow_path
-            .clone()
+            
             .parent()
             .and_then(|f| f.parent())
             .and_then(|f| f.parent())
-            .and_then(|f| find_package_file(f))
+            .and_then(find_package_file)
             .and_then(|pkg_path| read_package(pkg_path).ok())
             .and_then(|pkg| pkg.dependencies)
             .unwrap_or_default();

@@ -23,8 +23,8 @@ pub fn expand_home<P: AsRef<Path>>(path: P) -> String {
             };
             return home.join(stripped_path).to_string_lossy().to_string();
         }
-        return path.to_string_lossy().to_string();
+        path.to_string_lossy().to_string()
     } else {
-        return path.to_string_lossy().to_string();
+        path.to_string_lossy().to_string()
     }
 }

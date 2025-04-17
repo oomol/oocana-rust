@@ -96,7 +96,7 @@ pub fn find_upstream(upstream_args: UpstreamArgs) -> (Vec<String>, Vec<String>, 
         &flow_block,
         &mut node_input_values,
     );
-    return (node_will_run, waiting_nodes, upstream_nodes);
+    (node_will_run, waiting_nodes, upstream_nodes)
 }
 
 pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
@@ -130,22 +130,15 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
 
     // 暂时默认，不由外部参数来决定
     let save_cache = true;
-    let mut run_flow_ctx = if shared.use_cache && flow_cache_path.is_some() {
-        RunFlowContext {
-            node_input_values: NodeInputValues::recover_from(flow_cache_path.unwrap(), save_cache),
-            parent_block_status,
-            jobs: HashMap::new(),
-            block_status: block_status_tx,
-            node_queue_pool: HashMap::new(),
-        }
-    } else {
-        RunFlowContext {
-            node_input_values: NodeInputValues::new(save_cache),
-            parent_block_status,
-            jobs: HashMap::new(),
-            block_status: block_status_tx,
-            node_queue_pool: HashMap::new(),
-        }
+    let mut run_flow_ctx = RunFlowContext {
+        node_input_values: match (shared.use_cache, flow_cache_path) {
+            (true, Some(path)) => NodeInputValues::recover_from(path, save_cache),
+            _ => NodeInputValues::new(save_cache),
+        },
+        parent_block_status,
+        jobs: HashMap::new(),
+        block_status: block_status_tx,
+        node_queue_pool: HashMap::new(),
     };
 
     if let Some(node_input_values) = input_values {
@@ -193,7 +186,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
         let mut runnable_nodes: Vec<String> = Vec::new();
         let mut pending_nodes: Vec<String> = Vec::new();
         for node in flow_shared.flow_block.nodes.values() {
-            if run_flow_ctx.node_input_values.is_node_fulfill(&node) {
+            if run_flow_ctx.node_input_values.is_node_fulfill(node) {
                 runnable_nodes.push(node.node_id().to_string());
             } else {
                 pending_nodes.push(node.node_id().to_string());
@@ -261,23 +254,20 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
 
                         for froms in flow_shared.flow_block.flow_outputs_froms.values() {
                             for from in froms {
-                                match from {
-                                    HandleFrom::FromNodeOutput {
-                                        node_id,
-                                        node_output_handle,
-                                    } => {
-                                        if node_output_handle.eq(&handle) && node_id == &job_node_id
-                                        {
-                                            run_flow_ctx.parent_block_status.result(
-                                                flow_shared.job_id.to_owned(),
-                                                Arc::clone(&result),
-                                                handle.to_owned(),
-                                                done,
-                                            );
-                                            reporter.result(Arc::clone(&result), &handle)
-                                        }
+                                if let HandleFrom::FromNodeOutput {
+                                    node_id,
+                                    node_output_handle,
+                                } = from
+                                {
+                                    if node_output_handle.eq(&handle) && node_id == &job_node_id {
+                                        run_flow_ctx.parent_block_status.result(
+                                            flow_shared.job_id.to_owned(),
+                                            Arc::clone(&result),
+                                            handle.to_owned(),
+                                            done,
+                                        );
+                                        reporter.result(Arc::clone(&result), &handle)
                                     }
-                                    _ => {}
                                 }
                             }
                         }
@@ -286,7 +276,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                 block_status::Status::Done { job_id, error } => {
                     run_pending_node(job_id.to_owned(), &flow_shared, &mut run_flow_ctx);
 
-                    if let Some(_) = error {
+                    if error.is_some() {
                         save_flow_cache(
                             &run_flow_ctx.node_input_values,
                             &flow_shared.flow_block.path_str,
@@ -355,7 +345,7 @@ fn run_pending_node(job_id: JobId, flow_shared: &FlowShared, run_flow_ctx: &mut 
         if let Some(node) = flow_shared.flow_block.nodes.get(&node_id) {
             let concurrency = node.concurrency();
             let jobs_count = node_queue.jobs.len();
-            if jobs_count < concurrency as usize && node_queue.pending.len() > 0 {
+            if jobs_count < concurrency as usize && !node_queue.pending.is_empty() {
                 if let Some(job_id) = node_queue.pending.iter().next().cloned() {
                     node_queue.pending.remove(&job_id);
                     run_node(node, flow_shared, run_flow_ctx);
@@ -368,13 +358,13 @@ fn run_pending_node(job_id: JobId, flow_shared: &FlowShared, run_flow_ctx: &mut 
 /// 第一个是可以直接 run 的节点(会包含部分可以直接跑的 origin_nodes）
 /// 第二个是等待的节点 nodes（不包含 origin_nodes）
 /// 第三个是所有的上游 nodes（不包含 origin_nodes）
-fn find_upstream_nodes<'a>(
+fn find_upstream_nodes(
     origin_nodes: &HashSet<NodeId>,
-    flow_block: &'a SubflowBlock,
+    flow_block: &SubflowBlock,
     node_input_values: &mut NodeInputValues,
 ) -> (Vec<String>, Vec<String>, Vec<String>) {
     let (node_not_found, out_of_side_nodes, node_can_run_directly) =
-        calc_nodes(&origin_nodes, &flow_block, node_input_values);
+        calc_nodes(origin_nodes, flow_block, node_input_values);
     // 两部分：
     // 1. nodes 中可以直接 run 的
     // 2. nodes 中的依赖节点中可以直接 run 的节点
@@ -383,7 +373,7 @@ fn find_upstream_nodes<'a>(
         .map(|node| node.node_id().to_owned().into())
         .collect::<Vec<String>>();
 
-    if node_not_found.len() > 0 {
+    if !node_not_found.is_empty() {
         let not_found_message = node_not_found
             .iter()
             .map(|node_id| node_id.to_string())
@@ -405,7 +395,7 @@ fn find_upstream_nodes<'a>(
         }
     }
 
-    return (nodes_will_run, waiting_nodes, upstream_nodes);
+    (nodes_will_run, waiting_nodes, upstream_nodes)
 }
 
 fn calc_nodes<'a>(
@@ -418,11 +408,11 @@ fn calc_nodes<'a>(
     let mut node_will_run = Vec::new();
 
     for node_id in nodes {
-        if let Some(node) = flow_block.nodes.get(&node_id) {
+        if let Some(node) = flow_block.nodes.get(node_id) {
             let n = RunToNode::new(
-                &flow_block,
+                flow_block,
                 Some(node_id.to_owned()),
-                Some(&node_input_values),
+                Some(node_input_values),
             );
 
             let nodes_without_self = nodes
@@ -501,7 +491,7 @@ fn produce_new_value(
                     if ctx.node_input_values.is_node_fulfill(node) {
                         let node_queue = ctx.node_queue_pool.entry(node_id.to_owned()).or_default();
                         if node_queue.jobs.len() < node.concurrency() as usize {
-                            run_node(node, &shared, ctx);
+                            run_node(node, shared, ctx);
                         } else {
                             // 说明这次数据填平了一次 pending
                             if ctx.node_input_values.node_pending_fulfill(node_id)
@@ -547,7 +537,7 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
 
     let handle = run_block({
         RunBlockArgs {
-            block: node.block().to_owned(),
+            block: node.block(),
             shared: Arc::clone(&shared.shared),
             parent_flow: Some(Arc::clone(&shared.flow_block)),
             stacks: shared.stacks.stack(

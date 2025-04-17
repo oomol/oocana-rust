@@ -27,7 +27,7 @@ impl BlockReporterTx {
             session_id: &self.tx.session_id,
             job_id: &self.job_id,
             block_path: &self.block_path,
-            stacks: &self.stacks.vec(),
+            stacks: self.stacks.vec(),
             inputs,
             create_at: ReporterMessage::now(),
         });
@@ -38,7 +38,7 @@ impl BlockReporterTx {
             session_id: &self.tx.session_id,
             job_id: &self.job_id,
             block_path: &self.block_path,
-            stacks: &self.stacks.vec(),
+            stacks: self.stacks.vec(),
             error,
             finish_at: ReporterMessage::now(),
         });
@@ -49,7 +49,7 @@ impl BlockReporterTx {
             session_id: &self.tx.session_id,
             job_id: &self.job_id,
             block_path: &self.block_path,
-            stacks: &self.stacks.vec(),
+            stacks: self.stacks.vec(),
             output: result,
             handle,
             done,
@@ -61,7 +61,7 @@ impl BlockReporterTx {
             session_id: &self.tx.session_id,
             job_id: &self.job_id,
             block_path: &self.block_path,
-            stacks: &self.stacks.vec(),
+            stacks: self.stacks.vec(),
             log,
             stdio,
         });
@@ -72,7 +72,7 @@ impl BlockReporterTx {
             session_id: &self.tx.session_id,
             job_id: &self.job_id,
             block_path: &self.block_path,
-            stacks: &self.stacks.vec(),
+            stacks: self.stacks.vec(),
             error,
         });
     }

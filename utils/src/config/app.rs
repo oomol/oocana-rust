@@ -1,4 +1,3 @@
-use super::config::{GlobalConfig, RunConfig};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
@@ -7,6 +6,8 @@ use lazy_static::lazy_static;
 use std::sync::Mutex;
 
 use dirs::home_dir;
+
+use super::{global_config::GlobalConfig, run_config::RunConfig};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct AppConfig {
@@ -43,14 +44,14 @@ pub fn load_config<P: AsRef<Path>>(file: Option<P>) -> Result<AppConfig, String>
         home_path.push(stripped_path);
         home_path
     } else if p.is_absolute() {
-        p.to_path_buf()
+        p
     } else if p.is_relative() {
         let mut current_dir =
             std::env::current_dir().map_err(|e| format!("Failed to get current dir: {:?}", e))?;
         current_dir.push(&p);
         current_dir
     } else {
-        p.to_path_buf()
+        p
     };
 
     // TODO: use config set_default to set default value

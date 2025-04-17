@@ -41,7 +41,7 @@ pub fn create_runtime_layer(
     envs: &HashMap<String, String>,
     env_file: &Option<String>,
 ) -> Result<RuntimeLayer> {
-    match get_or_create_package_layer(package, bind_paths, &envs, env_file) {
+    match get_or_create_package_layer(package, bind_paths, envs, env_file) {
         Ok(layer) => match create_runtime_layer_from_package_layer(&layer) {
             Ok(mut runtime_layer) => {
                 runtime_layer.add_bind_paths(bind_paths);
@@ -215,7 +215,7 @@ impl RuntimeLayer {
         self.run_injection_scripts(
             injection_layer_name,
             scripts.clone(),
-            &package_path,
+            package_path,
             &HashMap::default(), // TODO: implement envs for injection runtime layer
             &None,               // TODO: implement env_file for injection runtime layer
         )?;
@@ -239,7 +239,7 @@ impl RuntimeLayer {
                 tracing::warn!("cache path: {cache:?} not exist. skip this bind path");
                 continue;
             }
-            bind_paths.push(BindPath::new(&cache, &cache, false, false));
+            bind_paths.push(BindPath::new(cache, cache, false, false));
         }
 
         let pkg_path = self.package_path.to_string_lossy().to_string();
@@ -279,7 +279,7 @@ impl RuntimeLayer {
 
             bind_paths.push(BindPath::new(
                 &script_path,
-                &script_run_path_str,
+                script_run_path_str,
                 false,
                 false,
             ));
@@ -296,7 +296,7 @@ impl RuntimeLayer {
                 envs,
                 env_file,
             );
-            cmd.arg(format!("{script}"));
+            cmd.arg(&script);
             let child = cmd.spawn()?;
 
             debug!("cmd: {:?}", cmd);
