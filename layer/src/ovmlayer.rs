@@ -233,7 +233,7 @@ pub fn run_cmd(
     }
 
     for (env_key, env_value) in envs {
-        options.push(format!("--env"));
+        options.push("--env".to_string());
         options.push(format!("{}={}", env_key, env_value));
     }
     if let Some(env_file) = env_file {

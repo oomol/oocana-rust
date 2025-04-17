@@ -286,7 +286,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                 block_status::Status::Done { job_id, error } => {
                     run_pending_node(job_id.to_owned(), &flow_shared, &mut run_flow_ctx);
 
-                    if let Some(_) = error {
+                    if error.is_some() {
                         save_flow_cache(
                             &run_flow_ctx.node_input_values,
                             &flow_shared.flow_block.path_str,
@@ -355,7 +355,7 @@ fn run_pending_node(job_id: JobId, flow_shared: &FlowShared, run_flow_ctx: &mut 
         if let Some(node) = flow_shared.flow_block.nodes.get(&node_id) {
             let concurrency = node.concurrency();
             let jobs_count = node_queue.jobs.len();
-            if jobs_count < concurrency as usize && node_queue.pending.len() > 0 {
+            if jobs_count < concurrency as usize && !node_queue.pending.is_empty() {
                 if let Some(job_id) = node_queue.pending.iter().next().cloned() {
                     node_queue.pending.remove(&job_id);
                     run_node(node, flow_shared, run_flow_ctx);
@@ -368,9 +368,9 @@ fn run_pending_node(job_id: JobId, flow_shared: &FlowShared, run_flow_ctx: &mut 
 /// 第一个是可以直接 run 的节点(会包含部分可以直接跑的 origin_nodes）
 /// 第二个是等待的节点 nodes（不包含 origin_nodes）
 /// 第三个是所有的上游 nodes（不包含 origin_nodes）
-fn find_upstream_nodes<'a>(
+fn find_upstream_nodes(
     origin_nodes: &HashSet<NodeId>,
-    flow_block: &'a SubflowBlock,
+    flow_block: &SubflowBlock,
     node_input_values: &mut NodeInputValues,
 ) -> (Vec<String>, Vec<String>, Vec<String>) {
     let (node_not_found, out_of_side_nodes, node_can_run_directly) =
@@ -383,7 +383,7 @@ fn find_upstream_nodes<'a>(
         .map(|node| node.node_id().to_owned().into())
         .collect::<Vec<String>>();
 
-    if node_not_found.len() > 0 {
+    if !node_not_found.is_empty() {
         let not_found_message = node_not_found
             .iter()
             .map(|node_id| node_id.to_string())

@@ -296,7 +296,7 @@ impl RuntimeLayer {
                 envs,
                 env_file,
             );
-            cmd.arg(format!("{script}"));
+            cmd.arg(&script);
             let child = cmd.spawn()?;
 
             debug!("cmd: {:?}", cmd);

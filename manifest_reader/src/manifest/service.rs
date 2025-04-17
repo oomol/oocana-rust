@@ -32,8 +32,10 @@ pub struct Service {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Default)]
 pub enum StartAt {
     #[serde(rename = "block_start")]
+    #[default]
     Block,
     #[serde(rename = "session_start")]
     Session,
@@ -41,28 +43,20 @@ pub enum StartAt {
     App,
 }
 
-impl Default for StartAt {
-    fn default() -> Self {
-        StartAt::Block
-    }
-}
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Default)]
 pub enum StopAt {
     #[serde(rename = "block_end")]
     Block,
     #[serde(rename = "session_end")]
+    #[default]
     Session,
     #[serde(rename = "app_end")]
     App,
     Never,
 }
 
-impl Default for StopAt {
-    fn default() -> Self {
-        StopAt::Session
-    }
-}
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct TmpServiceExecutorOptions {

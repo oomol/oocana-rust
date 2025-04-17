@@ -524,7 +524,7 @@ fn spawn_executor(
             "nodejs" => {
                 let port = free_local_ipv4_port_in_range(9230..=9999)
                     .map(|p| format!("{}", p))
-                    .ok_or(format!("Failed to get free port from 9230 to 9999"))?;
+                    .ok_or("Failed to get free port from 9230 to 9999".to_string())?;
                 match *wait_for_client {
                     true => vec![
                         "--enable-source-maps".to_owned(),
@@ -536,7 +536,7 @@ fn spawn_executor(
             "python" => {
                 let port = free_local_ipv4_port_in_range(5678..=9000)
                     .map(|p| format!("{}", p))
-                    .ok_or(format!("Failed to get free port from 5678 to 9000"))?;
+                    .ok_or("Failed to get free port from 5678 to 9000".to_string())?;
                 match *wait_for_client {
                     true => vec![
                         "--debug-port".to_owned(),
@@ -556,7 +556,7 @@ fn spawn_executor(
         .filter(|(key, _)| key.starts_with("OOMOL_") || pass_through_env_keys.contains(key))
         .collect();
 
-    envs.insert(format!("IS_FORKED"), format!("1"));
+    envs.insert("IS_FORKED".to_string(), "1".to_string());
 
     tracing::debug!("pass through these env keys: {:?}", envs.keys());
 
@@ -584,7 +584,7 @@ fn spawn_executor(
             tmp_dir.as_str(),
         ];
 
-        if identifier.len() > 0 {
+        if !identifier.is_empty() {
             exec_form_cmd.push("--identifier");
             exec_form_cmd.push(&identifier);
         }
@@ -609,13 +609,13 @@ fn spawn_executor(
         );
 
         let script_str = layer::convert_to_script(&exec_form_cmd);
-        let cmd = pkg_layer.run_command(&script_str, &envs, env_file);
+        
 
-        cmd
+        pkg_layer.run_command(&script_str, &envs, env_file)
     } else {
         envs.insert(
             "OOCANA_PKG_DIR".to_string(),
-            PathBuf::from(scope.workspace())
+            scope.workspace()
                 .join(PKG_DIR)
                 .to_string_lossy()
                 .to_string(),
@@ -640,7 +640,7 @@ fn spawn_executor(
             tmp_dir.as_str(),
         ];
 
-        if identifier.len() > 0 {
+        if !identifier.is_empty() {
             args.push("--identifier");
             args.push(&identifier);
         }
@@ -704,7 +704,7 @@ fn spawn_executor(
                 executor_map_name.clone(),
                 ExecutorState {
                     spawn_state: ExecutorSpawnState::Spawned,
-                    pid: pid.clone(),
+                    pid,
                 },
             );
             drop(map);
@@ -828,7 +828,7 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
             layer: None,
         });
     } else if no_layer_feature {
-        let pkg_dir = PathBuf::from(scope.workspace()).join(PKG_DIR);
+        let pkg_dir = scope.workspace().join(PKG_DIR);
         if !pkg_dir.exists() {
             std::fs::create_dir_all(&pkg_dir).unwrap_or_else(|e| {
                 tracing::warn!("Failed to create pkg_dir: {:?}, error: {}", pkg_dir, e);
@@ -859,7 +859,7 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
                                 .as_ref(),
                             &format!(
                                 "{}/{}",
-                                pkg.to_string_lossy().to_string(),
+                                pkg.to_string_lossy(),
                                 node.relative_entry
                                     .parent()
                                     .map(|p| p.to_string_lossy().to_string())
@@ -916,7 +916,7 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
 
         Some(runtime_layer)
     } else {
-        let pkg_dir = PathBuf::from(scope.workspace()).join(PKG_DIR);
+        let pkg_dir = scope.workspace().join(PKG_DIR);
         if !pkg_dir.exists() {
             std::fs::create_dir_all(&pkg_dir).unwrap_or_else(|e| {
                 tracing::warn!("Failed to create pkg_dir: {:?}, error: {}", pkg_dir, e);

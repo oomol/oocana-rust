@@ -43,16 +43,16 @@ mod tests {
             Some(format!("{}/bind_path.env", home_dir))
         );
 
-        assert_eq!(global.search_paths.is_some(), true);
+        assert!(global.search_paths.is_some());
         assert_eq!(global.search_paths.unwrap().len(), 0);
 
         let run = config.run;
 
-        assert_eq!(run.exclude_packages.is_some(), true);
+        assert!(run.exclude_packages.is_some());
         assert_eq!(run.exclude_packages.unwrap().len(), 0);
 
         let extra = run.extra.unwrap();
-        assert_eq!(extra.search_paths.is_some(), true);
+        assert!(extra.search_paths.is_some());
         assert_eq!(extra.search_paths.unwrap().len(), 0);
     }
 

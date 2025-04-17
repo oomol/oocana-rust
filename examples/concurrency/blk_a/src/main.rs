@@ -8,10 +8,10 @@ async fn main() {
 
     sdk.output(&oocana_sdk::json!(result), "my_output", false);
 
-    result = result + 3;
+    result += 3;
     sdk.output(&oocana_sdk::json!(result), "my_output", false);
 
-    result = result + 3;
+    result += 3;
     sdk.output(&oocana_sdk::json!(result), "my_output", true);
 
     event_loop.wait().await;

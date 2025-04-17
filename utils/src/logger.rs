@@ -130,7 +130,7 @@ fn create_file_with_dirs<P: AsRef<Path>>(file_path: P) -> io::Result<File> {
     }
     // File::create(file_path)
     File::options()
-        .write(true)
+        
         .create(true)
         .append(true)
         .open(file_path)

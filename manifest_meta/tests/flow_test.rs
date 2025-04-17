@@ -39,8 +39,7 @@ fn it_should_read_flow_block() -> Result<()> {
             .as_ref()
             .unwrap()
             .get(&handle_in1)
-            .unwrap()
-            .get(0)
+            .unwrap().first()
             .unwrap();
 
         assert!(matches!(
@@ -61,8 +60,7 @@ fn it_should_read_flow_block() -> Result<()> {
             .as_ref()
             .unwrap()
             .get(&handle_out1)
-            .unwrap()
-            .get(0)
+            .unwrap().first()
             .unwrap();
 
         assert!(matches!(
@@ -114,8 +112,7 @@ fn it_should_read_subflow_block_with_inputs_def() -> Result<()> {
     let to_node1 = flow_block
         .flow_inputs_tos
         .get(&handle_flow_in1)
-        .unwrap()
-        .get(0)
+        .unwrap().first()
         .unwrap();
     assert!(matches!(
         to_node1,
@@ -139,8 +136,7 @@ fn it_should_read_subflow_block_with_inputs_def() -> Result<()> {
             .as_ref()
             .unwrap()
             .get(&handle_in1)
-            .unwrap()
-            .get(0)
+            .unwrap().first()
             .unwrap();
 
         assert!(matches!(

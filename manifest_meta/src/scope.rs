@@ -46,11 +46,7 @@ impl RunningScope {
     pub fn identifier(&self) -> Option<String> {
         let str = match self {
             RunningScope::Global { node_id, .. } => {
-                if let Some(node_id) = node_id {
-                    Some(format!("{}", node_id))
-                } else {
-                    None
-                }
+                node_id.as_ref().map(|node_id| format!("{}", node_id))
             }
             RunningScope::Package {
                 path,

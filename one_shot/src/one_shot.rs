@@ -50,8 +50,8 @@ pub struct UpstreamArgs<'a> {
 }
 
 // TODO: 从 one_shot 中移除，这里不需要配置很多环境，简单裹一层意义不大。
-pub fn find_upstream<'a>(
-    args: UpstreamArgs<'a>,
+pub fn find_upstream(
+    args: UpstreamArgs<'_>,
 ) -> Result<(Vec<String>, Vec<String>, Vec<String>)> {
     let UpstreamArgs {
         block_path,

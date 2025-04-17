@@ -130,7 +130,7 @@ fn service_executor_options(service_block: &ServiceBlock) -> ServiceExecutorOpti
         function: executor.function.clone(),
         start_at: executor.start_at.clone(),
         stop_at: executor.stop_at.clone(),
-        keep_alive: executor.keep_alive.clone(),
+        keep_alive: executor.keep_alive,
     }
 }
 

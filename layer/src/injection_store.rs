@@ -4,7 +4,6 @@ use std::{
 };
 
 use serde::{Deserialize, Serialize};
-use serde_json;
 use utils::{error::Result, config};
 
 use crate::injection_layer::InjectionLayer;

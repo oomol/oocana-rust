@@ -80,7 +80,7 @@ pub fn search_block_manifest(params: BlockManifestParams) -> Option<PathBuf> {
 /// Parse block value to package name and block name.
 /// return block_name and pkg name(Option).
 fn get_block_name_and_pkg(block_value: &str) -> (String, Option<String>) {
-    let parts: Vec<&str> = block_value.split("::").filter(|s| s.len() > 0).collect();
+    let parts: Vec<&str> = block_value.split("::").filter(|s| !s.is_empty()).collect();
 
     if parts.len() == 1 {
         (parts[0].to_string(), None)
@@ -149,10 +149,7 @@ fn find_block_manifest_file(params: BlockSearchParams) -> Option<PathBuf> {
     for search_path in search_paths.iter() {
         let candidate_path = search_path.join(manifest_path.iter().collect::<PathBuf>());
         let file_path = find_oo_yaml_in_dir(&candidate_path, base_name);
-        match file_path {
-            Some(path) => return canonicalize(&path).ok(),
-            _ => {}
-        }
+        if let Some(path) = file_path { return canonicalize(&path).ok() }
     }
 
     let candidate_path = flow_dir.join(manifest_path.iter().collect::<PathBuf>());

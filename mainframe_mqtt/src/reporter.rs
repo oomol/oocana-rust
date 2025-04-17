@@ -58,7 +58,7 @@ impl ReporterRxImpl for ReporterRx {
 
 pub async fn connect(addr: &SocketAddr) -> (ReporterTx, ReporterRx) {
     let mut options = MqttOptions::new(
-        format!("oocana-reporter-{}", Uuid::new_v4().to_string()),
+        format!("oocana-reporter-{}", Uuid::new_v4()),
         addr.ip().to_string(),
         addr.port(),
     );

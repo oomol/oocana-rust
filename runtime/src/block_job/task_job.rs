@@ -429,8 +429,7 @@ fn spawn(
             session_id,
             "--job-id",
             job_id,
-        ]
-        .into_iter(),
+        ],
     );
 
     // Execute the command
@@ -482,7 +481,7 @@ fn bind_shell_stdio(
                 while let Some(line) = stdout_reader.next_line().await.unwrap_or(None) {
                     reporter.log(&line, "stdout");
                     output.push_str(&line);
-                    output.push_str("\n");
+                    output.push('\n');
                 }
 
                 if output.ends_with('\n') {
@@ -511,7 +510,7 @@ fn bind_shell_stdio(
                 while let Some(line) = stderr_reader.next_line().await.unwrap_or(None) {
                     reporter.log(&line, "stderr");
                     stderr_output.push_str(&line);
-                    stderr_output.push_str("\n");
+                    stderr_output.push('\n');
                 }
                 if stderr_output.ends_with('\n') {
                     stderr_output.pop();
@@ -571,7 +570,7 @@ pub fn timeout_abort(
         tokio::time::sleep(timeout).await;
         reporter.error(&format!(
             "{} timeout after {:?}",
-            job_id.to_string(),
+            job_id,
             timeout
         ));
         block_status.done(job_id, Some("Timeout".to_owned()));
