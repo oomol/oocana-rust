@@ -27,7 +27,7 @@ impl SchedulerTxImpl for SchedulerTx {
             .unwrap();
     }
 
-    async fn run_block(&self, executor: &String, data: MessageData) {
+    async fn run_block(&self, executor: &str, data: MessageData) {
         let topic = format!("executor/{}/run_block", executor);
 
         self.tx
@@ -36,7 +36,7 @@ impl SchedulerTxImpl for SchedulerTx {
             .unwrap();
     }
 
-    async fn run_service_block(&self, executor: &String, data: MessageData) {
+    async fn run_service_block(&self, executor: &str, data: MessageData) {
         let topic = format!("executor/{}/run_service_block", executor);
 
         self.tx

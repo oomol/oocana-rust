@@ -169,8 +169,8 @@ impl ExecutePayload<'_> {
 #[async_trait]
 pub trait SchedulerTxImpl {
     async fn send_inputs(&self, job_id: &JobId, data: MessageData);
-    async fn run_block(&self, executor_name: &String, data: MessageData);
-    async fn run_service_block(&self, executor_name: &String, data: MessageData);
+    async fn run_block(&self, executor_name: &str, data: MessageData);
+    async fn run_service_block(&self, executor_name: &str, data: MessageData);
     async fn disconnect(&self);
 }
 
