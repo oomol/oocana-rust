@@ -1,3 +1,4 @@
+use core::str;
 use std::{collections::HashMap, fmt, process::Command};
 
 fn ovmlayer_bin() -> Command {
@@ -127,10 +128,10 @@ impl TryFrom<&str> for BindPath {
         let mut readonly = None;
         let mut recursive = None;
         for part in &parts {
-            if part.starts_with("src=") {
-                src = Some(part[4..].to_string());
-            } else if part.starts_with("dst=") {
-                dst = Some(part[4..].to_string());
+            if let Some(stripped) = part.strip_prefix("src=") {
+                src = stripped.to_string().into();
+            } else if let Some(stripped) = part.strip_prefix("dst=") {
+                dst = stripped.to_string().into();
             } else if *part == "ro" && readonly.is_none() {
                 readonly = Some(true)
             } else if *part == "rw" && readonly.is_none() {
