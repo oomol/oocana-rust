@@ -654,7 +654,7 @@ fn spawn_executor(
             args.push(scope_package.as_ref().unwrap());
         }
 
-        let mut cmd = process::Command::new(executor_bin.to_owned());
+        let mut cmd = process::Command::new(&executor_bin);
         cmd.args(args);
         cmd
     };

@@ -51,7 +51,7 @@ pub fn setup_logging<P: AsRef<Path>>(params: LogParams<P>) -> Result<non_blockin
     *LOGGER_DIR.lock().unwrap() = logger_dir.clone();
     let file_path = logger_dir.join(format!("{}.log", log_name));
 
-    let f = create_file_with_dirs(file_path.to_owned())?;
+    let f = create_file_with_dirs(&file_path)?;
 
     let (non_blocking, guard) = non_blocking(f);
     let file_layer = fmt::Layer::default()
