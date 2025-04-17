@@ -181,10 +181,7 @@ fn find_manifest_yaml_file(file_or_dir_path: &Path, base_name: &str) -> Option<P
 }
 
 fn is_normal_path_component(component: Component) -> bool {
-    match component {
-        Component::Normal(_) => true,
-        _ => false,
-    }
+    matches!(component, Component::Normal(_))
 }
 
 #[cfg(test)]

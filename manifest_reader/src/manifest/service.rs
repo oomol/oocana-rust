@@ -21,11 +21,7 @@ pub struct ServiceExecutorOptions {
 
 impl ServiceExecutorOptions {
     pub fn is_global(&self) -> bool {
-        match self.stop_at {
-            StopAt::Never => true,
-            StopAt::App => true,
-            _ => false,
-        }
+        matches!(self.stop_at, StopAt::Never | StopAt::App)
     }
 }
 

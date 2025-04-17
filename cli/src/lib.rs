@@ -122,14 +122,8 @@ pub fn cli_match() -> Result<()> {
                     sub_dir: Some("package-layer"),
                     log_name: "action",
                     // create 要将特定 stdout stderr 的 target 输出到控制台。因此两个都要为 true。
-                    output_to_console: match action {
-                        layer::LayerAction::Create { .. } => true,
-                        _ => false,
-                    },
-                    capture_stdout_stderr_target: match action {
-                        layer::LayerAction::Create { .. } => true,
-                        _ => false,
-                    }
+                    output_to_console: matches!(action, layer::LayerAction::Create { .. }),
+                    capture_stdout_stderr_target: matches!(action, layer::LayerAction::Create { .. }),
                 }
             })?
         },
