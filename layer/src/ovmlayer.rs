@@ -16,7 +16,7 @@ fn ovmlayer_bin() -> Command {
 
 pub fn create_layer_cmd(name: &str) -> Command {
     let mut binding = ovmlayer_bin();
-    binding.args(&["create", name]);
+    binding.args(["create", name]);
     binding
 }
 
@@ -42,7 +42,7 @@ pub fn list_layer_cmd(t: Option<LayerType>) -> Command {
 
 pub fn export_layer_cmd(name: &str, dest: &str) -> Command {
     let mut binding = ovmlayer_bin();
-    binding.args(&[
+    binding.args([
         "export",
         &format!("--layer={name}"),
         &format!("--dest={dest}"),
@@ -52,19 +52,19 @@ pub fn export_layer_cmd(name: &str, dest: &str) -> Command {
 
 pub fn import_layer_cmd(file: &str) -> Command {
     let mut binding = ovmlayer_bin();
-    binding.args(&["import", file]);
+    binding.args(["import", file]);
     binding
 }
 
 pub fn delete_layer_cmd(name: &str) -> Command {
     let mut binding = ovmlayer_bin();
-    binding.args(&["delete", name]);
+    binding.args(["delete", name]);
     binding
 }
 
 pub fn delete_all_layer_and_merge_point_cmd() -> Command {
     let mut binding = ovmlayer_bin();
-    binding.args(&["delete", "--all"]);
+    binding.args(["delete", "--all"]);
     binding
 }
 
@@ -83,7 +83,7 @@ pub fn merge_cmd(layers: &Vec<String>, merge_point: &str) -> Command {
 
 pub fn unmerge_cmd(merge_point: &str) -> Command {
     let mut binding = ovmlayer_bin();
-    binding.args(&["unmerge", merge_point]);
+    binding.args(["unmerge", merge_point]);
     binding
 }
 

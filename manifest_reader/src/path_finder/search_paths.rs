@@ -71,7 +71,7 @@ pub fn search_block_manifest(params: BlockManifestParams) -> Option<PathBuf> {
             find_manifest_yaml_file(block_manifest_path, base_name)
         }
         BlockValueType::RelPath => {
-            let block_manifest_path = working_dir.join(&value);
+            let block_manifest_path = working_dir.join(value);
             find_manifest_yaml_file(&block_manifest_path, base_name)
         }
     }

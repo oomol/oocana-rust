@@ -51,7 +51,7 @@ pub async fn connect(
     addr: SocketAddr, session_id: SessionId, job_id: JobId,
 ) -> (WorkerTx, WorkerRx) {
     let mut options = MqttOptions::new(
-        &format!("oocana-worker-{}", &job_id),
+        format!("oocana-worker-{}", &job_id),
         addr.ip().to_string(),
         addr.port(),
     );
