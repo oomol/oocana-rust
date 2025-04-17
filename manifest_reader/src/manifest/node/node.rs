@@ -223,7 +223,7 @@ impl TaskNodeBlock {
 
     pub fn block_type(&self) -> BlockValueType {
         match self {
-            TaskNodeBlock::File(f) => get_block_value_type(&f),
+            TaskNodeBlock::File(f) => get_block_value_type(f),
             TaskNodeBlock::Inline(_) => BlockValueType::SelfBlock,
         }
     }

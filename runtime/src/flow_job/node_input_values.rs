@@ -119,7 +119,7 @@ impl NodeInputValues {
                     return false;
                 }
 
-                if let Some(ref input_values) = self.store.get(node.node_id()) {
+                if let Some(input_values) = self.store.get(node.node_id()) {
                     if input_values.get(&handle.handle).is_none()
                         || input_values.get(&handle.handle).unwrap().is_empty()
                     {
@@ -153,7 +153,7 @@ impl NodeInputValues {
     }
 
     pub fn node_pending_fulfill(&self, node_id: &NodeId) -> usize {
-        if let Some(ref input_values) = self.store.get(node_id) {
+        if let Some(input_values) = self.store.get(node_id) {
             let mut count = usize::MAX;
             for (_, v) in input_values.iter() {
                 count = min(count, v.len())
@@ -212,7 +212,7 @@ impl NodeInputValues {
             // filter inputs_def which has no connected handle input
             let no_connection_handles: Vec<&HandleName> = inputs_def
                 .keys()
-                .filter(|handle| !node.has_from(&handle))
+                .filter(|handle| !node.has_from(handle))
                 .collect();
 
             for handle in no_connection_handles {

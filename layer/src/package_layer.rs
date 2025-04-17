@@ -100,7 +100,7 @@ impl PackageLayer {
                 &merge_layers,
                 &cache_bind_paths,
                 &Some(pkg_path),
-                &bootstrap,
+                bootstrap,
                 envs,
                 env_file,
             )?;

@@ -31,7 +31,7 @@ impl RunningScope {
 
     pub fn package_path(&self) -> Option<&Path> {
         match self {
-            RunningScope::Package { path, .. } => Some(&path),
+            RunningScope::Package { path, .. } => Some(path),
             _ => None,
         }
     }

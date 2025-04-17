@@ -193,7 +193,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
         let mut runnable_nodes: Vec<String> = Vec::new();
         let mut pending_nodes: Vec<String> = Vec::new();
         for node in flow_shared.flow_block.nodes.values() {
-            if run_flow_ctx.node_input_values.is_node_fulfill(&node) {
+            if run_flow_ctx.node_input_values.is_node_fulfill(node) {
                 runnable_nodes.push(node.node_id().to_string());
             } else {
                 pending_nodes.push(node.node_id().to_string());
@@ -374,7 +374,7 @@ fn find_upstream_nodes<'a>(
     node_input_values: &mut NodeInputValues,
 ) -> (Vec<String>, Vec<String>, Vec<String>) {
     let (node_not_found, out_of_side_nodes, node_can_run_directly) =
-        calc_nodes(&origin_nodes, &flow_block, node_input_values);
+        calc_nodes(origin_nodes, flow_block, node_input_values);
     // 两部分：
     // 1. nodes 中可以直接 run 的
     // 2. nodes 中的依赖节点中可以直接 run 的节点
@@ -418,11 +418,11 @@ fn calc_nodes<'a>(
     let mut node_will_run = Vec::new();
 
     for node_id in nodes {
-        if let Some(node) = flow_block.nodes.get(&node_id) {
+        if let Some(node) = flow_block.nodes.get(node_id) {
             let n = RunToNode::new(
-                &flow_block,
+                flow_block,
                 Some(node_id.to_owned()),
-                Some(&node_input_values),
+                Some(node_input_values),
             );
 
             let nodes_without_self = nodes
@@ -501,7 +501,7 @@ fn produce_new_value(
                     if ctx.node_input_values.is_node_fulfill(node) {
                         let node_queue = ctx.node_queue_pool.entry(node_id.to_owned()).or_default();
                         if node_queue.jobs.len() < node.concurrency() as usize {
-                            run_node(node, &shared, ctx);
+                            run_node(node, shared, ctx);
                         } else {
                             // 说明这次数据填平了一次 pending
                             if ctx.node_input_values.node_pending_fulfill(node_id)

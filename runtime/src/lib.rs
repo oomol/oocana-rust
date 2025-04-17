@@ -50,9 +50,9 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
             log_error!("Failed to read block: {}", err);
             // 解析文件失败时，不会运行任何 block。汇报一次 session 开始结束。
             // 错误信息会输出在 stderr 同时 exit code 会以非零状态输出。
-            shared.reporter.session_started(&block_name, partial);
+            shared.reporter.session_started(block_name, partial);
             shared.reporter.session_finished(
-                &block_name,
+                block_name,
                 &Some(format!("Failed to read block {:?}", err)),
             );
             return Err(err);

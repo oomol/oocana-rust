@@ -159,11 +159,11 @@ fn send_to_service(
         executor_name: &executor_name,
         block_name: &service_block.name,
         job_id: job_id.to_owned(),
-        stacks: &stacks.vec(),
+        stacks: stacks.vec(),
         dir,
         options: &service_executor_option,
         outputs: &service_block.outputs_def,
-        scope: &scope,
+        scope: scope,
         flow: &flow,
     });
 }

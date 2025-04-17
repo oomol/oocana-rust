@@ -591,7 +591,7 @@ fn spawn_executor(
 
         if scope_package.is_some() {
             exec_form_cmd.push("--package");
-            exec_form_cmd.push(&scope_package.as_ref().unwrap());
+            exec_form_cmd.push(scope_package.as_ref().unwrap());
         }
 
         for p in debug_parameters.iter() {
@@ -609,7 +609,7 @@ fn spawn_executor(
         );
 
         let script_str = layer::convert_to_script(&exec_form_cmd);
-        let cmd = pkg_layer.run_command(&script_str, &envs, &env_file);
+        let cmd = pkg_layer.run_command(&script_str, &envs, env_file);
 
         cmd
     } else {
@@ -620,7 +620,7 @@ fn spawn_executor(
                 .to_string_lossy()
                 .to_string(),
         );
-        for (key, value) in utils::env::load_env_from_file(&env_file) {
+        for (key, value) in utils::env::load_env_from_file(env_file) {
             if envs.contains_key(&key) {
                 // TODO: consider whether to skip the env key or not.
                 warn!("env key {} is already in envs, skip", key);
@@ -651,7 +651,7 @@ fn spawn_executor(
 
         if scope_package.is_some() {
             args.push("--package");
-            args.push(&scope_package.as_ref().unwrap());
+            args.push(scope_package.as_ref().unwrap());
         }
 
         let mut cmd = process::Command::new(executor_bin.to_owned());
@@ -813,7 +813,7 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
         flow,
     } = params;
     let no_layer_feature = !layer::feature_enabled();
-    let executor_map_name = generate_executor_map_name(executor_name, &scope);
+    let executor_map_name = generate_executor_map_name(executor_name, scope);
 
     let executor_state = {
         let read_map = executor_map
@@ -910,7 +910,7 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
                         package_version: &meta.package_version,
                         package_path: &path_str,
                         scripts: &scripts,
-                        flow: &flow.as_ref().unwrap_or(&"".to_string()),
+                        flow: flow.as_ref().unwrap_or(&"".to_string()),
                     });
 
                     if let Err(e) = result {
@@ -1251,7 +1251,7 @@ where
                                 }
                                 _ => {
                                     if let Some(sender) =
-                                        msg.job_id().and_then(|f| subscribers.get(&f))
+                                        msg.job_id().and_then(|f| subscribers.get(f))
                                     {
                                         sender.send(msg).unwrap();
                                     }

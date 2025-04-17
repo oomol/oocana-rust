@@ -156,12 +156,12 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
                 .map(|p| p.file_name())
                 .flatten()
                 .map(|f| f.to_string_lossy().to_string())
-                .map(|f| format!("{}-{}", f, calculate_short_hash(&block_path, 8)))
+                .map(|f| format!("{}-{}", f, calculate_short_hash(block_path, 8)))
                 .unwrap_or_else(|| "tmp".to_string())
         } else {
             p.file_name()
                 .map(|f| f.to_string_lossy().to_string())
-                .map(|f| format!("{}-{}", f, calculate_short_hash(&block_path, 8)))
+                .map(|f| format!("{}-{}", f, calculate_short_hash(block_path, 8)))
                 .unwrap_or_else(|| "tmp".to_string())
         }
     };

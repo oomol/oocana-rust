@@ -97,7 +97,7 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
                 })
                 .collect();
 
-            let env_file = find_env_file(&env_file);
+            let env_file = find_env_file(env_file);
 
             layer::get_or_create_package_layer(package, &bind_path_arg, &envs, &env_file)?;
         }

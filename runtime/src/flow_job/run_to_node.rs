@@ -26,7 +26,7 @@ impl RunToNode {
 
     pub fn has_deps_in(&self, nodes: &HashSet<NodeId>) -> bool {
         match self.should_run_nodes {
-            Some(ref should_run_nodes) => !should_run_nodes.is_disjoint(&nodes),
+            Some(ref should_run_nodes) => !should_run_nodes.is_disjoint(nodes),
             None => false,
         }
     }

@@ -289,13 +289,13 @@ fn send_to_executor(args: ExecutorArgs) {
         scope,
         stacks,
     } = args;
-    let dir = block_dir(task_block, parent_flow, &scope);
+    let dir = block_dir(task_block, parent_flow, scope);
     scheduler_tx.send_to_executor(ExecutorParams {
         executor_name: executor.name(),
         job_id: job_id.to_owned(),
         stacks: stacks.vec(),
         dir,
-        executor: &executor,
+        executor: executor,
         outputs: &task_block.outputs_def,
         scope,
         injection_store: &parent_flow.as_ref().and_then(|f| f.injection_store.clone()),

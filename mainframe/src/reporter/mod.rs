@@ -174,7 +174,7 @@ impl ReporterTx {
             session_id: &self.session_id,
             finish_at: ReporterMessage::now(),
             path,
-            error: &err,
+            error: err,
         });
     }
 

@@ -23,7 +23,7 @@ pub fn search_block_manifest(params: BlockManifestParams) -> Option<PathBuf> {
         pkg_version,
     } = params;
 
-    let block_type = get_block_value_type(&value);
+    let block_type = get_block_value_type(value);
     match block_type {
         BlockValueType::SelfBlock => {
             let block_name = &value[6..];
@@ -32,7 +32,7 @@ pub fn search_block_manifest(params: BlockManifestParams) -> Option<PathBuf> {
             self_manifest_path.pop();
             self_manifest_path.push(block_dir);
             self_manifest_path.push(block_name);
-            return find_manifest_yaml_file(&self_manifest_path, &base_name);
+            return find_manifest_yaml_file(&self_manifest_path, base_name);
         }
         BlockValueType::Direct => {
             let manifest_path = vec![value.to_owned()];
@@ -45,7 +45,7 @@ pub fn search_block_manifest(params: BlockManifestParams) -> Option<PathBuf> {
             });
         }
         BlockValueType::Pkg => {
-            let (block_name, pkg_name) = get_block_name_and_pkg(&value);
+            let (block_name, pkg_name) = get_block_name_and_pkg(value);
             let manifest_path = if let Some(ref pkg) = pkg_name {
                 if let Some(version) = pkg_version.get(pkg) {
                     // {pkg_name}-{version}
@@ -72,11 +72,11 @@ pub fn search_block_manifest(params: BlockManifestParams) -> Option<PathBuf> {
         }
         BlockValueType::AbsPath => {
             let block_manifest_path = Path::new(&value);
-            return find_manifest_yaml_file(&block_manifest_path, &base_name);
+            return find_manifest_yaml_file(block_manifest_path, base_name);
         }
         BlockValueType::RelPath => {
             let block_manifest_path = working_dir.join(&value);
-            return find_manifest_yaml_file(&block_manifest_path, &base_name);
+            return find_manifest_yaml_file(&block_manifest_path, base_name);
         }
     }
 }
@@ -152,7 +152,7 @@ fn find_block_manifest_file(params: BlockSearchParams) -> Option<PathBuf> {
 
     for search_path in search_paths.iter() {
         let candidate_path = search_path.join(manifest_path.iter().collect::<PathBuf>());
-        let file_path = find_oo_yaml_in_dir(&candidate_path, &base_name);
+        let file_path = find_oo_yaml_in_dir(&candidate_path, base_name);
         match file_path {
             Some(path) => return canonicalize(&path).ok(),
             _ => {}

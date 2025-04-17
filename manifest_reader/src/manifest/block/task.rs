@@ -141,7 +141,7 @@ mod test {
     #[test]
     fn deserialize_nodejs_executor() {
         let serialized = r#"{"name":"nodejs","options":{}}"#;
-        let deserialized: TaskBlockExecutor = serde_json::from_str(&serialized).unwrap();
+        let deserialized: TaskBlockExecutor = serde_json::from_str(serialized).unwrap();
         match deserialized {
             TaskBlockExecutor::NodeJS(e) => {
                 assert!(e.options.is_some_and(|o| o.entry.is_none()));
@@ -150,7 +150,7 @@ mod test {
         }
 
         let serialized = r#"{"name":"nodejs","options":{"entry":"entry1"}}"#;
-        let deserialized: TaskBlockExecutor = serde_json::from_str(&serialized).unwrap();
+        let deserialized: TaskBlockExecutor = serde_json::from_str(serialized).unwrap();
         match deserialized {
             TaskBlockExecutor::NodeJS(e) => {
                 assert!(e.options.as_ref().is_some_and(|o| o.entry.is_some()));
@@ -163,7 +163,7 @@ mod test {
     #[test]
     fn deserialize_python_executor() {
         let serialized = r#"{"name":"python","options":{"entry":"entry1"}}"#;
-        let deserialized: TaskBlockExecutor = serde_json::from_str(&serialized).unwrap();
+        let deserialized: TaskBlockExecutor = serde_json::from_str(serialized).unwrap();
         match deserialized {
             TaskBlockExecutor::Python(PythonExecutor {
                 options: Some(ExecutorOptions { entry, .. }),
@@ -177,7 +177,7 @@ mod test {
     #[test]
     fn deserialize_shell_executor() {
         let serialized = r#"{"name":"shell"}"#;
-        let deserialized: TaskBlockExecutor = serde_json::from_str(&serialized).unwrap();
+        let deserialized: TaskBlockExecutor = serde_json::from_str(serialized).unwrap();
         match deserialized {
             TaskBlockExecutor::Shell(ShellExecutor { .. }) => {}
             _ => panic!("Expected ShellExecutor"),
@@ -187,7 +187,7 @@ mod test {
     #[test]
     fn deserialize_rust_executor() {
         let serialized = r#"{"name":"rust"}"#;
-        let deserialized: TaskBlockExecutor = serde_json::from_str(&serialized).unwrap();
+        let deserialized: TaskBlockExecutor = serde_json::from_str(serialized).unwrap();
         match deserialized {
             TaskBlockExecutor::Rust(e) => {
                 assert_eq!(e.options, default_rust_spawn_options());

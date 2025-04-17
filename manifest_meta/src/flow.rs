@@ -220,7 +220,7 @@ impl SubflowBlock {
                     let task = block_resolver
                         .resolve_task_node_block(task_node_block.clone(), &mut path_finder)?;
                     let running_target = calculate_running_scope(
-                        &node,
+                        node,
                         &task_node.inject,
                         &task.package_path,
                         task_node_block.block_type(),

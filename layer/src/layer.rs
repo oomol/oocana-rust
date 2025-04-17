@@ -112,7 +112,7 @@ pub fn run_script_unmerge(
     env_file: &Option<String>,
 ) -> Result<()> {
     let merge_point = &random_merge_point();
-    merge_layer(&layers, merge_point)?;
+    merge_layer(layers, merge_point)?;
 
     let (file_path, script_filename) = convert_script_to_shell(script)?;
     let script_target_path = {
@@ -131,10 +131,10 @@ pub fn run_script_unmerge(
         .ok_or_else(|| Error::from("Failed to get script parent dir"))?
         .to_string_lossy()
         .to_string();
-    let cp_cmd = cp_to_merge_point(&merge_point, &file_path, &script_parant_dir);
+    let cp_cmd = cp_to_merge_point(merge_point, &file_path, &script_parant_dir);
     exec(cp_cmd)?;
 
-    let mut cmd = run_cmd(merge_point, &bind, work_dir, envs, env_file);
+    let mut cmd = run_cmd(merge_point, bind, work_dir, envs, env_file);
     cmd.arg(format!("{script_target_path}"));
     tracing::info!("{cmd:?}");
 
