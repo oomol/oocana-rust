@@ -475,7 +475,7 @@ fn produce_new_value(
 
                 let previous_pending_fulfill = ctx.node_input_values.node_pending_fulfill(node_id);
                 // still need to insert value, even if the node is not in the run_nodes list
-                ctx.node_input_values.insert(
+                ctx.node_input_values.insert_value(
                     node_id.to_owned(),
                     node_input_handle.to_owned(),
                     Arc::clone(value),
@@ -546,7 +546,7 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
                 node.node_id().to_owned(),
             ),
             job_id: job_id.to_owned(),
-            inputs: ctx.node_input_values.take(node),
+            inputs: ctx.node_input_values.take_value(node),
             block_status: ctx.block_status.clone(),
             nodes: None,
             input_values: None,

@@ -86,7 +86,12 @@ impl NodeInputValues {
         }
     }
 
-    pub fn insert(&mut self, node_id: NodeId, handle_name: HandleName, value: Arc<OutputValue>) {
+    pub fn insert_value(
+        &mut self,
+        node_id: NodeId,
+        handle_name: HandleName,
+        value: Arc<OutputValue>,
+    ) {
         self.store
             .entry(node_id.clone())
             .or_default()
@@ -135,7 +140,9 @@ impl NodeInputValues {
 
                 if let Some(input_values) = self.store.get(node.node_id()) {
                     if input_values.get(&handle.handle).is_none()
-                        || input_values.get(&handle.handle).unwrap().is_empty()
+                        || input_values
+                            .get(&handle.handle)
+                            .is_some_and(|v| v.is_empty())
                     {
                         return false;
                     }
@@ -227,7 +234,7 @@ impl NodeInputValues {
         }
     }
 
-    pub fn take(&mut self, node: &Node) -> Option<InputValues> {
+    pub fn take_value(&mut self, node: &Node) -> Option<InputValues> {
         let mut value_map: InputValues = HashMap::new();
 
         if let Some(input_values) = self.store.get_mut(node.node_id()) {
