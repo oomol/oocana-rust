@@ -118,6 +118,15 @@ impl Node {
         }
     }
 
+    pub fn after(&self) -> &Option<Vec<NodeId>> {
+        match self {
+            Self::Task(task) => &task.after,
+            Self::Flow(flow) => &flow.after,
+            Self::Slot(slot) => &slot.after,
+            Self::Service(service) => &service.after,
+        }
+    }
+
     pub fn outputs_def(&self) -> Option<&OutputHandles> {
         match self {
             Self::Task(task) => task.task.outputs_def.as_ref(),

@@ -22,6 +22,7 @@ type InputValues = HashMap<HandleName, Arc<OutputValue>>;
 /// Values are collected for each Node handle before starting a Node job
 pub struct NodeInputValues {
     store: NodeInputStore,
+    signal_store: HashMap<NodeId, HashMap<NodeId, VecDeque<i32>>>,
     last_values: Option<NodeInputStore>,
 }
 
@@ -29,6 +30,7 @@ impl NodeInputValues {
     pub fn new(save_cache: bool) -> Self {
         Self {
             store: HashMap::new(),
+            signal_store: HashMap::new(),
             last_values: if save_cache {
                 Some(HashMap::new())
             } else {
@@ -63,12 +65,14 @@ impl NodeInputValues {
             match serde_json::from_reader::<_, NodeInputStore>(reader) {
                 Ok(store) => Self {
                     store: store.clone(),
+                    signal_store: HashMap::new(),
                     last_values: Some(store),
                 },
                 Err(e) => {
                     warn!("Failed to deserialize: {:?}", e);
                     Self {
                         store: HashMap::new(),
+                        signal_store: HashMap::new(),
                         last_values,
                     }
                 }
@@ -76,6 +80,7 @@ impl NodeInputValues {
         } else {
             Self {
                 store: HashMap::new(),
+                signal_store: HashMap::new(),
                 last_values,
             }
         }
@@ -105,6 +110,15 @@ impl NodeInputValues {
         }
     }
 
+    pub fn insert_signal(&mut self, node_id: NodeId, signal_node_id: NodeId, value: i32) {
+        self.signal_store
+            .entry(node_id)
+            .or_default()
+            .entry(signal_node_id)
+            .or_default()
+            .push_back(value);
+    }
+
     pub fn is_node_fulfill(&self, node: &Node) -> bool {
         if let Some(inputs_def) = node.inputs_def() {
             for handle in inputs_def.values() {
@@ -130,6 +144,21 @@ impl NodeInputValues {
                 }
             }
         }
+
+        if let Some(after) = node.after() {
+            for node_id in after {
+                if let Some(signal_map) = self.signal_store.get(node.node_id()) {
+                    if signal_map.get(node_id).is_none()
+                        || signal_map.get(node_id).is_some_and(|v| v.is_empty())
+                    {
+                        return false;
+                    }
+                } else {
+                    return false;
+                }
+            }
+        }
+
         true
     }
 
