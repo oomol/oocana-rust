@@ -38,6 +38,7 @@ pub use node::{
 };
 
 mod connections;
+mod signal;
 
 mod block_resolver;
 pub use block_resolver::BlockResolver;
