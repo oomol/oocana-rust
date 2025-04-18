@@ -265,6 +265,13 @@ impl NodeInputValues {
                 }
             }
         }
+
+        if let Some(a) = self.signal_store.get_mut(node.node_id()) {
+            for (_, values) in a {
+                values.pop_front();
+            }
+        }
+
         if value_map.is_empty() {
             None
         } else {
