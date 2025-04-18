@@ -189,14 +189,25 @@ impl NodeInputValues {
     }
 
     pub fn node_pending_fulfill(&self, node_id: &NodeId) -> usize {
-        if let Some(input_values) = self.store.get(node_id) {
+        let value_count = if let Some(input_values) = self.store.get(node_id) {
             let mut count = usize::MAX;
             for (_, v) in input_values.iter() {
                 count = min(count, v.len())
             }
-            return count;
+            count
+        } else {
+            0
+        };
+
+        if let Some(signal_map) = self.signal_store.get(node_id) {
+            let mut count = usize::MAX;
+            for (_, v) in signal_map.iter() {
+                count = min(count, v.len())
+            }
+            value_count.min(count)
+        } else {
+            value_count
         }
-        0
     }
 
     pub fn save_last_value(&self, path: PathBuf) -> Result<(), String> {
