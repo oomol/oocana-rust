@@ -233,7 +233,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                     done,
                 } => {
                     if done {
-                        run_pending_node(job_id.to_owned(), &flow_shared, &mut run_flow_ctx);
+                        parse_done_job(job_id.to_owned(), &flow_shared, &mut run_flow_ctx);
                     }
                     if let Some(job) = run_flow_ctx.jobs.get(&job_id) {
                         let job_node_id = job.node_id.to_owned();
@@ -274,7 +274,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                     }
                 }
                 block_status::Status::Done { job_id, error } => {
-                    run_pending_node(job_id.to_owned(), &flow_shared, &mut run_flow_ctx);
+                    parse_done_job(job_id.to_owned(), &flow_shared, &mut run_flow_ctx);
 
                     if error.is_some() {
                         save_flow_cache(
@@ -331,7 +331,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
     ))
 }
 
-fn run_pending_node(job_id: JobId, flow_shared: &FlowShared, run_flow_ctx: &mut RunFlowContext) {
+fn parse_done_job(job_id: JobId, flow_shared: &FlowShared, run_flow_ctx: &mut RunFlowContext) {
     if let Some(job_handle) = run_flow_ctx.jobs.get(&job_id) {
         let node_id = job_handle.node_id.to_owned();
 
@@ -343,6 +343,16 @@ fn run_pending_node(job_id: JobId, flow_shared: &FlowShared, run_flow_ctx: &mut 
         node_queue.jobs.remove(&job_id);
 
         if let Some(node) = flow_shared.flow_block.nodes.get(&node_id) {
+            while let Some(after_nodes_id) = node.before() {
+                for after_node_id in after_nodes_id {
+                    run_flow_ctx.node_input_values.insert_signal(
+                        after_node_id.to_owned(),
+                        node_id.to_owned(),
+                        0,
+                    );
+                }
+            }
+
             let concurrency = node.concurrency();
             let jobs_count = node_queue.jobs.len();
             if jobs_count < concurrency as usize && !node_queue.pending.is_empty() {
