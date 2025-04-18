@@ -343,7 +343,7 @@ fn parse_done_job(job_id: JobId, flow_shared: &FlowShared, run_flow_ctx: &mut Ru
         node_queue.jobs.remove(&job_id);
 
         if let Some(node) = flow_shared.flow_block.nodes.get(&node_id) {
-            while let Some(after_nodes_id) = node.before() {
+            if let Some(after_nodes_id) = node.before() {
                 for after_node_id in after_nodes_id {
                     run_flow_ctx.node_input_values.insert_signal(
                         after_node_id.to_owned(),
