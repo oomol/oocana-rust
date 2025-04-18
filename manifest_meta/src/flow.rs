@@ -181,6 +181,8 @@ impl SubflowBlock {
                     new_nodes.insert(
                         subflow_node.node_id.to_owned(),
                         Node::Flow(SubflowNode {
+                            after: signal_center.after.remove(&subflow_node.node_id),
+                            before: signal_center.notify.remove(&subflow_node.node_id),
                             from: connections.node_inputs_froms.remove(&subflow_node.node_id),
                             to: connections.node_outputs_tos.remove(&subflow_node.node_id),
                             slots_outputs_from: connections
@@ -210,6 +212,8 @@ impl SubflowBlock {
                     new_nodes.insert(
                         service_node.node_id.to_owned(),
                         Node::Service(ServiceNode {
+                            after: signal_center.after.remove(&service_node.node_id),
+                            before: signal_center.notify.remove(&service_node.node_id),
                             from: connections.node_inputs_froms.remove(&service_node.node_id),
                             to: connections.node_outputs_tos.remove(&service_node.node_id),
                             node_id: service_node.node_id.to_owned(),
@@ -410,6 +414,8 @@ impl SubflowBlock {
                     new_nodes.insert(
                         task_node.node_id.to_owned(),
                         Node::Task(TaskNode {
+                            after: signal_center.after.remove(&task_node.node_id),
+                            before: signal_center.notify.remove(&task_node.node_id),
                             from: froms,
                             to: connections.node_outputs_tos.remove(&task_node.node_id),
                             node_id: task_node.node_id.to_owned(),
@@ -432,6 +438,8 @@ impl SubflowBlock {
                     new_nodes.insert(
                         slot_node.node_id.to_owned(),
                         Node::Slot(SlotNode {
+                            after: signal_center.after.remove(&slot_node.node_id),
+                            before: signal_center.notify.remove(&slot_node.node_id),
                             from: connections.node_inputs_froms.remove(&slot_node.node_id),
                             to: connections.node_outputs_tos.remove(&slot_node.node_id),
                             node_id: slot_node.node_id.to_owned(),

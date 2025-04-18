@@ -22,6 +22,8 @@ macro_rules! extend_node_common_field {
             $(pub $field: $type,)*
             pub node_id: NodeId,
             pub timeout: Option<u64>,
+            pub after: Option<Vec<NodeId>>,
+            pub before: Option<Vec<NodeId>>,
             pub from: Option<HandlesFroms>,
             pub to: Option<HandlesTos>,
             pub inputs_def: Option<InputHandles>,
