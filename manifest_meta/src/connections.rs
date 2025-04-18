@@ -41,6 +41,12 @@ impl Connections {
                 if let Some(from_nodes) = output_from.from_node {
                     for from_node in from_nodes {
                         if !self.nodes.contains(&from_node.node_id) {
+                            tracing::warn!(
+                                "skipping connection for flow [{}] from node {}. because the {} node is not in the list of nodes",
+                                output_from.handle,
+                                from_node.node_id,
+                                from_node.node_id,
+                            );
                             continue;
                         }
 
@@ -114,13 +120,14 @@ impl Connections {
             for input_from in inputs_from {
                 if let Some(from_nodes) = &input_from.from_node {
                     for from_node in from_nodes {
-                        // 连接的节点不在当前 flow 中，不创建连线
+                        // if the from node is out of the list of nodes, just skip it
                         if !self.nodes.contains(&from_node.node_id) {
                             tracing::warn!(
-                                "Node {} input {} from node {} not in nodes",
+                                "skipping connection for node {} input [{}] from node {}. because the {} node is not in the list of nodes",
                                 node_id,
                                 input_from.handle,
-                                from_node.node_id
+                                from_node.node_id,
+                                from_node.node_id,
                             );
                             continue;
                         }
