@@ -150,6 +150,7 @@ macro_rules! extend_node_common_field {
             pub node_id: NodeId,
             pub timeout: Option<u64>,
             pub inputs_from: Option<Vec<NodeInputFrom>>,
+            pub run_after: Option<Vec<NodeId>>,
             #[serde(default = "default_concurrency")]
             pub concurrency: i32,
             #[serde(default)]
