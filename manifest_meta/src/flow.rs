@@ -11,7 +11,10 @@ use manifest_reader::{
     reader::read_package,
 };
 
-use crate::scope::{calculate_running_scope, RunningScope, RunningTarget};
+use crate::{
+    scope::{calculate_running_scope, RunningScope, RunningTarget},
+    signal::SignalCenter,
+};
 
 use tracing::warn;
 use utils::error::Result;
@@ -103,6 +106,8 @@ impl SubflowBlock {
             injection: scripts,
         } = manifest;
 
+        let mut signal_center = SignalCenter::new();
+
         let mut connections =
             Connections::new(nodes.iter().map(|n| n.node_id().to_owned()).collect());
 
@@ -115,6 +120,10 @@ impl SubflowBlock {
                     &subflow_node.node_id,
                     subflow_node.slots.as_ref(),
                 );
+            }
+
+            if let Some(run_after) = node.run_after() {
+                signal_center.parse_run_after(node.node_id(), run_after)?;
             }
         }
 

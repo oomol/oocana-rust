@@ -71,7 +71,15 @@ impl Node {
             Node::Value(value) => value.ignore,
         }
     }
-
+    pub fn run_after(&self) -> &Option<Vec<NodeId>> {
+        match self {
+            Node::Task(task) => &task.run_after,
+            Node::Subflow(subflow) => &subflow.run_after,
+            Node::Slot(slot) => &slot.run_after,
+            Node::Service(service) => &service.run_after,
+            Node::Value(_) => &None,
+        }
+    }
     pub fn should_spawn(&self) -> bool {
         match self {
             Node::Task(task) => match &task.task {
