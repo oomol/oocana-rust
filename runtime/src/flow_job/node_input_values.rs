@@ -22,6 +22,7 @@ type InputValues = HashMap<HandleName, Arc<OutputValue>>;
 /// Values are collected for each Node handle before starting a Node job
 pub struct NodeInputValues {
     store: NodeInputStore,
+    signal_store: HashMap<NodeId, HashMap<NodeId, VecDeque<i32>>>,
     last_values: Option<NodeInputStore>,
 }
 
@@ -29,6 +30,7 @@ impl NodeInputValues {
     pub fn new(save_cache: bool) -> Self {
         Self {
             store: HashMap::new(),
+            signal_store: HashMap::new(),
             last_values: if save_cache {
                 Some(HashMap::new())
             } else {
@@ -63,12 +65,14 @@ impl NodeInputValues {
             match serde_json::from_reader::<_, NodeInputStore>(reader) {
                 Ok(store) => Self {
                     store: store.clone(),
+                    signal_store: HashMap::new(),
                     last_values: Some(store),
                 },
                 Err(e) => {
                     warn!("Failed to deserialize: {:?}", e);
                     Self {
                         store: HashMap::new(),
+                        signal_store: HashMap::new(),
                         last_values,
                     }
                 }
@@ -76,12 +80,18 @@ impl NodeInputValues {
         } else {
             Self {
                 store: HashMap::new(),
+                signal_store: HashMap::new(),
                 last_values,
             }
         }
     }
 
-    pub fn insert(&mut self, node_id: NodeId, handle_name: HandleName, value: Arc<OutputValue>) {
+    pub fn insert_value(
+        &mut self,
+        node_id: NodeId,
+        handle_name: HandleName,
+        value: Arc<OutputValue>,
+    ) {
         self.store
             .entry(node_id.clone())
             .or_default()
@@ -105,6 +115,15 @@ impl NodeInputValues {
         }
     }
 
+    pub fn insert_signal(&mut self, node_id: NodeId, signal_node_id: NodeId, value: i32) {
+        self.signal_store
+            .entry(node_id)
+            .or_default()
+            .entry(signal_node_id)
+            .or_default()
+            .push_back(value);
+    }
+
     pub fn is_node_fulfill(&self, node: &Node) -> bool {
         if let Some(inputs_def) = node.inputs_def() {
             for handle in inputs_def.values() {
@@ -121,7 +140,9 @@ impl NodeInputValues {
 
                 if let Some(input_values) = self.store.get(node.node_id()) {
                     if input_values.get(&handle.handle).is_none()
-                        || input_values.get(&handle.handle).unwrap().is_empty()
+                        || input_values
+                            .get(&handle.handle)
+                            .is_some_and(|v| v.is_empty())
                     {
                         return false;
                     }
@@ -130,6 +151,21 @@ impl NodeInputValues {
                 }
             }
         }
+
+        if let Some(after) = node.after() {
+            for node_id in after {
+                if let Some(signal_map) = self.signal_store.get(node.node_id()) {
+                    if signal_map.get(node_id).is_none()
+                        || signal_map.get(node_id).is_some_and(|v| v.is_empty())
+                    {
+                        return false;
+                    }
+                } else {
+                    return false;
+                }
+            }
+        }
+
         true
     }
 
@@ -153,14 +189,25 @@ impl NodeInputValues {
     }
 
     pub fn node_pending_fulfill(&self, node_id: &NodeId) -> usize {
-        if let Some(input_values) = self.store.get(node_id) {
+        let value_count = if let Some(input_values) = self.store.get(node_id) {
             let mut count = usize::MAX;
             for (_, v) in input_values.iter() {
                 count = min(count, v.len())
             }
-            return count;
+            count
+        } else {
+            0
+        };
+
+        if let Some(signal_map) = self.signal_store.get(node_id) {
+            let mut count = usize::MAX;
+            for (_, v) in signal_map.iter() {
+                count = min(count, v.len())
+            }
+            value_count.min(count)
+        } else {
+            value_count
         }
-        0
     }
 
     pub fn save_last_value(&self, path: PathBuf) -> Result<(), String> {
@@ -198,7 +245,7 @@ impl NodeInputValues {
         }
     }
 
-    pub fn take(&mut self, node: &Node) -> Option<InputValues> {
+    pub fn take_value(&mut self, node: &Node) -> Option<InputValues> {
         let mut value_map: InputValues = HashMap::new();
 
         if let Some(input_values) = self.store.get_mut(node.node_id()) {
@@ -229,6 +276,13 @@ impl NodeInputValues {
                 }
             }
         }
+
+        if let Some(a) = self.signal_store.get_mut(node.node_id()) {
+            for (_, values) in a {
+                values.pop_front();
+            }
+        }
+
         if value_map.is_empty() {
             None
         } else {
