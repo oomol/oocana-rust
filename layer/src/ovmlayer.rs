@@ -1,17 +1,21 @@
 use core::str;
 use std::{collections::HashMap, fmt, process::Command};
+use users::get_current_uid;
+
+fn is_root() -> bool {
+    get_current_uid() == 0
+}
 
 fn ovmlayer_bin() -> Command {
     const BIN: &str = "ovmlayer";
-    // ovmlayer 需要 root 权限。
-    // ci 环境需要使用 sudo 来获取 root 权限；普通情况下 oocana 执行需要调用方保证 root 权限。
-    if std::env::var("CI").is_ok() {
+    if is_root() {
+        Command::new(BIN)
+    } else {
+        tracing::warn!("ovmlayer need root permission, try to use sudo command to run");
         let mut cmd = Command::new("sudo");
-        cmd.arg("-E"); // 保留环境变量。
+        cmd.arg("-E"); // preserve environment variables, but $PATH will be lost
         cmd.arg(BIN);
         cmd
-    } else {
-        Command::new(BIN)
     }
 }
 
