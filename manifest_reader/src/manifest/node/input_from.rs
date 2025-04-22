@@ -1,4 +1,4 @@
-use super::definition::NodeId;
+use super::common::NodeId;
 use crate::manifest::{HandleName, OOMOL_SECRET_DATA};
 use serde::{Deserialize, Serialize};
 
