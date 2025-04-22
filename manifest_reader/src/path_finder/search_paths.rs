@@ -26,7 +26,7 @@ pub fn search_block_manifest(params: BlockManifestParams) -> Option<PathBuf> {
     let block_type = get_block_value_type(value);
     match block_type {
         BlockValueType::SelfBlock => {
-            let block_name = &value[6..];
+            let block_name = &value[SELF_BLOCK_PREFIX.len()..];
             let mut self_manifest_path = working_dir.to_path_buf();
             self_manifest_path.pop();
             self_manifest_path.pop();
@@ -105,8 +105,10 @@ pub enum BlockValueType {
     RelPath,
 }
 
+const SELF_BLOCK_PREFIX: &str = "self::";
+
 pub fn get_block_value_type(block_value: &str) -> BlockValueType {
-    if block_value.starts_with("self::") {
+    if block_value.starts_with(SELF_BLOCK_PREFIX) {
         return BlockValueType::SelfBlock;
     }
 
