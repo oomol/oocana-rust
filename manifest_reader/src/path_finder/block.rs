@@ -44,7 +44,7 @@ pub fn find_task_block(params: TaskBlockManifestParams) -> Result<PathBuf> {
     }
 
     Err(utils::error::Error::new(&format!(
-        "Task Block {} not found from {}. Search paths: {}",
+        "Task block {} could not be found in either {} or in the search paths: {}",
         value,
         base_dir.to_str().unwrap_or_default(),
         search_paths
@@ -79,7 +79,7 @@ pub fn find_flow_block(params: SubflowBlockManifestParams) -> Result<PathBuf> {
     }) {
         Some(path) => Ok(path.clean()),
         None => Err(utils::error::Error::new(&format!(
-            "Flow Block {} not found from {}. Search paths: {}",
+            "Flow block {} could not be found in either {} or in the search paths: {}.",
             value,
             base_dir.to_str().unwrap_or_default(),
             search_paths
@@ -115,7 +115,7 @@ pub fn find_slot_block(params: SlotBlockManifestParams) -> Result<PathBuf> {
     }) {
         Some(path) => Ok(path.clean()),
         None => Err(utils::error::Error::new(&format!(
-            "Slot Block {} not found from {}. Search paths: {}",
+            "Slot block {} could not be found in either {} or in the search paths: {}",
             value,
             base_dir.to_str().unwrap_or_default(),
             search_paths
