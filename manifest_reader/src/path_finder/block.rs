@@ -78,7 +78,7 @@ pub fn find_flow_block(params: SubflowBlockManifestParams) -> Result<PathBuf> {
     }) {
         Some(path) => Ok(path.clean()),
         None => Err(utils::error::Error::new(&format!(
-            "Flow block {} could not be found in either {} or in the search paths: {}.",
+            "Flow block {} could not be found in either {} or in the search paths: {}",
             value,
             base_dir.to_str().unwrap_or_default(),
             search_paths
