@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.27.1 (2025-04-22)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* docs: update api description by @leavesster in https://github.com/oomol/oocana-rust/pull/60
+* refactor: fix clippy lint by @leavesster in https://github.com/oomol/oocana-rust/pull/64
+* fix: detect root permission from uid not env variable by @leavesster in https://github.com/oomol/oocana-rust/pull/66
+* feat: support run subflow by @leavesster in https://github.com/oomol/oocana-rust/pull/68
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.27.0...v0.27.1
+
 ## 0.27.0 (2025-04-10)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
