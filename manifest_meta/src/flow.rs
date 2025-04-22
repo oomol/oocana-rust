@@ -11,7 +11,10 @@ use manifest_reader::{
     reader::read_package,
 };
 
-use crate::scope::{calculate_running_scope, RunningScope, RunningTarget};
+use crate::{
+    scope::{calculate_running_scope, RunningScope, RunningTarget},
+    signal::SignalCenter,
+};
 
 use tracing::warn;
 use utils::error::Result;
@@ -103,6 +106,8 @@ impl SubflowBlock {
             injection: scripts,
         } = manifest;
 
+        let mut signal_center = SignalCenter::new();
+
         let mut connections =
             Connections::new(nodes.iter().map(|n| n.node_id().to_owned()).collect());
 
@@ -115,6 +120,10 @@ impl SubflowBlock {
                     &subflow_node.node_id,
                     subflow_node.slots.as_ref(),
                 );
+            }
+
+            if let Some(run_after) = node.run_after() {
+                signal_center.parse_run_after(node.node_id(), run_after)?;
             }
         }
 
@@ -172,6 +181,8 @@ impl SubflowBlock {
                     new_nodes.insert(
                         subflow_node.node_id.to_owned(),
                         Node::Flow(SubflowNode {
+                            after: signal_center.after.remove(&subflow_node.node_id),
+                            before: signal_center.notify.remove(&subflow_node.node_id),
                             from: connections.node_inputs_froms.remove(&subflow_node.node_id),
                             to: connections.node_outputs_tos.remove(&subflow_node.node_id),
                             slots_outputs_from: connections
@@ -201,6 +212,8 @@ impl SubflowBlock {
                     new_nodes.insert(
                         service_node.node_id.to_owned(),
                         Node::Service(ServiceNode {
+                            after: signal_center.after.remove(&service_node.node_id),
+                            before: signal_center.notify.remove(&service_node.node_id),
                             from: connections.node_inputs_froms.remove(&service_node.node_id),
                             to: connections.node_outputs_tos.remove(&service_node.node_id),
                             node_id: service_node.node_id.to_owned(),
@@ -290,10 +303,13 @@ impl SubflowBlock {
                                     if let Some(script) = task_node
                                         .inject
                                         .as_ref()
-                                        .and_then(|injection| injection.script.clone()) { injection_scripts
-                                                .entry(pkg_path.clone())
-                                                .or_default()
-                                                .push(script); }
+                                        .and_then(|injection| injection.script.clone())
+                                    {
+                                        injection_scripts
+                                            .entry(pkg_path.clone())
+                                            .or_default()
+                                            .push(script);
+                                    }
                                 }
                                 RunningScope::Package {
                                     name: Some(name),
@@ -398,6 +414,8 @@ impl SubflowBlock {
                     new_nodes.insert(
                         task_node.node_id.to_owned(),
                         Node::Task(TaskNode {
+                            after: signal_center.after.remove(&task_node.node_id),
+                            before: signal_center.notify.remove(&task_node.node_id),
                             from: froms,
                             to: connections.node_outputs_tos.remove(&task_node.node_id),
                             node_id: task_node.node_id.to_owned(),
@@ -420,6 +438,8 @@ impl SubflowBlock {
                     new_nodes.insert(
                         slot_node.node_id.to_owned(),
                         Node::Slot(SlotNode {
+                            after: signal_center.after.remove(&slot_node.node_id),
+                            before: signal_center.notify.remove(&slot_node.node_id),
                             from: connections.node_inputs_froms.remove(&slot_node.node_id),
                             to: connections.node_outputs_tos.remove(&slot_node.node_id),
                             node_id: slot_node.node_id.to_owned(),
@@ -495,32 +515,36 @@ impl SubflowBlock {
     pub fn get_services(&self) -> HashSet<ServiceQueryResult> {
         let mut services = HashSet::new();
 
-        self.nodes.iter().for_each(|node| if let Node::Service(service) = node.1 {
-            let service_block_path = service.block.dir();
-            let entry = if let Some(executor) = &service.block.service_executor.as_ref() {
-                executor.entry.clone()
-            } else {
-                None
-            };
-            let package = if let Some(package_path) = &service.block.package_path {
-                package_path.to_str().map(|package_path| package_path.to_string())
-            } else {
-                None
-            };
+        self.nodes.iter().for_each(|node| {
+            if let Node::Service(service) = node.1 {
+                let service_block_path = service.block.dir();
+                let entry = if let Some(executor) = &service.block.service_executor.as_ref() {
+                    executor.entry.clone()
+                } else {
+                    None
+                };
+                let package = if let Some(package_path) = &service.block.package_path {
+                    package_path
+                        .to_str()
+                        .map(|package_path| package_path.to_string())
+                } else {
+                    None
+                };
 
-            let is_global = if let Some(e) = service.block.service_executor.as_ref() {
-                e.is_global()
-            } else {
-                false
-            };
+                let is_global = if let Some(e) = service.block.service_executor.as_ref() {
+                    e.is_global()
+                } else {
+                    false
+                };
 
-            services.insert(ServiceQueryResult {
-                entry,
-                service_hash: utils::calculate_short_hash(&service_block_path, 16),
-                dir: service_block_path,
-                package,
-                is_global,
-            });
+                services.insert(ServiceQueryResult {
+                    entry,
+                    service_hash: utils::calculate_short_hash(&service_block_path, 16),
+                    dir: service_block_path,
+                    package,
+                    is_global,
+                });
+            }
         });
 
         services

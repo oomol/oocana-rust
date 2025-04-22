@@ -22,6 +22,8 @@ macro_rules! extend_node_common_field {
             $(pub $field: $type,)*
             pub node_id: NodeId,
             pub timeout: Option<u64>,
+            pub after: Option<Vec<NodeId>>,
+            pub before: Option<Vec<NodeId>>,
             pub from: Option<HandlesFroms>,
             pub to: Option<HandlesTos>,
             pub inputs_def: Option<InputHandles>,
@@ -113,6 +115,24 @@ impl Node {
             Self::Flow(flow) => flow.inputs_def.as_ref(),
             Self::Slot(slot) => slot.inputs_def.as_ref(),
             Self::Service(service) => service.inputs_def.as_ref(),
+        }
+    }
+
+    pub fn after(&self) -> &Option<Vec<NodeId>> {
+        match self {
+            Self::Task(task) => &task.after,
+            Self::Flow(flow) => &flow.after,
+            Self::Slot(slot) => &slot.after,
+            Self::Service(service) => &service.after,
+        }
+    }
+
+    pub fn before(&self) -> &Option<Vec<NodeId>> {
+        match self {
+            Self::Task(task) => &task.before,
+            Self::Flow(flow) => &flow.before,
+            Self::Slot(slot) => &slot.before,
+            Self::Service(service) => &service.before,
         }
     }
 
