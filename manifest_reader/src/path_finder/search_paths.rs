@@ -151,7 +151,9 @@ fn find_block_manifest_file(params: BlockSearchParams) -> Option<PathBuf> {
     for search_path in search_paths.iter() {
         let candidate_path = search_path.join(manifest_path.iter().collect::<PathBuf>());
         let file_path = find_oo_yaml_in_dir(&candidate_path, base_name);
-        if let Some(path) = file_path { return canonicalize(&path).ok() }
+        if let Some(path) = file_path {
+            return canonicalize(&path).ok();
+        }
     }
 
     let candidate_path = flow_dir.join(manifest_path.iter().collect::<PathBuf>());
