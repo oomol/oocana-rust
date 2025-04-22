@@ -212,7 +212,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                     handle_tos,
                     &flow_shared,
                     &mut run_flow_ctx,
-                    false,
+                    true,
                     &filtered_nodes,
                 );
             }

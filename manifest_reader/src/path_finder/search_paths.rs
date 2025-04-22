@@ -13,6 +13,8 @@ pub struct BlockManifestParams<'a> {
     pub pkg_version: &'a HashMap<String, String>,
 }
 
+/// TODO: better return error with block type and search path instead of Option, so that we can reporter more specific error.
+/// search block manifest in <block_dir>/<block_name>/<base_name>.oo.[yaml|yml] in working_dir or search_paths.
 pub fn search_block_manifest(params: BlockManifestParams) -> Option<PathBuf> {
     let BlockManifestParams {
         value,
@@ -26,7 +28,7 @@ pub fn search_block_manifest(params: BlockManifestParams) -> Option<PathBuf> {
     let block_type = get_block_value_type(value);
     match block_type {
         BlockValueType::SelfBlock => {
-            let block_name = &value[6..];
+            let block_name = &value[SELF_BLOCK_PREFIX.len()..];
             let mut self_manifest_path = working_dir.to_path_buf();
             self_manifest_path.pop();
             self_manifest_path.pop();
@@ -105,8 +107,10 @@ pub enum BlockValueType {
     RelPath,
 }
 
+const SELF_BLOCK_PREFIX: &str = "self::";
+
 pub fn get_block_value_type(block_value: &str) -> BlockValueType {
-    if block_value.starts_with("self::") {
+    if block_value.starts_with(SELF_BLOCK_PREFIX) {
         return BlockValueType::SelfBlock;
     }
 
@@ -149,7 +153,9 @@ fn find_block_manifest_file(params: BlockSearchParams) -> Option<PathBuf> {
     for search_path in search_paths.iter() {
         let candidate_path = search_path.join(manifest_path.iter().collect::<PathBuf>());
         let file_path = find_oo_yaml_in_dir(&candidate_path, base_name);
-        if let Some(path) = file_path { return canonicalize(&path).ok() }
+        if let Some(path) = file_path {
+            return canonicalize(&path).ok();
+        }
     }
 
     let candidate_path = flow_dir.join(manifest_path.iter().collect::<PathBuf>());
