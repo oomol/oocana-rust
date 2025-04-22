@@ -13,7 +13,6 @@ pub struct TaskBlockManifestParams<'a> {
     pub pkg_version: &'a HashMap<String, String>,
 }
 
-/// Search task block `block.oo.yaml` in /blocks/<name>/blocks.oo.yaml or `tasks.oo.yaml` in /tasks/<name>/tasks.oo.yaml
 pub fn find_task_block(params: TaskBlockManifestParams) -> Result<PathBuf> {
     let TaskBlockManifestParams {
         value,

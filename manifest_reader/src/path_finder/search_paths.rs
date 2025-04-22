@@ -13,6 +13,8 @@ pub struct BlockManifestParams<'a> {
     pub pkg_version: &'a HashMap<String, String>,
 }
 
+/// TODO: better return error with block type and search path instead of Option, so that we can reporter more specific error.
+/// search block manifest in <block_dir>/<block_name>/<base_name>.oo.[yaml|yml] in working_dir or search_paths.
 pub fn search_block_manifest(params: BlockManifestParams) -> Option<PathBuf> {
     let BlockManifestParams {
         value,
