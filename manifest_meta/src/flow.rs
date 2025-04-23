@@ -110,12 +110,6 @@ impl SubflowBlock {
 
         for node in nodes.iter() {
             connections.parse_node_inputs_from(node.node_id(), node.inputs_from());
-            if let manifest::Node::Subflow(subflow_node) = node {
-                connections.parse_subflow_slot_outputs_from(
-                    &subflow_node.node_id,
-                    subflow_node.slots.as_ref(),
-                );
-            }
         }
 
         let value_nodes = nodes
@@ -174,12 +168,6 @@ impl SubflowBlock {
                         Node::Flow(SubflowNode {
                             from: connections.node_inputs_froms.remove(&subflow_node.node_id),
                             to: connections.node_outputs_tos.remove(&subflow_node.node_id),
-                            slots_outputs_from: connections
-                                .slot_outputs_froms
-                                .remove(&subflow_node.node_id),
-                            slots_inputs_to: connections
-                                .slot_inputs_tos
-                                .remove(&subflow_node.node_id),
                             flow,
                             node_id: subflow_node.node_id.to_owned(),
                             timeout: subflow_node.timeout,

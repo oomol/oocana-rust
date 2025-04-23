@@ -15,9 +15,6 @@ pub struct Connections {
 
     pub flow_inputs_tos: ConnNodeTos,
     pub flow_outputs_froms: ConnNodeFroms,
-
-    pub slot_inputs_tos: ConnSlotNodesTos,
-    pub slot_outputs_froms: ConnSlotNodesFroms,
 }
 
 impl Connections {
@@ -29,9 +26,6 @@ impl Connections {
 
             flow_inputs_tos: ConnNodeTos::new(),
             flow_outputs_froms: ConnNodeFroms::new(),
-
-            slot_inputs_tos: ConnSlotNodesTos::new(),
-            slot_outputs_froms: ConnSlotNodesFroms::new(),
         }
     }
 
@@ -136,44 +130,6 @@ impl Connections {
                                 node_input_handle: input_from.handle.to_owned(),
                             },
                         );
-                    }
-                }
-            }
-        }
-    }
-
-    pub fn parse_subflow_slot_outputs_from(
-        &mut self,
-        subflow_node_id: &NodeId,
-        slots: Option<&Vec<manifest::SlotProvider>>,
-    ) {
-        if let Some(slots) = slots {
-            for slot in slots {
-                match slot {
-                    manifest::SlotProvider::Inline(inline_slot) => {
-                        for output_from in &inline_slot.outputs_from {
-                            if let Some(from_nodes) = &output_from.from_node {
-                                for from_node in from_nodes {
-                                    // 连接的节点不在当前 flow 中，不创建连线
-                                    if !self.nodes.contains(&from_node.node_id) {
-                                        continue;
-                                    }
-
-                                    self.slot_outputs_froms.add(
-                                        subflow_node_id.to_owned(),
-                                        inline_slot.slot_node_id.to_owned(),
-                                        output_from.handle.to_owned(),
-                                        HandleFrom::FromNodeOutput {
-                                            node_id: from_node.node_id.to_owned(),
-                                            node_output_handle: from_node.output_handle.to_owned(),
-                                        },
-                                    );
-                                }
-                            }
-                        }
-                    }
-                    _ => {
-                        // TODO: slot need name to name to match
                     }
                 }
             }

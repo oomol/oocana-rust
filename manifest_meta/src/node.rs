@@ -42,8 +42,6 @@ extend_node_common_field!(ServiceNode {
 
 extend_node_common_field!(SubflowNode {
     flow: Arc<SubflowBlock>,
-    slots_inputs_to: Option<NodesHandlesTos>,
-    slots_outputs_from: Option<NodesHandlesFroms>,
 });
 
 extend_node_common_field!(SlotNode {
