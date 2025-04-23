@@ -551,10 +551,7 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
             nodes: None,
             input_values: None,
             scope: node.scope(),
-            timeout_seconds: match node {
-                Node::Task(task_node) => task_node.timeout_seconds,
-                _ => None,
-            },
+            timeout: node.timeout(),
             inputs_def_patch: node.inputs_def_patch().cloned(),
         }
     });

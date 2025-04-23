@@ -41,8 +41,8 @@ pub struct RunBlockArgs {
     pub block_status: BlockStatusTx,
     pub nodes: Option<HashSet<NodeId>>,
     pub input_values: Option<String>,
-    pub timeout_seconds: Option<u64>,
     pub scope: RunningScope,
+    pub timeout: Option<u64>,
     pub inputs_def_patch: Option<InputDefPatchMap>,
 }
 
@@ -77,7 +77,7 @@ pub fn run_block(block_args: RunBlockArgs) -> Option<BlockJobHandle> {
         block_status,
         nodes,
         input_values,
-        timeout_seconds,
+        timeout,
         scope,
         inputs_def_patch,
     } = block_args;
@@ -106,7 +106,7 @@ pub fn run_block(block_args: RunBlockArgs) -> Option<BlockJobHandle> {
             inputs,
             block_status,
             scope,
-            timeout_seconds,
+            timeout,
             inputs_def_patch,
         }),
         Block::Service(service_block) => {

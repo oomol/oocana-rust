@@ -406,7 +406,6 @@ impl SubflowBlock {
                             task,
                             inputs_def,
                             concurrency: task_node.concurrency,
-                            timeout_seconds: task_node.timeout_seconds,
                             inputs_def_patch,
                         }),
                     );
