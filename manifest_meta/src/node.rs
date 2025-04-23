@@ -33,7 +33,6 @@ macro_rules! extend_node_common_field {
 
 extend_node_common_field!(TaskNode {
     task: Arc<TaskBlock>,
-    timeout_seconds: Option<u64>,
     scope: RunningScope,
 });
 
@@ -151,6 +150,15 @@ impl Node {
             Self::Flow(flow) => flow.flow.package_path.clone(),
             Self::Slot(slot) => slot.slot.package_path.clone(),
             Self::Service(service) => service.block.package_path.clone(),
+        }
+    }
+
+    pub fn timeout(&self) -> Option<u64> {
+        match self {
+            Self::Task(task) => task.timeout,
+            Self::Flow(flow) => flow.timeout,
+            Self::Slot(slot) => slot.timeout,
+            Self::Service(service) => service.timeout,
         }
     }
 

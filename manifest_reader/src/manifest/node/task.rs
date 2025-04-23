@@ -11,7 +11,6 @@ use super::common::{default_concurrency, NodeId};
 
 extend_node_common_field!(TaskNode {
     task: TaskNodeBlock,
-    timeout_seconds: Option<u64>,
     inject: Option<Injection>,
     inputs_def: Option<Vec<InputHandle>>,
 });

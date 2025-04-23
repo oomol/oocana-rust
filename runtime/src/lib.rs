@@ -78,7 +78,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
             block_status: block_status_tx.clone(),
             nodes,
             input_values,
-            timeout_seconds: None,
+            timeout: None,
             scope: RunningScope::default(),
             inputs_def_patch: None,
         }

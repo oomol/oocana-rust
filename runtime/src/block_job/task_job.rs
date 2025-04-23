@@ -52,7 +52,7 @@ pub struct RunTaskBlockArgs {
     pub inputs: Option<BlockInputs>,
     pub block_status: BlockStatusTx,
     pub scope: RunningScope,
-    pub timeout_seconds: Option<u64>,
+    pub timeout: Option<u64>,
     pub inputs_def_patch: Option<InputDefPatchMap>,
 }
 
@@ -66,7 +66,7 @@ pub fn run_task_block(args: RunTaskBlockArgs) -> Option<BlockJobHandle> {
         inputs,
         block_status,
         scope,
-        timeout_seconds,
+        timeout,
         inputs_def_patch,
     } = args;
     let reporter = Arc::new(shared.reporter.block(
@@ -79,10 +79,10 @@ pub fn run_task_block(args: RunTaskBlockArgs) -> Option<BlockJobHandle> {
 
     let mut spawn_handles: Vec<tokio::task::JoinHandle<()>> = Vec::new();
 
-    if let Some(timeout_seconds) = timeout_seconds {
+    if let Some(timeout_value) = timeout {
         let timeout_handle = timeout_abort(
             job_id.to_owned(),
-            std::time::Duration::from_secs(timeout_seconds),
+            std::time::Duration::from_secs(timeout_value),
             block_status.clone(),
             Arc::clone(&reporter),
         );
@@ -421,16 +421,14 @@ fn spawn(
         .collect::<Vec<&str>>();
 
     // add block task arguments
-    args.extend(
-        [
-            "--address",
-            address,
-            "--session-id",
-            session_id,
-            "--job-id",
-            job_id,
-        ],
-    );
+    args.extend([
+        "--address",
+        address,
+        "--session-id",
+        session_id,
+        "--job-id",
+        job_id,
+    ]);
 
     // Execute the command
     let mut command = process::Command::new(&spawn_options.bin);
@@ -568,11 +566,7 @@ pub fn timeout_abort(
 ) -> tokio::task::JoinHandle<()> {
     tokio::spawn(async move {
         tokio::time::sleep(timeout).await;
-        reporter.error(&format!(
-            "{} timeout after {:?}",
-            job_id,
-            timeout
-        ));
+        reporter.error(&format!("{} timeout after {:?}", job_id, timeout));
         block_status.done(job_id, Some("Timeout".to_owned()));
     })
 }
