@@ -21,9 +21,33 @@ pub enum SlotProvider {
 }
 
 #[derive(Deserialize, Debug, Clone)]
+pub struct TmpInlineSlot {
+    pub slot_node_id: NodeId,
+    pub nodes: Vec<Node>,
+    pub outputs_from: Vec<NodeInputFrom>,
+}
+
+impl From<TmpInlineSlot> for InlineSlot {
+    fn from(tmp: TmpInlineSlot) -> Self {
+        let nodes = tmp
+            .nodes
+            .into_iter()
+            .filter(|node| matches!(node, Node::Task(_) | Node::Service(_) | Node::Value(_)))
+            .collect();
+
+        InlineSlot {
+            slot_node_id: tmp.slot_node_id,
+            nodes: nodes,
+            outputs_from: tmp.outputs_from,
+        }
+    }
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[serde(from = "TmpInlineSlot")]
 pub struct InlineSlot {
     pub slot_node_id: NodeId,
-    pub nodes: Vec<Node>, // TODO: 更小约束
+    pub nodes: Vec<Node>, // TODO: more strict type
     pub outputs_from: Vec<NodeInputFrom>,
 }
 
