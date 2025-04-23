@@ -6,12 +6,12 @@ use super::NodeId;
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct SlotNode {
-    pub node_id: NodeId,
     pub slot: SlotNodeBlock,
+    pub node_id: NodeId,
+    pub timeout: Option<u64>,
     pub inputs_from: Option<Vec<NodeInputFrom>>,
     #[serde(default = "default_concurrency")]
     pub concurrency: i32,
-    pub timeout: Option<u64>,
     #[serde(default)]
     pub ignore: bool,
 }

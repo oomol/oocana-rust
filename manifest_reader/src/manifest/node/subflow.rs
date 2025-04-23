@@ -2,19 +2,18 @@ use serde::Deserialize;
 
 use crate::manifest::NodeInputFrom;
 
-use super::{slot::SlotNodeBlock, NodeId};
+use super::NodeId;
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct SubflowNode {
     pub node_id: NodeId,
-    pub slot: SlotNodeBlock,
+    pub timeout: Option<u64>,
     pub inputs_from: Option<Vec<NodeInputFrom>>,
     #[serde(default = "default_concurrency")]
     pub concurrency: i32,
     #[serde(default)]
     pub ignore: bool,
     pub subflow: String,
-    pub timeout: Option<u64>,
     pub slots: Option<Vec<SubflowNodeSlots>>,
 }
 
