@@ -145,53 +145,35 @@ impl Connections {
     pub fn parse_subflow_slot_outputs_from(
         &mut self,
         subflow_node_id: &NodeId,
-        slots: Option<&Vec<manifest::SubflowNodeSlots>>,
+        slots: Option<&Vec<manifest::SlotProvider>>,
     ) {
         if let Some(slots) = slots {
             for slot in slots {
-                for output_from in &slot.outputs_from {
-                    if let Some(from_nodes) = &output_from.from_node {
-                        for from_node in from_nodes {
-                            self.slot_outputs_froms.add(
-                                subflow_node_id.to_owned(),
-                                slot.slot_node_id.to_owned(),
-                                output_from.handle.to_owned(),
-                                HandleFrom::FromNodeOutput {
-                                    node_id: from_node.node_id.to_owned(),
-                                    node_output_handle: from_node.output_handle.to_owned(),
-                                },
-                            );
-                            self.node_outputs_tos.add(
-                                from_node.node_id.to_owned(),
-                                from_node.output_handle.to_owned(),
-                                HandleTo::ToSlotOutput {
-                                    subflow_node_id: subflow_node_id.to_owned(),
-                                    slot_node_id: slot.slot_node_id.to_owned(),
-                                    slot_output_handle: output_from.handle.to_owned(),
-                                },
-                            );
+                match slot {
+                    manifest::SlotProvider::Inline(inline_slot) => {
+                        for output_from in &inline_slot.outputs_from {
+                            if let Some(from_nodes) = &output_from.from_node {
+                                for from_node in from_nodes {
+                                    // 连接的节点不在当前 flow 中，不创建连线
+                                    if !self.nodes.contains(&from_node.node_id) {
+                                        continue;
+                                    }
+
+                                    self.slot_outputs_froms.add(
+                                        subflow_node_id.to_owned(),
+                                        inline_slot.slot_node_id.to_owned(),
+                                        output_from.handle.to_owned(),
+                                        HandleFrom::FromNodeOutput {
+                                            node_id: from_node.node_id.to_owned(),
+                                            node_output_handle: from_node.output_handle.to_owned(),
+                                        },
+                                    );
+                                }
+                            }
                         }
                     }
-
-                    if let Some(from_flow) = &output_from.from_flow {
-                        for flow_handle in from_flow {
-                            self.slot_outputs_froms.add(
-                                subflow_node_id.to_owned(),
-                                slot.slot_node_id.to_owned(),
-                                output_from.handle.to_owned(),
-                                HandleFrom::FromFlowInput {
-                                    input_handle: flow_handle.input_handle.to_owned(),
-                                },
-                            );
-                            self.flow_inputs_tos.add(
-                                flow_handle.input_handle.to_owned(),
-                                HandleTo::ToSlotOutput {
-                                    subflow_node_id: subflow_node_id.to_owned(),
-                                    slot_node_id: slot.slot_node_id.to_owned(),
-                                    slot_output_handle: output_from.handle.to_owned(),
-                                },
-                            );
-                        }
+                    _ => {
+                        // TODO: slot need name to name to match
                     }
                 }
             }

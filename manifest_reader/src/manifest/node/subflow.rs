@@ -2,16 +2,41 @@ use serde::Deserialize;
 
 use crate::{extend_node_common_field, manifest::NodeInputFrom};
 
-use super::common::{default_concurrency, NodeId};
+use super::{
+    common::{default_concurrency, NodeId},
+    Node,
+};
 
 extend_node_common_field!(SubflowNode {
     subflow: String,
-    slots: Option<Vec<SubflowNodeSlots>>,
+    slots: Option<Vec<SlotProvider>>,
 });
+
 #[derive(Deserialize, Debug, Clone)]
-pub struct SubflowNodeSlots {
+#[serde(untagged)]
+pub enum SlotProvider {
+    Inline(InlineSlot),
+    Task(TaskSlot),
+    Subflow(SubflowSlot),
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct InlineSlot {
     pub slot_node_id: NodeId,
+    pub nodes: Vec<Node>, // TODO: 更小约束
     pub outputs_from: Vec<NodeInputFrom>,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct SubflowSlot {
+    pub slot_node_id: NodeId,
+    pub subflow: String,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct TaskSlot {
+    pub slot_node_id: NodeId,
+    pub task: String,
 }
 
 #[cfg(test)]
@@ -37,5 +62,27 @@ mod tests {
         assert_eq!(node.node_id, NodeId::from("example_node".to_owned()));
         assert_eq!(node.concurrency, 5);
         assert_eq!(node.ignore, false);
+    }
+
+    #[test]
+    fn test_subflow_slots() {
+        let yaml = r#"
+        subflow: example_subflow
+        node_id: example_node
+        slots:
+          - slot_node_id: example_slot
+            nodes:
+            - node1
+            - node2
+            outputs_from:
+            - handle: output_handle
+                value: null
+          - slot_node_id: example_task_slot
+            task: example_task
+          - slot_node_id: example_subflow_slot
+            subflow: example_subflow_2
+        "#;
+
+        let node: SubflowNode = serde_yaml::from_str(yaml).unwrap();
     }
 }
