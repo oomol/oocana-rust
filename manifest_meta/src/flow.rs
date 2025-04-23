@@ -290,10 +290,13 @@ impl SubflowBlock {
                                     if let Some(script) = task_node
                                         .inject
                                         .as_ref()
-                                        .and_then(|injection| injection.script.clone()) { injection_scripts
-                                                .entry(pkg_path.clone())
-                                                .or_default()
-                                                .push(script); }
+                                        .and_then(|injection| injection.script.clone())
+                                    {
+                                        injection_scripts
+                                            .entry(pkg_path.clone())
+                                            .or_default()
+                                            .push(script);
+                                    }
                                 }
                                 RunningScope::Package {
                                     name: Some(name),
@@ -422,7 +425,6 @@ impl SubflowBlock {
                             from: connections.node_inputs_froms.remove(&slot_node.node_id),
                             to: connections.node_outputs_tos.remove(&slot_node.node_id),
                             node_id: slot_node.node_id.to_owned(),
-                            // title: subflow_node.title,
                             timeout: slot_node.timeout,
                             slot,
                             inputs_def,
