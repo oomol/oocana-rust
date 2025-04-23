@@ -61,40 +61,16 @@ impl Connections {
                     }
                 }
 
-                if let Some(from_subflows) = output_from.from_subflow {
-                    for from_subflow in from_subflows {
+                if let Some(from_flow) = output_from.from_flow {
+                    for flow_handle in from_flow {
                         self.flow_outputs_froms.add(
                             output_from.handle.to_owned(),
                             HandleFrom::FromFlowInput {
-                                input_handle: from_subflow.input_handle.to_owned(),
+                                input_handle: flow_handle.input_handle.to_owned(),
                             },
                         );
                         self.flow_inputs_tos.add(
-                            from_subflow.input_handle.to_owned(),
-                            HandleTo::ToFlowOutput {
-                                output_handle: output_from.handle.to_owned(),
-                            },
-                        );
-                    }
-                }
-
-                if let Some(from_slot_nodes) = output_from.from_slot {
-                    for from_slot_node in from_slot_nodes {
-                        if !self.nodes.contains(&from_slot_node.slot_node_id) {
-                            continue;
-                        }
-                        self.flow_outputs_froms.add(
-                            output_from.handle.to_owned(),
-                            HandleFrom::FromSlotInput {
-                                subflow_node_id: from_slot_node.subflow_node_id.to_owned(),
-                                slot_node_id: from_slot_node.slot_node_id.to_owned(),
-                                slot_input_handle: from_slot_node.input_handle.to_owned(),
-                            },
-                        );
-                        self.slot_inputs_tos.add(
-                            from_slot_node.subflow_node_id.to_owned(),
-                            from_slot_node.slot_node_id.to_owned(),
-                            from_slot_node.input_handle.to_owned(),
+                            flow_handle.input_handle.to_owned(),
                             HandleTo::ToFlowOutput {
                                 output_handle: output_from.handle.to_owned(),
                             },
@@ -144,40 +120,17 @@ impl Connections {
                     }
                 }
 
-                if let Some(from_subflows) = &input_from.from_subflow {
-                    for from_subflow in from_subflows {
+                if let Some(from_flow) = &input_from.from_flow {
+                    for flow_handle in from_flow {
                         self.node_inputs_froms.add(
                             node_id.to_owned(),
                             input_from.handle.to_owned(),
                             HandleFrom::FromFlowInput {
-                                input_handle: from_subflow.input_handle.to_owned(),
+                                input_handle: flow_handle.input_handle.to_owned(),
                             },
                         );
                         self.flow_inputs_tos.add(
-                            from_subflow.input_handle.to_owned(),
-                            HandleTo::ToNodeInput {
-                                node_id: node_id.to_owned(),
-                                node_input_handle: input_from.handle.to_owned(),
-                            },
-                        );
-                    }
-                }
-
-                if let Some(from_slot_nodes) = &input_from.from_slot {
-                    for from_slot_node in from_slot_nodes {
-                        self.node_inputs_froms.add(
-                            node_id.to_owned(),
-                            input_from.handle.to_owned(),
-                            HandleFrom::FromSlotInput {
-                                subflow_node_id: from_slot_node.subflow_node_id.to_owned(),
-                                slot_node_id: from_slot_node.slot_node_id.to_owned(),
-                                slot_input_handle: from_slot_node.input_handle.to_owned(),
-                            },
-                        );
-                        self.slot_inputs_tos.add(
-                            from_slot_node.subflow_node_id.to_owned(),
-                            from_slot_node.slot_node_id.to_owned(),
-                            from_slot_node.input_handle.to_owned(),
+                            flow_handle.input_handle.to_owned(),
                             HandleTo::ToNodeInput {
                                 node_id: node_id.to_owned(),
                                 node_input_handle: input_from.handle.to_owned(),
@@ -220,43 +173,18 @@ impl Connections {
                         }
                     }
 
-                    if let Some(from_subflows) = &output_from.from_subflow {
-                        for from_subflow in from_subflows {
+                    if let Some(from_flow) = &output_from.from_flow {
+                        for flow_handle in from_flow {
                             self.slot_outputs_froms.add(
                                 subflow_node_id.to_owned(),
                                 slot.slot_node_id.to_owned(),
                                 output_from.handle.to_owned(),
                                 HandleFrom::FromFlowInput {
-                                    input_handle: from_subflow.input_handle.to_owned(),
+                                    input_handle: flow_handle.input_handle.to_owned(),
                                 },
                             );
                             self.flow_inputs_tos.add(
-                                from_subflow.input_handle.to_owned(),
-                                HandleTo::ToSlotOutput {
-                                    subflow_node_id: subflow_node_id.to_owned(),
-                                    slot_node_id: slot.slot_node_id.to_owned(),
-                                    slot_output_handle: output_from.handle.to_owned(),
-                                },
-                            );
-                        }
-                    }
-
-                    if let Some(from_slot_nodes) = &output_from.from_slot {
-                        for from_slot_node in from_slot_nodes {
-                            self.slot_outputs_froms.add(
-                                subflow_node_id.to_owned(),
-                                slot.slot_node_id.to_owned(),
-                                output_from.handle.to_owned(),
-                                HandleFrom::FromSlotInput {
-                                    subflow_node_id: from_slot_node.subflow_node_id.to_owned(),
-                                    slot_node_id: from_slot_node.slot_node_id.to_owned(),
-                                    slot_input_handle: from_slot_node.input_handle.to_owned(),
-                                },
-                            );
-                            self.slot_inputs_tos.add(
-                                from_slot_node.subflow_node_id.to_owned(),
-                                from_slot_node.slot_node_id.to_owned(),
-                                from_slot_node.input_handle.to_owned(),
+                                flow_handle.input_handle.to_owned(),
                                 HandleTo::ToSlotOutput {
                                     subflow_node_id: subflow_node_id.to_owned(),
                                     slot_node_id: slot.slot_node_id.to_owned(),
