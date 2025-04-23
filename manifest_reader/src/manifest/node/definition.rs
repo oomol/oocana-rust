@@ -1,4 +1,4 @@
-use super::common::NodeId;
+use super::common::{default_concurrency, NodeId};
 use super::input_from::NodeInputFrom;
 use super::service::ServiceNode;
 use super::slot::SlotNode;
@@ -34,7 +34,7 @@ impl Node {
             Node::Subflow(subflow) => subflow.concurrency,
             Node::Slot(slot) => slot.concurrency,
             Node::Service(service) => service.concurrency,
-            Node::Value(_value) => 1,
+            Node::Value(_value) => default_concurrency(),
         }
     }
     pub fn inputs_from(&self) -> Option<&Vec<NodeInputFrom>> {

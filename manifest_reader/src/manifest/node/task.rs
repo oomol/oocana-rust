@@ -7,7 +7,7 @@ use crate::{
     path_finder::{get_block_value_type, BlockValueType},
 };
 
-use super::common::NodeId;
+use super::common::{default_concurrency, NodeId};
 
 extend_node_common_field!(TaskNode {
     task: TaskNodeBlock,
@@ -15,10 +15,6 @@ extend_node_common_field!(TaskNode {
     inject: Option<Injection>,
     inputs_def: Option<Vec<InputHandle>>,
 });
-
-fn default_concurrency() -> i32 {
-    1
-}
 
 #[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]

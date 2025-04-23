@@ -17,6 +17,10 @@ macro_rules! extend_node_common_field {
     };
 }
 
+pub fn default_concurrency() -> i32 {
+    1
+}
+
 #[derive(
     Serialize,
     Deserialize,
