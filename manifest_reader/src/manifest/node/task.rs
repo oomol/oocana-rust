@@ -2,26 +2,19 @@ use serde::Deserialize;
 use tracing::warn;
 
 use crate::{
+    extend_node_common_field,
     manifest::{InputHandle, NodeInputFrom, TaskBlock},
     path_finder::{get_block_value_type, BlockValueType},
 };
 
 use super::common::NodeId;
 
-#[derive(Deserialize, Debug, Clone)]
-pub struct TaskNode {
-    pub task: TaskNodeBlock,
-    pub node_id: NodeId,
-    pub timeout: Option<u64>,
-    pub inputs_from: Option<Vec<NodeInputFrom>>,
-    #[serde(default = "default_concurrency")]
-    pub concurrency: i32,
-    #[serde(default)]
-    pub ignore: bool,
-    pub timeout_seconds: Option<u64>,
-    pub inject: Option<Injection>,
-    pub inputs_def: Option<Vec<InputHandle>>,
-}
+extend_node_common_field!(TaskNode {
+    task: TaskNodeBlock,
+    timeout_seconds: Option<u64>,
+    inject: Option<Injection>,
+    inputs_def: Option<Vec<InputHandle>>,
+});
 
 fn default_concurrency() -> i32 {
     1

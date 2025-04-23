@@ -1,20 +1,16 @@
 use serde::Deserialize;
 
-use crate::manifest::{NodeInputFrom, SlotBlock};
+use crate::{
+    extend_node_common_field,
+    manifest::{NodeInputFrom, SlotBlock},
+};
 
 use super::NodeId;
 
-#[derive(Deserialize, Debug, Clone)]
-pub struct SlotNode {
-    pub slot: SlotNodeBlock,
-    pub node_id: NodeId,
-    pub timeout: Option<u64>,
-    pub inputs_from: Option<Vec<NodeInputFrom>>,
-    #[serde(default = "default_concurrency")]
-    pub concurrency: i32,
-    #[serde(default)]
-    pub ignore: bool,
-}
+extend_node_common_field!(SlotNode {
+    slot: SlotNodeBlock,
+});
+
 fn default_concurrency() -> i32 {
     1
 }
