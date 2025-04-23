@@ -27,7 +27,7 @@ struct TmpNodeInputFrom {
     )]
     pub value: Option<Option<serde_json::Value>>,
     pub schema_overrides: Option<Vec<TmpInputDefPatch>>,
-    pub from_subflow: Option<Vec<SubflowHandleFrom>>,
+    pub from_flow: Option<Vec<FlowHandleFrom>>,
     pub from_node: Option<Vec<NodeHandleFrom>>,
     pub from_slot: Option<Vec<SlotHandleFrom>>,
 }
@@ -75,7 +75,7 @@ pub struct NodeInputFrom {
 
     pub schema_overrides: Option<Vec<InputDefPatch>>,
 
-    pub from_subflow: Option<Vec<SubflowHandleFrom>>,
+    pub from_flow: Option<Vec<FlowHandleFrom>>,
     pub from_node: Option<Vec<NodeHandleFrom>>,
     pub from_slot: Option<Vec<SlotHandleFrom>>,
 }
@@ -114,7 +114,7 @@ impl From<TmpNodeInputFrom> for NodeInputFrom {
             handle: data.handle,
             value: data.value,
             schema_overrides,
-            from_subflow: data.from_subflow,
+            from_flow: data.from_flow,
             from_node: data.from_node,
             from_slot: data.from_slot,
         }
@@ -122,7 +122,7 @@ impl From<TmpNodeInputFrom> for NodeInputFrom {
 }
 
 #[derive(Deserialize, Debug, Clone)]
-pub struct SubflowHandleFrom {
+pub struct FlowHandleFrom {
     pub input_handle: HandleName,
 }
 

@@ -61,7 +61,7 @@ impl Connections {
                     }
                 }
 
-                if let Some(from_subflows) = output_from.from_subflow {
+                if let Some(from_subflows) = output_from.from_flow {
                     for from_subflow in from_subflows {
                         self.flow_outputs_froms.add(
                             output_from.handle.to_owned(),
@@ -144,7 +144,7 @@ impl Connections {
                     }
                 }
 
-                if let Some(from_subflows) = &input_from.from_subflow {
+                if let Some(from_subflows) = &input_from.from_flow {
                     for from_subflow in from_subflows {
                         self.node_inputs_froms.add(
                             node_id.to_owned(),
@@ -220,7 +220,7 @@ impl Connections {
                         }
                     }
 
-                    if let Some(from_subflows) = &output_from.from_subflow {
+                    if let Some(from_subflows) = &output_from.from_flow {
                         for from_subflow in from_subflows {
                             self.slot_outputs_froms.add(
                                 subflow_node_id.to_owned(),
