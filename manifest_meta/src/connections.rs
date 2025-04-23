@@ -122,7 +122,7 @@ impl Connections {
                                 input_from.handle,
                                 from_node.node_id
                             );
-                            return;
+                            continue;
                         }
 
                         self.node_inputs_froms.add(
