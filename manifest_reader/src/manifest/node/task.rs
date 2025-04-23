@@ -93,3 +93,26 @@ pub enum InjectionTarget {
     Package(String),
     Node(NodeId),
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_task_node() {
+        let yaml = r#"
+        task: example_task
+        node_id: example_node
+        inputs_from:
+          - handle: input_handle
+            value: null
+        concurrency: 5
+        ignore: false
+        "#;
+
+        let node: TaskNode = serde_yaml::from_str(yaml).unwrap();
+        assert_eq!(node.node_id, NodeId::from("example_node".to_owned()));
+        assert_eq!(node.concurrency, 5);
+        assert_eq!(node.ignore, false);
+    }
+}
