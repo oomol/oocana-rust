@@ -11,6 +11,7 @@ use super::{
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct TmpSubflowBlock {
+    #[serde(default)]
     pub nodes: Vec<Node>,
     pub outputs_from: Option<Vec<NodeInputFrom>>,
     pub inputs_def: Option<Vec<InputHandle>>,
