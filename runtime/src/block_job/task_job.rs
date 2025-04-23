@@ -79,10 +79,10 @@ pub fn run_task_block(args: RunTaskBlockArgs) -> Option<BlockJobHandle> {
 
     let mut spawn_handles: Vec<tokio::task::JoinHandle<()>> = Vec::new();
 
-    if let Some(timeout_seconds) = timeout {
+    if let Some(timeout_value) = timeout {
         let timeout_handle = timeout_abort(
             job_id.to_owned(),
-            std::time::Duration::from_secs(timeout_seconds),
+            std::time::Duration::from_secs(timeout_value),
             block_status.clone(),
             Arc::clone(&reporter),
         );
