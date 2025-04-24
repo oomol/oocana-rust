@@ -7,11 +7,11 @@ use std::sync::Arc;
 
 extend_node_common_field!(SubflowNode {
     flow: Arc<SubflowBlock>,
-    slots: Option<HashMap<NodeId, SlotBlock>>,
+    slots: Option<HashMap<NodeId, Slot>>,
 });
 
 #[derive(Debug, Clone)]
-pub enum SlotBlock {
+pub enum Slot {
     // Inline(InlineSlot),
     Task(TaskSlot),
     // Subflow(SubflowBlock),

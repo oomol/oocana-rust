@@ -12,7 +12,7 @@ use manifest_reader::{
 };
 
 use crate::{
-    node::subflow::{SlotBlock, TaskSlot},
+    node::subflow::{Slot, TaskSlot},
     scope::{calculate_running_scope, RunningScope, RunningTarget},
 };
 
@@ -164,7 +164,7 @@ impl SubflowBlock {
                         parse_inputs_def(&subflow_node.inputs_from, &flow.as_ref().inputs_def);
                     let inputs_def_patch = get_inputs_def_patch(&subflow_node.inputs_from);
 
-                    let mut slot_blocks: HashMap<NodeId, SlotBlock> = HashMap::new();
+                    let mut slot_blocks: HashMap<NodeId, Slot> = HashMap::new();
                     if let Some(slots) = subflow_node.slots.as_ref() {
                         for slot in slots {
                             match slot {
@@ -177,7 +177,7 @@ impl SubflowBlock {
                                         &mut path_finder,
                                     )?;
 
-                                    let slot_block = SlotBlock::Task(TaskSlot {
+                                    let slot_block = Slot::Task(TaskSlot {
                                         slot_node_id: task_slot.slot_node_id.to_owned(),
                                         task,
                                     });
