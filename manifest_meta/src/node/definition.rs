@@ -2,34 +2,12 @@ use std::{collections::HashMap, path::PathBuf, sync::Arc};
 
 use manifest_reader::manifest::{InputDefPatch, InputHandles, OutputHandles};
 
-use crate::{
-    scope::RunningScope, Block, HandleName, NodeId, ServiceBlock, SlotBlock, SubflowBlock,
-    TaskBlock,
-};
+use crate::{scope::RunningScope, Block, HandleName, NodeId, ServiceBlock, SlotBlock, TaskBlock};
 
-pub type HandlesFroms = HashMap<HandleName, Vec<HandleFrom>>;
+use crate::extend_node_common_field;
 
-pub type HandlesTos = HashMap<HandleName, Vec<HandleTo>>;
-
-pub type NodesHandlesFroms = HashMap<NodeId, HandlesFroms>;
-
-pub type NodesHandlesTos = HashMap<NodeId, HandlesTos>;
-
-macro_rules! extend_node_common_field {
-    ($name:ident { $($field:ident : $type:ty),* $(,)? }) => {
-        #[derive(Debug, Clone)]
-        pub struct $name {
-            $(pub $field: $type,)*
-            pub node_id: NodeId,
-            pub timeout: Option<u64>,
-            pub from: Option<HandlesFroms>,
-            pub to: Option<HandlesTos>,
-            pub inputs_def: Option<InputHandles>,
-            pub concurrency: i32,
-            pub inputs_def_patch: Option<HashMap<HandleName, Vec<InputDefPatch>>>,
-        }
-    };
-}
+use super::common::{HandlesFroms, HandlesTos, InputDefPatchMap};
+use super::subflow::SubflowNode;
 
 extend_node_common_field!(TaskNode {
     task: Arc<TaskBlock>,
@@ -38,10 +16,6 @@ extend_node_common_field!(TaskNode {
 
 extend_node_common_field!(ServiceNode {
     block: Arc<ServiceBlock>
-});
-
-extend_node_common_field!(SubflowNode {
-    flow: Arc<SubflowBlock>,
 });
 
 extend_node_common_field!(SlotNode {
@@ -55,8 +29,6 @@ pub enum Node {
     Slot(SlotNode),
     Service(ServiceNode),
 }
-
-pub type InputDefPatchMap = HashMap<HandleName, Vec<InputDefPatch>>;
 
 impl Node {
     pub fn node_id(&self) -> &NodeId {
@@ -168,36 +140,4 @@ impl Node {
             Self::Service(_) => RunningScope::default(),
         }
     }
-}
-
-#[derive(Debug, Clone)]
-pub enum HandleFrom {
-    FromFlowInput {
-        input_handle: HandleName,
-    },
-    FromNodeOutput {
-        node_id: NodeId,
-        node_output_handle: HandleName,
-    },
-    FromSlotInput {
-        subflow_node_id: NodeId,
-        slot_node_id: NodeId,
-        slot_input_handle: HandleName,
-    },
-}
-
-#[derive(Debug, Clone)]
-pub enum HandleTo {
-    ToFlowOutput {
-        output_handle: HandleName,
-    },
-    ToNodeInput {
-        node_id: NodeId,
-        node_input_handle: HandleName,
-    },
-    ToSlotOutput {
-        subflow_node_id: NodeId,
-        slot_node_id: NodeId,
-        slot_output_handle: HandleName,
-    },
 }
