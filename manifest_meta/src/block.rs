@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::{SubflowBlock, ServiceBlock, SlotBlock, TaskBlock};
+use crate::{ServiceBlock, SlotBlock, SubflowBlock, TaskBlock};
 
 #[derive(Debug, Clone)]
 pub enum Block {

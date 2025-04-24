@@ -11,7 +11,10 @@ use manifest_reader::{
     reader::read_package,
 };
 
-use crate::scope::{calculate_running_scope, RunningScope, RunningTarget};
+use crate::{
+    node::subflow::{SlotBlock, TaskSlot},
+    scope::{calculate_running_scope, RunningScope, RunningTarget},
+};
 
 use tracing::warn;
 use utils::error::Result;
@@ -161,6 +164,33 @@ impl SubflowBlock {
                         parse_inputs_def(&subflow_node.inputs_from, &flow.as_ref().inputs_def);
                     let inputs_def_patch = get_inputs_def_patch(&subflow_node.inputs_from);
 
+                    let mut slot_blocks: HashMap<NodeId, SlotBlock> = HashMap::new();
+                    if let Some(slots) = subflow_node.slots.as_ref() {
+                        for slot in slots {
+                            match slot {
+                                manifest::SlotProvider::Inline(inline_slot) => {
+                                    // FIXME: finish inline slot
+                                }
+                                manifest::SlotProvider::Task(task_slot) => {
+                                    let task = block_resolver.resolve_task_node_block(
+                                        manifest::TaskNodeBlock::File(task_slot.task.to_owned()),
+                                        &mut path_finder,
+                                    )?;
+
+                                    let slot_block = SlotBlock::Task(TaskSlot {
+                                        slot_node_id: task_slot.slot_node_id.to_owned(),
+                                        task,
+                                    });
+                                    slot_blocks
+                                        .insert(task_slot.slot_node_id.to_owned(), slot_block);
+                                }
+                                manifest::SlotProvider::Subflow(subflow_slot) => {
+                                    // FIXME: finish subflow slot
+                                }
+                            }
+                        }
+                    }
+
                     // TODO: flow 注入
 
                     new_nodes.insert(
@@ -174,6 +204,11 @@ impl SubflowBlock {
                             inputs_def,
                             concurrency: subflow_node.concurrency,
                             inputs_def_patch,
+                            slots: if slot_blocks.is_empty() {
+                                None
+                            } else {
+                                Some(slot_blocks)
+                            },
                         }),
                     );
                 }
