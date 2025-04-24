@@ -537,13 +537,14 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
     if matches!(node, Node::Slot(_)) {
         let node_id = node.node_id();
         shared.slot_blocks.get(node_id).map(|b| {
-            block = b.block();
+            let replace_block = b.block();
+            block = replace_block;
         });
     }
 
     let handle = run_block({
         RunBlockArgs {
-            block: node.block(),
+            block: block,
             shared: Arc::clone(&shared.shared),
             parent_flow: Some(Arc::clone(&shared.flow_block)),
             stacks: shared.stacks.stack(
@@ -574,6 +575,8 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
                 _job: handle,
             },
         );
+    } else {
+        warn!("failed to run node: {}", node.node_id());
     }
 }
 
