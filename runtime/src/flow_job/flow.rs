@@ -552,6 +552,7 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
             input_values: None,
             scope: node.scope(),
             timeout: node.timeout(),
+            slot_block: None,
             inputs_def_patch: node.inputs_def_patch().cloned(),
         }
     });

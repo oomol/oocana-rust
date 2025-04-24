@@ -1,8 +1,11 @@
-use std::{collections::HashSet, sync::Arc};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
 
 use job::{BlockInputs, BlockJobStacks, JobId};
 use mainframe::reporter::ReporterMessage;
-use manifest_meta::{Block, InputDefPatchMap, NodeId, RunningScope, SubflowBlock};
+use manifest_meta::{Block, InputDefPatchMap, NodeId, RunningScope, SlotBlock, SubflowBlock};
 
 use super::{service_job, task_job};
 use crate::{block_status::BlockStatusTx, flow_job, shared::Shared};
@@ -44,6 +47,7 @@ pub struct RunBlockArgs {
     pub scope: RunningScope,
     pub timeout: Option<u64>,
     pub inputs_def_patch: Option<InputDefPatchMap>,
+    pub slot_block: Option<HashMap<NodeId, SlotBlock>>,
 }
 
 pub struct FindUpstreamArgs {
@@ -80,6 +84,7 @@ pub fn run_block(block_args: RunBlockArgs) -> Option<BlockJobHandle> {
         timeout,
         scope,
         inputs_def_patch,
+        slot_block,
     } = block_args;
 
     match block {
