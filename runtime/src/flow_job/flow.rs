@@ -16,7 +16,7 @@ use tracing::{info, warn};
 use utils::output::OutputValue;
 
 use job::{BlockInputs, BlockJobStacks, JobId};
-use manifest_meta::{HandleFrom, HandleTo, Node, NodeId, SubflowBlock};
+use manifest_meta::{HandleFrom, HandleTo, Node, NodeId, SlotBlock, SubflowBlock};
 
 use super::node_input_values;
 use node_input_values::{CacheMetaMap, CacheMetaMapExt, NodeInputValues};
@@ -534,6 +534,17 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
         .or_default()
         .jobs
         .insert(job_id.to_owned());
+
+    let slot_blocks: HashMap<NodeId, manifest_meta::Slot> = HashMap::new();
+    let mut block = node.block();
+
+    // replace slot block with slot
+    if matches!(node, Node::Slot(_)) {
+        let node_id = node.node_id();
+        slot_blocks.get(node_id).map(|b| {
+            block = b.block();
+        });
+    }
 
     let handle = run_block({
         RunBlockArgs {
