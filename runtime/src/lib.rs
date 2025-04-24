@@ -81,7 +81,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
             timeout: None,
             scope: RunningScope::default(),
             inputs_def_patch: None,
-            slot_block: None,
+            slot_blocks: None,
         }
     });
 

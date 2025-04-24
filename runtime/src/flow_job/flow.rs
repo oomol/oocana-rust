@@ -9,14 +9,14 @@ use uuid::Uuid;
 use crate::{
     block_job::{run_block, BlockJobHandle, RunBlockArgs},
     block_status::{self, BlockStatusTx},
-    shared::Shared,
+    shared::{self, Shared},
 };
 use mainframe::reporter::FlowReporterTx;
 use tracing::{info, warn};
 use utils::output::OutputValue;
 
 use job::{BlockInputs, BlockJobStacks, JobId};
-use manifest_meta::{HandleFrom, HandleTo, Node, NodeId, SlotBlock, SubflowBlock};
+use manifest_meta::{HandleFrom, HandleTo, Node, NodeId, Slot, SlotBlock, SubflowBlock};
 
 use super::node_input_values;
 use node_input_values::{CacheMetaMap, CacheMetaMapExt, NodeInputValues};
@@ -45,6 +45,7 @@ struct FlowShared {
     flow_block: Arc<SubflowBlock>,
     shared: Arc<Shared>,
     stacks: BlockJobStacks,
+    slot_blocks: HashMap<NodeId, Slot>,
 }
 
 struct RunFlowContext {
@@ -70,6 +71,7 @@ pub struct RunFlowArgs {
     pub parent_block_status: BlockStatusTx,
     pub nodes: Option<HashSet<NodeId>>,
     pub input_values: Option<String>,
+    pub slot_blocks: HashMap<NodeId, Slot>,
 }
 
 pub struct UpstreamArgs {
@@ -109,6 +111,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
         parent_block_status,
         ref mut nodes,
         input_values,
+        slot_blocks,
     } = flow_args;
 
     let reporter = Arc::new(shared.reporter.flow(
@@ -152,6 +155,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
         job_id: flow_job_id.to_owned(),
         shared,
         stacks,
+        slot_blocks,
     };
 
     if let Some(ref origin_nodes) = nodes {
@@ -535,13 +539,12 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
         .jobs
         .insert(job_id.to_owned());
 
-    let slot_blocks: HashMap<NodeId, manifest_meta::Slot> = HashMap::new();
     let mut block = node.block();
 
     // replace slot block with slot
     if matches!(node, Node::Slot(_)) {
         let node_id = node.node_id();
-        slot_blocks.get(node_id).map(|b| {
+        shared.slot_blocks.get(node_id).map(|b| {
             block = b.block();
         });
     }
@@ -563,7 +566,10 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
             input_values: None,
             scope: node.scope(),
             timeout: node.timeout(),
-            slot_block: None,
+            slot_blocks: match node {
+                Node::Flow(n) => n.slots.clone(),
+                _ => None,
+            },
             inputs_def_patch: node.inputs_def_patch().cloned(),
         }
     });
