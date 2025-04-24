@@ -168,7 +168,7 @@ impl SubflowBlock {
                     if let Some(slots) = subflow_node.slots.as_ref() {
                         for slot in slots {
                             match slot {
-                                manifest::SlotProvider::Inline(inline_slot) => {
+                                manifest::SlotProvider::Inline(_inline_slot) => {
                                     // FIXME: finish inline slot
                                 }
                                 manifest::SlotProvider::Task(task_slot) => {
@@ -184,7 +184,7 @@ impl SubflowBlock {
                                     slot_blocks
                                         .insert(task_slot.slot_node_id.to_owned(), slot_block);
                                 }
-                                manifest::SlotProvider::Subflow(subflow_slot) => {
+                                manifest::SlotProvider::Subflow(_subflow_slot) => {
                                     // FIXME: finish subflow slot
                                 }
                             }
