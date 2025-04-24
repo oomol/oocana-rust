@@ -38,11 +38,6 @@ pub enum HandleFrom {
         node_id: NodeId,
         node_output_handle: HandleName,
     },
-    FromSlotInput {
-        subflow_node_id: NodeId,
-        slot_node_id: NodeId,
-        slot_input_handle: HandleName,
-    },
 }
 
 #[derive(Debug, Clone)]
@@ -53,10 +48,5 @@ pub enum HandleTo {
     ToNodeInput {
         node_id: NodeId,
         node_input_handle: HandleName,
-    },
-    ToSlotOutput {
-        subflow_node_id: NodeId,
-        slot_node_id: NodeId,
-        slot_output_handle: HandleName,
     },
 }

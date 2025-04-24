@@ -519,14 +519,6 @@ fn produce_new_value(
                     false,
                 );
             }
-            HandleTo::ToSlotOutput {
-                subflow_node_id,
-                slot_node_id,
-                slot_output_handle,
-            } => {
-                dbg!(subflow_node_id, slot_node_id, slot_output_handle);
-                todo!("ToSlotOutput");
-            }
         }
     }
 }
