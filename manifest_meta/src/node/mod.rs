@@ -7,4 +7,4 @@ pub use common::{
     NodesHandlesTos,
 };
 pub use definition::{Node, ServiceNode, SlotNode, TaskNode};
-pub use subflow::SubflowNode;
+pub use subflow::{Slot, SubflowNode};

@@ -22,8 +22,8 @@ use utils::error::Result;
 use crate::{
     block_resolver::{package_path, BlockResolver},
     connections::Connections,
-    node::ServiceNode,
-    HandleFrom, HandlesFroms, HandlesTos, Node, NodeId, SlotNode, SubflowNode, TaskNode,
+    node::{ServiceNode, TaskNode},
+    HandleFrom, HandlesFroms, HandlesTos, Node, NodeId, SlotNode, SubflowNode,
 };
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
