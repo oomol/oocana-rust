@@ -1,7 +1,7 @@
 use super::common::{HandlesFroms, HandlesTos};
 use crate::{extend_node_common_field, Block, SubflowBlock, TaskBlock};
 use crate::{HandleName, NodeId};
-use manifest_reader::manifest::{InputDefPatch, InputHandles, Node as ManifestNode};
+use manifest_reader::manifest::{InputDefPatch, InputHandles};
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -22,6 +22,7 @@ impl Slot {
         match self {
             Self::Task(task_slot) => &task_slot.slot_node_id,
             Self::Subflow(subflow_slot) => &subflow_slot.slot_node_id,
+            // Self::Inline(inline_slot) => &inline_slot.slot_node_id,
         }
     }
 
@@ -29,6 +30,7 @@ impl Slot {
         match self {
             Self::Task(task_slot) => Block::Task(Arc::clone(&task_slot.task)),
             Self::Subflow(subflow_slot) => Block::Flow(Arc::clone(&subflow_slot.subflow)),
+            // Self::Inline(inline_slot) => Block::Slot(Arc::clone(&inline_slot.nodes)),
         }
     }
 }
@@ -43,39 +45,4 @@ pub struct TaskSlot {
 pub struct SubflowSlot {
     pub slot_node_id: NodeId,
     pub subflow: Arc<SubflowBlock>,
-}
-
-#[derive(Debug, Clone)]
-pub struct TmpInlineSlot {
-    pub slot_node_id: NodeId,
-    pub nodes: Vec<ManifestNode>,
-    pub outputs_from: Vec<HandlesFroms>,
-}
-
-impl From<TmpInlineSlot> for InlineSlot {
-    fn from(tmp: TmpInlineSlot) -> Self {
-        let nodes = tmp
-            .nodes
-            .into_iter()
-            .filter(|node| {
-                matches!(
-                    node,
-                    ManifestNode::Task(_) | ManifestNode::Service(_) | ManifestNode::Value(_)
-                )
-            })
-            .collect();
-
-        InlineSlot {
-            slot_node_id: tmp.slot_node_id,
-            nodes,
-            outputs_from: tmp.outputs_from,
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct InlineSlot {
-    pub slot_node_id: NodeId,
-    pub nodes: Vec<ManifestNode>, // TODO: only support task/service/value node
-    pub outputs_from: Vec<HandlesFroms>,
 }

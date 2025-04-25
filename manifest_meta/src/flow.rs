@@ -12,7 +12,7 @@ use manifest_reader::{
 };
 
 use crate::{
-    node::subflow::{self, InlineSlot, Slot, SubflowSlot, TaskSlot},
+    node::subflow::{Slot, SubflowSlot, TaskSlot},
     scope::{calculate_running_scope, RunningScope, RunningTarget},
 };
 
