@@ -14,6 +14,7 @@ use manifest_reader::{
 use crate::{
     node::subflow::{Slot, SubflowSlot, TaskSlot},
     scope::{calculate_running_scope, RunningScope, RunningTarget},
+    slot,
 };
 
 use tracing::warn;
@@ -92,6 +93,12 @@ impl fmt::Display for ServiceQueryResult {
 }
 
 impl SubflowBlock {
+    pub fn has_slot(&self) -> bool {
+        self.nodes
+            .values()
+            .any(|node| matches!(node, Node::Slot(_)))
+    }
+
     pub fn from_manifest(
         manifest: manifest::SubflowBlock,
         flow_path: PathBuf,
@@ -189,6 +196,11 @@ impl SubflowBlock {
                                         &subflow_node.subflow,
                                         &mut path_finder,
                                     )?;
+
+                                    if flow.has_slot() {
+                                        tracing::warn!("this subflow has slot node");
+                                    }
+
                                     let slot_block = Slot::Subflow(SubflowSlot {
                                         slot_node_id: subflow_node.node_id.to_owned(),
                                         subflow: flow,
