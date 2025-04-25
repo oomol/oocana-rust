@@ -567,6 +567,8 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
         }
     });
 
+    tracing::debug!("run node {} as job {job_id}", node.node_id());
+
     if let Some(handle) = handle {
         ctx.jobs.insert(
             job_id,
