@@ -12,7 +12,7 @@ use manifest_reader::{
 };
 
 use crate::{
-    node::subflow::{Slot, TaskSlot},
+    node::subflow::{Slot, SubflowSlot, TaskSlot},
     scope::{calculate_running_scope, RunningScope, RunningTarget},
 };
 
@@ -185,7 +185,15 @@ impl SubflowBlock {
                                         .insert(task_slot.slot_node_id.to_owned(), slot_block);
                                 }
                                 manifest::SlotProvider::Subflow(_subflow_slot) => {
-                                    // FIXME: finish subflow slot
+                                    let flow = block_resolver.resolve_flow_block(
+                                        &subflow_node.subflow,
+                                        &mut path_finder,
+                                    )?;
+                                    let slot_block = Slot::Subflow(SubflowSlot {
+                                        slot_node_id: subflow_node.node_id.to_owned(),
+                                        subflow: flow,
+                                    });
+                                    slot_blocks.insert(subflow_node.node_id.to_owned(), slot_block);
                                 }
                             }
                         }
