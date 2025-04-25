@@ -14,7 +14,6 @@ use manifest_reader::{
 use crate::{
     node::subflow::{Slot, SubflowSlot, TaskSlot},
     scope::{calculate_running_scope, RunningScope, RunningTarget},
-    slot,
 };
 
 use tracing::warn;
