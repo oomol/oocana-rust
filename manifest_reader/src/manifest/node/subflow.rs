@@ -37,7 +37,7 @@ impl From<TmpInlineSlot> for InlineSlot {
 
         InlineSlot {
             slot_node_id: tmp.slot_node_id,
-            nodes: nodes,
+            nodes,
             outputs_from: tmp.outputs_from,
         }
     }

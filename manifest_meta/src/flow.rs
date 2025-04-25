@@ -1,8 +1,8 @@
 use std::{
     collections::{HashMap, HashSet},
-    fmt,
-    fmt::Formatter,
+    fmt::{self, Formatter},
     path::PathBuf,
+    sync::Arc,
 };
 
 use manifest_reader::{
@@ -12,7 +12,7 @@ use manifest_reader::{
 };
 
 use crate::{
-    node::subflow::{Slot, SubflowSlot, TaskSlot},
+    node::subflow::{self, InlineSlot, Slot, SubflowSlot, TaskSlot},
     scope::{calculate_running_scope, RunningScope, RunningTarget},
 };
 
@@ -174,8 +174,28 @@ impl SubflowBlock {
                     if let Some(slots) = subflow_node.slots.as_ref() {
                         for slot in slots {
                             match slot {
-                                manifest::SlotProvider::Inline(_inline_slot) => {
-                                    // FIXME: finish inline slot
+                                manifest::SlotProvider::Inline(inline_slot) => {
+                                    let manifest_subflow = manifest::SubflowBlock {
+                                        nodes: inline_slot.nodes.clone(),
+                                        inputs_def: None,
+                                        outputs_def: None,
+                                        outputs_from: Some(inline_slot.outputs_from.clone()),
+                                        injection: None,
+                                    };
+
+                                    let subflow = SubflowBlock::from_manifest(
+                                        manifest_subflow,
+                                        flow_path.clone(),
+                                        block_resolver,
+                                        path_finder.clone(),
+                                    )?;
+
+                                    let slot_block = Slot::Subflow(SubflowSlot {
+                                        slot_node_id: inline_slot.slot_node_id.to_owned(),
+                                        subflow: Arc::new(subflow),
+                                    });
+                                    slot_blocks
+                                        .insert(inline_slot.slot_node_id.to_owned(), slot_block);
                                 }
                                 manifest::SlotProvider::Task(task_slot) => {
                                     let task = block_resolver.resolve_task_node_block(
