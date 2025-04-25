@@ -4,7 +4,7 @@ use manifest_reader::manifest::{self};
 
 use super::{
     node::{HandleFrom, HandleTo},
-    HandleName, HandlesFroms, HandlesTos, NodeId, NodesHandlesFroms, NodesHandlesTos,
+    HandleName, HandlesFroms, HandlesTos, NodeId,
 };
 
 pub struct Connections {
@@ -210,13 +210,6 @@ impl ConnNodesTos {
     pub fn remove(&mut self, node_id: &NodeId) -> Option<HandlesTos> {
         self.nodes.remove(node_id).map(ConnNodeTos::restore)
     }
-
-    pub fn restore(self) -> NodesHandlesTos {
-        self.nodes
-            .into_iter()
-            .map(|(node_id, conn_node_tos)| (node_id, conn_node_tos.restore()))
-            .collect()
-    }
 }
 
 impl Default for ConnNodesTos {
@@ -243,13 +236,6 @@ impl ConnNodesFroms {
 
     pub fn remove(&mut self, node_id: &NodeId) -> Option<HandlesFroms> {
         self.nodes.remove(node_id).map(ConnNodeFroms::restore)
-    }
-
-    pub fn restore(self) -> NodesHandlesFroms {
-        self.nodes
-            .into_iter()
-            .map(|(node_id, conn_node_froms)| (node_id, conn_node_froms.restore()))
-            .collect()
     }
 }
 
