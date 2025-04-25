@@ -210,9 +210,9 @@ impl SubflowBlock {
                                     slot_blocks
                                         .insert(task_slot.slot_node_id.to_owned(), slot_block);
                                 }
-                                manifest::SlotProvider::Subflow(_subflow_slot) => {
+                                manifest::SlotProvider::Subflow(subflow_slot) => {
                                     let flow = block_resolver.resolve_flow_block(
-                                        &subflow_node.subflow,
+                                        &subflow_slot.subflow,
                                         &mut path_finder,
                                     )?;
 
@@ -221,10 +221,11 @@ impl SubflowBlock {
                                     }
 
                                     let slot_block = Slot::Subflow(SubflowSlot {
-                                        slot_node_id: subflow_node.node_id.to_owned(),
+                                        slot_node_id: subflow_slot.slot_node_id.to_owned(),
                                         subflow: flow,
                                     });
-                                    slot_blocks.insert(subflow_node.node_id.to_owned(), slot_block);
+                                    slot_blocks
+                                        .insert(subflow_slot.slot_node_id.to_owned(), slot_block);
                                 }
                             }
                         }
