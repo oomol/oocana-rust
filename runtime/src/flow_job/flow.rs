@@ -240,7 +240,6 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                         run_pending_node(job_id.to_owned(), &flow_shared, &mut run_flow_ctx);
                     }
                     if let Some(job) = run_flow_ctx.jobs.get(&job_id) {
-                        let job_node_id = job.node_id.to_owned();
                         if let Some(node) = flow_shared.flow_block.nodes.get(&job.node_id) {
                             if let Some(tos) = node.to() {
                                 if let Some(handle_tos) = tos.get(&handle) {
@@ -252,26 +251,6 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                         true,
                                         &filtered_nodes,
                                     );
-                                }
-                            }
-                        }
-
-                        for froms in flow_shared.flow_block.flow_outputs_froms.values() {
-                            for from in froms {
-                                if let HandleFrom::FromNodeOutput {
-                                    node_id,
-                                    node_output_handle,
-                                } = from
-                                {
-                                    if node_output_handle.eq(&handle) && node_id == &job_node_id {
-                                        run_flow_ctx.parent_block_status.result(
-                                            flow_shared.job_id.to_owned(),
-                                            Arc::clone(&result),
-                                            handle.to_owned(),
-                                            done,
-                                        );
-                                        reporter.result(Arc::clone(&result), &handle)
-                                    }
                                 }
                             }
                         }
