@@ -12,7 +12,6 @@ extend_node_common_field!(SubflowNode {
 
 #[derive(Debug, Clone)]
 pub enum Slot {
-    // Inline(InlineSlot),
     Task(TaskSlot),
     Subflow(SubflowSlot),
 }
@@ -22,7 +21,6 @@ impl Slot {
         match self {
             Self::Task(task_slot) => &task_slot.slot_node_id,
             Self::Subflow(subflow_slot) => &subflow_slot.slot_node_id,
-            // Self::Inline(inline_slot) => &inline_slot.slot_node_id,
         }
     }
 
@@ -30,7 +28,6 @@ impl Slot {
         match self {
             Self::Task(task_slot) => Block::Task(Arc::clone(&task_slot.task)),
             Self::Subflow(subflow_slot) => Block::Flow(Arc::clone(&subflow_slot.subflow)),
-            // Self::Inline(inline_slot) => Block::Slot(Arc::clone(&inline_slot.nodes)),
         }
     }
 }
