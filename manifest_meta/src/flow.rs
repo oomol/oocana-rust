@@ -211,7 +211,7 @@ impl SubflowBlock {
                                         .insert(task_slot.slot_node_id.to_owned(), slot_block);
                                 }
                                 manifest::SlotProvider::Subflow(subflow_slot) => {
-                                    let mut slot_flow = block_resolver.resolve_flow_block(
+                                    let slot_flow = block_resolver.resolve_flow_block(
                                         &subflow_slot.subflow,
                                         &mut path_finder,
                                     )?;
@@ -220,16 +220,6 @@ impl SubflowBlock {
 
                                     if slot_flow.has_slot() {
                                         tracing::warn!("this subflow has slot node");
-                                    }
-                                    let cloned_slot_flow = Arc::make_mut(&mut slot_flow);
-
-                                    if let Some(s) = flow.nodes.get(&subflow_slot.slot_node_id) {
-                                        if let Some(f) = s.from() {
-                                            cloned_slot_flow.flow_outputs_froms = f.clone();
-                                        }
-                                        if let Some(t) = s.to() {
-                                            cloned_slot_flow.flow_inputs_tos = t.clone();
-                                        }
                                     }
 
                                     let slot_block = Slot::Subflow(SubflowSlot {
