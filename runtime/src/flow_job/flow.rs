@@ -557,7 +557,7 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
             },
         );
     } else {
-        warn!("failed to run node: {}", node.node_id());
+        warn!("node: {} has no handle", node.node_id());
     }
 }
 
