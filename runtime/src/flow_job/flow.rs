@@ -16,7 +16,7 @@ use tracing::{info, warn};
 use utils::output::OutputValue;
 
 use job::{BlockInputs, BlockJobStacks, JobId};
-use manifest_meta::{HandleFrom, HandleTo, Node, NodeId, Slot, SubflowBlock};
+use manifest_meta::{HandleTo, Node, NodeId, Slot, SubflowBlock};
 
 use super::node_input_values;
 use node_input_values::{CacheMetaMap, CacheMetaMapExt, NodeInputValues};
