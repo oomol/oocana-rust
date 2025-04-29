@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.27.2 (2025-04-29)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* refactor: split node definition to multiple file by @leavesster in https://github.com/oomol/oocana-rust/pull/69
+* refactor: use timeout instead of timeout seconds by @leavesster in https://github.com/oomol/oocana-rust/pull/71
+* feat: make subflow nodes optional by @leavesster in https://github.com/oomol/oocana-rust/pull/72
+* fix: parse input from should use continue by @leavesster in https://github.com/oomol/oocana-rust/pull/73
+* refactor: remove from_slot and rename from_subflow to from_flow by @leavesster in https://github.com/oomol/oocana-rust/pull/74
+* feat: support subflow slot feature  by @leavesster in https://github.com/oomol/oocana-rust/pull/75
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.27.1...v0.27.2
+
 ## 0.27.1 (2025-04-22)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
