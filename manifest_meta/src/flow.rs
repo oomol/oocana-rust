@@ -1,8 +1,8 @@
 use std::{
     collections::{HashMap, HashSet},
-    fmt,
-    fmt::Formatter,
+    fmt::{self, Formatter},
     path::PathBuf,
+    sync::Arc,
 };
 
 use manifest_reader::{
@@ -11,7 +11,10 @@ use manifest_reader::{
     reader::read_package,
 };
 
-use crate::scope::{calculate_running_scope, RunningScope, RunningTarget};
+use crate::{
+    node::subflow::{Slot, SubflowSlot, TaskSlot},
+    scope::{calculate_running_scope, RunningScope, RunningTarget},
+};
 
 use tracing::warn;
 use utils::error::Result;
@@ -19,8 +22,8 @@ use utils::error::Result;
 use crate::{
     block_resolver::{package_path, BlockResolver},
     connections::Connections,
-    node::ServiceNode,
-    HandleFrom, HandlesFroms, HandlesTos, Node, NodeId, SlotNode, SubflowNode, TaskNode,
+    node::{ServiceNode, TaskNode},
+    HandleFrom, HandlesFroms, HandlesTos, Node, NodeId, SlotNode, SubflowNode,
 };
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -89,6 +92,12 @@ impl fmt::Display for ServiceQueryResult {
 }
 
 impl SubflowBlock {
+    pub fn has_slot(&self) -> bool {
+        self.nodes
+            .values()
+            .any(|node| matches!(node, Node::Slot(_)))
+    }
+
     pub fn from_manifest(
         manifest: manifest::SubflowBlock,
         flow_path: PathBuf,
@@ -110,12 +119,6 @@ impl SubflowBlock {
 
         for node in nodes.iter() {
             connections.parse_node_inputs_from(node.node_id(), node.inputs_from());
-            if let manifest::Node::Subflow(subflow_node) = node {
-                connections.parse_subflow_slot_outputs_from(
-                    &subflow_node.node_id,
-                    subflow_node.slots.as_ref(),
-                );
-            }
         }
 
         let value_nodes = nodes
@@ -167,6 +170,70 @@ impl SubflowBlock {
                         parse_inputs_def(&subflow_node.inputs_from, &flow.as_ref().inputs_def);
                     let inputs_def_patch = get_inputs_def_patch(&subflow_node.inputs_from);
 
+                    let mut slot_blocks: HashMap<NodeId, Slot> = HashMap::new();
+                    if let Some(slots) = subflow_node.slots.as_ref() {
+                        for slot in slots {
+                            match slot {
+                                manifest::SlotProvider::Inline(inline_slot) => {
+                                    let manifest_subflow = manifest::SubflowBlock {
+                                        nodes: inline_slot.nodes.clone(),
+                                        inputs_def: None,
+                                        outputs_def: None,
+                                        outputs_from: Some(inline_slot.outputs_from.clone()),
+                                        injection: None,
+                                    };
+
+                                    let subflow = SubflowBlock::from_manifest(
+                                        manifest_subflow,
+                                        flow_path.clone(),
+                                        block_resolver,
+                                        path_finder.clone(),
+                                    )?;
+
+                                    let slot_block = Slot::Subflow(SubflowSlot {
+                                        slot_node_id: inline_slot.slot_node_id.to_owned(),
+                                        subflow: Arc::new(subflow),
+                                    });
+                                    slot_blocks
+                                        .insert(inline_slot.slot_node_id.to_owned(), slot_block);
+                                }
+                                manifest::SlotProvider::Task(task_slot) => {
+                                    let task = block_resolver.resolve_task_node_block(
+                                        manifest::TaskNodeBlock::File(task_slot.task.to_owned()),
+                                        &mut path_finder,
+                                    )?;
+
+                                    let slot_block = Slot::Task(TaskSlot {
+                                        slot_node_id: task_slot.slot_node_id.to_owned(),
+                                        task,
+                                    });
+                                    slot_blocks
+                                        .insert(task_slot.slot_node_id.to_owned(), slot_block);
+                                }
+                                manifest::SlotProvider::Subflow(subflow_slot) => {
+                                    let slot_flow = block_resolver.resolve_flow_block(
+                                        &subflow_slot.subflow,
+                                        &mut path_finder,
+                                    )?;
+
+                                    // TODO: flow 注入
+
+                                    if slot_flow.has_slot() {
+                                        tracing::warn!("this subflow has slot node");
+                                    }
+
+                                    let slot_block = Slot::Subflow(SubflowSlot {
+                                        slot_node_id: subflow_slot.slot_node_id.to_owned(),
+                                        subflow: slot_flow,
+                                    });
+
+                                    slot_blocks
+                                        .insert(subflow_slot.slot_node_id.to_owned(), slot_block);
+                                }
+                            }
+                        }
+                    }
+
                     // TODO: flow 注入
 
                     new_nodes.insert(
@@ -174,18 +241,17 @@ impl SubflowBlock {
                         Node::Flow(SubflowNode {
                             from: connections.node_inputs_froms.remove(&subflow_node.node_id),
                             to: connections.node_outputs_tos.remove(&subflow_node.node_id),
-                            slots_outputs_from: connections
-                                .slot_outputs_froms
-                                .remove(&subflow_node.node_id),
-                            slots_inputs_to: connections
-                                .slot_inputs_tos
-                                .remove(&subflow_node.node_id),
                             flow,
                             node_id: subflow_node.node_id.to_owned(),
                             timeout: subflow_node.timeout,
                             inputs_def,
                             concurrency: subflow_node.concurrency,
                             inputs_def_patch,
+                            slots: if slot_blocks.is_empty() {
+                                None
+                            } else {
+                                Some(slot_blocks)
+                            },
                         }),
                     );
                 }
@@ -290,10 +356,13 @@ impl SubflowBlock {
                                     if let Some(script) = task_node
                                         .inject
                                         .as_ref()
-                                        .and_then(|injection| injection.script.clone()) { injection_scripts
-                                                .entry(pkg_path.clone())
-                                                .or_default()
-                                                .push(script); }
+                                        .and_then(|injection| injection.script.clone())
+                                    {
+                                        injection_scripts
+                                            .entry(pkg_path.clone())
+                                            .or_default()
+                                            .push(script);
+                                    }
                                 }
                                 RunningScope::Package {
                                     name: Some(name),
@@ -422,7 +491,6 @@ impl SubflowBlock {
                             from: connections.node_inputs_froms.remove(&slot_node.node_id),
                             to: connections.node_outputs_tos.remove(&slot_node.node_id),
                             node_id: slot_node.node_id.to_owned(),
-                            // title: subflow_node.title,
                             timeout: slot_node.timeout,
                             slot,
                             inputs_def,
@@ -494,32 +562,36 @@ impl SubflowBlock {
     pub fn get_services(&self) -> HashSet<ServiceQueryResult> {
         let mut services = HashSet::new();
 
-        self.nodes.iter().for_each(|node| if let Node::Service(service) = node.1 {
-            let service_block_path = service.block.dir();
-            let entry = if let Some(executor) = &service.block.service_executor.as_ref() {
-                executor.entry.clone()
-            } else {
-                None
-            };
-            let package = if let Some(package_path) = &service.block.package_path {
-                package_path.to_str().map(|package_path| package_path.to_string())
-            } else {
-                None
-            };
+        self.nodes.iter().for_each(|node| {
+            if let Node::Service(service) = node.1 {
+                let service_block_path = service.block.dir();
+                let entry = if let Some(executor) = &service.block.service_executor.as_ref() {
+                    executor.entry.clone()
+                } else {
+                    None
+                };
+                let package = if let Some(package_path) = &service.block.package_path {
+                    package_path
+                        .to_str()
+                        .map(|package_path| package_path.to_string())
+                } else {
+                    None
+                };
 
-            let is_global = if let Some(e) = service.block.service_executor.as_ref() {
-                e.is_global()
-            } else {
-                false
-            };
+                let is_global = if let Some(e) = service.block.service_executor.as_ref() {
+                    e.is_global()
+                } else {
+                    false
+                };
 
-            services.insert(ServiceQueryResult {
-                entry,
-                service_hash: utils::calculate_short_hash(&service_block_path, 16),
-                dir: service_block_path,
-                package,
-                is_global,
-            });
+                services.insert(ServiceQueryResult {
+                    entry,
+                    service_hash: utils::calculate_short_hash(&service_block_path, 16),
+                    dir: service_block_path,
+                    package,
+                    is_global,
+                });
+            }
         });
 
         services

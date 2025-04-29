@@ -1,6 +1,5 @@
 inputs_def:
   - handle: flow_in1
-    optional: true
 nodes:
   - node_id: node1
     task: "./block1.oo.yaml"

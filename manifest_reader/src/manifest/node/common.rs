@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-#[macro_export]
+#[macro_export(local_inner_macros)]
 macro_rules! extend_node_common_field {
     ($name:ident { $($field:ident : $type:ty),* $(,)? }) => {
         #[derive(Deserialize, Debug, Clone)]

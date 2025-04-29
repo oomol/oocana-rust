@@ -11,8 +11,8 @@ pub use self::block::{InputHandles, OutputHandles};
 pub use self::block::{ServiceBlock, SlotBlock, SubflowBlock, TaskBlock};
 pub use self::block::{SpawnOptions, TaskBlockExecutor};
 pub use self::node::{
-    Injection, InjectionTarget, Node, NodeId, ServiceNode, SlotNode, SlotNodeBlock, SubflowNode,
-    SubflowNodeSlots, TaskNode, TaskNodeBlock, ValueNode,
+    Injection, InjectionTarget, Node, NodeId, ServiceNode, SlotNode, SlotNodeBlock, SlotProvider,
+    SubflowNode, TaskNode, TaskNodeBlock, ValueNode,
 };
 
 pub use self::node::input_from::{InputDefPatch, NodeInputFrom};

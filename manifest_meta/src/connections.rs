@@ -4,7 +4,7 @@ use manifest_reader::manifest::{self};
 
 use super::{
     node::{HandleFrom, HandleTo},
-    HandleName, HandlesFroms, HandlesTos, NodeId, NodesHandlesFroms, NodesHandlesTos,
+    HandleName, HandlesFroms, HandlesTos, NodeId,
 };
 
 pub struct Connections {
@@ -15,9 +15,6 @@ pub struct Connections {
 
     pub flow_inputs_tos: ConnNodeTos,
     pub flow_outputs_froms: ConnNodeFroms,
-
-    pub slot_inputs_tos: ConnSlotNodesTos,
-    pub slot_outputs_froms: ConnSlotNodesFroms,
 }
 
 impl Connections {
@@ -29,9 +26,6 @@ impl Connections {
 
             flow_inputs_tos: ConnNodeTos::new(),
             flow_outputs_froms: ConnNodeFroms::new(),
-
-            slot_inputs_tos: ConnSlotNodesTos::new(),
-            slot_outputs_froms: ConnSlotNodesFroms::new(),
         }
     }
 
@@ -141,62 +135,6 @@ impl Connections {
             }
         }
     }
-
-    pub fn parse_subflow_slot_outputs_from(
-        &mut self,
-        subflow_node_id: &NodeId,
-        slots: Option<&Vec<manifest::SubflowNodeSlots>>,
-    ) {
-        if let Some(slots) = slots {
-            for slot in slots {
-                for output_from in &slot.outputs_from {
-                    if let Some(from_nodes) = &output_from.from_node {
-                        for from_node in from_nodes {
-                            self.slot_outputs_froms.add(
-                                subflow_node_id.to_owned(),
-                                slot.slot_node_id.to_owned(),
-                                output_from.handle.to_owned(),
-                                HandleFrom::FromNodeOutput {
-                                    node_id: from_node.node_id.to_owned(),
-                                    node_output_handle: from_node.output_handle.to_owned(),
-                                },
-                            );
-                            self.node_outputs_tos.add(
-                                from_node.node_id.to_owned(),
-                                from_node.output_handle.to_owned(),
-                                HandleTo::ToSlotOutput {
-                                    subflow_node_id: subflow_node_id.to_owned(),
-                                    slot_node_id: slot.slot_node_id.to_owned(),
-                                    slot_output_handle: output_from.handle.to_owned(),
-                                },
-                            );
-                        }
-                    }
-
-                    if let Some(from_flow) = &output_from.from_flow {
-                        for flow_handle in from_flow {
-                            self.slot_outputs_froms.add(
-                                subflow_node_id.to_owned(),
-                                slot.slot_node_id.to_owned(),
-                                output_from.handle.to_owned(),
-                                HandleFrom::FromFlowInput {
-                                    input_handle: flow_handle.input_handle.to_owned(),
-                                },
-                            );
-                            self.flow_inputs_tos.add(
-                                flow_handle.input_handle.to_owned(),
-                                HandleTo::ToSlotOutput {
-                                    subflow_node_id: subflow_node_id.to_owned(),
-                                    slot_node_id: slot.slot_node_id.to_owned(),
-                                    slot_output_handle: output_from.handle.to_owned(),
-                                },
-                            );
-                        }
-                    }
-                }
-            }
-        }
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -272,13 +210,6 @@ impl ConnNodesTos {
     pub fn remove(&mut self, node_id: &NodeId) -> Option<HandlesTos> {
         self.nodes.remove(node_id).map(ConnNodeTos::restore)
     }
-
-    pub fn restore(self) -> NodesHandlesTos {
-        self.nodes
-            .into_iter()
-            .map(|(node_id, conn_node_tos)| (node_id, conn_node_tos.restore()))
-            .collect()
-    }
 }
 
 impl Default for ConnNodesTos {
@@ -306,92 +237,9 @@ impl ConnNodesFroms {
     pub fn remove(&mut self, node_id: &NodeId) -> Option<HandlesFroms> {
         self.nodes.remove(node_id).map(ConnNodeFroms::restore)
     }
-
-    pub fn restore(self) -> NodesHandlesFroms {
-        self.nodes
-            .into_iter()
-            .map(|(node_id, conn_node_froms)| (node_id, conn_node_froms.restore()))
-            .collect()
-    }
 }
 
 impl Default for ConnNodesFroms {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct ConnSlotNodesFroms {
-    subflow_nodes: HashMap<NodeId, ConnNodesFroms>,
-}
-
-impl ConnSlotNodesFroms {
-    pub fn new() -> Self {
-        Self {
-            subflow_nodes: HashMap::new(),
-        }
-    }
-
-    pub fn add(
-        &mut self,
-        subflow_node_id: NodeId,
-        node_id: NodeId,
-        handle: HandleName,
-        from: HandleFrom,
-    ) {
-        self.subflow_nodes
-            .entry(subflow_node_id)
-            .or_default()
-            .add(node_id, handle, from);
-    }
-
-    pub fn remove(&mut self, subflow_node_id: &NodeId) -> Option<NodesHandlesFroms> {
-        self.subflow_nodes
-            .remove(subflow_node_id)
-            .map(ConnNodesFroms::restore)
-    }
-}
-
-impl Default for ConnSlotNodesFroms {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct ConnSlotNodesTos {
-    subflow_nodes: HashMap<NodeId, ConnNodesTos>,
-}
-
-impl ConnSlotNodesTos {
-    pub fn new() -> Self {
-        Self {
-            subflow_nodes: HashMap::new(),
-        }
-    }
-
-    pub fn add(
-        &mut self,
-        subflow_node_id: NodeId,
-        node_id: NodeId,
-        handle: HandleName,
-        to: HandleTo,
-    ) {
-        self.subflow_nodes
-            .entry(subflow_node_id)
-            .or_default()
-            .add(node_id, handle, to);
-    }
-
-    pub fn remove(&mut self, subflow_node_id: &NodeId) -> Option<NodesHandlesTos> {
-        self.subflow_nodes
-            .remove(subflow_node_id)
-            .map(ConnNodesTos::restore)
-    }
-}
-
-impl Default for ConnSlotNodesTos {
     fn default() -> Self {
         Self::new()
     }

@@ -16,7 +16,7 @@ use tracing::{info, warn};
 use utils::output::OutputValue;
 
 use job::{BlockInputs, BlockJobStacks, JobId};
-use manifest_meta::{HandleFrom, HandleTo, Node, NodeId, SubflowBlock};
+use manifest_meta::{HandleTo, Node, NodeId, Slot, SubflowBlock};
 
 use super::node_input_values;
 use node_input_values::{CacheMetaMap, CacheMetaMapExt, NodeInputValues};
@@ -45,6 +45,7 @@ struct FlowShared {
     flow_block: Arc<SubflowBlock>,
     shared: Arc<Shared>,
     stacks: BlockJobStacks,
+    slot_blocks: HashMap<NodeId, Slot>,
 }
 
 struct RunFlowContext {
@@ -70,6 +71,7 @@ pub struct RunFlowArgs {
     pub parent_block_status: BlockStatusTx,
     pub nodes: Option<HashSet<NodeId>>,
     pub input_values: Option<String>,
+    pub slot_blocks: HashMap<NodeId, Slot>,
 }
 
 pub struct UpstreamArgs {
@@ -109,6 +111,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
         parent_block_status,
         ref mut nodes,
         input_values,
+        slot_blocks,
     } = flow_args;
 
     let reporter = Arc::new(shared.reporter.flow(
@@ -152,6 +155,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
         job_id: flow_job_id.to_owned(),
         shared,
         stacks,
+        slot_blocks,
     };
 
     if let Some(ref origin_nodes) = nodes {
@@ -236,7 +240,6 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                         run_pending_node(job_id.to_owned(), &flow_shared, &mut run_flow_ctx);
                     }
                     if let Some(job) = run_flow_ctx.jobs.get(&job_id) {
-                        let job_node_id = job.node_id.to_owned();
                         if let Some(node) = flow_shared.flow_block.nodes.get(&job.node_id) {
                             if let Some(tos) = node.to() {
                                 if let Some(handle_tos) = tos.get(&handle) {
@@ -248,26 +251,6 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                         true,
                                         &filtered_nodes,
                                     );
-                                }
-                            }
-                        }
-
-                        for froms in flow_shared.flow_block.flow_outputs_froms.values() {
-                            for from in froms {
-                                if let HandleFrom::FromNodeOutput {
-                                    node_id,
-                                    node_output_handle,
-                                } = from
-                                {
-                                    if node_output_handle.eq(&handle) && node_id == &job_node_id {
-                                        run_flow_ctx.parent_block_status.result(
-                                            flow_shared.job_id.to_owned(),
-                                            Arc::clone(&result),
-                                            handle.to_owned(),
-                                            done,
-                                        );
-                                        reporter.result(Arc::clone(&result), &handle)
-                                    }
                                 }
                             }
                         }
@@ -515,14 +498,6 @@ fn produce_new_value(
                     false,
                 );
             }
-            HandleTo::ToSlotOutput {
-                subflow_node_id,
-                slot_node_id,
-                slot_output_handle,
-            } => {
-                dbg!(subflow_node_id, slot_node_id, slot_output_handle);
-                todo!("ToSlotOutput");
-            }
         }
     }
 }
@@ -535,9 +510,20 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
         .jobs
         .insert(job_id.to_owned());
 
+    let mut block = node.block();
+
+    // replace slot block with slot
+    if matches!(node, Node::Slot(_)) {
+        let node_id = node.node_id();
+        shared.slot_blocks.get(node_id).map(|b| {
+            let replace_block = b.block();
+            block = replace_block;
+        });
+    }
+
     let handle = run_block({
         RunBlockArgs {
-            block: node.block(),
+            block: block,
             shared: Arc::clone(&shared.shared),
             parent_flow: Some(Arc::clone(&shared.flow_block)),
             stacks: shared.stacks.stack(
@@ -552,9 +538,15 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
             input_values: None,
             scope: node.scope(),
             timeout: node.timeout(),
+            slot_blocks: match node {
+                Node::Flow(n) => n.slots.clone(),
+                _ => None,
+            },
             inputs_def_patch: node.inputs_def_patch().cloned(),
         }
     });
+
+    tracing::debug!("run node {} as job {job_id}", node.node_id());
 
     if let Some(handle) = handle {
         ctx.jobs.insert(
@@ -564,6 +556,8 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
                 _job: handle,
             },
         );
+    } else {
+        warn!("node: {} has no handle", node.node_id());
     }
 }
 

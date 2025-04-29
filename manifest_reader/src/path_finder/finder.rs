@@ -13,6 +13,7 @@ use super::block::{
 use super::package::find_package_file;
 use super::service::{find_service, ServiceManifestParams};
 
+#[derive(Debug, Clone)]
 pub struct BlockPathFinder {
     base_dir: PathBuf,
     pub search_paths: Arc<Vec<PathBuf>>,
@@ -42,7 +43,6 @@ impl BlockPathFinder {
 
         // subflow should be in a/b/c/flows/flow1/flow.oo.yaml. package.oo.yaml is in a/b/c.
         let pkg_version = flow_path
-            
             .parent()
             .and_then(|f| f.parent())
             .and_then(|f| f.parent())

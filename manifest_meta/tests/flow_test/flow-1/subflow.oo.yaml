@@ -15,3 +15,11 @@ nodes:
         from_node:
           - node_id: node2
             output_handle: out1
+  - node_id: slot
+    slot:
+      inputs_def:
+        - handle: in1
+          type: int
+      outputs_def:
+        - handle: out1
+          type: int
