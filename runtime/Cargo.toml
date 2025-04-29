@@ -1,6 +1,6 @@
 [package]
 name = "runtime"
-version = "0.27.1"
+version = "0.27.2"
 authors = ["CRIMX <straybugs@gmail.com>"]
 description = "Oocana runner runtime"
 edition = "2021"
