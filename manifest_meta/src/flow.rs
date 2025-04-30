@@ -196,6 +196,7 @@ impl SubflowBlock {
                         }
                     };
 
+                    // TODO: slot also need calculate running scope
                     let mut slot_blocks: HashMap<NodeId, Slot> = HashMap::new();
                     if let Some(slots) = subflow_node.slots.as_ref() {
                         for slot in slots {
@@ -241,8 +242,6 @@ impl SubflowBlock {
                                         &subflow_slot.subflow,
                                         &mut path_finder,
                                     )?;
-
-                                    // TODO: flow 注入
 
                                     if slot_flow.has_slot() {
                                         tracing::warn!("this subflow has slot node");
