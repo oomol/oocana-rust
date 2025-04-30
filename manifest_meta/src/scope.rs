@@ -74,14 +74,14 @@ impl RunningScope {
         }
     }
 
-    pub fn clone_with_new_node_id(&self, node_id: NodeId) -> Self {
+    pub fn clone_with_scope_node_id(&self, scope: &Self) -> Self {
         match self {
             RunningScope::Current { workspace, .. } => RunningScope::Current {
-                node_id: Some(node_id),
+                node_id: scope.node_id(),
                 workspace: workspace.clone(),
             },
             RunningScope::Package { path, name, .. } => RunningScope::Package {
-                node_id: Some(node_id),
+                node_id: scope.node_id(),
                 path: path.clone(),
                 name: name.clone(),
             },
