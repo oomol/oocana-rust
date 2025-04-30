@@ -178,7 +178,7 @@ impl SubflowBlock {
                     );
 
                     let running_scope = match running_target {
-                        RunningTarget::Global => RunningScope::Global {
+                        RunningTarget::Inherit => RunningScope::Global {
                             node_id: None,
                             workspace: flow_path.parent().map(|p| p.to_path_buf()),
                         },
@@ -331,7 +331,7 @@ impl SubflowBlock {
                     };
 
                     let mut running_scope = match running_target {
-                        RunningTarget::Global => RunningScope::Global {
+                        RunningTarget::Inherit => RunningScope::Global {
                             node_id: None,
                             workspace: workspace.map(|p| p.to_path_buf()),
                         },

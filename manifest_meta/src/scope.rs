@@ -78,7 +78,7 @@ impl Default for RunningScope {
 }
 
 pub enum RunningTarget {
-    Global,
+    Inherit,
     Node(NodeId),
     PackageName(String),
     PackagePath {
@@ -109,7 +109,7 @@ pub fn calculate_running_scope(
     }
 
     match injection {
-        None => RunningTarget::Global,
+        None => RunningTarget::Inherit,
         Some(injection) => match &injection.target {
             manifest_reader::manifest::InjectionTarget::Package(pkg) => {
                 RunningTarget::PackageName(pkg.to_owned())
@@ -117,7 +117,7 @@ pub fn calculate_running_scope(
             manifest_reader::manifest::InjectionTarget::Node(node_id) => {
                 RunningTarget::Node(node_id.to_owned())
             }
-            _ => RunningTarget::Global,
+            _ => RunningTarget::Inherit,
         },
     }
 }
