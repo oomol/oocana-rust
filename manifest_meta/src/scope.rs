@@ -7,7 +7,7 @@ use crate::InjectionTarget;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum RunningScope {
-    Global {
+    Current {
         node_id: Option<NodeId>,
         workspace: Option<PathBuf>,
     },
@@ -22,7 +22,7 @@ pub enum RunningScope {
 impl RunningScope {
     pub fn workspace(&self) -> PathBuf {
         match self {
-            RunningScope::Global { workspace, .. } => workspace
+            RunningScope::Current { workspace, .. } => workspace
                 .clone()
                 .unwrap_or_else(|| PathBuf::from("/app/workspace")),
             RunningScope::Package { path, .. } => path.clone(),
@@ -45,7 +45,7 @@ impl RunningScope {
 
     pub fn identifier(&self) -> Option<String> {
         let str = match self {
-            RunningScope::Global { node_id, .. } => {
+            RunningScope::Current { node_id, .. } => {
                 node_id.as_ref().map(|node_id| format!("{}", node_id))
             }
             RunningScope::Package {
@@ -62,7 +62,7 @@ impl RunningScope {
 
     pub fn target(&self) -> Option<InjectionTarget> {
         match self {
-            RunningScope::Global { .. } => None,
+            RunningScope::Current { .. } => None,
             RunningScope::Package { path, .. } => Some(InjectionTarget::Package(path.clone())),
         }
     }
@@ -70,7 +70,7 @@ impl RunningScope {
 
 impl Default for RunningScope {
     fn default() -> Self {
-        RunningScope::Global {
+        RunningScope::Current {
             node_id: None,
             workspace: None,
         }

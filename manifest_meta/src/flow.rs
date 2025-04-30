@@ -178,7 +178,7 @@ impl SubflowBlock {
                     );
 
                     let running_scope = match running_target {
-                        RunningTarget::Inherit => RunningScope::Global {
+                        RunningTarget::Inherit => RunningScope::Current {
                             node_id: None,
                             workspace: flow_path.parent().map(|p| p.to_path_buf()),
                         },
@@ -189,7 +189,7 @@ impl SubflowBlock {
                         },
                         _ => {
                             warn!("subflow node injection not supported");
-                            RunningScope::Global {
+                            RunningScope::Current {
                                 node_id: None,
                                 workspace: flow_path.parent().map(|p| p.to_path_buf()),
                             }
@@ -331,7 +331,7 @@ impl SubflowBlock {
                     };
 
                     let mut running_scope = match running_target {
-                        RunningTarget::Inherit => RunningScope::Global {
+                        RunningTarget::Inherit => RunningScope::Current {
                             node_id: None,
                             workspace: workspace.map(|p| p.to_path_buf()),
                         },
@@ -341,13 +341,13 @@ impl SubflowBlock {
                             node_id,
                         },
                         RunningTarget::Node(node_id) => match find_node(&node_id) {
-                            Some(_) => RunningScope::Global {
+                            Some(_) => RunningScope::Current {
                                 node_id: Some(node_id),
                                 workspace: workspace.map(|p| p.to_path_buf()),
                             },
                             None => {
                                 warn!("target node not found: {:?}", node_id);
-                                RunningScope::Global {
+                                RunningScope::Current {
                                     node_id: None,
                                     workspace: workspace.map(|p| p.to_path_buf()),
                                 }
@@ -399,7 +399,7 @@ impl SubflowBlock {
                             } else {
                                 warn!("package not found: {:?}", name);
                                 // maybe just throw error and exit will be better
-                                RunningScope::Global {
+                                RunningScope::Current {
                                     node_id: None,
                                     workspace: workspace.map(|p| p.to_path_buf()),
                                 }
@@ -408,7 +408,7 @@ impl SubflowBlock {
                     };
 
                     if !layer::feature_enabled() && running_scope.package_path().is_some() {
-                        running_scope = RunningScope::Global {
+                        running_scope = RunningScope::Current {
                             node_id: None,
                             workspace: workspace.map(|p| p.to_path_buf()),
                         };
