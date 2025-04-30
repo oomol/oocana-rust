@@ -6,7 +6,7 @@ pub mod shared;
 use manifest_reader::path_finder::BlockPathFinder;
 use std::{
     collections::{HashMap, HashSet},
-    env::current_dir,
+    env::{self, current_dir},
     path::PathBuf,
     sync::Arc,
 };
@@ -68,6 +68,13 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
 
     let nodes = nodes.map(|nodes| nodes.into_iter().map(NodeId::new).collect());
 
+    // TODO: remove this hard code path
+    let scope_workspace = if PathBuf::from("/app/workspace").exists() {
+        Some(PathBuf::from("/app/workspace"))
+    } else {
+        env::current_dir().ok()
+    };
+
     let handle = block_job::run_block({
         block_job::RunBlockArgs {
             block,
@@ -81,7 +88,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
             input_values,
             timeout: None,
             inputs_def_patch: None,
-            scope: RunningScope::new_current(None, current_dir().ok()),
+            scope: RunningScope::new_current(None, scope_workspace),
             slot_blocks: None,
         }
     });

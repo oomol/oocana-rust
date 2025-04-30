@@ -28,6 +28,7 @@ impl RunningScope {
         match self {
             RunningScope::Current { workspace, .. } => workspace
                 .clone()
+                // TODO: remove this hard code
                 .unwrap_or_else(|| PathBuf::from("/app/workspace")),
             RunningScope::Package { path, .. } => path.clone(),
         }
