@@ -519,8 +519,8 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
         shared
             .slot_blocks
             .get(node_id)
-            .and_then(|slot| Some(slot.block()))
-            .unwrap_or(node.block())
+            .map(|slot| slot.block())
+            .unwrap_or_else(|| node.block())
     } else {
         node.block()
     };
