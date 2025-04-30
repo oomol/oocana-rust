@@ -7,7 +7,7 @@ use std::{
 
 use manifest_reader::{
     manifest::{self, HandleName, InputDefPatch, InputHandles, OutputHandles},
-    path_finder::{find_package_file, BlockPathFinder},
+    path_finder::{find_package_file, get_block_value_type, BlockPathFinder},
     reader::read_package,
 };
 
@@ -170,6 +170,32 @@ impl SubflowBlock {
                         parse_inputs_def(&subflow_node.inputs_from, &flow.as_ref().inputs_def);
                     let inputs_def_patch = get_inputs_def_patch(&subflow_node.inputs_from);
 
+                    let running_target = calculate_running_scope(
+                        node,
+                        &None,
+                        &flow.package_path,
+                        get_block_value_type(&subflow_node.subflow),
+                    );
+
+                    let running_scope = match running_target {
+                        RunningTarget::Global => RunningScope::Global {
+                            node_id: None,
+                            workspace: flow_path.parent().map(|p| p.to_path_buf()),
+                        },
+                        RunningTarget::PackagePath { path, node_id } => RunningScope::Package {
+                            name: None,
+                            path,
+                            node_id,
+                        },
+                        _ => {
+                            warn!("subflow node injection not supported");
+                            RunningScope::Global {
+                                node_id: None,
+                                workspace: flow_path.parent().map(|p| p.to_path_buf()),
+                            }
+                        }
+                    };
+
                     let mut slot_blocks: HashMap<NodeId, Slot> = HashMap::new();
                     if let Some(slots) = subflow_node.slots.as_ref() {
                         for slot in slots {
@@ -247,6 +273,7 @@ impl SubflowBlock {
                             inputs_def,
                             concurrency: subflow_node.concurrency,
                             inputs_def_patch,
+                            scope: running_scope,
                             slots: if slot_blocks.is_empty() {
                                 None
                             } else {
