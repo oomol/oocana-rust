@@ -20,6 +20,10 @@ pub enum RunningScope {
 }
 
 impl RunningScope {
+    pub fn new_current(node_id: Option<NodeId>, workspace: Option<PathBuf>) -> Self {
+        RunningScope::Current { node_id, workspace }
+    }
+
     pub fn workspace(&self) -> PathBuf {
         match self {
             RunningScope::Current { workspace, .. } => workspace

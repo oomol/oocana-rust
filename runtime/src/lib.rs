@@ -6,6 +6,7 @@ pub mod shared;
 use manifest_reader::path_finder::BlockPathFinder;
 use std::{
     collections::{HashMap, HashSet},
+    env::current_dir,
     path::PathBuf,
     sync::Arc,
 };
@@ -79,8 +80,8 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
             nodes,
             input_values,
             timeout: None,
-            scope: RunningScope::default(),
             inputs_def_patch: None,
+            scope: RunningScope::new_current(None, current_dir().ok()),
             slot_blocks: None,
         }
     });
