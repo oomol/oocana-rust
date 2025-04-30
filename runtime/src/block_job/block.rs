@@ -99,6 +99,7 @@ pub fn run_block(block_args: RunBlockArgs) -> Option<BlockJobHandle> {
                 parent_block_status: block_status,
                 nodes,
                 input_values,
+                scope,
                 slot_blocks: slot_blocks.unwrap_or_default(),
             }
         }),

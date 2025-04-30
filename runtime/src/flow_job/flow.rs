@@ -16,7 +16,7 @@ use tracing::{info, warn};
 use utils::output::OutputValue;
 
 use job::{BlockInputs, BlockJobStacks, JobId};
-use manifest_meta::{HandleTo, Node, NodeId, Slot, SubflowBlock};
+use manifest_meta::{HandleTo, Node, NodeId, RunningScope, Slot, SubflowBlock};
 
 use super::node_input_values;
 use node_input_values::{CacheMetaMap, CacheMetaMapExt, NodeInputValues};
@@ -45,6 +45,7 @@ struct FlowShared {
     flow_block: Arc<SubflowBlock>,
     shared: Arc<Shared>,
     stacks: BlockJobStacks,
+    scope: RunningScope,
     slot_blocks: HashMap<NodeId, Slot>,
 }
 
@@ -71,6 +72,7 @@ pub struct RunFlowArgs {
     pub parent_block_status: BlockStatusTx,
     pub nodes: Option<HashSet<NodeId>>,
     pub input_values: Option<String>,
+    pub scope: RunningScope,
     pub slot_blocks: HashMap<NodeId, Slot>,
 }
 
@@ -112,6 +114,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
         ref mut nodes,
         input_values,
         slot_blocks,
+        scope,
     } = flow_args;
 
     let reporter = Arc::new(shared.reporter.flow(
@@ -155,6 +158,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
         job_id: flow_job_id.to_owned(),
         shared,
         stacks,
+        scope,
         slot_blocks,
     };
 
@@ -510,16 +514,23 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
         .jobs
         .insert(job_id.to_owned());
 
-    let mut block = node.block();
-
-    // replace slot block with slot
-    if matches!(node, Node::Slot(_)) {
+    let block = if matches!(node, Node::Slot(_)) {
         let node_id = node.node_id();
-        shared.slot_blocks.get(node_id).map(|b| {
-            let replace_block = b.block();
-            block = replace_block;
-        });
-    }
+        shared
+            .slot_blocks
+            .get(node_id)
+            .map(|slot| slot.block())
+            .unwrap_or_else(|| node.block())
+    } else {
+        node.block()
+    };
+
+    let node_scope = if matches!(node.scope(), RunningScope::Current { .. }) {
+        let flow_scope = shared.scope.clone();
+        flow_scope.clone_with_scope_node_id(&node.scope())
+    } else {
+        node.scope()
+    };
 
     let handle = run_block({
         RunBlockArgs {
@@ -536,7 +547,7 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
             block_status: ctx.block_status.clone(),
             nodes: None,
             input_values: None,
-            scope: node.scope(),
+            scope: node_scope,
             timeout: node.timeout(),
             slot_blocks: match node {
                 Node::Flow(n) => n.slots.clone(),

@@ -1,5 +1,5 @@
 use super::common::{HandlesFroms, HandlesTos};
-use crate::{extend_node_common_field, Block, SubflowBlock, TaskBlock};
+use crate::{extend_node_common_field, Block, RunningScope, SubflowBlock, TaskBlock};
 use crate::{HandleName, NodeId};
 use manifest_reader::manifest::{InputDefPatch, InputHandles};
 use std::collections::HashMap;
@@ -8,6 +8,7 @@ use std::sync::Arc;
 extend_node_common_field!(SubflowNode {
     flow: Arc<SubflowBlock>,
     slots: Option<HashMap<NodeId, Slot>>,
+    scope: RunningScope,
 });
 
 #[derive(Debug, Clone)]

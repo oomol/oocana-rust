@@ -7,7 +7,7 @@ use std::{
 
 use manifest_reader::{
     manifest::{self, HandleName, InputDefPatch, InputHandles, OutputHandles},
-    path_finder::{find_package_file, BlockPathFinder},
+    path_finder::{find_package_file, get_block_value_type, BlockPathFinder},
     reader::read_package,
 };
 
@@ -170,6 +170,33 @@ impl SubflowBlock {
                         parse_inputs_def(&subflow_node.inputs_from, &flow.as_ref().inputs_def);
                     let inputs_def_patch = get_inputs_def_patch(&subflow_node.inputs_from);
 
+                    let running_target = calculate_running_scope(
+                        node,
+                        &None,
+                        &flow.package_path,
+                        get_block_value_type(&subflow_node.subflow),
+                    );
+
+                    let running_scope = match running_target {
+                        RunningTarget::Inherit => RunningScope::Current {
+                            node_id: None,
+                            workspace: flow_path.parent().map(|p| p.to_path_buf()),
+                        },
+                        RunningTarget::PackagePath { path, node_id } => RunningScope::Package {
+                            name: None,
+                            path,
+                            node_id,
+                        },
+                        _ => {
+                            warn!("subflow node injection not supported");
+                            RunningScope::Current {
+                                node_id: None,
+                                workspace: flow_path.parent().map(|p| p.to_path_buf()),
+                            }
+                        }
+                    };
+
+                    // TODO: slot also need calculate running scope
                     let mut slot_blocks: HashMap<NodeId, Slot> = HashMap::new();
                     if let Some(slots) = subflow_node.slots.as_ref() {
                         for slot in slots {
@@ -216,8 +243,6 @@ impl SubflowBlock {
                                         &mut path_finder,
                                     )?;
 
-                                    // TODO: flow 注入
-
                                     if slot_flow.has_slot() {
                                         tracing::warn!("this subflow has slot node");
                                     }
@@ -247,6 +272,7 @@ impl SubflowBlock {
                             inputs_def,
                             concurrency: subflow_node.concurrency,
                             inputs_def_patch,
+                            scope: running_scope,
                             slots: if slot_blocks.is_empty() {
                                 None
                             } else {
@@ -304,7 +330,7 @@ impl SubflowBlock {
                     };
 
                     let mut running_scope = match running_target {
-                        RunningTarget::Global => RunningScope::Global {
+                        RunningTarget::Inherit => RunningScope::Current {
                             node_id: None,
                             workspace: workspace.map(|p| p.to_path_buf()),
                         },
@@ -314,13 +340,13 @@ impl SubflowBlock {
                             node_id,
                         },
                         RunningTarget::Node(node_id) => match find_node(&node_id) {
-                            Some(_) => RunningScope::Global {
+                            Some(_) => RunningScope::Current {
                                 node_id: Some(node_id),
                                 workspace: workspace.map(|p| p.to_path_buf()),
                             },
                             None => {
                                 warn!("target node not found: {:?}", node_id);
-                                RunningScope::Global {
+                                RunningScope::Current {
                                     node_id: None,
                                     workspace: workspace.map(|p| p.to_path_buf()),
                                 }
@@ -372,7 +398,7 @@ impl SubflowBlock {
                             } else {
                                 warn!("package not found: {:?}", name);
                                 // maybe just throw error and exit will be better
-                                RunningScope::Global {
+                                RunningScope::Current {
                                     node_id: None,
                                     workspace: workspace.map(|p| p.to_path_buf()),
                                 }
@@ -381,7 +407,7 @@ impl SubflowBlock {
                     };
 
                     if !layer::feature_enabled() && running_scope.package_path().is_some() {
-                        running_scope = RunningScope::Global {
+                        running_scope = RunningScope::Current {
                             node_id: None,
                             workspace: workspace.map(|p| p.to_path_buf()),
                         };

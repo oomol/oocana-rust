@@ -135,7 +135,7 @@ impl Node {
     pub fn scope(&self) -> RunningScope {
         match self {
             Self::Task(task) => task.scope.clone(),
-            Self::Flow(_) => RunningScope::default(),
+            Self::Flow(flow) => flow.scope.clone(),
             Self::Slot(_) => RunningScope::default(),
             Self::Service(_) => RunningScope::default(),
         }

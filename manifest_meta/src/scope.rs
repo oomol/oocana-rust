@@ -7,7 +7,7 @@ use crate::InjectionTarget;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum RunningScope {
-    Global {
+    Current {
         node_id: Option<NodeId>,
         workspace: Option<PathBuf>,
     },
@@ -20,10 +20,15 @@ pub enum RunningScope {
 }
 
 impl RunningScope {
+    pub fn new_current(node_id: Option<NodeId>, workspace: Option<PathBuf>) -> Self {
+        RunningScope::Current { node_id, workspace }
+    }
+
     pub fn workspace(&self) -> PathBuf {
         match self {
-            RunningScope::Global { workspace, .. } => workspace
+            RunningScope::Current { workspace, .. } => workspace
                 .clone()
+                // TODO: remove this hard code
                 .unwrap_or_else(|| PathBuf::from("/app/workspace")),
             RunningScope::Package { path, .. } => path.clone(),
         }
@@ -43,9 +48,16 @@ impl RunningScope {
         }
     }
 
+    pub fn node_id(&self) -> Option<NodeId> {
+        match self {
+            RunningScope::Current { node_id, .. } => node_id.clone(),
+            RunningScope::Package { node_id, .. } => node_id.clone(),
+        }
+    }
+
     pub fn identifier(&self) -> Option<String> {
         let str = match self {
-            RunningScope::Global { node_id, .. } => {
+            RunningScope::Current { node_id, .. } => {
                 node_id.as_ref().map(|node_id| format!("{}", node_id))
             }
             RunningScope::Package {
@@ -62,15 +74,29 @@ impl RunningScope {
 
     pub fn target(&self) -> Option<InjectionTarget> {
         match self {
-            RunningScope::Global { .. } => None,
+            RunningScope::Current { .. } => None,
             RunningScope::Package { path, .. } => Some(InjectionTarget::Package(path.clone())),
+        }
+    }
+
+    pub fn clone_with_scope_node_id(&self, scope: &Self) -> Self {
+        match self {
+            RunningScope::Current { workspace, .. } => RunningScope::Current {
+                node_id: scope.node_id(),
+                workspace: workspace.clone(),
+            },
+            RunningScope::Package { path, name, .. } => RunningScope::Package {
+                node_id: scope.node_id(),
+                path: path.clone(),
+                name: name.clone(),
+            },
         }
     }
 }
 
 impl Default for RunningScope {
     fn default() -> Self {
-        RunningScope::Global {
+        RunningScope::Current {
             node_id: None,
             workspace: None,
         }
@@ -78,7 +104,7 @@ impl Default for RunningScope {
 }
 
 pub enum RunningTarget {
-    Global,
+    Inherit,
     Node(NodeId),
     PackageName(String),
     PackagePath {
@@ -109,7 +135,7 @@ pub fn calculate_running_scope(
     }
 
     match injection {
-        None => RunningTarget::Global,
+        None => RunningTarget::Inherit,
         Some(injection) => match &injection.target {
             manifest_reader::manifest::InjectionTarget::Package(pkg) => {
                 RunningTarget::PackageName(pkg.to_owned())
@@ -117,7 +143,7 @@ pub fn calculate_running_scope(
             manifest_reader::manifest::InjectionTarget::Node(node_id) => {
                 RunningTarget::Node(node_id.to_owned())
             }
-            _ => RunningTarget::Global,
+            _ => RunningTarget::Inherit,
         },
     }
 }
