@@ -525,6 +525,13 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
         node.block()
     };
 
+    let node_scope = if matches!(node.scope(), RunningScope::Current { .. }) {
+        let flow_scope = shared.scope.clone();
+        flow_scope.clone_with_new_node_id(node.node_id().to_owned())
+    } else {
+        node.scope()
+    };
+
     let handle = run_block({
         RunBlockArgs {
             block: block,
@@ -540,7 +547,7 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
             block_status: ctx.block_status.clone(),
             nodes: None,
             input_values: None,
-            scope: node.scope(),
+            scope: node_scope,
             timeout: node.timeout(),
             slot_blocks: match node {
                 Node::Flow(n) => n.slots.clone(),

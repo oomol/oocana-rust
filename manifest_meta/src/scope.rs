@@ -43,6 +43,13 @@ impl RunningScope {
         }
     }
 
+    pub fn node_id(&self) -> Option<NodeId> {
+        match self {
+            RunningScope::Current { node_id, .. } => node_id.clone(),
+            RunningScope::Package { node_id, .. } => node_id.clone(),
+        }
+    }
+
     pub fn identifier(&self) -> Option<String> {
         let str = match self {
             RunningScope::Current { node_id, .. } => {
@@ -64,6 +71,20 @@ impl RunningScope {
         match self {
             RunningScope::Current { .. } => None,
             RunningScope::Package { path, .. } => Some(InjectionTarget::Package(path.clone())),
+        }
+    }
+
+    pub fn clone_with_new_node_id(&self, node_id: NodeId) -> Self {
+        match self {
+            RunningScope::Current { workspace, .. } => RunningScope::Current {
+                node_id: Some(node_id),
+                workspace: workspace.clone(),
+            },
+            RunningScope::Package { path, name, .. } => RunningScope::Package {
+                node_id: Some(node_id),
+                path: path.clone(),
+                name: name.clone(),
+            },
         }
     }
 }
