@@ -7,4 +7,4 @@ edition = "2021"
 
 [dependencies]
 oocana_sdk = { path = "../../../../sdk" }
-tokio = { version = "1.28.2", features = ["full"] }
+tokio = { version = "1.44.2", features = ["full"] }
