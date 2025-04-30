@@ -514,16 +514,16 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
         .jobs
         .insert(job_id.to_owned());
 
-    let mut block = node.block();
-
-    // replace slot block with slot
-    if matches!(node, Node::Slot(_)) {
+    let block = if matches!(node, Node::Slot(_)) {
         let node_id = node.node_id();
-        shared.slot_blocks.get(node_id).map(|b| {
-            let replace_block = b.block();
-            block = replace_block;
-        });
-    }
+        shared
+            .slot_blocks
+            .get(node_id)
+            .and_then(|slot| Some(slot.block()))
+            .unwrap_or(node.block())
+    } else {
+        node.block()
+    };
 
     let handle = run_block({
         RunBlockArgs {
