@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.27.3 (2025-05-01)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* chore(deps): bump crossbeam-channel from 0.5.14 to 0.5.15 by @leavesster in https://github.com/oomol/oocana-rust/pull/77
+* feat: implement subflow running scope by @leavesster in https://github.com/oomol/oocana-rust/pull/78
+* feat: implement slot scope follow flow's scope not subflow's by @leavesster in https://github.com/oomol/oocana-rust/pull/80
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.27.2...v0.27.3
+
 ## 0.27.2 (2025-04-29)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
