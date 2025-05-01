@@ -90,7 +90,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
             input_values,
             timeout: None,
             inputs_def_patch: None,
-            scope: RunningScope::global(scope_workspace),
+            scope: RunningScope::global(workspace),
             slot_blocks: None,
         }
     });
