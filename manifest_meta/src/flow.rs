@@ -7,7 +7,7 @@ use std::{
 
 use manifest_reader::{
     manifest::{self, HandleName, InputDefPatch, InputHandles, OutputHandles},
-    path_finder::{find_package_file, get_block_value_type, BlockPathFinder},
+    path_finder::{find_package_file, get_block_value_type, BlockPathFinder, BlockValueType},
     reader::read_package,
 };
 
@@ -214,6 +214,7 @@ impl SubflowBlock {
                                     let slot_block = Slot::Subflow(SubflowSlot {
                                         slot_node_id: inline_slot.slot_node_id.to_owned(),
                                         subflow: Arc::new(subflow),
+                                        scope: RunningScope::Slot {},
                                     });
                                     slot_blocks
                                         .insert(inline_slot.slot_node_id.to_owned(), slot_block);
@@ -224,9 +225,23 @@ impl SubflowBlock {
                                         &mut path_finder,
                                     )?;
 
+                                    let scope = if get_block_value_type(&task_slot.task)
+                                        == BlockValueType::Pkg
+                                        && task.package_path.is_some()
+                                    {
+                                        RunningScope::Package {
+                                            path: task.package_path.clone().unwrap(),
+                                            name: None,
+                                            node_id: None,
+                                        }
+                                    } else {
+                                        RunningScope::Slot {}
+                                    };
+
                                     let slot_block = Slot::Task(TaskSlot {
                                         slot_node_id: task_slot.slot_node_id.to_owned(),
                                         task,
+                                        scope,
                                     });
                                     slot_blocks
                                         .insert(task_slot.slot_node_id.to_owned(), slot_block);
@@ -241,9 +256,23 @@ impl SubflowBlock {
                                         tracing::warn!("this subflow has slot node");
                                     }
 
+                                    let scope = if get_block_value_type(&subflow_slot.subflow)
+                                        == BlockValueType::Pkg
+                                        && slot_flow.package_path.is_some()
+                                    {
+                                        RunningScope::Package {
+                                            path: slot_flow.package_path.clone().unwrap(),
+                                            name: None,
+                                            node_id: None,
+                                        }
+                                    } else {
+                                        RunningScope::Slot {}
+                                    };
+
                                     let slot_block = Slot::Subflow(SubflowSlot {
                                         slot_node_id: subflow_slot.slot_node_id.to_owned(),
                                         subflow: slot_flow,
+                                        scope,
                                     });
 
                                     slot_blocks
