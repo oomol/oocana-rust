@@ -9,7 +9,6 @@ use crate::InjectionTarget;
 pub enum RunningScope {
     Current {
         node_id: Option<NodeId>,
-        workspace: Option<PathBuf>,
     },
     Package {
         path: PathBuf,
@@ -20,17 +19,15 @@ pub enum RunningScope {
 }
 
 impl RunningScope {
+    // TODO: remove workspace
     pub fn new_current(node_id: Option<NodeId>, workspace: Option<PathBuf>) -> Self {
-        RunningScope::Current { node_id, workspace }
+        RunningScope::Current { node_id }
     }
 
-    pub fn workspace(&self) -> PathBuf {
+    pub fn workspace(&self) -> Option<PathBuf> {
         match self {
-            RunningScope::Current { workspace, .. } => workspace
-                .clone()
-                // TODO: remove this hard code
-                .unwrap_or_else(|| PathBuf::from("/app/workspace")),
-            RunningScope::Package { path, .. } => path.clone(),
+            RunningScope::Current { .. } => None,
+            RunningScope::Package { path, .. } => Some(path.clone()),
         }
     }
 
@@ -81,9 +78,8 @@ impl RunningScope {
 
     pub fn clone_with_scope_node_id(&self, scope: &Self) -> Self {
         match self {
-            RunningScope::Current { workspace, .. } => RunningScope::Current {
+            RunningScope::Current { .. } => RunningScope::Current {
                 node_id: scope.node_id(),
-                workspace: workspace.clone(),
             },
             RunningScope::Package { path, name, .. } => RunningScope::Package {
                 node_id: scope.node_id(),
@@ -96,10 +92,7 @@ impl RunningScope {
 
 impl Default for RunningScope {
     fn default() -> Self {
-        RunningScope::Current {
-            node_id: None,
-            workspace: None,
-        }
+        RunningScope::Current { node_id: None }
     }
 }
 

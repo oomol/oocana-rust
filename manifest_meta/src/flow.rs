@@ -178,10 +178,7 @@ impl SubflowBlock {
                     );
 
                     let running_scope = match running_target {
-                        RunningTarget::Inherit => RunningScope::Current {
-                            node_id: None,
-                            workspace: flow_path.parent().map(|p| p.to_path_buf()),
-                        },
+                        RunningTarget::Inherit => RunningScope::default(),
                         RunningTarget::PackagePath { path, node_id } => RunningScope::Package {
                             name: None,
                             path,
@@ -189,10 +186,7 @@ impl SubflowBlock {
                         },
                         _ => {
                             warn!("subflow node injection not supported");
-                            RunningScope::Current {
-                                node_id: None,
-                                workspace: flow_path.parent().map(|p| p.to_path_buf()),
-                            }
+                            RunningScope::default()
                         }
                     };
 
@@ -318,22 +312,8 @@ impl SubflowBlock {
                         task_node_block.block_type(),
                     );
 
-                    // if flow_paths s [/a/b/c]/flows/AAA/flow.oo.yaml return [/a/b/c]
-                    // else return flow_paths's parent dir
-                    let grandparent_dir = flow_path.parent().and_then(|p| p.parent());
-                    let workspace = if grandparent_dir
-                        .is_some_and(|p| p.exists() && p.file_name() == Some("flows".as_ref()))
-                    {
-                        grandparent_dir.and_then(|p| p.parent())
-                    } else {
-                        flow_path.parent()
-                    };
-
                     let mut running_scope = match running_target {
-                        RunningTarget::Inherit => RunningScope::Current {
-                            node_id: None,
-                            workspace: workspace.map(|p| p.to_path_buf()),
-                        },
+                        RunningTarget::Inherit => RunningScope::default(),
                         RunningTarget::PackagePath { path, node_id } => RunningScope::Package {
                             name: None,
                             path,
@@ -342,14 +322,10 @@ impl SubflowBlock {
                         RunningTarget::Node(node_id) => match find_node(&node_id) {
                             Some(_) => RunningScope::Current {
                                 node_id: Some(node_id),
-                                workspace: workspace.map(|p| p.to_path_buf()),
                             },
                             None => {
                                 warn!("target node not found: {:?}", node_id);
-                                RunningScope::Current {
-                                    node_id: None,
-                                    workspace: workspace.map(|p| p.to_path_buf()),
-                                }
+                                RunningScope::default()
                             }
                         },
                         RunningTarget::PackageName(name) => {
@@ -398,19 +374,13 @@ impl SubflowBlock {
                             } else {
                                 warn!("package not found: {:?}", name);
                                 // maybe just throw error and exit will be better
-                                RunningScope::Current {
-                                    node_id: None,
-                                    workspace: workspace.map(|p| p.to_path_buf()),
-                                }
+                                RunningScope::default()
                             }
                         }
                     };
 
                     if !layer::feature_enabled() && running_scope.package_path().is_some() {
-                        running_scope = RunningScope::Current {
-                            node_id: None,
-                            workspace: workspace.map(|p| p.to_path_buf()),
-                        };
+                        running_scope = RunningScope::default();
                     }
 
                     let merge_inputs_def =
