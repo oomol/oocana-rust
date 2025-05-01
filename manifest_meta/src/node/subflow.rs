@@ -37,10 +37,12 @@ impl Slot {
 pub struct TaskSlot {
     pub slot_node_id: NodeId,
     pub task: Arc<TaskBlock>,
+    pub scope: RunningScope,
 }
 
 #[derive(Debug, Clone)]
 pub struct SubflowSlot {
     pub slot_node_id: NodeId,
     pub subflow: Arc<SubflowBlock>,
+    pub scope: RunningScope,
 }
