@@ -9,6 +9,7 @@ use uuid::Uuid;
 use crate::{
     block_job::{run_block, BlockJobHandle, RunBlockArgs},
     block_status::{self, BlockStatusTx},
+    flow_job::flow,
     shared::Shared,
 };
 use mainframe::reporter::FlowReporterTx;
@@ -528,6 +529,9 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
     let node_scope = if matches!(node.scope(), RunningScope::Flow { .. }) {
         let flow_scope = shared.scope.clone();
         flow_scope.clone_with_scope_node_id(&node.scope())
+    } else if matches!(node, Node::Slot(_)) {
+        // FIXME: fix this
+        node.scope()
     } else {
         node.scope()
     };
