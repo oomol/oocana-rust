@@ -6,7 +6,7 @@ pub mod shared;
 use manifest_reader::path_finder::BlockPathFinder;
 use std::{
     collections::{HashMap, HashSet},
-    env::{self, current_dir},
+    env::current_dir,
     path::PathBuf,
     sync::Arc,
 };
@@ -72,7 +72,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
     let scope_workspace = if PathBuf::from("/app/workspace").exists() {
         Some(PathBuf::from("/app/workspace"))
     } else {
-        env::current_dir().ok()
+        current_dir().ok()
     };
 
     let workspace = scope_workspace.expect("workspace not found");
