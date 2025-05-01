@@ -44,6 +44,7 @@ pub struct RunBlockArgs {
     pub block_status: BlockStatusTx,
     pub nodes: Option<HashSet<NodeId>>,
     pub input_values: Option<String>,
+    pub parent_scope: RunningScope,
     pub scope: RunningScope,
     pub timeout: Option<u64>,
     pub inputs_def_patch: Option<InputDefPatchMap>,
@@ -82,6 +83,7 @@ pub fn run_block(block_args: RunBlockArgs) -> Option<BlockJobHandle> {
         nodes,
         input_values,
         timeout,
+        parent_scope,
         scope,
         inputs_def_patch,
         slot_blocks,
@@ -99,6 +101,7 @@ pub fn run_block(block_args: RunBlockArgs) -> Option<BlockJobHandle> {
                 parent_block_status: block_status,
                 nodes,
                 input_values,
+                parent_scope,
                 scope,
                 slot_blocks: slot_blocks.unwrap_or_default(),
             }

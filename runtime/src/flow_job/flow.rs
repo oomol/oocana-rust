@@ -9,7 +9,6 @@ use uuid::Uuid;
 use crate::{
     block_job::{run_block, BlockJobHandle, RunBlockArgs},
     block_status::{self, BlockStatusTx},
-    flow_job::flow,
     shared::Shared,
 };
 use mainframe::reporter::FlowReporterTx;
@@ -46,6 +45,7 @@ struct FlowShared {
     flow_block: Arc<SubflowBlock>,
     shared: Arc<Shared>,
     stacks: BlockJobStacks,
+    parent_scope: RunningScope,
     scope: RunningScope,
     slot_blocks: HashMap<NodeId, Slot>,
 }
@@ -73,6 +73,7 @@ pub struct RunFlowArgs {
     pub parent_block_status: BlockStatusTx,
     pub nodes: Option<HashSet<NodeId>>,
     pub input_values: Option<String>,
+    pub parent_scope: RunningScope,
     pub scope: RunningScope,
     pub slot_blocks: HashMap<NodeId, Slot>,
 }
@@ -116,6 +117,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
         input_values,
         slot_blocks,
         scope,
+        parent_scope,
     } = flow_args;
 
     let reporter = Arc::new(shared.reporter.flow(
@@ -161,6 +163,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
         stacks,
         scope,
         slot_blocks,
+        parent_scope,
     };
 
     if let Some(ref origin_nodes) = nodes {
@@ -530,8 +533,7 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
         let flow_scope = shared.scope.clone();
         flow_scope.clone_with_scope_node_id(&node.scope())
     } else if matches!(node, Node::Slot(_)) {
-        // FIXME: fix this
-        node.scope()
+        shared.parent_scope.clone()
     } else {
         node.scope()
     };
@@ -551,6 +553,7 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
             block_status: ctx.block_status.clone(),
             nodes: None,
             input_values: None,
+            parent_scope: shared.scope.clone(),
             scope: node_scope,
             timeout: node.timeout(),
             slot_blocks: match node {
