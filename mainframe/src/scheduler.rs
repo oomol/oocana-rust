@@ -616,6 +616,7 @@ fn spawn_executor(
             "OOCANA_PKG_DIR".to_string(),
             scope
                 .workspace()
+                .expect("workspace not found") // TODO: better use new struct to avoid unwrap
                 .join(PKG_DIR)
                 .to_string_lossy()
                 .to_string(),
@@ -828,7 +829,11 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
             layer: None,
         });
     } else if no_layer_feature {
-        let pkg_dir = scope.workspace().join(PKG_DIR);
+        // TODO: better use new struct to avoid unwrap
+        let pkg_dir = scope
+            .workspace()
+            .expect("workspace not found")
+            .join(PKG_DIR);
         if !pkg_dir.exists() {
             std::fs::create_dir_all(&pkg_dir).unwrap_or_else(|e| {
                 tracing::warn!("Failed to create pkg_dir: {:?}, error: {}", pkg_dir, e);
@@ -916,7 +921,11 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
 
         Some(runtime_layer)
     } else {
-        let pkg_dir = scope.workspace().join(PKG_DIR);
+        // TODO: better use new struct to avoid unwrap
+        let pkg_dir = scope
+            .workspace()
+            .expect("workspace not found")
+            .join(PKG_DIR);
         if !pkg_dir.exists() {
             std::fs::create_dir_all(&pkg_dir).unwrap_or_else(|e| {
                 tracing::warn!("Failed to create pkg_dir: {:?}, error: {}", pkg_dir, e);
