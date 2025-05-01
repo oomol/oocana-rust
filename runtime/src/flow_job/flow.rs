@@ -525,7 +525,7 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
         node.block()
     };
 
-    let node_scope = if matches!(node.scope(), RunningScope::Current { .. }) {
+    let node_scope = if matches!(node.scope(), RunningScope::Flow { .. }) {
         let flow_scope = shared.scope.clone();
         flow_scope.clone_with_scope_node_id(&node.scope())
     } else {

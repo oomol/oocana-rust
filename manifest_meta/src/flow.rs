@@ -320,8 +320,9 @@ impl SubflowBlock {
                             node_id,
                         },
                         RunningTarget::Node(node_id) => match find_node(&node_id) {
-                            Some(_) => RunningScope::Current {
+                            Some(_) => RunningScope::Flow {
                                 node_id: Some(node_id),
+                                parent: None,
                             },
                             None => {
                                 warn!("target node not found: {:?}", node_id);

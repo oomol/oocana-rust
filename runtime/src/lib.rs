@@ -75,6 +75,8 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
         env::current_dir().ok()
     };
 
+    let workspace = scope_workspace.expect("workspace not found");
+
     let handle = block_job::run_block({
         block_job::RunBlockArgs {
             block,
@@ -88,7 +90,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
             input_values,
             timeout: None,
             inputs_def_patch: None,
-            scope: RunningScope::new_current(None, scope_workspace),
+            scope: RunningScope::global(scope_workspace),
             slot_blocks: None,
         }
     });
