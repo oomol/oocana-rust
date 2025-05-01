@@ -14,6 +14,9 @@ pub enum RunningScope {
         node_id: Option<NodeId>,
         parent: Option<Box<RunningScope>>,
     },
+    Slot {
+        // slot need grandparent scope and not support injection
+    },
     Package {
         path: PathBuf,
         /// for now None means the block is package block, if Some, it means the block is inject to this package
@@ -32,6 +35,7 @@ impl RunningScope {
             RunningScope::Global { workspace } => Some(workspace.clone()),
             RunningScope::Flow { parent, .. } => parent.as_ref().and_then(|p| p.workspace()),
             RunningScope::Package { path, .. } => Some(path.clone()),
+            RunningScope::Slot { .. } => None,
         }
     }
 
@@ -54,6 +58,7 @@ impl RunningScope {
             RunningScope::Global { .. } => None,
             RunningScope::Flow { node_id, .. } => node_id.clone(),
             RunningScope::Package { node_id, .. } => node_id.clone(),
+            RunningScope::Slot { .. } => None,
         }
     }
 
@@ -71,6 +76,7 @@ impl RunningScope {
                 Some(node_id) => Some(format!("{}-{}", path.display(), node_id)),
                 None => Some(format!("{}", path.display())),
             },
+            RunningScope::Slot { .. } => None,
         };
         str.map(|s| calculate_short_hash(&s, 16))
     }
@@ -80,6 +86,7 @@ impl RunningScope {
             RunningScope::Global { .. } => None,
             RunningScope::Flow { .. } => None,
             RunningScope::Package { path, .. } => Some(InjectionTarget::Package(path.clone())),
+            RunningScope::Slot { .. } => None,
         }
     }
 
@@ -97,6 +104,10 @@ impl RunningScope {
                 node_id: scope.node_id(),
                 path: path.clone(),
                 name: name.clone(),
+            },
+            RunningScope::Slot { .. } => RunningScope::Flow {
+                node_id: scope.node_id(),
+                parent: Some(Box::new(self.clone())),
             },
         }
     }
