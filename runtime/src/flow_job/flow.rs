@@ -541,12 +541,6 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
             node_id: node_id.clone(),
             enable_layer: layer::feature_enabled(),
         },
-        // TODO: remove this enum
-        RunningScope::Global { workspace } => RunningPackageScope {
-            package_path: workspace.clone(),
-            node_id: None,
-            enable_layer: layer::feature_enabled(),
-        },
         RunningScope::Slot { .. } => RunningPackageScope {
             package_path: shared.parent_scope.package_path().to_owned(),
             node_id: None,

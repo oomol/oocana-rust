@@ -9,9 +9,6 @@ use crate::InjectionTarget;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum RunningScope {
-    Global {
-        workspace: PathBuf,
-    },
     Flow {
         node_id: Option<NodeId>,
         parent: Option<Box<RunningScope>>,
@@ -28,13 +25,8 @@ pub enum RunningScope {
 }
 
 impl RunningScope {
-    pub fn global(workspace: PathBuf) -> Self {
-        RunningScope::Global { workspace }
-    }
-
     pub fn workspace(&self) -> Option<PathBuf> {
         match self {
-            RunningScope::Global { workspace } => Some(workspace.clone()),
             RunningScope::Flow { parent, .. } => parent.as_ref().and_then(|p| p.workspace()),
             RunningScope::Package { path, .. } => Some(path.clone()),
             RunningScope::Slot { .. } => None,
@@ -57,7 +49,6 @@ impl RunningScope {
 
     pub fn node_id(&self) -> Option<NodeId> {
         match self {
-            RunningScope::Global { .. } => None,
             RunningScope::Flow { node_id, .. } => node_id.clone(),
             RunningScope::Package { node_id, .. } => node_id.clone(),
             RunningScope::Slot { .. } => None,
@@ -66,7 +57,6 @@ impl RunningScope {
 
     pub fn identifier(&self) -> Option<String> {
         let str = match self {
-            RunningScope::Global { .. } => None,
             RunningScope::Flow { node_id, .. } => {
                 node_id.as_ref().map(|node_id| format!("flow-{}", node_id))
             }
@@ -85,7 +75,6 @@ impl RunningScope {
 
     pub fn target(&self) -> Option<InjectionTarget> {
         match self {
-            RunningScope::Global { .. } => None,
             RunningScope::Flow { .. } => None,
             RunningScope::Package { path, .. } => Some(InjectionTarget::Package(path.clone())),
             RunningScope::Slot { .. } => None,
@@ -94,10 +83,6 @@ impl RunningScope {
 
     pub fn clone_with_scope_node_id(&self, scope: &Self) -> Self {
         match self {
-            RunningScope::Global { .. } => RunningScope::Flow {
-                node_id: scope.node_id(),
-                parent: Some(Box::new(self.clone())),
-            },
             RunningScope::Flow { .. } => RunningScope::Flow {
                 node_id: scope.node_id(),
                 parent: Some(Box::new(self.clone())),
