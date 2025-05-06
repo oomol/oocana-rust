@@ -535,9 +535,9 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
             node_id: node_id.clone(),
             enable_layer: layer::feature_enabled(),
         },
-        RunningScope::Flow { node_id, parent } => RunningPackageScope {
+        RunningScope::Flow { node_id, .. } => RunningPackageScope {
             // FIXME: need consider parent is none
-            package_path: parent.and_then(|p| p.workspace()).unwrap_or_default(),
+            package_path: node.scope().package_path().unwrap_or_default(),
             node_id: node_id.clone(),
             enable_layer: layer::feature_enabled(),
         },
