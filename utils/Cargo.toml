@@ -1,6 +1,6 @@
 [package]
 name = "utils"
-version = "0.27.3"
+version = "0.27.4"
 authors = ["CRIMX <straybugs@gmail.com>"]
 description = "Various utilities and functionalities"
 edition = "2021"

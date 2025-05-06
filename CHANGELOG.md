@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.27.4 (2025-05-06)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* fix: error when layer feature is not enable by @leavesster in https://github.com/oomol/oocana-rust/pull/82
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.27.3...v0.27.4
+
 ## 0.27.3 (2025-05-01)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
