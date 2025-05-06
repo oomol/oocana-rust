@@ -5,7 +5,7 @@ use port_check::free_local_ipv4_port_in_range;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
-    default,
+    default, env,
     path::PathBuf,
     process,
     sync::{Arc, RwLock},
@@ -329,19 +329,17 @@ impl SchedulerTx {
     pub fn calculate_scope(&self, scope: &RunningPackageScope) -> RunningPackageScope {
         match self.exclude_packages.as_ref() {
             Some(exclude_packages) => {
-                if let Some(pkg) = scope.package_path() {
-                    let pkg_str = pkg.to_string_lossy().to_string();
-                    if exclude_packages.contains(&pkg_str) {
-                        match self.default_package {
-                            Some(ref default_package) => RunningScope::Package {
-                                path: PathBuf::from(default_package.clone()),
-                                name: Some("default".to_string()),
-                                node_id: None,
-                            },
-                            None => RunningScope::default(),
-                        }
-                    } else {
-                        scope.clone()
+                let pkg_str = scope.package_path().to_string_lossy().to_string();
+                if exclude_packages.contains(&pkg_str) {
+                    match self.default_package {
+                        Some(ref default_package) => RunningPackageScope {
+                            package_path: PathBuf::from(default_package.clone()),
+                            node_id: None,
+                        },
+                        None => RunningPackageScope {
+                            package_path: env::current_dir().unwrap_or_default(),
+                            node_id: None,
+                        },
                     }
                 } else {
                     scope.clone()
