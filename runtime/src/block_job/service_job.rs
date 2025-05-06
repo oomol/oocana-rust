@@ -3,8 +3,7 @@ use std::sync::Arc;
 use job::{BlockInputs, BlockJobStacks, JobId, RunningPackageScope};
 use mainframe::scheduler::{SchedulerTx, ServiceParams};
 use manifest_meta::{
-    InjectionStore, InputDefPatchMap, RunningScope, ServiceBlock, ServiceExecutorOptions,
-    SubflowBlock,
+    InjectionStore, InputDefPatchMap, ServiceBlock, ServiceExecutorOptions, SubflowBlock,
 };
 
 use super::block::BlockJobHandle;
