@@ -13,7 +13,7 @@ use manifest_reader::{
 
 use crate::{
     node::subflow::{Slot, SubflowSlot, TaskSlot},
-    scope::{calculate_running_scope, RunningScope, RunningTarget},
+    scope::{calculate_running_target, RunningScope, RunningTarget},
 };
 
 use tracing::warn;
@@ -170,7 +170,7 @@ impl SubflowBlock {
                         parse_inputs_def(&subflow_node.inputs_from, &flow.as_ref().inputs_def);
                     let inputs_def_patch = get_inputs_def_patch(&subflow_node.inputs_from);
 
-                    let running_target = calculate_running_scope(
+                    let running_target = calculate_running_target(
                         node,
                         &None,
                         &flow.package_path,
@@ -334,7 +334,7 @@ impl SubflowBlock {
 
                     let task = block_resolver
                         .resolve_task_node_block(task_node_block.clone(), &mut path_finder)?;
-                    let running_target = calculate_running_scope(
+                    let running_target = calculate_running_target(
                         node,
                         &task_node.inject,
                         &task.package_path,

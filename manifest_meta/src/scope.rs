@@ -132,7 +132,7 @@ pub(crate) enum RunningTarget {
     },
 }
 
-pub(crate) fn calculate_running_scope(
+pub(crate) fn calculate_running_target(
     node: &manifest_reader::manifest::Node,
     injection: &Option<manifest_reader::manifest::Injection>,
     package_path: &Option<PathBuf>,
