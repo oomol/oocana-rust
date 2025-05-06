@@ -3,7 +3,7 @@ use std::{
     sync::Arc,
 };
 
-use job::{BlockInputs, BlockJobStacks, JobId};
+use job::{BlockInputs, BlockJobStacks, JobId, RunningPackageScope};
 use mainframe::reporter::ReporterMessage;
 use manifest_meta::{Block, InputDefPatchMap, NodeId, RunningScope, Slot, SubflowBlock};
 
@@ -45,7 +45,7 @@ pub struct RunBlockArgs {
     pub nodes: Option<HashSet<NodeId>>,
     pub input_values: Option<String>,
     pub parent_scope: RunningScope,
-    pub scope: RunningScope,
+    pub scope: RunningPackageScope,
     pub timeout: Option<u64>,
     pub inputs_def_patch: Option<InputDefPatchMap>,
     pub slot_blocks: Option<HashMap<NodeId, Slot>>,

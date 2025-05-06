@@ -14,7 +14,7 @@ use crate::block_status::BlockStatusTx;
 use crate::shared::Shared;
 use utils::output::OutputValue;
 
-use job::{BlockInputs, BlockJobStacks, JobId, SessionId};
+use job::{BlockInputs, BlockJobStacks, JobId, RunningPackageScope, SessionId};
 use utils::error::Result;
 use utils::path::to_absolute;
 
@@ -51,7 +51,7 @@ pub struct RunTaskBlockArgs {
     pub job_id: JobId,
     pub inputs: Option<BlockInputs>,
     pub block_status: BlockStatusTx,
-    pub scope: RunningScope,
+    pub scope: RunningPackageScope,
     pub timeout: Option<u64>,
     pub inputs_def_patch: Option<InputDefPatchMap>,
 }

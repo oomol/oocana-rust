@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use job::{BlockInputs, BlockJobStacks, JobId};
+use job::{BlockInputs, BlockJobStacks, JobId, RunningPackageScope};
 use mainframe::scheduler::{SchedulerTx, ServiceParams};
 use manifest_meta::{
     InjectionStore, InputDefPatchMap, RunningScope, ServiceBlock, ServiceExecutorOptions,
@@ -36,7 +36,7 @@ pub struct RunServiceBlockArgs {
     pub inputs: Option<BlockInputs>,
     pub block_status: BlockStatusTx,
     pub injection_store: Option<InjectionStore>,
-    pub scope: RunningScope,
+    pub scope: RunningPackageScope,
     pub parent_flow: Option<Arc<SubflowBlock>>,
     pub inputs_def_patch: Option<InputDefPatchMap>,
 }
@@ -138,7 +138,7 @@ fn send_to_service(
     job_id: &JobId,
     scheduler_tx: SchedulerTx,
     stacks: BlockJobStacks,
-    scope: &RunningScope,
+    scope: &RunningPackageScope,
     flow: Option<String>,
 ) {
     let executor_name = service_block
