@@ -1,3 +1,5 @@
+mod scope;
+pub use scope::RunningPackageScope;
 use std::{collections::HashMap, sync::Arc};
 
 use manifest_meta::{HandleName, NodeId};
