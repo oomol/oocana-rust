@@ -830,32 +830,32 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
         });
     }
 
-    let layer = if let Some(pkg) = scope.package_path() {
+    let layer = if scope.need_layer() {
         let mut bind_paths = executor_payload.bind_paths.clone();
+        let pkg = scope.package_path();
 
         if let Some(store) = injection_store {
-            if let Some(target) = scope.target() {
-                if let Some(meta) = store.get(&target) {
-                    tracing::info!("found injection store for target: {:?}", target);
-                    for node in meta.nodes.iter() {
-                        bind_paths.push(BindPath::new(
-                            node.absolute_entry
+            let target = manifest_meta::InjectionTarget::Package(scope.package_path().to_owned());
+            if let Some(meta) = store.get(&target) {
+                tracing::info!("found injection store for target: {:?}", target);
+                for node in meta.nodes.iter() {
+                    bind_paths.push(BindPath::new(
+                        node.absolute_entry
+                            .parent()
+                            .map(|p| p.to_string_lossy().to_string())
+                            .unwrap_or_default()
+                            .as_ref(),
+                        &format!(
+                            "{}/{}",
+                            pkg.to_string_lossy(),
+                            node.relative_entry
                                 .parent()
                                 .map(|p| p.to_string_lossy().to_string())
                                 .unwrap_or_default()
-                                .as_ref(),
-                            &format!(
-                                "{}/{}",
-                                pkg.to_string_lossy(),
-                                node.relative_entry
-                                    .parent()
-                                    .map(|p| p.to_string_lossy().to_string())
-                                    .unwrap_or_default()
-                            ),
-                            false,
-                            false,
-                        ));
-                    }
+                        ),
+                        false,
+                        false,
+                    ));
                 }
             }
         }
