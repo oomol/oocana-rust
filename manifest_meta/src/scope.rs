@@ -8,7 +8,6 @@ use manifest_reader::{
 pub enum RunningScope {
     Flow {
         node_id: Option<NodeId>,
-        parent: Option<Box<RunningScope>>,
     },
     Slot {
         // slot need grandparent scope and not support injection
@@ -24,27 +23,22 @@ pub enum RunningScope {
 impl RunningScope {
     pub fn workspace(&self) -> Option<PathBuf> {
         match self {
-            RunningScope::Flow { parent, .. } => parent.as_ref().and_then(|p| p.workspace()),
             RunningScope::Package { path, .. } => Some(path.clone()),
-            RunningScope::Slot { .. } => None,
+            _ => None,
         }
     }
 
     pub fn package_path(&self) -> Option<PathBuf> {
         match self {
             RunningScope::Package { path, .. } => Some(path.to_path_buf()),
-            RunningScope::Flow { parent, .. } => parent.as_ref().and_then(|p| p.package_path()),
-            RunningScope::Slot { .. } => None,
+            _ => None,
         }
     }
 }
 
 impl Default for RunningScope {
     fn default() -> Self {
-        RunningScope::Flow {
-            node_id: None,
-            parent: None,
-        }
+        RunningScope::Flow { node_id: None }
     }
 }
 
