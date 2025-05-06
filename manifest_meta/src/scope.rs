@@ -134,6 +134,7 @@ pub(crate) enum RunningTarget {
     },
 }
 
+// TODO: consider Pkg block without package path
 pub(crate) fn calculate_running_target(
     node: &ManifestNode,
     injection: &Option<manifest_reader::manifest::Injection>,
