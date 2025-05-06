@@ -488,10 +488,10 @@ fn spawn_executor(
     let mut executor_package: Option<String> = None;
 
     let identifier = scope.identifier();
-    let scope_package = scope.package_path();
+    let scope_package = scope.package_path().to_string_lossy().to_string();
 
     // this dir won't pass to executor. the executor generate tmp pkg dir by package parameter.
-    let tmp_pkg_dir = if let Some(pkg) = scope_package.file_name() {
+    let tmp_pkg_dir = if let Some(pkg) = scope.package_path().file_name() {
         tmp_dir.join(pkg)
     } else {
         tmp_dir.join("workspace")
@@ -580,7 +580,7 @@ fn spawn_executor(
         }
 
         exec_form_cmd.push("--package");
-        exec_form_cmd.push(scope_package.to_string_lossy().as_ref());
+        exec_form_cmd.push(&scope_package);
 
         for p in debug_parameters.iter() {
             exec_form_cmd.push(p);
@@ -637,10 +637,8 @@ fn spawn_executor(
             args.push(p);
         }
 
-        if let Some(ref scope_package) = scope_package {
-            args.push("--package");
-            args.push(scope_package.as_str());
-        }
+        args.push("--package");
+        args.push(&scope_package);
 
         let mut cmd = process::Command::new(&executor_bin);
         cmd.args(args);
