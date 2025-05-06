@@ -494,8 +494,8 @@ fn spawn_executor(
     let scope_package = scope.package_path();
 
     // this dir won't pass to executor. the executor generate tmp pkg dir by package parameter.
-    let tmp_pkg_dir = if let Some(pkg) = scope.package_path() {
-        tmp_dir.join(pkg.file_name().unwrap_or_default())
+    let tmp_pkg_dir = if let Some(pkg) = scope_package.file_name() {
+        tmp_dir.join(pkg)
     } else {
         tmp_dir.join("workspace")
     };
@@ -582,10 +582,8 @@ fn spawn_executor(
             exec_form_cmd.push(&identifier);
         }
 
-        if let Some(ref scope_package) = scope_package {
-            exec_form_cmd.push("--package");
-            exec_form_cmd.push(scope_package);
-        }
+        exec_form_cmd.push("--package");
+        exec_form_cmd.push(scope_package.to_string_lossy().as_ref());
 
         for p in debug_parameters.iter() {
             exec_form_cmd.push(p);
