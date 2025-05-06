@@ -536,20 +536,19 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
             enable_layer: layer::feature_enabled(),
         },
         RunningScope::Flow { node_id, parent } => RunningPackageScope {
-            // TODO: add package path
-            package_path: "".into(),
+            // FIXME: need consider parent is none
+            package_path: parent.and_then(|p| p.workspace()).unwrap_or_default(),
             node_id: node_id.clone(),
             enable_layer: layer::feature_enabled(),
         },
+        // TODO: remove this enum
         RunningScope::Global { workspace } => RunningPackageScope {
-            // TODO: add package path
             package_path: workspace.clone(),
             node_id: None,
             enable_layer: layer::feature_enabled(),
         },
         RunningScope::Slot { .. } => RunningPackageScope {
-            // TODO: add package path
-            package_path: "".into(),
+            package_path: shared.parent_scope.package_path().to_owned(),
             node_id: None,
             enable_layer: layer::feature_enabled(),
         },
