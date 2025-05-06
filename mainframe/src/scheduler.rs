@@ -334,11 +334,13 @@ impl SchedulerTx {
                     match self.default_package {
                         Some(ref default_package) => RunningPackageScope {
                             package_path: PathBuf::from(default_package.clone()),
-                            node_id: None,
+                            node_id: scope.node_id().clone(),
+                            enable_layer: false,
                         },
                         None => RunningPackageScope {
                             package_path: env::current_dir().unwrap_or_default(),
-                            node_id: None,
+                            node_id: scope.node_id().clone(),
+                            enable_layer: false,
                         },
                     }
                 } else {

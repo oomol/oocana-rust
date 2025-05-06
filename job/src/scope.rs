@@ -6,6 +6,7 @@ use utils::calculate_short_hash;
 pub struct RunningPackageScope {
     pub package_path: PathBuf,
     pub node_id: Option<NodeId>,
+    pub enable_layer: bool,
 }
 
 impl RunningPackageScope {
@@ -21,12 +22,15 @@ impl RunningPackageScope {
         &self.package_path
     }
 
+    pub fn node_id(&self) -> &Option<NodeId> {
+        &self.node_id
+    }
+
     pub fn workspace(&self) -> &PathBuf {
         self.package_path()
     }
 
-    // TODO: 区分 layer
     pub fn need_layer(&self) -> bool {
-        true
+        self.enable_layer
     }
 }
