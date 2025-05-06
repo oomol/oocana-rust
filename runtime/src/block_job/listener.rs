@@ -78,7 +78,16 @@ pub fn listen_to_worker(args: ListenerArgs) -> tokio::task::JoinHandle<()> {
                 } => {
                     tracing::info!("{executor_name} {identifier:?} ({executor_package:?}) executor is ready. block package: {block_scope:?}");
 
-                    if block_scope.identifier() != identifier {
+                    if identifier
+                        .as_ref()
+                        .is_none_or(|id| id != &block_scope.identifier())
+                    {
+                        info!(
+                            "executor {} identifier {:?} is not equal to block identifier {:?}",
+                            executor_name,
+                            identifier,
+                            block_scope.identifier()
+                        );
                         continue;
                     }
 
@@ -145,7 +154,16 @@ pub fn listen_to_worker(args: ListenerArgs) -> tokio::task::JoinHandle<()> {
                     identifier,
                     ..
                 } => {
-                    if block_scope.identifier() != identifier {
+                    if identifier
+                        .as_ref()
+                        .is_none_or(|id| id != &block_scope.identifier())
+                    {
+                        info!(
+                            "executor {} identifier {:?} is not equal to block identifier {:?}",
+                            executor_name,
+                            identifier,
+                            block_scope.identifier()
+                        );
                         continue;
                     }
 
