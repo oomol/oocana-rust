@@ -45,8 +45,8 @@ struct FlowShared {
     flow_block: Arc<SubflowBlock>,
     shared: Arc<Shared>,
     stacks: BlockJobStacks,
-    parent_scope: RunningScope,
-    scope: RunningScope,
+    parent_scope: RunningPackageScope,
+    scope: RunningPackageScope,
     slot_blocks: HashMap<NodeId, Slot>,
 }
 
@@ -73,7 +73,7 @@ pub struct RunFlowArgs {
     pub parent_block_status: BlockStatusTx,
     pub nodes: Option<HashSet<NodeId>>,
     pub input_values: Option<String>,
-    pub parent_scope: RunningScope,
+    pub parent_scope: RunningPackageScope,
     pub scope: RunningPackageScope,
     pub slot_blocks: HashMap<NodeId, Slot>,
 }

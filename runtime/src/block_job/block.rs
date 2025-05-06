@@ -5,7 +5,7 @@ use std::{
 
 use job::{BlockInputs, BlockJobStacks, JobId, RunningPackageScope};
 use mainframe::reporter::ReporterMessage;
-use manifest_meta::{Block, InputDefPatchMap, NodeId, RunningScope, Slot, SubflowBlock};
+use manifest_meta::{Block, InputDefPatchMap, NodeId, Slot, SubflowBlock};
 
 use super::{service_job, task_job};
 use crate::{block_status::BlockStatusTx, flow_job, shared::Shared};
@@ -44,7 +44,7 @@ pub struct RunBlockArgs {
     pub block_status: BlockStatusTx,
     pub nodes: Option<HashSet<NodeId>>,
     pub input_values: Option<String>,
-    pub parent_scope: RunningScope,
+    pub parent_scope: RunningPackageScope,
     pub scope: RunningPackageScope,
     pub timeout: Option<u64>,
     pub inputs_def_patch: Option<InputDefPatchMap>,
