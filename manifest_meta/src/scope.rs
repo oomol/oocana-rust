@@ -122,7 +122,7 @@ impl Default for RunningScope {
     }
 }
 
-pub enum RunningTarget {
+pub(crate) enum RunningTarget {
     Inherit,
     Node(NodeId),
     PackageName(String),
@@ -132,7 +132,7 @@ pub enum RunningTarget {
     },
 }
 
-pub fn calculate_running_scope(
+pub(crate) fn calculate_running_scope(
     node: &manifest_reader::manifest::Node,
     injection: &Option<manifest_reader::manifest::Injection>,
     package_path: &Option<PathBuf>,
