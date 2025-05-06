@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.27.5 (2025-05-06)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* fix: wrong subflow judgement by @leavesster in https://github.com/oomol/oocana-rust/pull/85
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.27.4...v0.27.5
+
 ## 0.27.4 (2025-05-06)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
