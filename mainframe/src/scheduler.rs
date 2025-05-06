@@ -128,8 +128,7 @@ pub enum ExecutePayload<'a> {
         executor: &'a TaskBlockExecutor,
         #[serde(skip_serializing_if = "Option::is_none")]
         outputs: &'a Option<OutputHandles>,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        identifier: &'a Option<String>,
+        identifier: &'a str,
     },
     ServiceBlockPayload {
         session_id: &'a SessionId,
@@ -286,7 +285,7 @@ pub struct ServiceParams<'a> {
 pub struct ExecutorCheckResult {
     pub executor_state: ExecutorSpawnState,
     pub executor_map_name: String,
-    pub identifier: Option<String>,
+    pub identifier: String,
     pub layer: Option<RuntimeLayer>, // layer is only exist when executor_exist is false
 }
 
@@ -299,12 +298,8 @@ pub struct ExecutorCheckParams<'a> {
     pub executor_map: Arc<RwLock<HashMap<String, ExecutorState>>>,
 }
 
-    if let Some(id) = scope.identifier() {
-        format!("{}-{}", executor_name, id)
-    } else {
-        executor_name.to_owned()
-    }
 fn generate_executor_map_name(executor_name: &str, scope: &RunningPackageScope) -> String {
+    scope.identifier() + "-" + executor_name
 }
 
 impl SchedulerTx {
@@ -495,10 +490,10 @@ fn spawn_executor(
 
     let mut executor_package: Option<String> = None;
 
-    let identifier = scope.identifier().unwrap_or_default();
     let scope_package = scope
         .package_path()
         .map(|f| f.to_string_lossy().to_string());
+    let identifier = scope.identifier();
 
     // this dir won't pass to executor. the executor generate tmp pkg dir by package parameter.
     let tmp_pkg_dir = if let Some(pkg) = scope.package_path() {
