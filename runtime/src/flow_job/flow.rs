@@ -15,7 +15,7 @@ use mainframe::reporter::FlowReporterTx;
 use tracing::{info, warn};
 use utils::output::OutputValue;
 
-use job::{BlockInputs, BlockJobStacks, JobId};
+use job::{BlockInputs, BlockJobStacks, JobId, RunningPackageScope};
 use manifest_meta::{HandleTo, Node, NodeId, RunningScope, Slot, SubflowBlock};
 
 use super::node_input_values;
@@ -74,7 +74,7 @@ pub struct RunFlowArgs {
     pub nodes: Option<HashSet<NodeId>>,
     pub input_values: Option<String>,
     pub parent_scope: RunningScope,
-    pub scope: RunningScope,
+    pub scope: RunningPackageScope,
     pub slot_blocks: HashMap<NodeId, Slot>,
 }
 
@@ -529,13 +529,30 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
         node.block()
     };
 
-    let node_scope = if matches!(node.scope(), RunningScope::Flow { .. }) {
-        let flow_scope = shared.scope.clone();
-        flow_scope.clone_with_scope_node_id(&node.scope())
-    } else if matches!(node, Node::Slot(_)) {
-        shared.parent_scope.clone()
-    } else {
-        node.scope()
+    let package_scope = match node.scope() {
+        RunningScope::Package { path, node_id, .. } => RunningPackageScope {
+            package_path: path.clone(),
+            node_id: node_id.clone(),
+            enable_layer: layer::feature_enabled(),
+        },
+        RunningScope::Flow { node_id, parent } => RunningPackageScope {
+            // TODO: add package path
+            package_path: "".into(),
+            node_id: node_id.clone(),
+            enable_layer: layer::feature_enabled(),
+        },
+        RunningScope::Global { workspace } => RunningPackageScope {
+            // TODO: add package path
+            package_path: workspace.clone(),
+            node_id: None,
+            enable_layer: layer::feature_enabled(),
+        },
+        RunningScope::Slot { .. } => RunningPackageScope {
+            // TODO: add package path
+            package_path: "".into(),
+            node_id: None,
+            enable_layer: layer::feature_enabled(),
+        },
     };
 
     let handle = run_block({
@@ -554,7 +571,7 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
             nodes: None,
             input_values: None,
             parent_scope: shared.scope.clone(),
-            scope: node_scope,
+            scope: package_scope,
             timeout: node.timeout(),
             slot_blocks: match node {
                 Node::Flow(n) => n.slots.clone(),
