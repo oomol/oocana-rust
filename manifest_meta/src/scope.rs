@@ -141,7 +141,13 @@ pub(crate) fn calculate_running_target(
     block_type: BlockValueType,
 ) -> RunningTarget {
     if node.should_spawn() {
-        return RunningTarget::Node(node.node_id().to_owned());
+        if block_type == BlockValueType::Pkg && package_path.is_some() {
+            return RunningTarget::PackagePath {
+                path: package_path.as_ref().unwrap().clone(),
+                node_id: Some(node.node_id().clone()),
+            };
+        }
+        return RunningTarget::Node(node.node_id().clone());
     }
 
     // package path is some not means the block is package block
