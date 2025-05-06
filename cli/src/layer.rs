@@ -79,6 +79,11 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
         );
     }
 
+    if !layer::feature_enabled() {
+        tracing::warn!("Layer feature is not enabled. quitting");
+        return Err(Error::from("Layer feature is not enabled"));
+    }
+
     match action {
         LayerAction::Create {
             package,
@@ -138,12 +143,8 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
             let status = layer::package_layer_status(package)?;
             match status {
                 layer::PackageLayerStatus::Exist => {
-                    let l = layer::get_or_create_package_layer(
-                        package,
-                        &[],
-                        &HashMap::new(),
-                        &None,
-                    )?;
+                    let l =
+                        layer::get_or_create_package_layer(package, &[], &HashMap::new(), &None)?;
                     l.export(dest)?;
                 }
                 layer::PackageLayerStatus::NotInStore => {
