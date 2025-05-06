@@ -252,7 +252,12 @@ fn block_dir(
     parent_flow: Option<&Arc<SubflowBlock>>,
     scope: Option<&RunningPackageScope>,
 ) -> String {
-    // FIXME: 原来这会看 是不是要注入到 Package 里才会使用 Package
+    // FIXME: The `block_dir` function determines the directory path for a task block.
+    // Priority is given to the `scope` parameter if provided, as it represents
+    // the package path associated with the running package scope. If `scope` is
+    // not available, the function falls back to the `block_dir` method of the
+    // `task_block`. If neither is available, it uses the parent directory of the
+    // `parent_flow` path, defaulting to the current directory ("./") if all else fails.
     if let Some(scope) = scope {
         return scope.package_path.to_string_lossy().to_string();
     } else if let Some(block_dir) = task_block.block_dir() {
