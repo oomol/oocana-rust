@@ -24,4 +24,9 @@ impl RunningPackageScope {
     pub fn workspace(&self) -> &PathBuf {
         self.package_path()
     }
+
+    // TODO: 区分 layer
+    pub fn need_layer(&self) -> bool {
+        true
+    }
 }
