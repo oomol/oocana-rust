@@ -794,6 +794,8 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
         executor_payload,
         flow,
     } = params;
+
+    // TODO: move layer feature to scope field
     let no_layer_feature = !layer::feature_enabled();
     let executor_map_name = generate_executor_map_name(executor_name, scope);
 
