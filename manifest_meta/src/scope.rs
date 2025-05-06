@@ -1,6 +1,8 @@
 use std::path::{Path, PathBuf};
 
-use manifest_reader::{manifest::NodeId, path_finder::BlockValueType};
+use manifest_reader::{
+    manifest::Node as ManifestNode, manifest::NodeId, path_finder::BlockValueType,
+};
 use utils::calculate_short_hash;
 
 use crate::InjectionTarget;
@@ -133,7 +135,7 @@ pub(crate) enum RunningTarget {
 }
 
 pub(crate) fn calculate_running_target(
-    node: &manifest_reader::manifest::Node,
+    node: &ManifestNode,
     injection: &Option<manifest_reader::manifest::Injection>,
     package_path: &Option<PathBuf>,
     block_type: BlockValueType,
