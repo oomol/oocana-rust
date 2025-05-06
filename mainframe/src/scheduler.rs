@@ -13,11 +13,11 @@ use std::{
 };
 use utils::calculate_short_hash;
 
-use job::{BlockInputs, BlockJobStackLevel, JobId, SessionId};
+use job::{BlockInputs, BlockJobStackLevel, JobId, RunningPackageScope, SessionId};
 
 use manifest_meta::{
     HandleName, InjectionStore, InputDefPatchMap, InputHandles, JsonValue, OutputHandles,
-    RunningScope, ServiceExecutorOptions, TaskBlockExecutor,
+    ServiceExecutorOptions, TaskBlockExecutor,
 };
 use tokio::io::AsyncBufReadExt;
 
@@ -200,7 +200,7 @@ enum SchedulerCommand {
         outputs: Option<OutputHandles>,
         executor: TaskBlockExecutor,
         injection_store: Option<InjectionStore>,
-        scope: RunningScope,
+        scope: RunningPackageScope,
         flow: Option<String>,
     },
     ExecuteServiceBlock {
@@ -211,7 +211,7 @@ enum SchedulerCommand {
         service_executor: ServiceExecutorOptions,
         stacks: Vec<BlockJobStackLevel>,
         outputs: Option<OutputHandles>,
-        scope: RunningScope,
+        scope: RunningPackageScope,
         service_hash: String,
         flow: Option<String>,
     },
@@ -266,7 +266,7 @@ pub struct ExecutorParams<'a> {
     pub dir: String,
     pub executor: &'a TaskBlockExecutor,
     pub outputs: &'a Option<OutputHandles>,
-    pub scope: &'a RunningScope,
+    pub scope: &'a RunningPackageScope,
     pub injection_store: &'a Option<InjectionStore>,
     pub flow: &'a Option<String>,
 }
@@ -279,7 +279,7 @@ pub struct ServiceParams<'a> {
     pub dir: String,
     pub options: &'a ServiceExecutorOptions,
     pub outputs: &'a Option<OutputHandles>,
-    pub scope: &'a RunningScope,
+    pub scope: &'a RunningPackageScope,
     pub flow: &'a Option<String>,
 }
 
@@ -292,19 +292,19 @@ pub struct ExecutorCheckResult {
 
 pub struct ExecutorCheckParams<'a> {
     pub executor_name: &'a str,
-    pub scope: &'a RunningScope,
+    pub scope: &'a RunningPackageScope,
     pub injection_store: &'a Option<InjectionStore>,
     pub flow: &'a Option<String>,
     pub executor_payload: &'a ExecutorParameters,
     pub executor_map: Arc<RwLock<HashMap<String, ExecutorState>>>,
 }
 
-fn generate_executor_map_name(executor_name: &str, scope: &RunningScope) -> String {
     if let Some(id) = scope.identifier() {
         format!("{}-{}", executor_name, id)
     } else {
         executor_name.to_owned()
     }
+fn generate_executor_map_name(executor_name: &str, scope: &RunningPackageScope) -> String {
 }
 
 impl SchedulerTx {
@@ -332,7 +332,7 @@ impl SchedulerTx {
 
     /** TODO: generate default scope instead of default package. */
     /** filter some scope, move then to default scope */
-    pub fn calculate_scope(&self, scope: &RunningScope) -> RunningScope {
+    pub fn calculate_scope(&self, scope: &RunningPackageScope) -> RunningPackageScope {
         match self.exclude_packages.as_ref() {
             Some(exclude_packages) => {
                 if let Some(pkg) = scope.package_path() {
@@ -452,7 +452,7 @@ where
 fn spawn_executor(
     executor: &str,
     layer: Option<RuntimeLayer>,
-    scope: &RunningScope,
+    scope: &RunningPackageScope,
     executor_map: Arc<RwLock<HashMap<String, ExecutorState>>>,
     executor_payload: ExecutorParameters,
     tx: Sender<SchedulerCommand>,
