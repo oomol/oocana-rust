@@ -490,10 +490,8 @@ fn spawn_executor(
 
     let mut executor_package: Option<String> = None;
 
-    let scope_package = scope
-        .package_path()
-        .map(|f| f.to_string_lossy().to_string());
     let identifier = scope.identifier();
+    let scope_package = scope.package_path();
 
     // this dir won't pass to executor. the executor generate tmp pkg dir by package parameter.
     let tmp_pkg_dir = if let Some(pkg) = scope.package_path() {
@@ -586,7 +584,7 @@ fn spawn_executor(
 
         if let Some(ref scope_package) = scope_package {
             exec_form_cmd.push("--package");
-            exec_form_cmd.push(scope_package.as_str());
+            exec_form_cmd.push(scope_package);
         }
 
         for p in debug_parameters.iter() {
