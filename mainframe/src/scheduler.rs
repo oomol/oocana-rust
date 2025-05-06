@@ -885,20 +885,19 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
         )?;
 
         if let Some(store) = injection_store {
-            if let Some(target) = scope.target() {
-                if let Some(meta) = store.get(&target) {
-                    let scripts = meta.scripts.clone().unwrap_or_default();
+            let target = manifest_meta::InjectionTarget::Package(scope.package_path().to_owned());
+            if let Some(meta) = store.get(&target) {
+                let scripts = meta.scripts.clone().unwrap_or_default();
 
-                    let result = runtime_layer.inject_runtime_layer(InjectionParams {
-                        package_version: &meta.package_version,
-                        package_path: &path_str,
-                        scripts: &scripts,
-                        flow: flow.as_ref().unwrap_or(&"".to_string()),
-                    });
+                let result = runtime_layer.inject_runtime_layer(InjectionParams {
+                    package_version: &meta.package_version,
+                    package_path: &path_str,
+                    scripts: &scripts,
+                    flow: flow.as_ref().unwrap_or(&"".to_string()),
+                });
 
-                    if let Err(e) = result {
-                        return Result::Err(e);
-                    }
+                if let Err(e) = result {
+                    return Result::Err(e);
                 }
             }
         }
