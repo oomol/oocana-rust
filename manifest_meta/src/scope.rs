@@ -1,11 +1,8 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use manifest_reader::{
     manifest::Node as ManifestNode, manifest::NodeId, path_finder::BlockValueType,
 };
-use utils::calculate_short_hash;
-
-use crate::InjectionTarget;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum RunningScope {
@@ -33,69 +30,11 @@ impl RunningScope {
         }
     }
 
-    pub fn package_path(&self) -> Option<&Path> {
+    pub fn package_path(&self) -> Option<PathBuf> {
         match self {
-            RunningScope::Package { path, .. } => Some(path),
-            _ => None,
-        }
-    }
-
-    pub fn name(&self) -> Option<String> {
-        match self {
-            RunningScope::Package { name, .. } => name.clone(),
-            _ => None,
-        }
-    }
-
-    pub fn node_id(&self) -> Option<NodeId> {
-        match self {
-            RunningScope::Flow { node_id, .. } => node_id.clone(),
-            RunningScope::Package { node_id, .. } => node_id.clone(),
+            RunningScope::Package { path, .. } => Some(path.to_path_buf()),
+            RunningScope::Flow { parent, .. } => parent.as_ref().and_then(|p| p.package_path()),
             RunningScope::Slot { .. } => None,
-        }
-    }
-
-    pub fn identifier(&self) -> Option<String> {
-        let str = match self {
-            RunningScope::Flow { node_id, .. } => {
-                node_id.as_ref().map(|node_id| format!("flow-{}", node_id))
-            }
-            RunningScope::Package {
-                path,
-                node_id,
-                name: _name,
-            } => match node_id {
-                Some(node_id) => Some(format!("{}-{}", path.display(), node_id)),
-                None => Some(format!("{}", path.display())),
-            },
-            RunningScope::Slot { .. } => None,
-        };
-        str.map(|s| calculate_short_hash(&s, 16))
-    }
-
-    pub fn target(&self) -> Option<InjectionTarget> {
-        match self {
-            RunningScope::Flow { .. } => None,
-            RunningScope::Package { path, .. } => Some(InjectionTarget::Package(path.clone())),
-            RunningScope::Slot { .. } => None,
-        }
-    }
-
-    pub fn clone_with_scope_node_id(&self, scope: &Self) -> Self {
-        match self {
-            RunningScope::Flow { .. } => RunningScope::Flow {
-                node_id: scope.node_id(),
-                parent: Some(Box::new(self.clone())),
-            },
-            RunningScope::Package { path, name, .. } => RunningScope::Package {
-                node_id: scope.node_id(),
-                path: path.clone(),
-                name: name.clone(),
-            },
-            RunningScope::Slot { .. } => RunningScope::Flow {
-                node_id: scope.node_id(),
-                parent: Some(Box::new(self.clone())),
-            },
         }
     }
 }
