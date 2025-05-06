@@ -141,8 +141,7 @@ pub enum ExecutePayload<'a> {
         #[serde(skip_serializing_if = "Option::is_none")]
         outputs: &'a Option<OutputHandles>,
         service_hash: String,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        identifier: &'a Option<String>,
+        identifier: &'a str,
     },
 }
 
