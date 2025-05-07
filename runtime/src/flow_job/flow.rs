@@ -534,16 +534,19 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
             package_path: path.clone(),
             node_id: node_id.clone(),
             enable_layer: layer::feature_enabled(),
+            is_inject: node.scope().is_inject(),
         },
         RunningScope::Flow { node_id, .. } => RunningPackageScope {
             package_path: shared.parent_scope.package_path().to_owned(),
             node_id: node_id.clone(),
             enable_layer: layer::feature_enabled(),
+            is_inject: node.scope().is_inject(),
         },
         RunningScope::Slot { .. } => RunningPackageScope {
             package_path: shared.parent_scope.package_path().to_owned(),
             node_id: None,
             enable_layer: layer::feature_enabled(),
+            is_inject: node.scope().is_inject(),
         },
     };
 

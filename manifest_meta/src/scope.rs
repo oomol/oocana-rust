@@ -34,6 +34,13 @@ impl RunningScope {
             _ => None,
         }
     }
+
+    pub fn is_inject(&self) -> bool {
+        match self {
+            RunningScope::Package { name, .. } => name.is_some(),
+            _ => false,
+        }
+    }
 }
 
 impl Default for RunningScope {

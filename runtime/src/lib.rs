@@ -94,11 +94,13 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
                 package_path: workspace.clone(),
                 node_id: None,
                 enable_layer: true,
+                is_inject: false,
             },
             scope: RunningPackageScope {
                 package_path: workspace.clone(),
                 node_id: None,
                 enable_layer: true,
+                is_inject: false,
             },
             slot_blocks: None,
         }

@@ -6,6 +6,7 @@ use utils::calculate_short_hash;
 pub struct RunningPackageScope {
     pub package_path: PathBuf,
     pub node_id: Option<NodeId>,
+    pub is_inject: bool,
     pub enable_layer: bool,
 }
 
@@ -32,5 +33,9 @@ impl RunningPackageScope {
 
     pub fn need_layer(&self) -> bool {
         self.enable_layer
+    }
+
+    pub fn is_inject(&self) -> bool {
+        self.is_inject
     }
 }
