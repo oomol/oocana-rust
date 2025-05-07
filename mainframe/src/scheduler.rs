@@ -298,7 +298,7 @@ pub struct ExecutorCheckParams<'a> {
 }
 
 fn generate_executor_map_name(executor_name: &str, scope: &RunningPackageScope) -> String {
-    scope.identifier() + "-" + executor_name
+    format!("{}-{}", executor_name, scope.identifier())
 }
 
 impl SchedulerTx {
