@@ -1,18 +1,13 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
-use manifest_reader::{manifest::NodeId, path_finder::BlockValueType};
-use utils::calculate_short_hash;
-
-use crate::InjectionTarget;
+use manifest_reader::{
+    manifest::Node as ManifestNode, manifest::NodeId, path_finder::BlockValueType,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum RunningScope {
-    Global {
-        workspace: PathBuf,
-    },
     Flow {
         node_id: Option<NodeId>,
-        parent: Option<Box<RunningScope>>,
     },
     Slot {
         // slot need grandparent scope and not support injection
@@ -26,103 +21,35 @@ pub enum RunningScope {
 }
 
 impl RunningScope {
-    pub fn global(workspace: PathBuf) -> Self {
-        RunningScope::Global { workspace }
-    }
-
     pub fn workspace(&self) -> Option<PathBuf> {
         match self {
-            RunningScope::Global { workspace } => Some(workspace.clone()),
-            RunningScope::Flow { parent, .. } => parent.as_ref().and_then(|p| p.workspace()),
             RunningScope::Package { path, .. } => Some(path.clone()),
-            RunningScope::Slot { .. } => None,
-        }
-    }
-
-    pub fn package_path(&self) -> Option<&Path> {
-        match self {
-            RunningScope::Package { path, .. } => Some(path),
             _ => None,
         }
     }
 
-    pub fn name(&self) -> Option<String> {
+    pub fn package_path(&self) -> Option<PathBuf> {
         match self {
-            RunningScope::Package { name, .. } => name.clone(),
+            RunningScope::Package { path, .. } => Some(path.to_path_buf()),
             _ => None,
         }
     }
 
-    pub fn node_id(&self) -> Option<NodeId> {
+    pub fn is_inject(&self) -> bool {
         match self {
-            RunningScope::Global { .. } => None,
-            RunningScope::Flow { node_id, .. } => node_id.clone(),
-            RunningScope::Package { node_id, .. } => node_id.clone(),
-            RunningScope::Slot { .. } => None,
-        }
-    }
-
-    pub fn identifier(&self) -> Option<String> {
-        let str = match self {
-            RunningScope::Global { .. } => None,
-            RunningScope::Flow { node_id, .. } => {
-                node_id.as_ref().map(|node_id| format!("flow-{}", node_id))
-            }
-            RunningScope::Package {
-                path,
-                node_id,
-                name: _name,
-            } => match node_id {
-                Some(node_id) => Some(format!("{}-{}", path.display(), node_id)),
-                None => Some(format!("{}", path.display())),
-            },
-            RunningScope::Slot { .. } => None,
-        };
-        str.map(|s| calculate_short_hash(&s, 16))
-    }
-
-    pub fn target(&self) -> Option<InjectionTarget> {
-        match self {
-            RunningScope::Global { .. } => None,
-            RunningScope::Flow { .. } => None,
-            RunningScope::Package { path, .. } => Some(InjectionTarget::Package(path.clone())),
-            RunningScope::Slot { .. } => None,
-        }
-    }
-
-    pub fn clone_with_scope_node_id(&self, scope: &Self) -> Self {
-        match self {
-            RunningScope::Global { .. } => RunningScope::Flow {
-                node_id: scope.node_id(),
-                parent: Some(Box::new(self.clone())),
-            },
-            RunningScope::Flow { .. } => RunningScope::Flow {
-                node_id: scope.node_id(),
-                parent: Some(Box::new(self.clone())),
-            },
-            RunningScope::Package { path, name, .. } => RunningScope::Package {
-                node_id: scope.node_id(),
-                path: path.clone(),
-                name: name.clone(),
-            },
-            RunningScope::Slot { .. } => RunningScope::Flow {
-                node_id: scope.node_id(),
-                parent: Some(Box::new(self.clone())),
-            },
+            RunningScope::Package { name, .. } => name.is_some(),
+            _ => false,
         }
     }
 }
 
 impl Default for RunningScope {
     fn default() -> Self {
-        RunningScope::Flow {
-            node_id: None,
-            parent: None,
-        }
+        RunningScope::Flow { node_id: None }
     }
 }
 
-pub enum RunningTarget {
+pub(crate) enum RunningTarget {
     Inherit,
     Node(NodeId),
     PackageName(String),
@@ -132,14 +59,21 @@ pub enum RunningTarget {
     },
 }
 
-pub fn calculate_running_scope(
-    node: &manifest_reader::manifest::Node,
+// TODO: consider Pkg block without package path
+pub(crate) fn calculate_running_target(
+    node: &ManifestNode,
     injection: &Option<manifest_reader::manifest::Injection>,
     package_path: &Option<PathBuf>,
     block_type: BlockValueType,
 ) -> RunningTarget {
     if node.should_spawn() {
-        return RunningTarget::Node(node.node_id().to_owned());
+        if block_type == BlockValueType::Pkg && package_path.is_some() {
+            return RunningTarget::PackagePath {
+                path: package_path.as_ref().unwrap().clone(),
+                node_id: Some(node.node_id().clone()),
+            };
+        }
+        return RunningTarget::Node(node.node_id().clone());
     }
 
     // package path is some not means the block is package block

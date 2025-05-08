@@ -5,7 +5,7 @@ use port_check::free_local_ipv4_port_in_range;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
-    default,
+    default, env,
     path::PathBuf,
     process,
     sync::{Arc, RwLock},
@@ -13,11 +13,11 @@ use std::{
 };
 use utils::calculate_short_hash;
 
-use job::{BlockInputs, BlockJobStackLevel, JobId, SessionId};
+use job::{BlockInputs, BlockJobStackLevel, JobId, RunningPackageScope, SessionId};
 
 use manifest_meta::{
     HandleName, InjectionStore, InputDefPatchMap, InputHandles, JsonValue, OutputHandles,
-    RunningScope, ServiceExecutorOptions, TaskBlockExecutor,
+    ServiceExecutorOptions, TaskBlockExecutor,
 };
 use tokio::io::AsyncBufReadExt;
 
@@ -128,8 +128,7 @@ pub enum ExecutePayload<'a> {
         executor: &'a TaskBlockExecutor,
         #[serde(skip_serializing_if = "Option::is_none")]
         outputs: &'a Option<OutputHandles>,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        identifier: &'a Option<String>,
+        identifier: &'a str,
     },
     ServiceBlockPayload {
         session_id: &'a SessionId,
@@ -142,8 +141,7 @@ pub enum ExecutePayload<'a> {
         #[serde(skip_serializing_if = "Option::is_none")]
         outputs: &'a Option<OutputHandles>,
         service_hash: String,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        identifier: &'a Option<String>,
+        identifier: &'a str,
     },
 }
 
@@ -200,7 +198,7 @@ enum SchedulerCommand {
         outputs: Option<OutputHandles>,
         executor: TaskBlockExecutor,
         injection_store: Option<InjectionStore>,
-        scope: RunningScope,
+        scope: RunningPackageScope,
         flow: Option<String>,
     },
     ExecuteServiceBlock {
@@ -211,7 +209,7 @@ enum SchedulerCommand {
         service_executor: ServiceExecutorOptions,
         stacks: Vec<BlockJobStackLevel>,
         outputs: Option<OutputHandles>,
-        scope: RunningScope,
+        scope: RunningPackageScope,
         service_hash: String,
         flow: Option<String>,
     },
@@ -266,7 +264,7 @@ pub struct ExecutorParams<'a> {
     pub dir: String,
     pub executor: &'a TaskBlockExecutor,
     pub outputs: &'a Option<OutputHandles>,
-    pub scope: &'a RunningScope,
+    pub scope: &'a RunningPackageScope,
     pub injection_store: &'a Option<InjectionStore>,
     pub flow: &'a Option<String>,
 }
@@ -279,32 +277,28 @@ pub struct ServiceParams<'a> {
     pub dir: String,
     pub options: &'a ServiceExecutorOptions,
     pub outputs: &'a Option<OutputHandles>,
-    pub scope: &'a RunningScope,
+    pub scope: &'a RunningPackageScope,
     pub flow: &'a Option<String>,
 }
 
 pub struct ExecutorCheckResult {
     pub executor_state: ExecutorSpawnState,
     pub executor_map_name: String,
-    pub identifier: Option<String>,
+    pub identifier: String,
     pub layer: Option<RuntimeLayer>, // layer is only exist when executor_exist is false
 }
 
 pub struct ExecutorCheckParams<'a> {
     pub executor_name: &'a str,
-    pub scope: &'a RunningScope,
+    pub scope: &'a RunningPackageScope,
     pub injection_store: &'a Option<InjectionStore>,
     pub flow: &'a Option<String>,
     pub executor_payload: &'a ExecutorParameters,
     pub executor_map: Arc<RwLock<HashMap<String, ExecutorState>>>,
 }
 
-fn generate_executor_map_name(executor_name: &str, scope: &RunningScope) -> String {
-    if let Some(id) = scope.identifier() {
-        format!("{}-{}", executor_name, id)
-    } else {
-        executor_name.to_owned()
-    }
+fn generate_executor_map_name(executor_name: &str, scope: &RunningPackageScope) -> String {
+    format!("{}-{}", executor_name, scope.identifier())
 }
 
 impl SchedulerTx {
@@ -332,22 +326,24 @@ impl SchedulerTx {
 
     /** TODO: generate default scope instead of default package. */
     /** filter some scope, move then to default scope */
-    pub fn calculate_scope(&self, scope: &RunningScope) -> RunningScope {
+    pub fn calculate_scope(&self, scope: &RunningPackageScope) -> RunningPackageScope {
         match self.exclude_packages.as_ref() {
             Some(exclude_packages) => {
-                if let Some(pkg) = scope.package_path() {
-                    let pkg_str = pkg.to_string_lossy().to_string();
-                    if exclude_packages.contains(&pkg_str) {
-                        match self.default_package {
-                            Some(ref default_package) => RunningScope::Package {
-                                path: PathBuf::from(default_package.clone()),
-                                name: Some("default".to_string()),
-                                node_id: None,
-                            },
-                            None => RunningScope::default(),
-                        }
-                    } else {
-                        scope.clone()
+                let pkg_str = scope.package_path().to_string_lossy().to_string();
+                if exclude_packages.contains(&pkg_str) {
+                    match self.default_package {
+                        Some(ref default_package) => RunningPackageScope {
+                            package_path: PathBuf::from(default_package.clone()),
+                            node_id: scope.node_id().clone(),
+                            enable_layer: false,
+                            is_inject: scope.is_inject(),
+                        },
+                        None => RunningPackageScope {
+                            package_path: env::current_dir().unwrap_or_default(),
+                            node_id: scope.node_id().clone(),
+                            enable_layer: false,
+                            is_inject: scope.is_inject(),
+                        },
                     }
                 } else {
                     scope.clone()
@@ -452,7 +448,7 @@ where
 fn spawn_executor(
     executor: &str,
     layer: Option<RuntimeLayer>,
-    scope: &RunningScope,
+    scope: &RunningPackageScope,
     executor_map: Arc<RwLock<HashMap<String, ExecutorState>>>,
     executor_payload: ExecutorParameters,
     tx: Sender<SchedulerCommand>,
@@ -495,14 +491,12 @@ fn spawn_executor(
 
     let mut executor_package: Option<String> = None;
 
-    let identifier = scope.identifier().unwrap_or_default();
-    let scope_package = scope
-        .package_path()
-        .map(|f| f.to_string_lossy().to_string());
+    let identifier = scope.identifier();
+    let scope_package = scope.package_path().to_string_lossy().to_string();
 
     // this dir won't pass to executor. the executor generate tmp pkg dir by package parameter.
-    let tmp_pkg_dir = if let Some(pkg) = scope.package_path() {
-        tmp_dir.join(pkg.file_name().unwrap_or_default())
+    let tmp_pkg_dir = if let Some(pkg) = scope.package_path().file_name() {
+        tmp_dir.join(pkg)
     } else {
         tmp_dir.join("workspace")
     };
@@ -589,10 +583,8 @@ fn spawn_executor(
             exec_form_cmd.push(&identifier);
         }
 
-        if let Some(ref scope_package) = scope_package {
-            exec_form_cmd.push("--package");
-            exec_form_cmd.push(scope_package.as_str());
-        }
+        exec_form_cmd.push("--package");
+        exec_form_cmd.push(&scope_package);
 
         for p in debug_parameters.iter() {
             exec_form_cmd.push(p);
@@ -616,7 +608,6 @@ fn spawn_executor(
             "OOCANA_PKG_DIR".to_string(),
             scope
                 .workspace()
-                .expect("workspace not found") // TODO: better use new struct to avoid unwrap
                 .join(PKG_DIR)
                 .to_string_lossy()
                 .to_string(),
@@ -650,10 +641,8 @@ fn spawn_executor(
             args.push(p);
         }
 
-        if let Some(ref scope_package) = scope_package {
-            args.push("--package");
-            args.push(scope_package.as_str());
-        }
+        args.push("--package");
+        args.push(&scope_package);
 
         let mut cmd = process::Command::new(&executor_bin);
         cmd.args(args);
@@ -807,6 +796,8 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
         executor_payload,
         flow,
     } = params;
+
+    // TODO: move layer feature to scope field
     let no_layer_feature = !layer::feature_enabled();
     let executor_map_name = generate_executor_map_name(executor_name, scope);
 
@@ -830,10 +821,7 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
         });
     } else if no_layer_feature {
         // TODO: better use new struct to avoid unwrap
-        let pkg_dir = scope
-            .workspace()
-            .expect("workspace not found")
-            .join(PKG_DIR);
+        let pkg_dir = scope.workspace().join(PKG_DIR);
         if !pkg_dir.exists() {
             std::fs::create_dir_all(&pkg_dir).unwrap_or_else(|e| {
                 tracing::warn!("Failed to create pkg_dir: {:?}, error: {}", pkg_dir, e);
@@ -848,32 +836,32 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
         });
     }
 
-    let layer = if let Some(pkg) = scope.package_path() {
+    let layer = if scope.need_layer() {
         let mut bind_paths = executor_payload.bind_paths.clone();
+        let pkg = scope.package_path();
 
         if let Some(store) = injection_store {
-            if let Some(target) = scope.target() {
-                if let Some(meta) = store.get(&target) {
-                    tracing::info!("found injection store for target: {:?}", target);
-                    for node in meta.nodes.iter() {
-                        bind_paths.push(BindPath::new(
-                            node.absolute_entry
+            let target = manifest_meta::InjectionTarget::Package(scope.package_path().to_owned());
+            if let Some(meta) = store.get(&target) {
+                tracing::info!("found injection store for target: {:?}", target);
+                for node in meta.nodes.iter() {
+                    bind_paths.push(BindPath::new(
+                        node.absolute_entry
+                            .parent()
+                            .map(|p| p.to_string_lossy().to_string())
+                            .unwrap_or_default()
+                            .as_ref(),
+                        &format!(
+                            "{}/{}",
+                            pkg.to_string_lossy(),
+                            node.relative_entry
                                 .parent()
                                 .map(|p| p.to_string_lossy().to_string())
                                 .unwrap_or_default()
-                                .as_ref(),
-                            &format!(
-                                "{}/{}",
-                                pkg.to_string_lossy(),
-                                node.relative_entry
-                                    .parent()
-                                    .map(|p| p.to_string_lossy().to_string())
-                                    .unwrap_or_default()
-                            ),
-                            false,
-                            false,
-                        ));
-                    }
+                        ),
+                        false,
+                        false,
+                    ));
                 }
             }
         }
@@ -901,31 +889,26 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
         )?;
 
         if let Some(store) = injection_store {
-            if let Some(target) = scope.target() {
-                if let Some(meta) = store.get(&target) {
-                    let scripts = meta.scripts.clone().unwrap_or_default();
+            let target = manifest_meta::InjectionTarget::Package(scope.package_path().to_owned());
+            if let Some(meta) = store.get(&target) {
+                let scripts = meta.scripts.clone().unwrap_or_default();
 
-                    let result = runtime_layer.inject_runtime_layer(InjectionParams {
-                        package_version: &meta.package_version,
-                        package_path: &path_str,
-                        scripts: &scripts,
-                        flow: flow.as_ref().unwrap_or(&"".to_string()),
-                    });
+                let result = runtime_layer.inject_runtime_layer(InjectionParams {
+                    package_version: &meta.package_version,
+                    package_path: &path_str,
+                    scripts: &scripts,
+                    flow: flow.as_ref().unwrap_or(&"".to_string()),
+                });
 
-                    if let Err(e) = result {
-                        return Result::Err(e);
-                    }
+                if let Err(e) = result {
+                    return Result::Err(e);
                 }
             }
         }
 
         Some(runtime_layer)
     } else {
-        // TODO: better use new struct to avoid unwrap
-        let pkg_dir = scope
-            .workspace()
-            .expect("workspace not found")
-            .join(PKG_DIR);
+        let pkg_dir = scope.workspace().join(PKG_DIR);
         if !pkg_dir.exists() {
             std::fs::create_dir_all(&pkg_dir).unwrap_or_else(|e| {
                 tracing::warn!("Failed to create pkg_dir: {:?}, error: {}", pkg_dir, e);

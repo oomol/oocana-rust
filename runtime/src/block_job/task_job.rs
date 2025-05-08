@@ -1,8 +1,6 @@
 use mainframe::reporter::BlockReporterTx;
 use mainframe::scheduler::{ExecutorParams, SchedulerTx};
-use manifest_meta::{
-    HandleName, InputDefPatchMap, RunningScope, SubflowBlock, TaskBlock, TaskBlockExecutor,
-};
+use manifest_meta::{HandleName, InputDefPatchMap, SubflowBlock, TaskBlock, TaskBlockExecutor};
 use manifest_reader::manifest::SpawnOptions;
 
 use std::collections::HashMap;
@@ -14,7 +12,7 @@ use crate::block_status::BlockStatusTx;
 use crate::shared::Shared;
 use utils::output::OutputValue;
 
-use job::{BlockInputs, BlockJobStacks, JobId, SessionId};
+use job::{BlockInputs, BlockJobStacks, JobId, RunningPackageScope, SessionId};
 use utils::error::Result;
 use utils::path::to_absolute;
 
@@ -51,7 +49,7 @@ pub struct RunTaskBlockArgs {
     pub job_id: JobId,
     pub inputs: Option<BlockInputs>,
     pub block_status: BlockStatusTx,
-    pub scope: RunningScope,
+    pub scope: RunningPackageScope,
     pub timeout: Option<u64>,
     pub inputs_def_patch: Option<InputDefPatchMap>,
 }
@@ -102,7 +100,7 @@ pub fn run_task_block(args: RunTaskBlockArgs) -> Option<BlockJobHandle> {
         reporter: Arc::clone(&reporter),
         executor: task_block.executor.clone(),
         service: None,
-        block_dir: block_dir(&task_block, parent_flow.as_ref(), &scope),
+        block_dir: block_dir(&task_block, parent_flow.as_ref(), Some(&scope)),
         scope: scope.clone(),
         injection_store: parent_flow.as_ref().and_then(|f| f.injection_store.clone()),
         flow: parent_flow.as_ref().map(|f| f.path_str.clone()),
@@ -252,10 +250,15 @@ pub fn run_task_block(args: RunTaskBlockArgs) -> Option<BlockJobHandle> {
 fn block_dir(
     task_block: &TaskBlock,
     parent_flow: Option<&Arc<SubflowBlock>>,
-    scope: &RunningScope,
+    scope: Option<&RunningPackageScope>,
 ) -> String {
-    if scope.name().is_some() && scope.package_path().is_some() {
-        scope.package_path().unwrap().to_string_lossy().to_string()
+    // Priority is given to the `scope` parameter if provided, as it represents
+    // the package path associated with the running package scope. If `scope` is
+    // not available, the function falls back to the `block_dir` method of the
+    // `task_block`. If neither is available, it uses the parent directory of the
+    // `parent_flow` path, defaulting to the current directory ("./") if all else fails.
+    if let Some(s) = scope.filter(|s| s.is_inject()) {
+        s.package_path().to_string_lossy().to_string()
     } else if let Some(block_dir) = task_block.block_dir() {
         block_dir.to_string_lossy().to_string()
     } else {
@@ -274,7 +277,7 @@ struct ExecutorArgs<'a> {
     executor: &'a TaskBlockExecutor,
     parent_flow: Option<&'a Arc<SubflowBlock>>,
     job_id: &'a JobId,
-    scope: &'a RunningScope,
+    scope: &'a RunningPackageScope,
     scheduler_tx: SchedulerTx,
     stacks: BlockJobStacks,
 }
@@ -289,7 +292,7 @@ fn send_to_executor(args: ExecutorArgs) {
         scope,
         stacks,
     } = args;
-    let dir = block_dir(task_block, parent_flow, scope);
+    let dir = block_dir(task_block, parent_flow, Some(scope));
     scheduler_tx.send_to_executor(ExecutorParams {
         executor_name: executor.name(),
         job_id: job_id.to_owned(),
@@ -316,7 +319,7 @@ fn spawn_shell(
 
     let arg = get_string_value_from_inputs(&inputs, "command");
 
-    let block_dir = block_dir(task_block, parent_flow, &RunningScope::default());
+    let block_dir = block_dir(task_block, parent_flow, None);
 
     // 用户设置 cwd 在这里的意义不大，造成的问题反而可能更多，考虑去掉。
     let cwd = match get_string_value_from_inputs(&inputs, "cwd") {
@@ -433,7 +436,7 @@ fn spawn(
     // Execute the command
     let mut command = process::Command::new(&spawn_options.bin);
 
-    let block_dir = block_dir(task_block, parent_flow, &RunningScope::default());
+    let block_dir = block_dir(task_block, parent_flow, None);
     command.current_dir(block_dir);
 
     command

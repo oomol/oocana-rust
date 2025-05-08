@@ -1,13 +1,13 @@
 use std::sync::Arc;
 
-use job::{BlockInputs, BlockJobStacks, JobId};
+use job::{BlockInputs, BlockJobStacks, JobId, RunningPackageScope};
 use mainframe::{
     reporter::BlockReporterTx,
     scheduler::{self, ExecutorParams, SchedulerTx, ServiceParams},
 };
 use manifest_meta::{
-    InjectionStore, InputDefPatchMap, InputHandles, OutputHandles, RunningScope,
-    ServiceExecutorOptions, TaskBlockExecutor, OOMOL_BIN_DATA, OOMOL_SECRET_DATA, OOMOL_VAR_DATA,
+    InjectionStore, InputDefPatchMap, InputHandles, OutputHandles, ServiceExecutorOptions,
+    TaskBlockExecutor, OOMOL_BIN_DATA, OOMOL_SECRET_DATA, OOMOL_VAR_DATA,
 };
 use serde_json::Value;
 use tracing::{info, warn};
@@ -36,7 +36,7 @@ pub struct ListenerArgs {
     pub executor: Option<TaskBlockExecutor>,
     pub service: Option<ServiceExecutorPayload>,
     pub block_dir: String,
-    pub scope: RunningScope,
+    pub scope: RunningPackageScope,
     pub injection_store: Option<InjectionStore>,
     pub flow: Option<String>,
 }
@@ -78,7 +78,16 @@ pub fn listen_to_worker(args: ListenerArgs) -> tokio::task::JoinHandle<()> {
                 } => {
                     tracing::info!("{executor_name} {identifier:?} ({executor_package:?}) executor is ready. block package: {block_scope:?}");
 
-                    if block_scope.identifier() != identifier {
+                    if identifier
+                        .as_ref()
+                        .is_none_or(|id| id != &block_scope.identifier())
+                    {
+                        info!(
+                            "executor {} identifier {:?} is not equal to block identifier {:?}",
+                            executor_name,
+                            identifier,
+                            block_scope.identifier()
+                        );
                         continue;
                     }
 
@@ -145,7 +154,16 @@ pub fn listen_to_worker(args: ListenerArgs) -> tokio::task::JoinHandle<()> {
                     identifier,
                     ..
                 } => {
-                    if block_scope.identifier() != identifier {
+                    if identifier
+                        .as_ref()
+                        .is_none_or(|id| id != &block_scope.identifier())
+                    {
+                        info!(
+                            "executor {} identifier {:?} is not equal to block identifier {:?}",
+                            executor_name,
+                            identifier,
+                            block_scope.identifier()
+                        );
                         continue;
                     }
 

@@ -58,7 +58,11 @@ jobs:
       - uses: ./.github/actions/oocana-node
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-      # - name: Setup tmate session # only enable when debugging
-      #   uses: mxschmitt/action-tmate@v3
-      #   timeout-minutes: 10
-      #   if: failure()
+      - name: upload logs # only enable when debugging
+        uses: actions/upload-artifact@v4
+        with:
+          name: oocana-node-logs
+          path: |
+            ~/.oocana/sessions/
+          retention-days: 1
+        if: failure()
