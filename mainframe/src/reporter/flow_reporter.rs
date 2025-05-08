@@ -15,7 +15,7 @@ pub struct FlowReporterTx {
 fn is_flow_block(flow_path: &Option<String>) -> bool {
     if let Some(path) = flow_path {
         let path = path.as_str();
-        return path.starts_with("subflow.");
+        return path.ends_with("subflow.oo.yaml") || path.ends_with("subflow.oo.yml");
     }
     false
 }
