@@ -82,7 +82,7 @@ impl BlockJobStacks {
             flow,
             node_id,
         };
-        Self(Arc::new([vec![level], self.0.to_vec()].concat()))
+        Self(Arc::new([self.0.to_vec(), vec![level]].concat()))
     }
 
     pub fn vec(&self) -> &Vec<BlockJobStackLevel> {
