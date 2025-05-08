@@ -539,13 +539,13 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
         RunningScope::Flow { node_id, .. } => RunningPackageScope {
             package_path: shared.parent_scope.package_path().to_owned(),
             node_id: node_id.clone(),
-            enable_layer: layer::feature_enabled(),
+            enable_layer: shared.parent_scope.need_layer(),
             is_inject: node.scope().is_inject(),
         },
         RunningScope::Slot { .. } => RunningPackageScope {
             package_path: shared.parent_scope.package_path().to_owned(),
             node_id: None,
-            enable_layer: layer::feature_enabled(),
+            enable_layer: shared.parent_scope.need_layer(),
             is_inject: node.scope().is_inject(),
         },
     };
