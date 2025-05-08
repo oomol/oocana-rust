@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.27.6 (2025-05-08)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* refactor: refactor running scope to two level struct by @leavesster in https://github.com/oomol/oocana-rust/pull/84
+* fix: current workspace give up layer by @leavesster in https://github.com/oomol/oocana-rust/pull/89
+* chore: change layer as require check by @leavesster in https://github.com/oomol/oocana-rust/pull/90
+* fix: use ends with for subflow check by @leavesster in https://github.com/oomol/oocana-rust/pull/91
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.27.5...v0.27.6
+
 ## 0.27.5 (2025-05-06)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
