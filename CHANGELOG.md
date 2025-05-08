@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.27.7 (2025-05-08)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* fix: wrong stack order by @leavesster in https://github.com/oomol/oocana-rust/pull/92
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.27.6...v0.27.7
+
 ## 0.27.6 (2025-05-08)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
