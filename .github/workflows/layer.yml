@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - "layer/**"
+      - "**"
       - ".github/workflows/layer.yml"
       - ".github/actions/ovmlayer/action.yml"
       - "!layer/**.md"
