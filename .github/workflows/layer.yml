@@ -4,11 +4,6 @@ on:
   pull_request:
     branches:
       - main
-    paths:
-      - "**"
-      - ".github/workflows/layer.yml"
-      - ".github/actions/ovmlayer/action.yml"
-      - "!layer/**.md"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -18,8 +13,28 @@ env:
   OVMLAYER_LOG: /tmp/ovmlayer.log
 
 jobs:
-  layer:
+  skip:
+    runs-on: ubuntu-latest
+    outputs:
+      should_skip: ${{ steps.filter.outputs.should_skip }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          filter: blob:none
+          fetch-depth: 0
+      - uses: leavesster/pull-request-path-filter@v0.2
+        id: "filter"
+        with:
+          paths: |
+            - "**"
+            - ".github/workflows/layer.yml"
+            - ".github/actions/ovmlayer/action.yml"
+            - "!layer/**.md"
+
+  build:
     runs-on: ubuntu-24.04-arm
+    needs: [skip]
+    if: ${{ needs.skip.outputs.should_skip == 'false' }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
@@ -37,9 +52,14 @@ jobs:
           mosquitto -d -p 47688
       - uses: ./.github/actions/oocana-node
         with:
-          token: ${{ secrets.ACCESS_REPO }}
+          token: ${{ secrets.GITHUB_TOKEN }}
           create-layer: "true"
-      # - name: Setup tmate session # only enable when debugging
-      #   uses: mxschmitt/action-tmate@v3
-      #   timeout-minutes: 10
-      #   if: failure()
+      - name: upload logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: oocana-logs
+          path: |
+            ~/.oocana/sessions/
+            /tmp/ovmlayer.log
+          retention-days: 1
+        if: failure()

@@ -3,12 +3,6 @@ on:
   push:
     branches:
       - main
-    paths:
-      - "**"
-      - "!**.md"
-      - "!.vscode/*"
-      - "!.github/**"
-      - ".github/workflows/build-and-test.yml"
   pull_request:
     branches:
       - main
@@ -61,7 +55,7 @@ jobs:
       - name: upload logs # only enable when debugging
         uses: actions/upload-artifact@v4
         with:
-          name: oocana-node-logs
+          name: oocana-logs
           path: |
             ~/.oocana/sessions/
           retention-days: 1
