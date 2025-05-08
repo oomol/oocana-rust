@@ -93,13 +93,13 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
             parent_scope: RunningPackageScope {
                 package_path: workspace.clone(),
                 node_id: None,
-                enable_layer: true,
+                enable_layer: false, // current give up layer feature
                 is_inject: false,
             },
             scope: RunningPackageScope {
                 package_path: workspace.clone(),
                 node_id: None,
-                enable_layer: true,
+                enable_layer: false,
                 is_inject: false,
             },
             slot_blocks: None,
