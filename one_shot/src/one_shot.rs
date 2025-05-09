@@ -196,7 +196,9 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
     let (scheduler_tx, scheduler_rx) = mainframe::scheduler::create(
         _scheduler_impl_tx,
         _scheduler_impl_rx,
-        default_pkg_path.and_then(|p| p.to_str().map(|s| s.to_owned())),
+        default_pkg_path
+            .as_ref()
+            .and_then(|p| p.to_str().map(|s| s.to_owned())),
         exclude_packages,
         ExecutorParameters {
             addr: addr.to_string(),
@@ -247,6 +249,7 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
         job_id: None,
         nodes,
         input_values,
+        default_package_path: default_pkg_path,
     })
     .await;
 

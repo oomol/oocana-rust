@@ -28,6 +28,7 @@ pub struct RunArgs<'a> {
     pub job_id: Option<JobId>,
     pub nodes: Option<HashSet<String>>,
     pub input_values: Option<String>,
+    pub default_package_path: Option<PathBuf>,
 }
 
 pub async fn run(args: RunArgs<'_>) -> Result<()> {
@@ -39,6 +40,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
         job_id,
         nodes,
         input_values,
+        default_package_path,
     } = args;
     let (block_status_tx, block_status_rx) = block_status::create();
     let job_id = job_id.unwrap_or_else(JobId::random);
@@ -68,12 +70,9 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
 
     let nodes = nodes.map(|nodes| nodes.into_iter().map(NodeId::new).collect());
 
-    // TODO: remove this hard code path
-    let scope_workspace = if PathBuf::from("/app/workspace").exists() {
-        Some(PathBuf::from("/app/workspace"))
-    } else {
-        current_dir().ok()
-    };
+    let scope_workspace = default_package_path
+        .filter(|path| path.exists())
+        .or_else(|| current_dir().ok());
 
     let workspace = scope_workspace.expect("workspace not found");
 
