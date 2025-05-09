@@ -1,6 +1,6 @@
 use serde::Deserialize;
 
-use crate::manifest::InputHandle;
+use crate::manifest::{HandleName, InputHandle};
 
 use super::NodeId;
 
@@ -10,6 +10,15 @@ pub struct ValueNode {
     pub values: Vec<InputHandle>,
     #[serde(default)]
     pub ignore: bool,
+}
+
+impl ValueNode {
+    pub fn get_handle(&self, handle: &HandleName) -> Option<InputHandle> {
+        self.values
+            .iter()
+            .find(|input_handle| &input_handle.handle == handle)
+            .cloned()
+    }
 }
 
 #[cfg(test)]
