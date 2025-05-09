@@ -194,7 +194,6 @@ impl SubflowBlock {
                         }
                     };
 
-                    // TODO: slot also need calculate running scope
                     let mut slot_blocks: HashMap<NodeId, Slot> = HashMap::new();
                     if let Some(slots) = subflow_node.slots.as_ref() {
                         for slot in slots {
