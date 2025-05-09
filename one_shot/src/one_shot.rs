@@ -180,11 +180,7 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
     let tmp_dir = if tmp_root_path.is_dir() {
         tmp_root_path.join(temp_directory)
     } else {
-        PathBuf::from(format!(
-            "{}/{session_id}",
-            env::temp_dir().to_string_lossy()
-        ))
-        .join(temp_directory)
+        env::temp_dir().join(temp_directory)
     };
 
     if tmp_dir.join(OOCANA_RESULT_FILE).exists() {
