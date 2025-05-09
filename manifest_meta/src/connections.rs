@@ -79,19 +79,40 @@ impl Connections {
         &mut self,
         node_id: &NodeId,
         inputs_from: Option<&Vec<manifest::NodeInputFrom>>,
+        find_value_node: &impl Fn(&NodeId) -> Option<manifest::ValueNode>,
     ) {
         if let Some(inputs_from) = inputs_from {
             for input_from in inputs_from {
                 if let Some(from_nodes) = &input_from.from_node {
                     for from_node in from_nodes {
-                        // 连接的节点不在当前 flow 中，不创建连线
                         if !self.nodes.contains(&from_node.node_id) {
                             tracing::warn!(
-                                "Node {} input {} from node {} not in nodes",
-                                node_id,
-                                input_from.handle,
+                                "ignore node connection because node({}) is not in runtime flow",
                                 from_node.node_id
                             );
+                            continue;
+                        }
+
+                        if let Some(value_node) = find_value_node(&from_node.node_id) {
+                            if let Some(input) = value_node.get_handle(&from_node.output_handle) {
+                                self.node_inputs_froms.add(
+                                    node_id.to_owned(),
+                                    input_from.handle.to_owned(),
+                                    HandleFrom::FromValue {
+                                        value: input.value.clone(),
+                                    },
+                                );
+                                tracing::debug!(
+                                    "value node only add node_inputs_froms has no node_outputs_tos"
+                                );
+                            } else {
+                                tracing::warn!(
+                                    "ignore node connection because value node({}) has no output handle({})",
+                                    from_node.node_id,
+                                    from_node.output_handle
+                                );
+                                continue;
+                            }
                             continue;
                         }
 

@@ -23,7 +23,7 @@ use crate::{
     block_resolver::{package_path, BlockResolver},
     connections::Connections,
     node::{ServiceNode, TaskNode},
-    HandleFrom, HandlesFroms, HandlesTos, Node, NodeId, SlotNode, SubflowNode,
+    HandlesFroms, HandlesTos, Node, NodeId, SlotNode, SubflowNode,
 };
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -117,10 +117,6 @@ impl SubflowBlock {
 
         connections.parse_flow_outputs_from(outputs_from);
 
-        for node in nodes.iter() {
-            connections.parse_node_inputs_from(node.node_id(), node.inputs_from());
-        }
-
         let value_nodes = nodes
             .iter()
             .filter_map(|node| match node {
@@ -131,7 +127,19 @@ impl SubflowBlock {
         let value_nodes_id = value_nodes
             .iter()
             .map(|n| n.node_id.clone())
-            .collect::<Vec<_>>();
+            .collect::<HashSet<_>>();
+
+        let find_value_node = |node_id: &NodeId| -> Option<manifest::ValueNode> {
+            value_nodes.iter().find(|n| n.node_id == *node_id).cloned()
+        };
+
+        for node in nodes.iter() {
+            connections.parse_node_inputs_from(
+                node.node_id(),
+                node.inputs_from(),
+                &find_value_node,
+            );
+        }
 
         // node 的 skip 属性为 true，这个 node 不会放到 flow 列表，但是仍然保留连线逻辑。所以要在 parse_node_inputs_from 处理完之后删除。
         let nodes_in_flow: Vec<manifest::Node> = nodes
@@ -142,6 +150,9 @@ impl SubflowBlock {
         let find_node = |node_id: &NodeId| -> Option<&manifest::Node> {
             nodes_in_flow.iter().find(|n| n.node_id() == node_id)
         };
+
+        drop(value_nodes);
+        drop(value_nodes_id);
 
         type PackageInjectionScripts = HashMap<PathBuf, Vec<String>>;
         let mut injection_scripts: PackageInjectionScripts = HashMap::new();
@@ -190,7 +201,6 @@ impl SubflowBlock {
                         }
                     };
 
-                    // TODO: slot also need calculate running scope
                     let mut slot_blocks: HashMap<NodeId, Slot> = HashMap::new();
                     if let Some(slots) = subflow_node.slots.as_ref() {
                         for slot in slots {
@@ -427,72 +437,16 @@ impl SubflowBlock {
                             task.inputs_def.clone()
                         };
 
-                    let mut inputs_def =
-                        parse_inputs_def(&task_node.inputs_from, &merge_inputs_def);
+                    let inputs_def = parse_inputs_def(&task_node.inputs_from, &merge_inputs_def);
 
                     let inputs_def_patch = get_inputs_def_patch(&task_node.inputs_from);
 
-                    let mut froms: Option<HashMap<HandleName, Vec<HandleFrom>>> =
-                        connections.node_inputs_froms.remove(&task_node.node_id);
-                    let mut has_value_node = false;
-
-                    // TODO: value node 应该支持其他的几种 node，暂时没实现。
-                    if let Some(ref froms) = froms {
-                        for (handle_name, froms) in froms {
-                            for from in froms {
-                                if let HandleFrom::FromNodeOutput {
-                                    node_id,
-                                    node_output_handle,
-                                } = from
-                                {
-                                    if let Some(value_node) =
-                                        value_nodes.iter().find(|n| &n.node_id == node_id)
-                                    {
-                                        has_value_node = true;
-                                        if let Some(handle) = value_node
-                                            .values
-                                            .iter()
-                                            .find(|v| v.handle == *node_output_handle)
-                                        {
-                                            if let Some(ref mut input_defs) = inputs_def {
-                                                if value_node.ignore {
-                                                    input_defs
-                                                        .entry(handle_name.to_owned())
-                                                        .and_modify(|def| def.value = None);
-                                                } else {
-                                                    input_defs
-                                                        .entry(handle_name.to_owned())
-                                                        .and_modify(|def| {
-                                                            def.value = handle.value.clone()
-                                                        });
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    if has_value_node {
-                        // value node 不会运行，所以不能作为 from to 的一部分
-                        if let Some(ref mut froms) = froms {
-                            for (_, froms) in froms.iter_mut() {
-                                froms.retain(|from| {
-                                    if let HandleFrom::FromNodeOutput { node_id, .. } = from {
-                                        !value_nodes_id.contains(node_id)
-                                    } else {
-                                        true
-                                    }
-                                });
-                            }
-                        }
-                    }
+                    let from_map = connections.node_inputs_froms.remove(&task_node.node_id);
 
                     new_nodes.insert(
                         task_node.node_id.to_owned(),
                         Node::Task(TaskNode {
-                            from: froms,
+                            from: from_map,
                             to: connections.node_outputs_tos.remove(&task_node.node_id),
                             node_id: task_node.node_id.to_owned(),
                             timeout: task_node.timeout,

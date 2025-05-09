@@ -119,6 +119,10 @@ impl NodeInputValues {
                     return false;
                 }
 
+                if node.has_value_from(&handle.handle) {
+                    continue;
+                }
+
                 if let Some(input_values) = self.store.get(node.node_id()) {
                     if input_values.get(&handle.handle).is_none()
                         || input_values.get(&handle.handle).unwrap().is_empty()
@@ -142,6 +146,10 @@ impl NodeInputValues {
                     .map(|f| f.value.is_some())
                     .unwrap_or(false);
             }
+        }
+
+        if node.has_value_from(&handle_name) {
+            return true;
         }
 
         if let Some(input_values) = self.store.get(node.node_id()) {
@@ -208,16 +216,15 @@ impl NodeInputValues {
                 }
             }
         }
-        if let Some(inputs_def) = node.inputs_def() {
-            // filter inputs_def which has no connected handle input
-            let no_connection_handles: Vec<&HandleName> = inputs_def
-                .keys()
-                .filter(|handle| !node.has_from(handle))
-                .collect();
 
-            for handle in no_connection_handles {
-                if let Some(def) = inputs_def.get(handle) {
-                    if let Some(value) = &def.value {
+        if let Some(inputs_def) = node.inputs_def() {
+            for (handle, def) in inputs_def {
+                if value_map.contains_key(handle) {
+                    continue;
+                }
+
+                if node.has_value_from(handle) {
+                    if let Some(value) = node.only_has_one_value(handle) {
                         value_map.insert(
                             handle.to_owned(),
                             Arc::new(OutputValue {
@@ -226,7 +233,25 @@ impl NodeInputValues {
                             }),
                         );
                     }
+                    continue;
                 }
+
+                if let Some(value) = &def.value {
+                    value_map.insert(
+                        handle.to_owned(),
+                        Arc::new(OutputValue {
+                            value: value.clone().unwrap_or(serde_json::Value::Null),
+                            cacheable: true,
+                        }),
+                    );
+                    continue;
+                }
+
+                tracing::warn!(
+                    "Node {} has no value for input handle {}",
+                    node.node_id(),
+                    handle
+                );
             }
         }
         if value_map.is_empty() {
