@@ -94,18 +94,25 @@ impl Connections {
                         }
 
                         if let Some(value_node) = find_value_node(&from_node.node_id) {
-                            self.node_inputs_froms.add(
-                                node_id.to_owned(),
-                                input_from.handle.to_owned(),
-                                HandleFrom::FromValue {
-                                    value: value_node
-                                        .get_handle(&from_node.output_handle)
-                                        .and_then(|input_handle| input_handle.value.clone()),
-                                },
-                            );
-                            tracing::debug!(
-                                "value node only add node_inputs_froms has no node_outputs_tos"
-                            );
+                            if let Some(input) = value_node.get_handle(&from_node.output_handle) {
+                                self.node_inputs_froms.add(
+                                    node_id.to_owned(),
+                                    input_from.handle.to_owned(),
+                                    HandleFrom::FromValue {
+                                        value: input.value.clone(),
+                                    },
+                                );
+                                tracing::debug!(
+                                    "value node only add node_inputs_froms has no node_outputs_tos"
+                                );
+                            } else {
+                                tracing::warn!(
+                                    "ignore node connection because value node({}) has no output handle({})",
+                                    from_node.node_id,
+                                    from_node.output_handle
+                                );
+                                continue;
+                            }
                             continue;
                         }
 

@@ -1,6 +1,7 @@
 use std::{collections::HashMap, path::PathBuf, sync::Arc};
 
 use manifest_reader::manifest::{InputDefPatch, InputHandles, OutputHandles};
+use manifest_reader::JsonValue;
 
 use crate::{scope::RunningScope, Block, HandleName, NodeId, ServiceBlock, SlotBlock, TaskBlock};
 
@@ -8,6 +9,7 @@ use crate::extend_node_common_field;
 
 use super::common::{HandlesFroms, HandlesTos, InputDefPatchMap};
 use super::subflow::SubflowNode;
+use super::HandleFrom;
 
 extend_node_common_field!(TaskNode {
     task: Arc<TaskBlock>,
@@ -101,6 +103,44 @@ impl Node {
             Self::Slot(slot) => slot.inputs_def_patch.as_ref(),
             Self::Service(service) => service.inputs_def_patch.as_ref(),
         }
+    }
+
+    pub fn has_value_from(&self, handle: &HandleName) -> bool {
+        if let Some(from) = self.from() {
+            if let Some(handle_froms) = from.get(handle) {
+                if handle_froms.len() == 1 {
+                    match handle_froms.get(0) {
+                        Some(from) => {
+                            if let HandleFrom::FromValue { value } = from {
+                                if value.is_some() {
+                                    return true;
+                                }
+                            }
+                        }
+                        None => {}
+                    }
+                }
+            }
+        }
+        false
+    }
+
+    pub fn only_has_one_value(&self, handle: &HandleName) -> Option<Option<JsonValue>> {
+        if let Some(from) = self.from() {
+            if let Some(handle_froms) = from.get(handle) {
+                if handle_froms.len() == 1 {
+                    match handle_froms.get(0) {
+                        Some(from) => {
+                            if let HandleFrom::FromValue { value } = from {
+                                return value.clone();
+                            }
+                        }
+                        None => {}
+                    }
+                }
+            }
+        }
+        None
     }
 
     pub fn has_from(&self, handle: &HandleName) -> bool {
