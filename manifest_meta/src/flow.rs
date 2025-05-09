@@ -129,6 +129,10 @@ impl SubflowBlock {
             .map(|n| n.node_id.clone())
             .collect::<HashSet<_>>();
 
+        let find_value_node = |node_id: &NodeId| -> Option<&manifest::ValueNode> {
+            value_nodes.iter().find(|n| n.node_id == *node_id)
+        };
+
         for node in nodes.iter() {
             connections.parse_node_inputs_from(node.node_id(), node.inputs_from(), &value_nodes_id);
         }
@@ -432,40 +436,28 @@ impl SubflowBlock {
 
                     let inputs_def_patch = get_inputs_def_patch(&task_node.inputs_from);
 
-                    let mut froms: Option<HashMap<HandleName, Vec<HandleFrom>>> =
-                        connections.node_inputs_froms.remove(&task_node.node_id);
-                    let mut has_value_node = false;
+                    let from_map = connections.node_inputs_froms.remove(&task_node.node_id);
 
-                    if let Some(ref froms) = froms {
-                        for (handle_name, froms) in froms {
+                    if let Some(from_map) = from_map.as_ref() {
+                        for (handle_name, froms) in from_map {
                             for from in froms {
                                 if let HandleFrom::FromNodeOutput {
                                     node_id,
                                     node_output_handle,
                                 } = from
                                 {
-                                    if let Some(value_node) =
-                                        value_nodes.iter().find(|n| &n.node_id == node_id)
-                                    {
-                                        has_value_node = true;
-                                        if let Some(handle) = value_node
-                                            .values
-                                            .iter()
-                                            .find(|v| v.handle == *node_output_handle)
-                                        {
-                                            if let Some(ref mut input_defs) = inputs_def {
-                                                if value_node.ignore {
-                                                    input_defs
-                                                        .entry(handle_name.to_owned())
-                                                        .and_modify(|def| def.value = None);
+                                    if let Some(value_node) = find_value_node(node_id) {
+                                        if let Some(ref mut def) = inputs_def {
+                                            def.entry(handle_name.to_owned()).and_modify(|d| {
+                                                // even if value node is ignore, we still need remove def's value. because value node connection will override def's value. That's is as designed for now.
+                                                d.value = if value_node.ignore {
+                                                    None
                                                 } else {
-                                                    input_defs
-                                                        .entry(handle_name.to_owned())
-                                                        .and_modify(|def| {
-                                                            def.value = handle.value.clone()
-                                                        });
+                                                    value_node
+                                                        .get_handle(node_output_handle)
+                                                        .and_then(|v| v.value.clone())
                                                 }
-                                            }
+                                            });
                                         }
                                     }
                                 }
@@ -476,7 +468,7 @@ impl SubflowBlock {
                     new_nodes.insert(
                         task_node.node_id.to_owned(),
                         Node::Task(TaskNode {
-                            from: froms,
+                            from: from_map,
                             to: connections.node_outputs_tos.remove(&task_node.node_id),
                             node_id: task_node.node_id.to_owned(),
                             timeout: task_node.timeout,
