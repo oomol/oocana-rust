@@ -129,12 +129,16 @@ impl SubflowBlock {
             .map(|n| n.node_id.clone())
             .collect::<HashSet<_>>();
 
-        let find_value_node = |node_id: &NodeId| -> Option<&manifest::ValueNode> {
-            value_nodes.iter().find(|n| n.node_id == *node_id)
+        let find_value_node = |node_id: &NodeId| -> Option<manifest::ValueNode> {
+            value_nodes.iter().find(|n| n.node_id == *node_id).cloned()
         };
 
         for node in nodes.iter() {
-            connections.parse_node_inputs_from(node.node_id(), node.inputs_from(), &value_nodes_id);
+            connections.parse_node_inputs_from(
+                node.node_id(),
+                node.inputs_from(),
+                &find_value_node,
+            );
         }
 
         // node 的 skip 属性为 true，这个 node 不会放到 flow 列表，但是仍然保留连线逻辑。所以要在 parse_node_inputs_from 处理完之后删除。

@@ -79,7 +79,7 @@ impl Connections {
         &mut self,
         node_id: &NodeId,
         inputs_from: Option<&Vec<manifest::NodeInputFrom>>,
-        value_node_id_set: &HashSet<NodeId>,
+        find_value_node: &impl Fn(&NodeId) -> Option<manifest::ValueNode>,
     ) {
         if let Some(inputs_from) = inputs_from {
             for input_from in inputs_from {
@@ -93,10 +93,18 @@ impl Connections {
                             continue;
                         }
 
-                        if value_node_id_set.contains(&from_node.node_id) {
+                        if let Some(value_node) = find_value_node(&from_node.node_id) {
+                            self.node_inputs_froms.add(
+                                node_id.to_owned(),
+                                input_from.handle.to_owned(),
+                                HandleFrom::FromValue {
+                                    value: value_node
+                                        .get_handle(&from_node.output_handle)
+                                        .and_then(|input_handle| input_handle.value.clone()),
+                                },
+                            );
                             tracing::debug!(
-                                "ignore node connection because node({}) is value node",
-                                from_node.node_id
+                                "value node only add node_inputs_froms has no node_outputs_tos"
                             );
                             continue;
                         }

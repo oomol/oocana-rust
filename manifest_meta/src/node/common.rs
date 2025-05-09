@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 
-use manifest_reader::manifest::{HandleName, InputDefPatch, NodeId};
+use manifest_reader::{
+    manifest::{HandleName, InputDefPatch, NodeId},
+    JsonValue,
+};
 
 #[macro_export(local_inner_macros)]
 macro_rules! extend_node_common_field {
@@ -37,6 +40,9 @@ pub enum HandleFrom {
     FromNodeOutput {
         node_id: NodeId,
         node_output_handle: HandleName,
+    },
+    FromValue {
+        value: Option<Option<JsonValue>>,
     },
 }
 
