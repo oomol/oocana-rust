@@ -159,46 +159,51 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
         // /app/workspace/flows/a -> /app/workspace
         p.parent().map(|p| p.parent()).flatten()
     };
-    let temp_directory = {
+    let flow_tmp_name = {
         let p = PathBuf::from(block_path);
-        if p.file_name().is_some_and(|f| {
+        let flow_name = if p.file_name().is_some_and(|f| {
             f.to_string_lossy() == "flow.oo.yaml" || f.to_string_lossy() == "flow.oo.yml"
         }) {
-            p.parent()
-                .and_then(|p| p.file_name())
-                .map(|f| f.to_string_lossy().to_string())
-                .map(|f| format!("{}-{}", f, calculate_short_hash(block_path, 8)))
-                .unwrap_or_else(|| "tmp".to_string())
+            p.parent().and_then(|p| p.file_name())
         } else {
             p.file_name()
-                .map(|f| f.to_string_lossy().to_string())
-                .map(|f| format!("{}-{}", f, calculate_short_hash(block_path, 8)))
-                .unwrap_or_else(|| "tmp".to_string())
-        }
+        };
+
+        flow_name
+            .map(|f| {
+                format!(
+                    "{}-{}",
+                    f.to_string_lossy().to_string(),
+                    calculate_short_hash(block_path, 8)
+                )
+            })
+            .unwrap_or_else(|| "flow".to_string())
     };
 
-    let tmp_dir = if tmp_root_path.is_dir() {
-        tmp_root_path.join(temp_directory)
+    // Each flow gets its own temporary directory, which is uniquely named based on the flow file to avoid conflicts
+    let flow_tmp_dir = if tmp_root_path.is_dir() {
+        tmp_root_path.join(flow_tmp_name)
     } else {
-        env::temp_dir().join(temp_directory)
+        env::temp_dir().join(flow_tmp_name)
     };
 
-    if tmp_dir.join(OOCANA_RESULT_FILE).exists() {
-        let r = fs::remove_dir_all(&tmp_dir);
+    // remove tmp dir if OOCANA_RESULT_FILE exists which means the previous run was successful.
+    if flow_tmp_dir.join(OOCANA_RESULT_FILE).exists() {
+        let r = fs::remove_dir_all(&flow_tmp_dir);
         if r.is_err() {
             warn!("Failed to remove tmp dir: {:?}", r);
         } else {
-            info!("Remove successful tmp dir: {:?}", tmp_dir);
+            info!("Remove successful tmp dir: {:?}", flow_tmp_dir);
         }
     }
 
-    if tmp_dir.is_dir() {
-        info!("tmp_dir already exists: {:?}", tmp_dir);
-    } else if !tmp_dir.exists() {
-        info!("create tmp_dir: {:?}", tmp_dir);
-        fs::create_dir_all(&tmp_dir)?;
+    if flow_tmp_dir.is_dir() {
+        info!("tmp_dir already exists: {:?}", flow_tmp_dir);
+    } else if !flow_tmp_dir.exists() {
+        info!("create tmp_dir: {:?}", flow_tmp_dir);
+        fs::create_dir_all(&flow_tmp_dir)?;
     } else {
-        warn!("tmp_dir is not a directory: {:?}", tmp_dir);
+        warn!("tmp_dir is not a directory: {:?}", flow_tmp_dir);
     }
 
     let (scheduler_tx, scheduler_rx) = mainframe::scheduler::create(
@@ -215,7 +220,7 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
             bind_paths,
             pass_through_env_keys: retain_env_keys.unwrap_or_default(),
             env_file,
-            tmp_dir: tmp_dir.clone(),
+            tmp_dir: flow_tmp_dir.clone(),
             debug,
             wait_for_client,
         },
@@ -275,9 +280,12 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
     tracing::info!("Session {} finished, result: {:?}", session_id, result);
 
     if result.is_ok() {
-        info!("session finish successfully. remove tmp dir {:?}", tmp_dir);
+        info!(
+            "session finish successfully. remove tmp dir {:?}",
+            flow_tmp_dir
+        );
         // write .oocana_result.json to tmp dir
-        let result_file = tmp_dir.join(OOCANA_RESULT_FILE);
+        let result_file = flow_tmp_dir.join(OOCANA_RESULT_FILE);
         if let Err(err) = fs::write(&result_file, "0") {
             warn!(
                 "Failed to write result file at {:?}: {:?}",
@@ -293,7 +301,7 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
             }
         }
     } else {
-        info!("session finish with error. keep tmp dir {:?}", tmp_dir);
+        info!("session finish with error. keep tmp dir {:?}", flow_tmp_dir);
     }
 
     result
