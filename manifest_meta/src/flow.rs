@@ -447,6 +447,10 @@ impl SubflowBlock {
                                 {
                                     if let Some(value_node) = find_value_node(node_id) {
                                         if let Some(ref mut def) = inputs_def {
+                                            tracing::debug!(
+                                                "replace input def value from value node. node_id: {:?}, handle_name: {:?}, value_node: {:?}",
+                                                node_id, handle_name, value_node
+                                            );
                                             def.entry(handle_name.to_owned()).and_modify(|d| {
                                                 // even if value node is ignore, we still need remove def's value. because value node connection will override def's value. That's is as designed for now.
                                                 d.value = if value_node.ignore {
