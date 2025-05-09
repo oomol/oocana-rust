@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.27.8 (2025-05-09)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* fix: default package should be block path's directory by @leavesster in https://github.com/oomol/oocana-rust/pull/94
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.27.7...v0.27.8
+
 ## 0.27.7 (2025-05-08)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
