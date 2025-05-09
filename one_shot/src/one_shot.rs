@@ -281,10 +281,10 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
 
     if result.is_ok() {
         info!(
-            "session finish successfully. remove tmp dir {:?}",
+            "session finish successfully. this tmp dir will clear before next run {:?}",
             flow_tmp_dir
         );
-        // write .oocana_result.json to tmp dir
+
         let result_file = flow_tmp_dir.join(OOCANA_RESULT_FILE);
         if let Err(err) = fs::write(&result_file, "0") {
             warn!(
