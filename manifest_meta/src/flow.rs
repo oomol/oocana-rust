@@ -151,6 +151,9 @@ impl SubflowBlock {
             nodes_in_flow.iter().find(|n| n.node_id() == node_id)
         };
 
+        drop(value_nodes);
+        drop(value_nodes_id);
+
         type PackageInjectionScripts = HashMap<PathBuf, Vec<String>>;
         let mut injection_scripts: PackageInjectionScripts = HashMap::new();
         if let Some(map) = scripts {
@@ -434,8 +437,7 @@ impl SubflowBlock {
                             task.inputs_def.clone()
                         };
 
-                    let mut inputs_def =
-                        parse_inputs_def(&task_node.inputs_from, &merge_inputs_def);
+                    let inputs_def = parse_inputs_def(&task_node.inputs_from, &merge_inputs_def);
 
                     let inputs_def_patch = get_inputs_def_patch(&task_node.inputs_from);
 
