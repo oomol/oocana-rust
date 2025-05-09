@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.27.9 (2025-05-09)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* refactor: improve flow tmp logic by @leavesster in https://github.com/oomol/oocana-rust/pull/96
+* fix: add log suffix for ovmlayer log by @leavesster in https://github.com/oomol/oocana-rust/pull/98
+* feat: make value node support all other nodes by @leavesster in https://github.com/oomol/oocana-rust/pull/99
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.27.8...v0.27.9
+
 ## 0.27.8 (2025-05-09)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
