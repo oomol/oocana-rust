@@ -339,7 +339,7 @@ impl SchedulerTx {
                             is_inject: scope.is_inject(),
                         },
                         None => RunningPackageScope {
-                            package_path: env::current_dir().unwrap_or_default(),
+                            package_path: scope.package_path().clone(),
                             node_id: scope.node_id().clone(),
                             enable_layer: false,
                             is_inject: scope.is_inject(),
