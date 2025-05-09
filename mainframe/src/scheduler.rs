@@ -5,7 +5,7 @@ use port_check::free_local_ipv4_port_in_range;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
-    default, env,
+    default,
     path::PathBuf,
     process,
     sync::{Arc, RwLock},
