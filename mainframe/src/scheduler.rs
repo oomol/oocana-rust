@@ -5,7 +5,7 @@ use port_check::free_local_ipv4_port_in_range;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
-    default, env,
+    default,
     path::PathBuf,
     process,
     sync::{Arc, RwLock},
@@ -339,7 +339,7 @@ impl SchedulerTx {
                             is_inject: scope.is_inject(),
                         },
                         None => RunningPackageScope {
-                            package_path: env::current_dir().unwrap_or_default(),
+                            package_path: scope.package_path().clone(),
                             node_id: scope.node_id().clone(),
                             enable_layer: false,
                             is_inject: scope.is_inject(),

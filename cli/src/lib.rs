@@ -66,7 +66,7 @@ enum Commands {
         input_values: Option<String>,
         #[arg(help = "default package environment, any block has no package will use this package environment", long)]
         default_package: Option<String>,
-        #[arg(help = "exclude package, accept package path", long)]
+        #[arg(help = "exclude package, these package will skip layer feature, accept package path", long)]
         exclude_packages: Option<String>,
         #[arg(help = "a directory which will pass to every block, oocana just check the if the path is exit, if not oocana will create one. Oocana won't do anything about this path, won't delete it. It will be the return value of context.sessionDir or context.session_dir function.", long)]
         session_dir: Option<String>,

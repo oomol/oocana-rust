@@ -146,11 +146,25 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
 
     let tmp_root_path = PathBuf::from(temp_root);
 
+    let p = PathBuf::from(block_path);
+    let current_package_path = if p
+        .file_name()
+        .is_some_and(|f| f.to_string_lossy().starts_with("flow.oo"))
+    {
+        // /app/workspace/flows/a/flow.oo.yaml -> /app/workspace
+        p.parent()
+            .map(|p| p.parent())
+            .flatten()
+            .map(|p| p.parent())
+            .flatten()
+    } else {
+        // /app/workspace/flows/a -> /app/workspace
+        p.parent().map(|p| p.parent()).flatten()
+    };
     let temp_directory = {
         let p = PathBuf::from(block_path);
         if p.file_name().is_some_and(|f| {
-            f.to_string_lossy() == "flow.oo.yaml"
-                || f.to_string_lossy() == "flow.oo.yml"
+            f.to_string_lossy() == "flow.oo.yaml" || f.to_string_lossy() == "flow.oo.yml"
         }) {
             p.parent()
                 .and_then(|p| p.file_name())
@@ -196,7 +210,9 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
     let (scheduler_tx, scheduler_rx) = mainframe::scheduler::create(
         _scheduler_impl_tx,
         _scheduler_impl_rx,
-        default_pkg_path.and_then(|p| p.to_str().map(|s| s.to_owned())),
+        default_pkg_path
+            .as_ref()
+            .and_then(|p| p.to_str().map(|s| s.to_owned())),
         exclude_packages,
         ExecutorParameters {
             addr: addr.to_string(),
@@ -247,6 +263,7 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
         job_id: None,
         nodes,
         input_values,
+        default_package_path: current_package_path.map(|p| p.to_owned()),
     })
     .await;
 
