@@ -592,7 +592,7 @@ fn spawn_executor(
 
         executor_package = Some(package_path_str.to_string());
 
-        let log_filename = format!("ovmlayer-{}-{}", executor_bin, identifier);
+        let log_filename = format!("ovmlayer-{}-{}.log", executor_bin, identifier);
 
         let log_dir = utils::logger::logger_dir();
         envs.insert(
