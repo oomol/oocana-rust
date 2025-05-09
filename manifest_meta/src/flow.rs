@@ -436,7 +436,6 @@ impl SubflowBlock {
                         connections.node_inputs_froms.remove(&task_node.node_id);
                     let mut has_value_node = false;
 
-                    // TODO: value node 应该支持其他的几种 node，暂时没实现。
                     if let Some(ref froms) = froms {
                         for (handle_name, froms) in froms {
                             for from in froms {
