@@ -111,10 +111,8 @@ impl Node {
                 if handle_froms.len() == 1 {
                     match handle_froms.get(0) {
                         Some(from) => {
-                            if let HandleFrom::FromValue { value } = from {
-                                if value.is_some() {
-                                    return true;
-                                }
+                            if let HandleFrom::FromValue { .. } = from {
+                                return true;
                             }
                         }
                         None => {}
