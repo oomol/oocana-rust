@@ -117,10 +117,6 @@ impl SubflowBlock {
 
         connections.parse_flow_outputs_from(outputs_from);
 
-        for node in nodes.iter() {
-            connections.parse_node_inputs_from(node.node_id(), node.inputs_from());
-        }
-
         let value_nodes = nodes
             .iter()
             .filter_map(|node| match node {
@@ -131,7 +127,11 @@ impl SubflowBlock {
         let value_nodes_id = value_nodes
             .iter()
             .map(|n| n.node_id.clone())
-            .collect::<Vec<_>>();
+            .collect::<HashSet<_>>();
+
+        for node in nodes.iter() {
+            connections.parse_node_inputs_from(node.node_id(), node.inputs_from(), &value_nodes_id);
+        }
 
         // node 的 skip 属性为 true，这个 node 不会放到 flow 列表，但是仍然保留连线逻辑。所以要在 parse_node_inputs_from 处理完之后删除。
         let nodes_in_flow: Vec<manifest::Node> = nodes
@@ -469,21 +469,6 @@ impl SubflowBlock {
                                         }
                                     }
                                 }
-                            }
-                        }
-                    }
-
-                    if has_value_node {
-                        // value node 不会运行，所以不能作为 from to 的一部分
-                        if let Some(ref mut froms) = froms {
-                            for (_, froms) in froms.iter_mut() {
-                                froms.retain(|from| {
-                                    if let HandleFrom::FromNodeOutput { node_id, .. } = from {
-                                        !value_nodes_id.contains(node_id)
-                                    } else {
-                                        true
-                                    }
-                                });
                             }
                         }
                     }

@@ -79,17 +79,23 @@ impl Connections {
         &mut self,
         node_id: &NodeId,
         inputs_from: Option<&Vec<manifest::NodeInputFrom>>,
+        value_node_id_set: &HashSet<NodeId>,
     ) {
         if let Some(inputs_from) = inputs_from {
             for input_from in inputs_from {
                 if let Some(from_nodes) = &input_from.from_node {
                     for from_node in from_nodes {
-                        // 连接的节点不在当前 flow 中，不创建连线
                         if !self.nodes.contains(&from_node.node_id) {
                             tracing::warn!(
-                                "Node {} input {} from node {} not in nodes",
-                                node_id,
-                                input_from.handle,
+                                "ignore node connection because node({}) is not in runtime flow",
+                                from_node.node_id
+                            );
+                            continue;
+                        }
+
+                        if value_node_id_set.contains(&from_node.node_id) {
+                            tracing::debug!(
+                                "ignore node connection because node({}) is value node",
                                 from_node.node_id
                             );
                             continue;
