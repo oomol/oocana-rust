@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.27.10 (2025-05-10)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* fix: wrong scope transform by @leavesster in https://github.com/oomol/oocana-rust/pull/100
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.27.9...v0.27.10
+
 ## 0.27.9 (2025-05-09)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
