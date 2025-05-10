@@ -174,7 +174,7 @@ impl Node {
         match self {
             Self::Task(task) => task.scope.clone(),
             Self::Flow(flow) => flow.scope.clone(),
-            Self::Slot(_) => RunningScope::default(),
+            Self::Slot(_) => RunningScope::Slot {},
             Self::Service(_) => RunningScope::default(),
         }
     }

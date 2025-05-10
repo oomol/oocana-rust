@@ -537,9 +537,9 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
             is_inject: node.scope().is_inject(),
         },
         RunningScope::Flow { node_id, .. } => RunningPackageScope {
-            package_path: shared.parent_scope.package_path().to_owned(),
+            package_path: shared.scope.package_path().to_owned(),
             node_id: node_id.clone(),
-            enable_layer: shared.parent_scope.need_layer(),
+            enable_layer: shared.scope.need_layer(),
             is_inject: node.scope().is_inject(),
         },
         RunningScope::Slot { .. } => RunningPackageScope {
