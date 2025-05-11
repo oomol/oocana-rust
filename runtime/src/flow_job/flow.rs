@@ -226,6 +226,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                     &mut run_flow_ctx,
                     true,
                     &filtered_nodes,
+                    &reporter,
                 );
             }
         }
@@ -258,6 +259,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                         &mut run_flow_ctx,
                                         true,
                                         &filtered_nodes,
+                                        &reporter,
                                     );
                                 }
                             }
@@ -450,6 +452,7 @@ fn produce_new_value(
     ctx: &mut RunFlowContext,
     run_next_node: bool,
     filter_nodes: &Option<HashSet<NodeId>>,
+    reporter: &FlowReporterTx,
 ) {
     for handle_to in handle_tos {
         match handle_to {
@@ -499,6 +502,7 @@ fn produce_new_value(
             HandleTo::ToFlowOutput {
                 output_handle: flow_output_handle,
             } => {
+                reporter.result(value.clone(), flow_output_handle);
                 ctx.parent_block_status.result(
                     shared.job_id.to_owned(),
                     Arc::clone(value),
