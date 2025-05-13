@@ -12,7 +12,10 @@ pub struct BlockReporterTx {
 
 impl BlockReporterTx {
     pub fn new(
-        job_id: JobId, block_path: Option<String>, stacks: BlockJobStacks, tx: ReporterTx,
+        job_id: JobId,
+        block_path: Option<String>,
+        stacks: BlockJobStacks,
+        tx: ReporterTx,
     ) -> Self {
         Self {
             job_id,
