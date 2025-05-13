@@ -136,16 +136,37 @@ impl ReporterMessage<'_> {
             .unwrap()
             .as_millis()
     }
+
+    pub fn session_id(&self) -> String {
+        match self {
+            ReporterMessage::SessionStarted { session_id, .. } => session_id.to_string(),
+            ReporterMessage::SessionFinished { session_id, .. } => session_id.to_string(),
+            ReporterMessage::FlowStarted { session_id, .. } => session_id.to_string(),
+            ReporterMessage::FlowFinished { session_id, .. } => session_id.to_string(),
+            ReporterMessage::SubflowBlockStarted { session_id, .. } => session_id.to_string(),
+            ReporterMessage::SubflowBlockFinished { session_id, .. } => session_id.to_string(),
+            ReporterMessage::SubflowBlockOutput { session_id, .. } => session_id.to_string(),
+            ReporterMessage::FlowNodesWillRun { session_id, .. } => session_id.to_string(),
+            ReporterMessage::BlockStarted { session_id, .. } => session_id.to_string(),
+            ReporterMessage::BlockError { session_id, .. } => session_id.to_string(),
+            ReporterMessage::BlockLog { session_id, .. } => session_id.to_string(),
+            ReporterMessage::BlockOutput { session_id, .. } => session_id.to_string(),
+            ReporterMessage::BlockFinished { session_id, .. } => session_id.to_string(),
+        }
+    }
 }
 
 enum Command {
-    Report(MessageData),
+    Report {
+        session_id: String,
+        payload: MessageData,
+    },
     Abort,
 }
 
 #[async_trait]
 pub trait ReporterTxImpl {
-    async fn send(&self, data: MessageData);
+    async fn send(&self, suffix: String, data: MessageData);
     async fn disconnect(&self);
 }
 
@@ -181,7 +202,11 @@ impl ReporterTx {
     pub fn send(&self, data: ReporterMessage) {
         let payload = serde_json::to_vec(&data).unwrap();
         if let Some(tx) = self.tx.as_ref() {
-            tx.send(Command::Report(payload)).unwrap();
+            tx.send(Command::Report {
+                session_id: data.session_id(),
+                payload: payload.into(),
+            })
+            .unwrap();
         } else {
             info!("[Reporter] {}", serde_json::to_string(&data).unwrap());
         }
@@ -242,9 +267,12 @@ where
             if let Some(rx) = rx {
                 loop {
                     match rx.recv_async().await {
-                        Ok(Command::Report(data)) => {
+                        Ok(Command::Report {
+                            session_id,
+                            payload,
+                        }) => {
                             if let Some(impl_tx) = &impl_tx {
-                                impl_tx.send(data).await;
+                                impl_tx.send(session_id, payload).await;
                             }
                         }
                         Ok(Command::Abort) => {
