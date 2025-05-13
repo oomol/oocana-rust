@@ -54,6 +54,7 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           create-layer: "true"
+          ref: reporter
       - name: upload logs
         uses: actions/upload-artifact@v4
         with:
