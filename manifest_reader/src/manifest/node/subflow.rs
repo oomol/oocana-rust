@@ -18,6 +18,13 @@ pub enum SlotProvider {
     Inline(InlineSlot),
     Task(TaskSlot),
     Subflow(SubflowSlot),
+    SlotFlow(SlotFlow),
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct SlotFlow {
+    pub slot_node_id: NodeId,
+    pub slotflow: String,
 }
 
 #[derive(Deserialize, Debug, Clone)]
