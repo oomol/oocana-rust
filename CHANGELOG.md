@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.27.11 (2025-05-12)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* fix: add flow block output by @leavesster in https://github.com/oomol/oocana-rust/pull/102
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.27.10...v0.27.11
+
 ## 0.27.10 (2025-05-10)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
