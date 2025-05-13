@@ -7,7 +7,7 @@ use utils::error::Result;
 use crate::reader::read_package;
 
 use super::block::{
-    find_flow_block, find_slot_block, find_task_block, SlotBlockManifestParams,
+    find_flow_block, find_slot_flow, find_task_block, SlotBlockManifestParams,
     SubflowBlockManifestParams, TaskBlockManifestParams,
 };
 use super::package::find_package_file;
@@ -137,12 +137,12 @@ impl BlockPathFinder {
         Ok(task_path)
     }
 
-    pub fn find_slot_block_path(&mut self, slot_name: &str) -> Result<PathBuf> {
+    pub fn find_slot_slotflow_path(&mut self, slot_name: &str) -> Result<PathBuf> {
         if let Some(slot_path) = self.cache.get(slot_name) {
             return Ok(slot_path.to_owned());
         }
 
-        let slot_path = find_slot_block(SlotBlockManifestParams {
+        let slot_path = find_slot_flow(SlotBlockManifestParams {
             value: slot_name,
             base_dir: &self.base_dir,
             search_paths: &self.search_paths,
