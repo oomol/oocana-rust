@@ -9,15 +9,25 @@ pub struct FlowReporterTx {
     path: Option<String>,
     stacks: BlockJobStacks,
     tx: ReporterTx,
-    is_block: bool,
+    flow_type: FlowType,
 }
 
-fn is_flow_block(flow_path: &Option<String>) -> bool {
-    if let Some(path) = flow_path {
-        let path = path.as_str();
-        return path.ends_with("subflow.oo.yaml") || path.ends_with("subflow.oo.yml");
+enum FlowType {
+    Flow,
+    Subflow,
+    SlotFlow,
+}
+
+fn flow_type(flow_path: &Option<String>) -> FlowType {
+    match flow_path {
+        Some(path) if path.ends_with("subflow.oo.yaml") || path.ends_with("subflow.oo.yml") => {
+            FlowType::Subflow
+        }
+        Some(path) if path.ends_with("slotflow.oo.yaml") || path.ends_with("slotflow.oo.yml") => {
+            FlowType::SlotFlow
+        }
+        _ => FlowType::Flow,
     }
-    false
 }
 
 impl FlowReporterTx {
@@ -27,19 +37,19 @@ impl FlowReporterTx {
         stacks: BlockJobStacks,
         tx: ReporterTx,
     ) -> Self {
-        let is_block = is_flow_block(&path);
+        let flow_type = flow_type(&path);
         Self {
             job_id,
             path,
             stacks,
             tx,
-            is_block,
+            flow_type,
         }
     }
 
     pub fn started(&self, inputs: &Option<BlockInputs>) {
-        match self.is_block {
-            true => self.tx.send(ReporterMessage::SubflowBlockStarted {
+        match self.flow_type {
+            FlowType::Subflow => self.tx.send(ReporterMessage::SubflowBlockStarted {
                 session_id: &self.tx.session_id,
                 job_id: &self.job_id,
                 block_path: &self.path,
@@ -47,7 +57,15 @@ impl FlowReporterTx {
                 stacks: self.stacks.vec(),
                 create_at: ReporterMessage::now(),
             }),
-            false => self.tx.send(ReporterMessage::FlowStarted {
+            FlowType::SlotFlow => self.tx.send(ReporterMessage::SlotflowBlockStarted {
+                session_id: &self.tx.session_id,
+                job_id: &self.job_id,
+                block_path: &self.path,
+                inputs,
+                stacks: self.stacks.vec(),
+                create_at: ReporterMessage::now(),
+            }),
+            FlowType::Flow => self.tx.send(ReporterMessage::FlowStarted {
                 session_id: &self.tx.session_id,
                 job_id: &self.job_id,
                 flow_path: &self.path,
@@ -58,9 +76,8 @@ impl FlowReporterTx {
     }
 
     pub fn will_run_nodes(&self, start: &Vec<String>, mid: &Vec<String>, end: &Vec<String>) {
-        match self.is_block {
-            true => {}
-            false => self.tx.send(ReporterMessage::FlowNodesWillRun {
+        if matches!(self.flow_type, FlowType::Flow) {
+            self.tx.send(ReporterMessage::FlowNodesWillRun {
                 session_id: &self.tx.session_id,
                 job_id: &self.job_id,
                 flow_path: &self.path,
@@ -68,13 +85,13 @@ impl FlowReporterTx {
                 mid_nodes: mid,
                 start_nodes: start,
                 end_nodes: end,
-            }),
+            });
         }
     }
 
     pub fn done(&self, error: &Option<String>) {
-        match self.is_block {
-            true => self.tx.send(ReporterMessage::SubflowBlockFinished {
+        match self.flow_type {
+            FlowType::Subflow => self.tx.send(ReporterMessage::SubflowBlockFinished {
                 session_id: &self.tx.session_id,
                 job_id: &self.job_id,
                 block_path: &self.path,
@@ -82,10 +99,18 @@ impl FlowReporterTx {
                 error,
                 finish_at: ReporterMessage::now(),
             }),
-            false => self.tx.send(ReporterMessage::FlowFinished {
+            FlowType::Flow => self.tx.send(ReporterMessage::FlowFinished {
                 session_id: &self.tx.session_id,
                 job_id: &self.job_id,
                 flow_path: &self.path,
+                stacks: self.stacks.vec(),
+                error,
+                finish_at: ReporterMessage::now(),
+            }),
+            FlowType::SlotFlow => self.tx.send(ReporterMessage::SlotflowFinished {
+                session_id: &self.tx.session_id,
+                job_id: &self.job_id,
+                block_path: &self.path,
                 stacks: self.stacks.vec(),
                 error,
                 finish_at: ReporterMessage::now(),
@@ -94,15 +119,24 @@ impl FlowReporterTx {
     }
 
     pub fn result(&self, result: Arc<OutputValue>, handle: &str) {
-        if self.is_block {
-            self.tx.send(ReporterMessage::SubflowBlockOutput {
+        match self.flow_type {
+            FlowType::Subflow => self.tx.send(ReporterMessage::SubflowBlockOutput {
                 session_id: &self.tx.session_id,
                 job_id: &self.job_id,
                 block_path: &self.path,
                 stacks: self.stacks.vec(),
                 output: result,
                 handle,
-            })
+            }),
+            FlowType::Flow => {}
+            FlowType::SlotFlow => self.tx.send(ReporterMessage::SlotflowBlockOutput {
+                session_id: &self.tx.session_id,
+                job_id: &self.job_id,
+                block_path: &self.path,
+                stacks: self.stacks.vec(),
+                output: result,
+                handle,
+            }),
         }
     }
 }
