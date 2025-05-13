@@ -256,6 +256,34 @@ impl SubflowBlock {
                                     slot_blocks
                                         .insert(task_slot.slot_node_id.to_owned(), slot_block);
                                 }
+                                manifest::SlotProvider::SlotFlow(slot_flow) => {
+                                    let slotflow = block_resolver.resolve_slot_flow_block(
+                                        &slot_flow.slotflow,
+                                        &mut path_finder,
+                                    )?;
+
+                                    let scope = if get_block_value_type(&slot_flow.slotflow)
+                                        == BlockValueType::Pkg
+                                        && slotflow.package_path.is_some()
+                                    {
+                                        RunningScope::Package {
+                                            path: slotflow.package_path.clone().unwrap(),
+                                            name: None,
+                                            node_id: None,
+                                        }
+                                    } else {
+                                        RunningScope::Slot {}
+                                    };
+
+                                    let slot_block = Slot::Subflow(SubflowSlot {
+                                        slot_node_id: slot_flow.slot_node_id.to_owned(),
+                                        subflow: slotflow,
+                                        scope,
+                                    });
+
+                                    slot_blocks
+                                        .insert(slot_flow.slot_node_id.to_owned(), slot_block);
+                                }
                                 manifest::SlotProvider::Subflow(subflow_slot) => {
                                     let slot_flow = block_resolver.resolve_flow_block(
                                         &subflow_slot.subflow,

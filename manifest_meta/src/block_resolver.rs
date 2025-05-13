@@ -41,6 +41,16 @@ impl BlockResolver {
         self.read_flow_block(&flow_path, path_finder)
     }
 
+    pub fn resolve_slot_flow_block(
+        &mut self,
+        slot_flow_name: &str,
+        path_finder: &mut BlockPathFinder,
+    ) -> Result<Arc<SubflowBlock>> {
+        let slot_flow_path = path_finder.find_slot_slotflow_path(slot_flow_name)?;
+
+        self.read_flow_block(&slot_flow_path, path_finder)
+    }
+
     pub fn resolve_task_node_block(
         &mut self,
         task_node_block: manifest::TaskNodeBlock,
