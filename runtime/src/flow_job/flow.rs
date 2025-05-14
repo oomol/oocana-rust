@@ -300,7 +300,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                     .unwrap_or_else(|| format!("job_id: {}", job_id)),
                                 err
                             );
-                            reporter.done(&error);
+                            reporter.done(&Some(error_message.clone()));
 
                             run_flow_ctx
                                 .parent_block_status
