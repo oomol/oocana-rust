@@ -90,6 +90,6 @@ impl BlockJobStacks {
     }
 
     pub fn is_root(&self) -> bool {
-        self.0.len() == 0
+        self.0.is_empty()
     }
 }
