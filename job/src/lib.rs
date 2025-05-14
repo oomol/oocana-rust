@@ -88,4 +88,8 @@ impl BlockJobStacks {
     pub fn vec(&self) -> &Vec<BlockJobStackLevel> {
         &self.0
     }
+
+    pub fn is_root(&self) -> bool {
+        self.0.is_empty()
+    }
 }

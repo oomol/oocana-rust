@@ -269,7 +269,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                 block_status::Status::Done { job_id, error } => {
                     run_pending_node(job_id.to_owned(), &flow_shared, &mut run_flow_ctx);
 
-                    if error.is_some() {
+                    if let Some(ref err) = error {
                         save_flow_cache(
                             &run_flow_ctx.node_input_values,
                             &flow_shared.flow_block.path_str,
@@ -282,17 +282,32 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
 
                         run_flow_ctx.jobs.clear();
 
-                        // 由于 block 失败中断时，只上报失败的节点 node id（找不到就报 job_id)。
-                        // 在这里隐藏掉 error 信息，只上报 node id
-                        run_flow_ctx.parent_block_status.done(
-                            flow_shared.job_id.to_owned(),
-                            Some(format!(
-                                "{} failed",
+                        if flow_shared.stacks.is_root() {
+                            // root already show error one top level message
+                            run_flow_ctx.parent_block_status.done(
+                                flow_shared.job_id.to_owned(),
+                                Some(format!(
+                                    "{} failed",
+                                    node_id
+                                        .map(|n| format!("node id: {n}"))
+                                        .unwrap_or_else(|| format!("job_id: {}", job_id))
+                                )),
+                            );
+                        } else {
+                            // add error node stack
+                            let error_message = format!(
+                                "{} failed:\n{}",
                                 node_id
                                     .map(|n| format!("node id: {n}"))
-                                    .unwrap_or_else(|| format!("job_id: {}", job_id))
-                            )),
-                        );
+                                    .unwrap_or_else(|| format!("job_id: {}", job_id)),
+                                err
+                            );
+                            reporter.done(&Some(error_message.clone()));
+
+                            run_flow_ctx
+                                .parent_block_status
+                                .done(flow_shared.job_id.to_owned(), Some(error_message));
+                        }
                         break;
                     } else {
                         run_flow_ctx.jobs.remove(&job_id);
