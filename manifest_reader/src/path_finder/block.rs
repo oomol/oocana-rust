@@ -97,7 +97,7 @@ pub struct SlotBlockManifestParams<'a> {
     pub pkg_version: &'a HashMap<String, String>,
 }
 
-pub fn find_slot_block(params: SlotBlockManifestParams) -> Result<PathBuf> {
+pub fn find_slot_flow(params: SlotBlockManifestParams) -> Result<PathBuf> {
     let SlotBlockManifestParams {
         value,
         base_dir,
@@ -106,8 +106,8 @@ pub fn find_slot_block(params: SlotBlockManifestParams) -> Result<PathBuf> {
     } = params;
     match search_block_manifest(BlockManifestParams {
         value,
-        base_name: "slot",
-        block_dir: "slots",
+        base_name: "slotflow",
+        block_dir: "slotflows",
         working_dir: base_dir,
         search_paths,
         pkg_version,
