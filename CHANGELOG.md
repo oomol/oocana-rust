@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.27.12 (2025-05-14)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* feat: implement slot flow by @leavesster in https://github.com/oomol/oocana-rust/pull/105
+* feat: add subflow node id and slot node id to slot inline subflow's flow path by @leavesster in https://github.com/oomol/oocana-rust/pull/107
+* feat: hide error message only on root flow by @leavesster in https://github.com/oomol/oocana-rust/pull/108
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.27.11...v0.27.12
+
 ## 0.27.11 (2025-05-12)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
