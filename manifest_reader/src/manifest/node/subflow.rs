@@ -17,7 +17,9 @@ extend_node_common_field!(SubflowNode {
 pub enum SlotProvider {
     Inline(InlineSlot),
     Task(TaskSlot),
+    /// this subflow is a subflow without any slots
     Subflow(SubflowSlot),
+    /// this slotflow is a subflow with slots
     SlotFlow(SlotFlow),
 }
 
