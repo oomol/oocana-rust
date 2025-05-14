@@ -214,9 +214,15 @@ impl SubflowBlock {
                                         injection: None,
                                     };
 
+                                    let flow_path_with_node_id = format!(
+                                        "{}#{}>{}",
+                                        flow_path.to_string_lossy().to_string(),
+                                        subflow_node.node_id,
+                                        inline_slot.slot_node_id
+                                    );
                                     let subflow = SubflowBlock::from_manifest(
                                         manifest_subflow,
-                                        flow_path.clone(),
+                                        PathBuf::from(flow_path_with_node_id),
                                         block_resolver,
                                         path_finder.clone(),
                                     )?;
