@@ -283,6 +283,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                         run_flow_ctx.jobs.clear();
 
                         if flow_shared.stacks.is_root() {
+                            // root already show error one top level message
                             run_flow_ctx.parent_block_status.done(
                                 flow_shared.job_id.to_owned(),
                                 Some(format!(
@@ -293,6 +294,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                 )),
                             );
                         } else {
+                            // add error node stack
                             let error_message = format!(
                                 "{} failed:\n{}",
                                 node_id
