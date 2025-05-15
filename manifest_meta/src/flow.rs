@@ -117,7 +117,7 @@ impl SubflowBlock {
 
         connections.parse_flow_outputs_from(outputs_from);
 
-        // filter ignore node and node type is not value
+        // filter out ignored value nodes
         let value_nodes = nodes
             .iter()
             .filter_map(|node| match node {
