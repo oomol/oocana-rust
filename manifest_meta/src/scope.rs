@@ -10,11 +10,11 @@ pub enum RunningScope {
         node_id: Option<NodeId>,
     },
     Slot {
-        // slot need grandparent scope and not support injection
+        // slot need grandparent scope and not support injection for now.
     },
     Package {
         path: PathBuf,
-        /// for now None means the block is package block, if Some, it means the block is inject to this package
+        /// None means the block is package block. Some means the block is inject to this package
         name: Option<String>,
         node_id: Option<NodeId>,
     },

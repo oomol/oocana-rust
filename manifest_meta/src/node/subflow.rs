@@ -31,6 +31,13 @@ impl Slot {
             Self::Subflow(subflow_slot) => Block::Flow(Arc::clone(&subflow_slot.subflow)),
         }
     }
+
+    pub fn scope(&self) -> &RunningScope {
+        match self {
+            Self::Task(task_slot) => &task_slot.scope,
+            Self::Subflow(subflow_slot) => &subflow_slot.scope,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
