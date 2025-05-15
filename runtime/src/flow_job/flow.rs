@@ -548,7 +548,17 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
         node.block()
     };
 
-    let package_scope = match node.scope() {
+    let scope = if matches!(node, Node::Slot(_)) {
+        shared
+            .slot_blocks
+            .get(node.node_id())
+            .map(|slot| slot.scope().clone())
+            .unwrap_or_else(|| node.scope())
+    } else {
+        node.scope()
+    };
+
+    let package_scope = match scope {
         RunningScope::Package { path, node_id, .. } => RunningPackageScope {
             package_path: path.clone(),
             node_id: node_id.clone(),
