@@ -60,7 +60,7 @@ fn is_cacheable(handle: &HandleName, value: &Value, outputs_def: &Option<OutputH
                         let is_basic_type =
                             value.is_boolean() || value.is_number() || value.is_string();
                         match t.as_str() {
-                            OOMOL_VAR_DATA if !is_basic_type => false,
+                            OOMOL_VAR_DATA => is_basic_type,
                             OOMOL_BIN_DATA | OOMOL_SECRET_DATA => false,
                             _ => true,
                         }
