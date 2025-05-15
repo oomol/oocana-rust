@@ -123,6 +123,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
     let mut result_error: Option<String> = None;
     while let Some(status) = block_status_rx.recv().await {
         match status {
+            block_status::Status::OutputMap { .. } => {}
             block_status::Status::Output { .. } => {}
             block_status::Status::Done { error, .. } => {
                 if let Some(err) = error {

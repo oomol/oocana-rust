@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use job::{BlockInputs, BlockJobStacks, JobId, RunningPackageScope};
 use mainframe::{
@@ -229,6 +229,21 @@ pub fn listen_to_worker(args: ListenerArgs) -> tokio::task::JoinHandle<()> {
                     warn!("listener wait timeout 10s. job_id: {msg_job_id}");
                     // reporter.done(&error_message);
                     // block_status.error(error_message.unwrap_or_default());
+                }
+                scheduler::ReceiveMessage::BlockOutputMap {
+                    job_id, map, done, ..
+                } => {
+                    let mut output_map = HashMap::new();
+                    for (key, value) in map.iter() {
+                        output_map.insert(
+                            key.clone(),
+                            Arc::new(OutputValue {
+                                value: value.clone(),
+                                cacheable: is_cacheable(key, value, &outputs_def),
+                            }),
+                        );
+                    }
+                    block_status.output_map(job_id, output_map, done);
                 }
                 scheduler::ReceiveMessage::BlockOutput {
                     output: value,

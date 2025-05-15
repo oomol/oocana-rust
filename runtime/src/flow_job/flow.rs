@@ -266,6 +266,31 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                         }
                     }
                 }
+                block_status::Status::OutputMap { job_id, map, done } => {
+                    if done {
+                        run_pending_node(job_id.to_owned(), &flow_shared, &mut run_flow_ctx);
+                    }
+
+                    if let Some(job) = run_flow_ctx.jobs.get(&job_id) {
+                        if let Some(node) = flow_shared.flow_block.nodes.get(&job.node_id) {
+                            if let Some(tos) = node.to() {
+                                for (handle, value) in map.iter() {
+                                    if let Some(handle_tos) = tos.get(handle) {
+                                        produce_new_value(
+                                            value,
+                                            handle_tos,
+                                            &flow_shared,
+                                            &mut run_flow_ctx,
+                                            false,
+                                            &filtered_nodes,
+                                            &reporter,
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
                 block_status::Status::Done { job_id, error } => {
                     run_pending_node(job_id.to_owned(), &flow_shared, &mut run_flow_ctx);
 
