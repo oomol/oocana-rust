@@ -18,9 +18,9 @@ pub struct ReporterTx {
 
 #[async_trait]
 impl ReporterTxImpl for ReporterTx {
-    async fn send(&self, data: MessageData) {
+    async fn send(&self, suffix: String, data: MessageData) {
         self.tx
-            .publish("report", QoS::AtLeastOnce, false, data)
+            .publish(format!("report/{}", suffix), QoS::AtLeastOnce, false, data)
             .await
             .unwrap();
     }
