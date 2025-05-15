@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.27.13 (2025-05-15)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* feat: improve slot scope by @leavesster in https://github.com/oomol/oocana-rust/pull/109
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.27.12...v0.27.13
+
 ## 0.27.12 (2025-05-14)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
