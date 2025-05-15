@@ -239,7 +239,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
     let spawn_handle = tokio::spawn(async move {
         while let Some(status) = block_status_rx.recv().await {
             match status {
-                block_status::Status::Result {
+                block_status::Status::Output {
                     job_id,
                     result,
                     handle,
@@ -517,8 +517,8 @@ fn produce_new_value(
             HandleTo::ToFlowOutput {
                 output_handle: flow_output_handle,
             } => {
-                reporter.result(value.clone(), flow_output_handle);
-                ctx.parent_block_status.result(
+                reporter.output(value.clone(), flow_output_handle);
+                ctx.parent_block_status.output(
                     shared.job_id.to_owned(),
                     Arc::clone(value),
                     flow_output_handle.to_owned(),

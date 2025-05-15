@@ -7,7 +7,7 @@ use utils::output::OutputValue;
 use manifest_meta::HandleName;
 
 pub enum Status {
-    Result {
+    Output {
         job_id: JobId,
         result: Arc<OutputValue>,
         handle: HandleName,
@@ -28,9 +28,9 @@ pub struct BlockStatusTx {
 }
 
 impl BlockStatusTx {
-    pub fn result(&self, job_id: JobId, result: Arc<OutputValue>, handle: HandleName, done: bool) {
+    pub fn output(&self, job_id: JobId, result: Arc<OutputValue>, handle: HandleName, done: bool) {
         self.tx
-            .send(Status::Result {
+            .send(Status::Output {
                 job_id,
                 result,
                 handle,

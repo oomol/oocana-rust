@@ -200,13 +200,13 @@ pub fn listen_to_worker(args: ListenerArgs) -> tokio::task::JoinHandle<()> {
                     // block_status.error(error_message.unwrap_or_default());
                 }
                 scheduler::ReceiveMessage::BlockOutput {
-                    output: result,
+                    output: value,
                     handle,
                     done,
                     job_id,
                     ..
                 } => {
-                    reporter.result(&result, &handle, done);
+                    reporter.output(&value, &handle, done);
 
                     let mut cacheable = outputs_def
                         .as_ref()
@@ -217,9 +217,9 @@ pub fn listen_to_worker(args: ListenerArgs) -> tokio::task::JoinHandle<()> {
                                 obj.get("contentMediaType")
                                     .map(|media_type| match media_type {
                                         Value::String(t) => {
-                                            let is_basic_type = result.is_boolean()
-                                                || result.is_number()
-                                                || result.is_string();
+                                            let is_basic_type = value.is_boolean()
+                                                || value.is_number()
+                                                || value.is_string();
                                             match t.as_str() {
                                                 OOMOL_VAR_DATA if !is_basic_type => false,
                                                 OOMOL_BIN_DATA | OOMOL_SECRET_DATA => false,
@@ -233,18 +233,15 @@ pub fn listen_to_worker(args: ListenerArgs) -> tokio::task::JoinHandle<()> {
                         })
                         .unwrap_or(true);
 
-                    if let Some(obj) = result.as_object() {
+                    if let Some(obj) = value.as_object() {
                         if obj.contains_key("__OOMOL_TYPE__") {
                             cacheable = false;
                         }
                     }
 
-                    block_status.result(
+                    block_status.output(
                         job_id,
-                        Arc::new(OutputValue {
-                            value: result,
-                            cacheable,
-                        }),
+                        Arc::new(OutputValue { value, cacheable }),
                         handle,
                         done,
                     );
