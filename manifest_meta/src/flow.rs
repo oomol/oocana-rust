@@ -117,12 +117,14 @@ impl SubflowBlock {
 
         connections.parse_flow_outputs_from(outputs_from);
 
+        // filter ignore node and node type is not value
         let value_nodes = nodes
             .iter()
             .filter_map(|node| match node {
                 manifest::Node::Value(value_node) => Some(value_node.clone()),
                 _ => None,
             })
+            .filter(|n| !n.ignore)
             .collect::<Vec<_>>();
         let value_nodes_id = value_nodes
             .iter()
