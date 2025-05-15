@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.27.14 (2025-05-15)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* fix: filter ignore node by @leavesster in https://github.com/oomol/oocana-rust/pull/112
+* fix: only use cache on root flow by @leavesster in https://github.com/oomol/oocana-rust/pull/114
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.27.13...v0.27.14
+
 ## 0.27.13 (2025-05-15)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
