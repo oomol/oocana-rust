@@ -131,7 +131,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
 
     let mut filtered_nodes = nodes.clone();
 
-    let flow_cache_path = if shared.use_cache {
+    let flow_cache_path = if shared.use_cache && stacks.is_root() {
         get_flow_cache_path(&flow_block.path_str)
     } else {
         None
