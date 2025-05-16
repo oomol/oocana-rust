@@ -387,6 +387,12 @@ fn remove_job_and_check_done(
     return check_done(flow_shared, run_flow_ctx, reporter);
 }
 
+fn complete_flow(shared: &FlowShared, ctx: &RunFlowContext, reporter: &FlowReporterTx) {
+    reporter.done(&None);
+    ctx.parent_block_status.done(shared.job_id.to_owned(), None);
+    save_flow_cache(&ctx.node_input_values, &shared.flow_block.path_str);
+}
+
 fn run_pending_node(job_id: JobId, flow_shared: &FlowShared, run_flow_ctx: &mut RunFlowContext) {
     if let Some(job_handle) = run_flow_ctx.jobs.get(&job_id) {
         let node_id = job_handle.node_id.to_owned();
@@ -670,9 +676,7 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
 
 fn check_done(shared: &FlowShared, ctx: &RunFlowContext, reporter: &FlowReporterTx) -> bool {
     if ctx.jobs.is_empty() {
-        reporter.done(&None);
-        ctx.parent_block_status.done(shared.job_id.to_owned(), None);
-        save_flow_cache(&ctx.node_input_values, &shared.flow_block.path_str);
+        complete_flow(shared, ctx, reporter);
         true
     } else {
         false
