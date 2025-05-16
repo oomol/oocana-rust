@@ -232,7 +232,8 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
         }
     }
 
-    if check_done(&flow_shared, &run_flow_ctx, &reporter) {
+    if check_done(&run_flow_ctx) {
+        flow_success(&flow_shared, &run_flow_ctx, &reporter);
         return None;
     }
 
@@ -291,12 +292,8 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                         }
                     }
 
-                    if remove_job_and_check_done(
-                        &job_id,
-                        &mut run_flow_ctx,
-                        &flow_shared,
-                        &reporter,
-                    ) {
+                    if remove_job_and_check_done(&job_id, &mut run_flow_ctx) {
+                        flow_success(&flow_shared, &run_flow_ctx, &reporter);
                         break;
                     }
                 }
@@ -344,12 +341,8 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                         }
                         break;
                     } else {
-                        if remove_job_and_check_done(
-                            &job_id,
-                            &mut run_flow_ctx,
-                            &flow_shared,
-                            &reporter,
-                        ) {
+                        if remove_job_and_check_done(&job_id, &mut run_flow_ctx) {
+                            flow_success(&flow_shared, &run_flow_ctx, &reporter);
                             break;
                         }
                     }
@@ -377,17 +370,12 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
     ))
 }
 
-fn remove_job_and_check_done(
-    job_id: &JobId,
-    run_flow_ctx: &mut RunFlowContext,
-    flow_shared: &FlowShared,
-    reporter: &FlowReporterTx,
-) -> bool {
+fn remove_job_and_check_done(job_id: &JobId, run_flow_ctx: &mut RunFlowContext) -> bool {
     run_flow_ctx.jobs.remove(job_id);
-    return check_done(flow_shared, run_flow_ctx, reporter);
+    return check_done(run_flow_ctx);
 }
 
-fn complete_flow(shared: &FlowShared, ctx: &RunFlowContext, reporter: &FlowReporterTx) {
+fn flow_success(shared: &FlowShared, ctx: &RunFlowContext, reporter: &FlowReporterTx) {
     reporter.done(&None);
     ctx.parent_block_status.done(shared.job_id.to_owned(), None);
     save_flow_cache(&ctx.node_input_values, &shared.flow_block.path_str);
@@ -674,13 +662,8 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
     }
 }
 
-fn check_done(shared: &FlowShared, ctx: &RunFlowContext, reporter: &FlowReporterTx) -> bool {
-    if ctx.jobs.is_empty() {
-        complete_flow(shared, ctx, reporter);
-        true
-    } else {
-        false
-    }
+fn check_done(ctx: &RunFlowContext) -> bool {
+    ctx.jobs.is_empty()
 }
 
 fn get_flow_cache_path(flow: &str) -> Option<PathBuf> {
