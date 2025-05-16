@@ -12,7 +12,10 @@ pub struct BlockReporterTx {
 
 impl BlockReporterTx {
     pub fn new(
-        job_id: JobId, block_path: Option<String>, stacks: BlockJobStacks, tx: ReporterTx,
+        job_id: JobId,
+        block_path: Option<String>,
+        stacks: BlockJobStacks,
+        tx: ReporterTx,
     ) -> Self {
         Self {
             job_id,
@@ -44,7 +47,7 @@ impl BlockReporterTx {
         });
     }
 
-    pub fn result(&self, result: &JsonValue, handle: &str, done: bool) {
+    pub fn output(&self, result: &JsonValue, handle: &str, done: bool) {
         self.tx.send(ReporterMessage::BlockOutput {
             session_id: &self.tx.session_id,
             job_id: &self.job_id,

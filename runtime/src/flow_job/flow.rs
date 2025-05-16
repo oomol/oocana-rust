@@ -232,14 +232,15 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
         }
     }
 
-    if check_done(&flow_shared, &run_flow_ctx, &reporter) {
+    if is_finish(&run_flow_ctx) {
+        flow_success(&flow_shared, &run_flow_ctx, &reporter);
         return None;
     }
 
     let spawn_handle = tokio::spawn(async move {
         while let Some(status) = block_status_rx.recv().await {
             match status {
-                block_status::Status::Result {
+                block_status::Status::Output {
                     job_id,
                     result,
                     handle,
@@ -264,6 +265,36 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                 }
                             }
                         }
+                    }
+                }
+                block_status::Status::OutputMap { job_id, map, done } => {
+                    if done {
+                        run_pending_node(job_id.to_owned(), &flow_shared, &mut run_flow_ctx);
+                    }
+
+                    if let Some(job) = run_flow_ctx.jobs.get(&job_id) {
+                        if let Some(node) = flow_shared.flow_block.nodes.get(&job.node_id) {
+                            if let Some(tos) = node.to() {
+                                for (handle, value) in map.iter() {
+                                    if let Some(handle_tos) = tos.get(handle) {
+                                        produce_new_value(
+                                            value,
+                                            handle_tos,
+                                            &flow_shared,
+                                            &mut run_flow_ctx,
+                                            false,
+                                            &filtered_nodes,
+                                            &reporter,
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if remove_job_and_is_finished(&job_id, &mut run_flow_ctx) {
+                        flow_success(&flow_shared, &run_flow_ctx, &reporter);
+                        break;
                     }
                 }
                 block_status::Status::Done { job_id, error } => {
@@ -310,8 +341,8 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                         }
                         break;
                     } else {
-                        run_flow_ctx.jobs.remove(&job_id);
-                        if check_done(&flow_shared, &run_flow_ctx, &reporter) {
+                        if remove_job_and_is_finished(&job_id, &mut run_flow_ctx) {
+                            flow_success(&flow_shared, &run_flow_ctx, &reporter);
                             break;
                         }
                     }
@@ -337,6 +368,17 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
             spawn_handle,
         },
     ))
+}
+
+fn remove_job_and_is_finished(job_id: &JobId, run_flow_ctx: &mut RunFlowContext) -> bool {
+    run_flow_ctx.jobs.remove(job_id);
+    return is_finish(run_flow_ctx);
+}
+
+fn flow_success(shared: &FlowShared, ctx: &RunFlowContext, reporter: &FlowReporterTx) {
+    reporter.done(&None);
+    ctx.parent_block_status.done(shared.job_id.to_owned(), None);
+    save_flow_cache(&ctx.node_input_values, &shared.flow_block.path_str);
 }
 
 fn run_pending_node(job_id: JobId, flow_shared: &FlowShared, run_flow_ctx: &mut RunFlowContext) {
@@ -517,8 +559,8 @@ fn produce_new_value(
             HandleTo::ToFlowOutput {
                 output_handle: flow_output_handle,
             } => {
-                reporter.result(value.clone(), flow_output_handle);
-                ctx.parent_block_status.result(
+                reporter.output(value.clone(), flow_output_handle);
+                ctx.parent_block_status.output(
                     shared.job_id.to_owned(),
                     Arc::clone(value),
                     flow_output_handle.to_owned(),
@@ -620,15 +662,8 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
     }
 }
 
-fn check_done(shared: &FlowShared, ctx: &RunFlowContext, reporter: &FlowReporterTx) -> bool {
-    if ctx.jobs.is_empty() {
-        reporter.done(&None);
-        ctx.parent_block_status.done(shared.job_id.to_owned(), None);
-        save_flow_cache(&ctx.node_input_values, &shared.flow_block.path_str);
-        true
-    } else {
-        false
-    }
+fn is_finish(ctx: &RunFlowContext) -> bool {
+    ctx.jobs.is_empty()
 }
 
 fn get_flow_cache_path(flow: &str) -> Option<PathBuf> {

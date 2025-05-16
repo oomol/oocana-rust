@@ -118,14 +118,14 @@ impl FlowReporterTx {
         }
     }
 
-    pub fn result(&self, result: Arc<OutputValue>, handle: &str) {
+    pub fn output(&self, value: Arc<OutputValue>, handle: &str) {
         match self.flow_type {
             FlowType::Subflow => self.tx.send(ReporterMessage::SubflowBlockOutput {
                 session_id: &self.tx.session_id,
                 job_id: &self.job_id,
                 block_path: &self.path,
                 stacks: self.stacks.vec(),
-                output: result,
+                output: value,
                 handle,
             }),
             FlowType::Flow => {}
@@ -134,7 +134,7 @@ impl FlowReporterTx {
                 job_id: &self.job_id,
                 block_path: &self.path,
                 stacks: self.stacks.vec(),
-                output: result,
+                output: value,
                 handle,
             }),
         }

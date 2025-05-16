@@ -42,6 +42,12 @@ pub enum ReceiveMessage {
         handle: HandleName,
         output: JsonValue,
     },
+    BlockOutputMap {
+        session_id: SessionId,
+        job_id: JobId,
+        map: HashMap<HandleName, JsonValue>,
+        done: bool,
+    },
     BlockError {
         session_id: SessionId,
         job_id: JobId,
@@ -83,6 +89,7 @@ impl ReceiveMessage {
         match self {
             ReceiveMessage::BlockReady { session_id, .. } => session_id,
             ReceiveMessage::BlockOutput { session_id, .. } => session_id,
+            ReceiveMessage::BlockOutputMap { session_id, .. } => session_id,
             ReceiveMessage::BlockError { session_id, .. } => session_id,
             ReceiveMessage::BlockFinished { session_id, .. } => session_id,
             ReceiveMessage::ExecutorReady { session_id, .. } => session_id,
@@ -96,6 +103,7 @@ impl ReceiveMessage {
         match self {
             ReceiveMessage::BlockReady { job_id, .. } => Some(job_id),
             ReceiveMessage::BlockOutput { job_id, .. } => Some(job_id),
+            ReceiveMessage::BlockOutputMap { job_id, .. } => Some(job_id),
             ReceiveMessage::BlockError { job_id, .. } => Some(job_id),
             ReceiveMessage::BlockFinished { job_id, .. } => Some(job_id),
             ReceiveMessage::ExecutorReady { .. } => None,

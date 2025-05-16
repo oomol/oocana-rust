@@ -488,7 +488,7 @@ fn bind_shell_stdio(
                 if output.ends_with('\n') {
                     output.pop();
                 }
-                block_status_clone.result(
+                block_status_clone.output(
                     job_id_clone.clone(),
                     Arc::new(OutputValue {
                         value: serde_json::json!(output),
@@ -517,7 +517,7 @@ fn bind_shell_stdio(
                     stderr_output.pop();
                 }
 
-                block_status.result(
+                block_status.output(
                     job_id_clone.clone(),
                     Arc::new(OutputValue {
                         value: serde_json::json!(stderr_output),

@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use job::{BlockInputs, BlockJobStacks, JobId, RunningPackageScope};
 use mainframe::{
@@ -6,8 +6,8 @@ use mainframe::{
     scheduler::{self, ExecutorParams, SchedulerTx, ServiceParams},
 };
 use manifest_meta::{
-    InjectionStore, InputDefPatchMap, InputHandles, OutputHandles, ServiceExecutorOptions,
-    TaskBlockExecutor, OOMOL_BIN_DATA, OOMOL_SECRET_DATA, OOMOL_VAR_DATA,
+    HandleName, InjectionStore, InputDefPatchMap, InputHandles, OutputHandles,
+    ServiceExecutorOptions, TaskBlockExecutor, OOMOL_BIN_DATA, OOMOL_SECRET_DATA, OOMOL_VAR_DATA,
 };
 use serde_json::Value;
 use tracing::{info, warn};
@@ -39,6 +39,37 @@ pub struct ListenerArgs {
     pub scope: RunningPackageScope,
     pub injection_store: Option<InjectionStore>,
     pub flow: Option<String>,
+}
+
+fn is_cacheable(handle: &HandleName, value: &Value, outputs_def: &Option<OutputHandles>) -> bool {
+    if let Some(obj) = value.as_object() {
+        if obj.contains_key("__OOMOL_TYPE__") {
+            return false;
+        }
+    }
+
+    outputs_def
+        .as_ref()
+        .and_then(|outputs| outputs.get(handle))
+        .and_then(|output| output.json_schema.as_ref())
+        .and_then(|schema| match schema {
+            Value::Object(obj) => obj
+                .get("contentMediaType")
+                .map(|media_type| match media_type {
+                    Value::String(t) => {
+                        let is_basic_type =
+                            value.is_boolean() || value.is_number() || value.is_string();
+                        match t.as_str() {
+                            OOMOL_VAR_DATA => is_basic_type,
+                            OOMOL_BIN_DATA | OOMOL_SECRET_DATA => false,
+                            _ => true,
+                        }
+                    }
+                    _ => true,
+                }),
+            _ => Some(true),
+        })
+        .unwrap_or(true)
 }
 
 pub fn listen_to_worker(args: ListenerArgs) -> tokio::task::JoinHandle<()> {
@@ -199,52 +230,35 @@ pub fn listen_to_worker(args: ListenerArgs) -> tokio::task::JoinHandle<()> {
                     // reporter.done(&error_message);
                     // block_status.error(error_message.unwrap_or_default());
                 }
+                scheduler::ReceiveMessage::BlockOutputMap {
+                    job_id, map, done, ..
+                } => {
+                    let mut output_map = HashMap::new();
+                    for (key, value) in map.iter() {
+                        output_map.insert(
+                            key.clone(),
+                            Arc::new(OutputValue {
+                                value: value.clone(),
+                                cacheable: is_cacheable(key, value, &outputs_def),
+                            }),
+                        );
+                    }
+                    block_status.output_map(job_id, output_map, done);
+                }
                 scheduler::ReceiveMessage::BlockOutput {
-                    output: result,
+                    output: value,
                     handle,
                     done,
                     job_id,
                     ..
                 } => {
-                    reporter.result(&result, &handle, done);
+                    reporter.output(&value, &handle, done);
 
-                    let mut cacheable = outputs_def
-                        .as_ref()
-                        .and_then(|outputs| outputs.get(&handle))
-                        .and_then(|output| output.json_schema.as_ref())
-                        .and_then(|schema| match schema {
-                            Value::Object(obj) => {
-                                obj.get("contentMediaType")
-                                    .map(|media_type| match media_type {
-                                        Value::String(t) => {
-                                            let is_basic_type = result.is_boolean()
-                                                || result.is_number()
-                                                || result.is_string();
-                                            match t.as_str() {
-                                                OOMOL_VAR_DATA if !is_basic_type => false,
-                                                OOMOL_BIN_DATA | OOMOL_SECRET_DATA => false,
-                                                _ => true,
-                                            }
-                                        }
-                                        _ => true,
-                                    })
-                            }
-                            _ => Some(true),
-                        })
-                        .unwrap_or(true);
+                    let cacheable = is_cacheable(&handle, &value, &outputs_def);
 
-                    if let Some(obj) = result.as_object() {
-                        if obj.contains_key("__OOMOL_TYPE__") {
-                            cacheable = false;
-                        }
-                    }
-
-                    block_status.result(
+                    block_status.output(
                         job_id,
-                        Arc::new(OutputValue {
-                            value: result,
-                            cacheable,
-                        }),
+                        Arc::new(OutputValue { value, cacheable }),
                         handle,
                         done,
                     );
