@@ -290,6 +290,15 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                             }
                         }
                     }
+
+                    if remove_job_and_check_done(
+                        &job_id,
+                        &mut run_flow_ctx,
+                        &flow_shared,
+                        &reporter,
+                    ) {
+                        break;
+                    }
                 }
                 block_status::Status::Done { job_id, error } => {
                     run_pending_node(job_id.to_owned(), &flow_shared, &mut run_flow_ctx);
@@ -335,8 +344,12 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                         }
                         break;
                     } else {
-                        run_flow_ctx.jobs.remove(&job_id);
-                        if check_done(&flow_shared, &run_flow_ctx, &reporter) {
+                        if remove_job_and_check_done(
+                            &job_id,
+                            &mut run_flow_ctx,
+                            &flow_shared,
+                            &reporter,
+                        ) {
                             break;
                         }
                     }
@@ -362,6 +375,16 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
             spawn_handle,
         },
     ))
+}
+
+fn remove_job_and_check_done(
+    job_id: &JobId,
+    run_flow_ctx: &mut RunFlowContext,
+    flow_shared: &FlowShared,
+    reporter: &FlowReporterTx,
+) -> bool {
+    run_flow_ctx.jobs.remove(job_id);
+    return check_done(flow_shared, run_flow_ctx, reporter);
 }
 
 fn run_pending_node(job_id: JobId, flow_shared: &FlowShared, run_flow_ctx: &mut RunFlowContext) {
