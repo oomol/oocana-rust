@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use flume::{Receiver, Sender};
 use job::JobId;
@@ -7,10 +7,15 @@ use utils::output::OutputValue;
 use manifest_meta::HandleName;
 
 pub enum Status {
-    Result {
+    Output {
         job_id: JobId,
         result: Arc<OutputValue>,
         handle: HandleName,
+        done: bool,
+    },
+    OutputMap {
+        job_id: JobId,
+        map: HashMap<HandleName, Arc<OutputValue>>,
         done: bool,
     },
     Done {
@@ -28,14 +33,24 @@ pub struct BlockStatusTx {
 }
 
 impl BlockStatusTx {
-    pub fn result(&self, job_id: JobId, result: Arc<OutputValue>, handle: HandleName, done: bool) {
+    pub fn output(&self, job_id: JobId, result: Arc<OutputValue>, handle: HandleName, done: bool) {
         self.tx
-            .send(Status::Result {
+            .send(Status::Output {
                 job_id,
                 result,
                 handle,
                 done,
             })
+            .unwrap();
+    }
+    pub fn output_map(
+        &self,
+        job_id: JobId,
+        map: HashMap<HandleName, Arc<OutputValue>>,
+        done: bool,
+    ) {
+        self.tx
+            .send(Status::OutputMap { job_id, map, done })
             .unwrap();
     }
     pub fn done(&self, job_id: JobId, error: Option<String>) {
