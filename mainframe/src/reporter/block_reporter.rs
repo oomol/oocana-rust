@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use job::{BlockInputs, BlockJobStacks, JobId};
 use manifest_meta::JsonValue;
 
@@ -55,6 +57,17 @@ impl BlockReporterTx {
             stacks: self.stacks.vec(),
             output: result,
             handle,
+            done,
+        });
+    }
+
+    pub fn output_map(&self, map: &HashMap<String, JsonValue>, done: bool) {
+        self.tx.send(ReporterMessage::BlockOutputMap {
+            session_id: &self.tx.session_id,
+            job_id: &self.job_id,
+            block_path: &self.block_path,
+            stacks: self.stacks.vec(),
+            map,
             done,
         });
     }

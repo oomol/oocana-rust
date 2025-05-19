@@ -2,6 +2,7 @@ use async_trait::async_trait;
 use flume::{Receiver, Sender};
 use serde::Serialize;
 use std::{
+    collections::HashMap,
     sync::Arc,
     time::{SystemTime, UNIX_EPOCH},
 };
@@ -132,6 +133,15 @@ pub enum ReporterMessage<'a> {
         stacks: &'a Vec<BlockJobStackLevel>,
         output: &'a JsonValue,
         handle: &'a str,
+        done: bool,
+    },
+    BlockOutputMap {
+        session_id: &'a str,
+        job_id: &'a str,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        block_path: &'a Option<String>,
+        stacks: &'a Vec<BlockJobStackLevel>,
+        map: &'a HashMap<String, JsonValue>,
         done: bool,
     },
     BlockLog {

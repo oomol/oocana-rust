@@ -233,6 +233,7 @@ pub fn listen_to_worker(args: ListenerArgs) -> tokio::task::JoinHandle<()> {
                 scheduler::ReceiveMessage::BlockOutputMap {
                     job_id, map, done, ..
                 } => {
+                    let mut reporter_map = HashMap::new();
                     let mut output_map = HashMap::new();
                     for (key, value) in map.iter() {
                         output_map.insert(
@@ -242,8 +243,10 @@ pub fn listen_to_worker(args: ListenerArgs) -> tokio::task::JoinHandle<()> {
                                 cacheable: is_cacheable(key, value, &outputs_def),
                             }),
                         );
+                        reporter_map.insert(key.to_string(), value.clone());
                     }
                     block_status.output_map(job_id, output_map, done);
+                    reporter.output_map(&reporter_map, done);
                 }
                 scheduler::ReceiveMessage::BlockOutput {
                     output: value,
