@@ -52,15 +52,15 @@ pub struct OocanaSDK {
 }
 
 impl OocanaSDK {
-    pub fn output(&self, output: &JsonValue, handle: &str, done: bool) {
-        self.tx.output(output, handle, done);
+    pub fn output(&self, output: &JsonValue, handle: &str) {
+        self.tx.output(output, handle);
     }
 
     pub fn error(&self, error: &str) {
         self.tx.error(&error.to_string());
     }
 
-    pub fn done(&self, error: Option<&str>) {
-        self.tx.done(error);
+    pub fn finish(&self, result: Option<HashMap<String, JsonValue>>, error: Option<&str>) {
+        self.tx.done(error, result);
     }
 }

@@ -20,7 +20,6 @@ pub enum BlockMessage<'a> {
     BlockOutput {
         session_id: &'a str,
         job_id: &'a str,
-        done: bool,
         handle: &'a str,
         output: &'a JsonValue,
     },
@@ -32,6 +31,8 @@ pub enum BlockMessage<'a> {
     BlockFinished {
         session_id: &'a str,
         job_id: &'a str,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        result: Option<HashMap<String, JsonValue>>,
         error: Option<&'a str>,
     },
 }
@@ -116,20 +117,16 @@ impl WorkerTx {
         rx.await.unwrap()
     }
 
-    pub fn output(&self, output: &JsonValue, handle: &str, done: bool) {
+    pub fn output(&self, output: &JsonValue, handle: &str) {
         self.send(
             BlockMessage::BlockOutput {
                 session_id: &self.session_id,
                 job_id: &self.job_id,
-                done,
                 handle,
                 output,
             },
             false,
         );
-        if done {
-            self.done(None);
-        }
     }
 
     pub fn error(&self, error: &String) {
@@ -143,11 +140,12 @@ impl WorkerTx {
         );
     }
 
-    pub fn done(&self, error: Option<&str>) {
+    pub fn done(&self, error: Option<&str>, result: Option<HashMap<String, JsonValue>>) {
         self.send(
             BlockMessage::BlockFinished {
                 session_id: &self.session_id,
                 job_id: &self.job_id,
+                result,
                 error,
             },
             true,
@@ -268,7 +266,9 @@ impl WorkerAbortHandle {
 }
 
 fn parse_scheduler_message(
-    data: MessageData, session_id: &str, job_id: &str,
+    data: MessageData,
+    session_id: &str,
+    job_id: &str,
 ) -> Option<ReceiveMessage> {
     match serde_json::from_slice::<ReceiveMessage>(&data) {
         Ok(msg) => {
@@ -289,7 +289,10 @@ fn parse_scheduler_message(
 }
 
 pub fn create<TT, TR>(
-    session_id: SessionId, job_id: JobId, impl_tx: TT, impl_rx: TR,
+    session_id: SessionId,
+    job_id: JobId,
+    impl_tx: TT,
+    impl_rx: TR,
 ) -> (WorkerTx, WorkerRx<TT, TR>)
 where
     TT: WorkerTxImpl,

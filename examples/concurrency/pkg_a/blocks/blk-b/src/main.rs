@@ -15,7 +15,14 @@ async fn main() {
     // sleep for 5 seconds
     tokio::time::sleep(std::time::Duration::from_secs(5)).await;
 
-    sdk.output(&oocana_sdk::json!(result), "my_output", true);
+    sdk.finish(
+        Some(
+            vec![("my_output".to_string(), result.into())]
+                .into_iter()
+                .collect(),
+        ),
+        None,
+    );
 
     event_loop.wait().await;
 }

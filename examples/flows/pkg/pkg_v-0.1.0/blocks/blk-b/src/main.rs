@@ -12,7 +12,14 @@ async fn main() {
 
     println!("Result of task {} is {}", &sdk.job_id, &result);
 
-    sdk.output(&oocana_sdk::json!(result), "my_output", true);
+    sdk.finish(
+        Some(
+            vec![("my_output".to_string(), result.into())]
+                .into_iter()
+                .collect(),
+        ),
+        None,
+    );
 
     event_loop.wait().await;
 }
