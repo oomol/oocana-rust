@@ -45,7 +45,6 @@ pub enum ReceiveMessage {
         session_id: SessionId,
         job_id: JobId,
         map: HashMap<HandleName, JsonValue>,
-        done: bool,
     },
     BlockError {
         session_id: SessionId,
