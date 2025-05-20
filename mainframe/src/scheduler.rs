@@ -56,6 +56,7 @@ pub enum ReceiveMessage {
     BlockFinished {
         session_id: SessionId,
         job_id: JobId,
+        result: Option<HashMap<HandleName, JsonValue>>,
         error: Option<String>,
     },
     ExecutorReady {
