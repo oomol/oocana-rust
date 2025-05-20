@@ -38,13 +38,14 @@ impl BlockReporterTx {
         });
     }
 
-    pub fn done(&self, error: &Option<String>) {
+    pub fn finished(&self, result: Option<HashMap<String, JsonValue>>, error: Option<String>) {
         self.tx.send(ReporterMessage::BlockFinished {
             session_id: &self.tx.session_id,
             job_id: &self.job_id,
             block_path: &self.block_path,
             stacks: self.stacks.vec(),
             error,
+            result,
             finish_at: ReporterMessage::now(),
         });
     }
