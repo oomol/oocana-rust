@@ -11,15 +11,14 @@ pub enum Status {
         job_id: JobId,
         result: Arc<OutputValue>,
         handle: HandleName,
-        done: bool,
     },
     OutputMap {
         job_id: JobId,
         map: HashMap<HandleName, Arc<OutputValue>>,
-        done: bool,
     },
     Done {
         job_id: JobId,
+        result: Option<HashMap<HandleName, Arc<OutputValue>>>,
         error: Option<String>,
     },
     Error {
@@ -33,29 +32,34 @@ pub struct BlockStatusTx {
 }
 
 impl BlockStatusTx {
-    pub fn output(&self, job_id: JobId, result: Arc<OutputValue>, handle: HandleName, done: bool) {
+    pub fn output(&self, job_id: JobId, result: Arc<OutputValue>, handle: HandleName) {
         self.tx
             .send(Status::Output {
                 job_id,
                 result,
                 handle,
-                done,
             })
             .unwrap();
     }
-    pub fn output_map(
+    pub fn output_map(&self, job_id: JobId, map: HashMap<HandleName, Arc<OutputValue>>) {
+        self.tx.send(Status::OutputMap { job_id, map }).unwrap();
+    }
+    pub fn finish(
         &self,
         job_id: JobId,
-        map: HashMap<HandleName, Arc<OutputValue>>,
-        done: bool,
+        result: Option<HashMap<HandleName, Arc<OutputValue>>>,
+        error: Option<String>,
     ) {
         self.tx
-            .send(Status::OutputMap { job_id, map, done })
+            .send(Status::Done {
+                job_id,
+                result,
+                error,
+            })
             .unwrap();
     }
-    pub fn done(&self, job_id: JobId, error: Option<String>) {
-        self.tx.send(Status::Done { job_id, error }).unwrap();
-    }
+
+    // error function don't have job_id, it is a global error not related to a specific job. Currently code architecture only doesn't support handle global error, so we use this function to send global error.
     pub fn error(&self, error: String) {
         self.tx.send(Status::Error { error }).unwrap();
     }

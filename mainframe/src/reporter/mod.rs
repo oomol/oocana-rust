@@ -122,7 +122,9 @@ pub enum ReporterMessage<'a> {
         #[serde(skip_serializing_if = "Option::is_none")]
         block_path: &'a Option<String>,
         stacks: &'a Vec<BlockJobStackLevel>,
-        error: &'a Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        result: Option<HashMap<String, JsonValue>>,
+        error: Option<String>,
         finish_at: u128,
     },
     BlockOutput {
@@ -133,7 +135,6 @@ pub enum ReporterMessage<'a> {
         stacks: &'a Vec<BlockJobStackLevel>,
         output: &'a JsonValue,
         handle: &'a str,
-        done: bool,
     },
     BlockOutputMap {
         session_id: &'a str,
@@ -142,7 +143,6 @@ pub enum ReporterMessage<'a> {
         block_path: &'a Option<String>,
         stacks: &'a Vec<BlockJobStackLevel>,
         map: &'a HashMap<String, JsonValue>,
-        done: bool,
     },
     BlockLog {
         session_id: &'a str,

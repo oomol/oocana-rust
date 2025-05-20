@@ -136,7 +136,7 @@ pub fn run_task_block(args: RunTaskBlockArgs) -> Option<BlockJobHandle> {
                     }
                     Err(e) => {
                         worker_listener_handle.abort();
-                        reporter.done(&Some(e.to_string()));
+                        reporter.finished(None, Some(e.to_string()));
                         Some(BlockJobHandle::new(
                             job_id.to_owned(),
                             TaskJobHandle {
@@ -178,14 +178,16 @@ pub fn run_task_block(args: RunTaskBlockArgs) -> Option<BlockJobHandle> {
                             let status = child.wait().unwrap();
                             let status_code = status.code().unwrap_or(-1);
                             if status_code != 0 {
-                                block_status_clone.done(
+                                block_status_clone.finish(
                                     job_id_clone.clone(),
+                                    None,
                                     Some(format!("Exit code: {}", status_code)),
                                 );
-                                reporter.done(&Some(format!("Exit code: {}", status_code)));
+                                reporter
+                                    .finished(None, Some(format!("Exit code: {}", status_code)));
                             } else {
-                                block_status_clone.done(job_id_clone.clone(), None);
-                                reporter.done(&None);
+                                block_status_clone.finish(job_id_clone.clone(), None, None);
+                                reporter.finished(None, None);
                             }
                         });
 
@@ -202,9 +204,9 @@ pub fn run_task_block(args: RunTaskBlockArgs) -> Option<BlockJobHandle> {
                         ))
                     }
                     Err(e) => {
-                        block_status.done(job_id.clone(), Some(e.to_string()));
+                        reporter.finished(None, Some(e.to_string()));
+                        block_status.finish(job_id.clone(), None, Some(e.to_string()));
                         worker_listener_handle.abort();
-                        reporter.done(&Some(e.to_string()));
                         Some(BlockJobHandle::new(
                             job_id.to_owned(),
                             TaskJobHandle {
@@ -242,7 +244,7 @@ pub fn run_task_block(args: RunTaskBlockArgs) -> Option<BlockJobHandle> {
             }
         }
     } else {
-        reporter.done(&Some("No executor or entry found".to_owned()));
+        reporter.finished(None, Some("No executor or entry found".to_owned()));
         None
     }
 }
@@ -495,8 +497,8 @@ fn bind_shell_stdio(
                         cacheable: true,
                     }),
                     "stdout".to_string().into(),
-                    true,
                 );
+                block_status_clone.finish(job_id_clone.clone(), None, None);
             }));
         }
     }
@@ -524,8 +526,8 @@ fn bind_shell_stdio(
                         cacheable: true,
                     }),
                     "stderr".to_string().into(),
-                    true,
                 );
+                block_status.finish(job_id_clone.clone(), None, None);
             }));
         }
     }
@@ -570,6 +572,6 @@ pub fn timeout_abort(
     tokio::spawn(async move {
         tokio::time::sleep(timeout).await;
         reporter.error(&format!("{} timeout after {:?}", job_id, timeout));
-        block_status.done(job_id, Some("Timeout".to_owned()));
+        block_status.finish(job_id, None, Some("Timeout".to_owned()));
     })
 }
