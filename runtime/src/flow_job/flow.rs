@@ -297,8 +297,14 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                         break;
                     }
                 }
-                block_status::Status::Done { job_id, error } => {
+                block_status::Status::Done {
+                    job_id,
+                    result,
+                    error,
+                } => {
                     run_pending_node(job_id.to_owned(), &flow_shared, &mut run_flow_ctx);
+
+                    // TODO: consume result as output Message
 
                     if let Some(ref err) = error {
                         save_flow_cache(
@@ -317,6 +323,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                             // root already show error one top level message
                             run_flow_ctx.parent_block_status.done(
                                 flow_shared.job_id.to_owned(),
+                                None,
                                 Some(format!(
                                     "{} failed",
                                     node_id
@@ -335,9 +342,11 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                             );
                             reporter.done(&Some(error_message.clone()));
 
-                            run_flow_ctx
-                                .parent_block_status
-                                .done(flow_shared.job_id.to_owned(), Some(error_message));
+                            run_flow_ctx.parent_block_status.done(
+                                flow_shared.job_id.to_owned(),
+                                None,
+                                Some(error_message),
+                            );
                         }
                         break;
                     } else {
@@ -377,7 +386,8 @@ fn remove_job_and_is_finished(job_id: &JobId, run_flow_ctx: &mut RunFlowContext)
 
 fn flow_success(shared: &FlowShared, ctx: &RunFlowContext, reporter: &FlowReporterTx) {
     reporter.done(&None);
-    ctx.parent_block_status.done(shared.job_id.to_owned(), None);
+    ctx.parent_block_status
+        .done(shared.job_id.to_owned(), None, None);
     save_flow_cache(&ctx.node_input_values, &shared.flow_block.path_str);
 }
 

@@ -180,12 +180,13 @@ pub fn run_task_block(args: RunTaskBlockArgs) -> Option<BlockJobHandle> {
                             if status_code != 0 {
                                 block_status_clone.done(
                                     job_id_clone.clone(),
+                                    None,
                                     Some(format!("Exit code: {}", status_code)),
                                 );
                                 reporter
                                     .finished(None, Some(format!("Exit code: {}", status_code)));
                             } else {
-                                block_status_clone.done(job_id_clone.clone(), None);
+                                block_status_clone.done(job_id_clone.clone(), None, None);
                                 reporter.finished(None, None);
                             }
                         });
@@ -203,9 +204,9 @@ pub fn run_task_block(args: RunTaskBlockArgs) -> Option<BlockJobHandle> {
                         ))
                     }
                     Err(e) => {
-                        block_status.done(job_id.clone(), Some(e.to_string()));
-                        worker_listener_handle.abort();
                         reporter.finished(None, Some(e.to_string()));
+                        block_status.done(job_id.clone(), None, Some(e.to_string()));
+                        worker_listener_handle.abort();
                         Some(BlockJobHandle::new(
                             job_id.to_owned(),
                             TaskJobHandle {
@@ -571,6 +572,6 @@ pub fn timeout_abort(
     tokio::spawn(async move {
         tokio::time::sleep(timeout).await;
         reporter.error(&format!("{} timeout after {:?}", job_id, timeout));
-        block_status.done(job_id, Some("Timeout".to_owned()));
+        block_status.done(job_id, None, Some("Timeout".to_owned()));
     })
 }
