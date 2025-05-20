@@ -324,11 +324,6 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                         }
                     }
 
-                    if remove_job_and_is_finished(&job_id, &mut run_flow_ctx) {
-                        flow_success(&flow_shared, &run_flow_ctx, &reporter);
-                        break;
-                    }
-
                     if let Some(ref err) = error {
                         save_flow_cache(
                             &run_flow_ctx.node_input_values,
@@ -372,11 +367,9 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                             );
                         }
                         break;
-                    } else {
-                        if remove_job_and_is_finished(&job_id, &mut run_flow_ctx) {
-                            flow_success(&flow_shared, &run_flow_ctx, &reporter);
-                            break;
-                        }
+                    } else if remove_job_and_is_finished(&job_id, &mut run_flow_ctx) {
+                        flow_success(&flow_shared, &run_flow_ctx, &reporter);
+                        break;
                     }
                 }
                 block_status::Status::Error { error } => {
