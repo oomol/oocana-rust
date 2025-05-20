@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.27.17 (2025-05-20)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* fix: should always run next node by @leavesster in https://github.com/oomol/oocana-rust/pull/121
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.27.16...v0.27.17
+
 ## 0.27.16 (2025-05-20)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
