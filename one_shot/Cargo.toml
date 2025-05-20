@@ -1,6 +1,6 @@
 [package]
 name = "one_shot"
-version = "0.27.14"
+version = "0.27.15"
 authors = ["CRIMX <straybugs@gmail.com>"]
 description = "Oocana runner core"
 edition = "2021"
