@@ -54,7 +54,7 @@ impl BlockStatusTx {
             .send(Status::OutputMap { job_id, map, done })
             .unwrap();
     }
-    pub fn done(
+    pub fn finish(
         &self,
         job_id: JobId,
         result: Option<HashMap<HandleName, Arc<OutputValue>>>,
@@ -68,6 +68,8 @@ impl BlockStatusTx {
             })
             .unwrap();
     }
+
+    // error function don't have job_id, it is a global error not related to a specific job. Currently code architecture only doesn't support handle global error, so we use this function to send global error.
     pub fn error(&self, error: String) {
         self.tx.send(Status::Error { error }).unwrap();
     }

@@ -273,7 +273,7 @@ pub fn listen_to_worker(args: ListenerArgs) -> tokio::task::JoinHandle<()> {
                     ..
                 } => {
                     if let Some(error) = error {
-                        block_status.done(job_id, None, Some(error.clone()));
+                        block_status.finish(job_id, None, Some(error.clone()));
                         reporter.finished(None, Some(error));
                         // consider return not continue;
                         continue;
@@ -292,7 +292,7 @@ pub fn listen_to_worker(args: ListenerArgs) -> tokio::task::JoinHandle<()> {
                         reporter_map.insert(key.to_string(), value.clone());
                     }
                     reporter.finished(Some(reporter_map), None);
-                    block_status.done(job_id, Some(output_map), None);
+                    block_status.finish(job_id, Some(output_map), None);
                 }
                 scheduler::ReceiveMessage::BlockError { error, .. } => {
                     reporter.error(&error);

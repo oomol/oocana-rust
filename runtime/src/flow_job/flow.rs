@@ -339,7 +339,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
 
                         if flow_shared.stacks.is_root() {
                             // root already show error one top level message
-                            run_flow_ctx.parent_block_status.done(
+                            run_flow_ctx.parent_block_status.finish(
                                 flow_shared.job_id.to_owned(),
                                 None,
                                 Some(format!(
@@ -360,7 +360,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                             );
                             reporter.done(&Some(error_message.clone()));
 
-                            run_flow_ctx.parent_block_status.done(
+                            run_flow_ctx.parent_block_status.finish(
                                 flow_shared.job_id.to_owned(),
                                 None,
                                 Some(error_message),
@@ -403,7 +403,7 @@ fn remove_job_and_is_finished(job_id: &JobId, run_flow_ctx: &mut RunFlowContext)
 fn flow_success(shared: &FlowShared, ctx: &RunFlowContext, reporter: &FlowReporterTx) {
     reporter.done(&None);
     ctx.parent_block_status
-        .done(shared.job_id.to_owned(), None, None);
+        .finish(shared.job_id.to_owned(), None, None);
     save_flow_cache(&ctx.node_input_values, &shared.flow_block.path_str);
 }
 
