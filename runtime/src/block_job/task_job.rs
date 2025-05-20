@@ -136,7 +136,7 @@ pub fn run_task_block(args: RunTaskBlockArgs) -> Option<BlockJobHandle> {
                     }
                     Err(e) => {
                         worker_listener_handle.abort();
-                        reporter.done(&Some(e.to_string()));
+                        reporter.finished(None, Some(e.to_string()));
                         Some(BlockJobHandle::new(
                             job_id.to_owned(),
                             TaskJobHandle {
@@ -182,10 +182,11 @@ pub fn run_task_block(args: RunTaskBlockArgs) -> Option<BlockJobHandle> {
                                     job_id_clone.clone(),
                                     Some(format!("Exit code: {}", status_code)),
                                 );
-                                reporter.done(&Some(format!("Exit code: {}", status_code)));
+                                reporter
+                                    .finished(None, Some(format!("Exit code: {}", status_code)));
                             } else {
                                 block_status_clone.done(job_id_clone.clone(), None);
-                                reporter.done(&None);
+                                reporter.finished(None, None);
                             }
                         });
 
@@ -204,7 +205,7 @@ pub fn run_task_block(args: RunTaskBlockArgs) -> Option<BlockJobHandle> {
                     Err(e) => {
                         block_status.done(job_id.clone(), Some(e.to_string()));
                         worker_listener_handle.abort();
-                        reporter.done(&Some(e.to_string()));
+                        reporter.finished(None, Some(e.to_string()));
                         Some(BlockJobHandle::new(
                             job_id.to_owned(),
                             TaskJobHandle {
@@ -242,7 +243,7 @@ pub fn run_task_block(args: RunTaskBlockArgs) -> Option<BlockJobHandle> {
             }
         }
     } else {
-        reporter.done(&Some("No executor or entry found".to_owned()));
+        reporter.finished(None, Some("No executor or entry found".to_owned()));
         None
     }
 }

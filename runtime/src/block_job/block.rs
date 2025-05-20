@@ -144,7 +144,8 @@ pub fn run_block(block_args: RunBlockArgs) -> Option<BlockJobHandle> {
                         .as_ref()
                         .map(|path| path.to_string_lossy().to_string()),
                     stacks: stacks.vec(),
-                    error: &Some("Cannot run Slot Block directly".to_string()),
+                    error: Some("Cannot run Slot Block directly".to_string()),
+                    result: None,
                     finish_at: ReporterMessage::now(),
                 });
 
