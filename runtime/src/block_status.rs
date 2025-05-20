@@ -20,6 +20,7 @@ pub enum Status {
     },
     Done {
         job_id: JobId,
+        result: Option<HashMap<HandleName, Arc<OutputValue>>>,
         error: Option<String>,
     },
     Error {
@@ -53,8 +54,19 @@ impl BlockStatusTx {
             .send(Status::OutputMap { job_id, map, done })
             .unwrap();
     }
-    pub fn done(&self, job_id: JobId, error: Option<String>) {
-        self.tx.send(Status::Done { job_id, error }).unwrap();
+    pub fn done(
+        &self,
+        job_id: JobId,
+        result: Option<HashMap<HandleName, Arc<OutputValue>>>,
+        error: Option<String>,
+    ) {
+        self.tx
+            .send(Status::Done {
+                job_id,
+                result,
+                error,
+            })
+            .unwrap();
     }
     pub fn error(&self, error: String) {
         self.tx.send(Status::Error { error }).unwrap();
