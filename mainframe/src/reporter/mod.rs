@@ -122,8 +122,9 @@ pub enum ReporterMessage<'a> {
         #[serde(skip_serializing_if = "Option::is_none")]
         block_path: &'a Option<String>,
         stacks: &'a Vec<BlockJobStackLevel>,
-        result: &'a Option<HashMap<String, JsonValue>>,
-        error: &'a Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        result: Option<HashMap<String, JsonValue>>,
+        error: Option<String>,
         finish_at: u128,
     },
     BlockOutput {
