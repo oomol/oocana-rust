@@ -11,12 +11,10 @@ pub enum Status {
         job_id: JobId,
         result: Arc<OutputValue>,
         handle: HandleName,
-        done: bool,
     },
     OutputMap {
         job_id: JobId,
         map: HashMap<HandleName, Arc<OutputValue>>,
-        done: bool,
     },
     Done {
         job_id: JobId,
@@ -34,25 +32,17 @@ pub struct BlockStatusTx {
 }
 
 impl BlockStatusTx {
-    pub fn output(&self, job_id: JobId, result: Arc<OutputValue>, handle: HandleName, done: bool) {
+    pub fn output(&self, job_id: JobId, result: Arc<OutputValue>, handle: HandleName) {
         self.tx
             .send(Status::Output {
                 job_id,
                 result,
                 handle,
-                done,
             })
             .unwrap();
     }
-    pub fn output_map(
-        &self,
-        job_id: JobId,
-        map: HashMap<HandleName, Arc<OutputValue>>,
-        done: bool,
-    ) {
-        self.tx
-            .send(Status::OutputMap { job_id, map, done })
-            .unwrap();
+    pub fn output_map(&self, job_id: JobId, map: HashMap<HandleName, Arc<OutputValue>>) {
+        self.tx.send(Status::OutputMap { job_id, map }).unwrap();
     }
     pub fn finish(
         &self,

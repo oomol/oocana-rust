@@ -50,7 +50,7 @@ impl BlockReporterTx {
         });
     }
 
-    pub fn output(&self, result: &JsonValue, handle: &str, done: bool) {
+    pub fn output(&self, result: &JsonValue, handle: &str) {
         self.tx.send(ReporterMessage::BlockOutput {
             session_id: &self.tx.session_id,
             job_id: &self.job_id,
@@ -58,18 +58,16 @@ impl BlockReporterTx {
             stacks: self.stacks.vec(),
             output: result,
             handle,
-            done,
         });
     }
 
-    pub fn output_map(&self, map: &HashMap<String, JsonValue>, done: bool) {
+    pub fn output_map(&self, map: &HashMap<String, JsonValue>) {
         self.tx.send(ReporterMessage::BlockOutputMap {
             session_id: &self.tx.session_id,
             job_id: &self.job_id,
             block_path: &self.block_path,
             stacks: self.stacks.vec(),
             map,
-            done,
         });
     }
 

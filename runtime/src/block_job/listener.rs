@@ -230,9 +230,7 @@ pub fn listen_to_worker(args: ListenerArgs) -> tokio::task::JoinHandle<()> {
                     // reporter.done(&error_message);
                     // block_status.error(error_message.unwrap_or_default());
                 }
-                scheduler::ReceiveMessage::BlockOutputMap {
-                    job_id, map, done, ..
-                } => {
+                scheduler::ReceiveMessage::BlockOutputMap { job_id, map, .. } => {
                     let mut reporter_map = HashMap::new();
                     let mut output_map = HashMap::new();
                     for (key, value) in map.iter() {
@@ -245,26 +243,20 @@ pub fn listen_to_worker(args: ListenerArgs) -> tokio::task::JoinHandle<()> {
                         );
                         reporter_map.insert(key.to_string(), value.clone());
                     }
-                    block_status.output_map(job_id, output_map, done);
-                    reporter.output_map(&reporter_map, done);
+                    block_status.output_map(job_id, output_map);
+                    reporter.output_map(&reporter_map);
                 }
                 scheduler::ReceiveMessage::BlockOutput {
                     output: value,
                     handle,
-                    done,
                     job_id,
                     ..
                 } => {
-                    reporter.output(&value, &handle, done);
+                    reporter.output(&value, &handle);
 
                     let cacheable = is_cacheable(&handle, &value, &outputs_def);
 
-                    block_status.output(
-                        job_id,
-                        Arc::new(OutputValue { value, cacheable }),
-                        handle,
-                        done,
-                    );
+                    block_status.output(job_id, Arc::new(OutputValue { value, cacheable }), handle);
                 }
                 scheduler::ReceiveMessage::BlockFinished {
                     result,

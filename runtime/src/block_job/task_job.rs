@@ -497,8 +497,8 @@ fn bind_shell_stdio(
                         cacheable: true,
                     }),
                     "stdout".to_string().into(),
-                    true,
                 );
+                block_status_clone.finish(job_id_clone.clone(), None, None);
             }));
         }
     }
@@ -526,8 +526,8 @@ fn bind_shell_stdio(
                         cacheable: true,
                     }),
                     "stderr".to_string().into(),
-                    true,
                 );
+                block_status.finish(job_id_clone.clone(), None, None);
             }));
         }
     }

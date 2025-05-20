@@ -244,11 +244,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                     job_id,
                     result,
                     handle,
-                    done,
                 } => {
-                    if done {
-                        run_pending_node(job_id.to_owned(), &flow_shared, &mut run_flow_ctx);
-                    }
                     if let Some(job) = run_flow_ctx.jobs.get(&job_id) {
                         if let Some(node) = flow_shared.flow_block.nodes.get(&job.node_id) {
                             if let Some(tos) = node.to() {
@@ -267,11 +263,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                         }
                     }
                 }
-                block_status::Status::OutputMap { job_id, map, done } => {
-                    if done {
-                        run_pending_node(job_id.to_owned(), &flow_shared, &mut run_flow_ctx);
-                    }
-
+                block_status::Status::OutputMap { job_id, map } => {
                     if let Some(job) = run_flow_ctx.jobs.get(&job_id) {
                         if let Some(node) = flow_shared.flow_block.nodes.get(&job.node_id) {
                             if let Some(tos) = node.to() {
@@ -290,11 +282,6 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                 }
                             }
                         }
-                    }
-
-                    if remove_job_and_is_finished(&job_id, &mut run_flow_ctx) {
-                        flow_success(&flow_shared, &run_flow_ctx, &reporter);
-                        break;
                     }
                 }
                 block_status::Status::Done {
@@ -590,7 +577,6 @@ fn produce_new_value(
                     shared.job_id.to_owned(),
                     Arc::clone(value),
                     flow_output_handle.to_owned(),
-                    false,
                 );
             }
         }

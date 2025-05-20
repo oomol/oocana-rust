@@ -135,7 +135,6 @@ pub enum ReporterMessage<'a> {
         stacks: &'a Vec<BlockJobStackLevel>,
         output: &'a JsonValue,
         handle: &'a str,
-        done: bool,
     },
     BlockOutputMap {
         session_id: &'a str,
@@ -144,7 +143,6 @@ pub enum ReporterMessage<'a> {
         block_path: &'a Option<String>,
         stacks: &'a Vec<BlockJobStackLevel>,
         map: &'a HashMap<String, JsonValue>,
-        done: bool,
     },
     BlockLog {
         session_id: &'a str,
