@@ -304,7 +304,30 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                 } => {
                     run_pending_node(job_id.to_owned(), &flow_shared, &mut run_flow_ctx);
 
-                    // TODO: consume result as output Message
+                    if let Some(job) = run_flow_ctx.jobs.get(&job_id) {
+                        if let Some(node) = flow_shared.flow_block.nodes.get(&job.node_id) {
+                            if let Some(tos) = node.to() {
+                                for (handle, value) in result.unwrap_or_default().iter() {
+                                    if let Some(handle_tos) = tos.get(handle) {
+                                        produce_new_value(
+                                            value,
+                                            handle_tos,
+                                            &flow_shared,
+                                            &mut run_flow_ctx,
+                                            false,
+                                            &filtered_nodes,
+                                            &reporter,
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if remove_job_and_is_finished(&job_id, &mut run_flow_ctx) {
+                        flow_success(&flow_shared, &run_flow_ctx, &reporter);
+                        break;
+                    }
 
                     if let Some(ref err) = error {
                         save_flow_cache(
