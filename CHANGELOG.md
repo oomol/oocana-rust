@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.27.15 (2025-05-20)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* feat: add output map support by @leavesster in https://github.com/oomol/oocana-rust/pull/115
+* feat: add block output map report by @leavesster in https://github.com/oomol/oocana-rust/pull/117
+* feat: improve finish message, support finish with some result by @leavesster in https://github.com/oomol/oocana-rust/pull/118
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.27.14...v0.27.15
+
 ## 0.27.14 (2025-05-15)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
