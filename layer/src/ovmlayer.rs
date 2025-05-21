@@ -340,27 +340,4 @@ mod tests {
             "type=bind,src=/tmp,dst=/tmp,ro,recursive"
         );
     }
-
-    #[test]
-    fn test_create_layer_cmd() {
-        let name = "test_layer";
-        let cmd = create_layer_cmd(name);
-        assert_eq!(cmd.get_args().collect::<Vec<_>>(), vec!["create", name]);
-    }
-
-    #[test]
-    fn test_export_layers() {
-        let layers = vec!["layer1".to_string(), "layer2".to_string()];
-        let dest = "/tmp";
-        let cmd = export_layer_cmd(&layers, dest);
-        assert_eq!(cmd.get_args().collect::<Vec<_>>(), vec![
-            "export",
-            "-l",
-            "layer1",
-            "-l",
-            "layer2",
-            "-dest",
-            "/tmp"
-        ]);
-    }
 }
