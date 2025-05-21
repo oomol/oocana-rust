@@ -45,13 +45,13 @@ pub fn list_layer_cmd(t: Option<LayerType>) -> Command {
     binding
 }
 
-pub fn export_layer_cmd(name: &str, dest: &str) -> Command {
+pub fn export_layer_cmd(layers: &Vec<String>, dest: &str) -> Command {
     let mut binding = ovmlayer_bin();
-    binding.args([
-        "export",
-        &format!("--layer={name}"),
-        &format!("--dest={dest}"),
-    ]);
+    binding.arg("export");
+    for layer in layers {
+        binding.args(["-l", layer]);
+    }
+    binding.args(["-dest", dest]);
     binding
 }
 

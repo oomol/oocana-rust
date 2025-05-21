@@ -84,15 +84,17 @@ mod tests {
         assert!(layer.is_ok(), "Error: {:?}", layer.unwrap_err());
         let package_layer = layer.unwrap();
 
-        let result = package_layer.export("/tmp/layer");
+        let export_dir = "/tmp/simple";
+
+        let result = package_layer.export(export_dir);
         assert!(result.is_ok(), "Error: {:?}", result.unwrap_err());
 
         delete_all_layer_data().unwrap();
 
-        let result = import_package_layer("/tmp/layer", "/tmp/layer-not-exist");
+        let result = import_package_layer(export_dir, "/tmp/layer-not-exist");
         assert!(result.is_err(), "Error: {:?}", result);
 
-        let result = import_package_layer("/tmp/layer", "/tmp/layer");
+        let result = import_package_layer(export_dir, export_dir);
         assert!(result.is_ok(), "Error: {:?}", result.unwrap_err());
     }
 }
