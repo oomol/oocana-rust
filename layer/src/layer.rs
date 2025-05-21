@@ -45,8 +45,8 @@ pub fn list_layers(t: Option<LayerType>) -> Result<Vec<String>> {
 
 #[allow(unused)]
 #[instrument(skip_all)]
-pub(crate) fn export_layers(layers: &Vec<String>, dest_file: &str) -> Result<()> {
-    let cmd = export_layer_cmd(layers, dest_file);
+pub(crate) fn export_layers(layers: &[String], dest_file: &str) -> Result<()> {
+    let cmd = export_layer_cmd(&layers.to_vec(), dest_file);
     let output = cli::exec(cmd)?;
     Ok(())
 }
