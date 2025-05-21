@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.27.18 (2025-05-21)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* chore: export rootfs by @leavesster in https://github.com/oomol/oocana-rust/pull/124
+* feat: follow underlying export import api update by @leavesster in https://github.com/oomol/oocana-rust/pull/123
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.27.17...v0.27.18
+
 ## 0.27.17 (2025-05-20)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
