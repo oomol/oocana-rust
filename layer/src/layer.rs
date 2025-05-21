@@ -45,17 +45,10 @@ pub fn list_layers(t: Option<LayerType>) -> Result<Vec<String>> {
 
 #[allow(unused)]
 #[instrument(skip_all)]
-pub fn export_layer(name: &str, dest: &str) -> Result<String> {
-    let cmd = export_layer_cmd(name, dest);
+pub(crate) fn export_layers(layers: &Vec<String>, dest_file: &str) -> Result<()> {
+    let cmd = export_layer_cmd(layers, dest_file);
     let output = cli::exec(cmd)?;
-    let output = String::from_utf8(output.stdout)
-        .map_err(|err| Error::from(format!("Failed to convert stdout to string: {err}")))?;
-    // get last line
-    let result = output
-        .lines()
-        .last()
-        .ok_or_else(|| Error::from("Failed to get export layer path"))?;
-    Ok(result.trim().to_string())
+    Ok(())
 }
 
 #[allow(unused)]
@@ -240,17 +233,17 @@ mod tests {
 
         let random_layer = r.unwrap();
 
-        let r = export_layer(&random_layer, "/tmp");
+        let dest_file = format!("/tmp/{}.tar", random_layer);
+
+        let r = export_layers(&vec![random_layer.clone()], &dest_file);
         assert!(r.is_ok(), "export layer failed: {:?}", r.unwrap_err());
 
-        let file_path = r.unwrap();
-
-        fs::metadata(&file_path).expect(&format!("{file_path} not exit"));
+        fs::metadata(&dest_file).expect(&format!("{dest_file} not exit"));
 
         let r = delete_layer(&random_layer);
         assert!(r.is_ok(), "delete layer failed: {:?}", r.unwrap_err());
 
-        let r = import_layer(file_path.as_str());
+        let r = import_layer(&dest_file);
         assert!(r.is_ok(), "import layer failed: {:?}", r.unwrap_err());
 
         let list = list_layers(None);

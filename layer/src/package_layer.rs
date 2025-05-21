@@ -5,7 +5,7 @@ use std::path::PathBuf;
 
 use crate::cli::exec;
 use crate::layer::{
-    create_random_layer, export_layer, import_layer, list_layers, run_script_unmerge,
+    create_random_layer, export_layers, import_layer, list_layers, run_script_unmerge,
 };
 use crate::ovmlayer::{cp_to_layer, BindPath};
 use crate::package_store::add_import_package;
@@ -155,21 +155,15 @@ impl PackageLayer {
             std::fs::create_dir_all(dest)?;
         }
 
+        let layers_tar = format!("{}/layers.tar", dest);
+
         let mut layers = self.base_layers.clone().unwrap_or_default();
         layers.push(self.source_layer.clone());
-        if let Some(l) = self.bootstrap_layer
-            .as_ref() { layers.push(l.clone()) }
-
-        let mut export_layers = vec![];
-        for layer in layers.iter() {
-            let export_layer_file = export_layer(layer, dest)?;
-            let layer_filename = PathBuf::from(export_layer_file)
-                .file_name()
-                .unwrap()
-                .to_string_lossy()
-                .to_string();
-            export_layers.push(layer_filename);
+        if let Some(l) = self.bootstrap_layer.as_ref() {
+            layers.push(l.clone())
         }
+
+        export_layers(&layers, &layers_tar)?;
 
         let file = File::create(format!("{}/{}", dest, PACKAGE_FILENAME))?;
         let writer = std::io::BufWriter::new(file);
@@ -177,9 +171,7 @@ impl PackageLayer {
 
         let file = File::create(format!("{}/{}", dest, LAYER_FILENAME))?;
         let writer = std::io::BufWriter::new(file);
-        let export = PackageLayerExport {
-            layers: export_layers,
-        };
+        let export = PackageLayerExport { layers: layers };
         serde_json::to_writer_pretty(writer, &export)?;
 
         Ok(())
@@ -207,17 +199,8 @@ pub fn import_package_layer(package_path: &str, from: &str) -> Result<()> {
     let mut package: PackageLayer = serde_json::from_reader(reader)?;
     package.package_path = PathBuf::from(package_path);
 
-    let layer_file = File::open(&package_layer_path)?;
-    let reader = std::io::BufReader::new(layer_file);
-    let export_layers: PackageLayerExport = serde_json::from_reader(reader)?;
-    let layer_files = export_layers
-        .layers
-        .iter()
-        .map(|layer| format!("{}/{}", from, layer));
-
-    for import_file in layer_files {
-        import_layer(&import_file)?;
-    }
+    let layer_tar = format!("{}/layers.tar", from);
+    import_layer(&layer_tar)?;
 
     package.validate()?;
 
