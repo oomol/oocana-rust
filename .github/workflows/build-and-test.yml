@@ -31,7 +31,7 @@ jobs:
             - '!.github/**'
             - '.github/workflows/build-and-test.yml'
 
-  build:
+  rust-test:
     runs-on: ubuntu-latest
     needs: [skip]
     # Squash commits will add # at the end, filtering out squash commit pushes to reduce duplicate builds.
@@ -58,12 +58,12 @@ jobs:
           path: target/debug/oocana
           retention-days: 1
   test-node:
-    needs: [skip, build]
+    needs: [skip, rust-test]
     uses: ./.github/workflows/oocana-node.yml
   test-python:
-    needs: [skip, build]
+    needs: [skip, rust-test]
     uses: ./.github/workflows/oocana-python.yml
-  check:
+  build:
     runs-on: ubuntu-latest
     needs: [skip, test-python, test-node]
     if: ${{ always() }}
