@@ -67,7 +67,7 @@ jobs:
           path: target
       - name: check download
         run: |
-          ls -al target/debug/oocana
+          ls -al target
       - uses: oomol/oocana-node/.github/actions/oocana-node@main
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
