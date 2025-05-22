@@ -56,6 +56,7 @@ jobs:
         with:
           name: oocana
           path: target/debug/oocana
+          retention-days: 1
   test-node:
     runs-on: ubuntu-latest
     needs: [skip, build]
