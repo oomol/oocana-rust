@@ -26,6 +26,7 @@ jobs:
       - uses: oomol/oocana-python/.github/actions/oocana-python@main
         with:
           path: oocana-python
+          create-layer: ${{ inputs.create-layer }}
       - name: Start MQTT Broker
         run: |
           sudo apt update && sudo apt install -y --no-install-recommends mosquitto
