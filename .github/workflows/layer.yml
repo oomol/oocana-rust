@@ -55,8 +55,10 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           create-layer: "true"
           path: oocana-node
-      - name: replace oocana # cargo test will build the binary, so we only need to copy it
-        run: cp target/debug/oocana oocana-node/packages/oocana/
+      - name: replace oocana # cargo test with package only build needed library, so we need build it again
+        run: |
+          cargo build
+          cp target/debug/oocana oocana-node/packages/oocana/
       - name: test flow and other oocana api
         run: pnpm run test
         working-directory: oocana-node
