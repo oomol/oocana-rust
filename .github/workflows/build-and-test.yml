@@ -52,6 +52,7 @@ jobs:
       - uses: oomol/oocana-node/.github/actions/oocana-node@main
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          path: oocana-node
       - name: replace oocana # cargo test will build the binary, so we only need to copy it
         run: cp target/debug/oocana oocana-node/packages/oocana/
       - name: test flow and other oocana api
