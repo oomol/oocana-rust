@@ -50,10 +50,15 @@ jobs:
         run: |
           sudo apt update && sudo apt install -y --no-install-recommends mosquitto
           mosquitto -d -p 47688
-      - uses: ./.github/actions/oocana-node
+      - uses: oomol/oocana-node/.github/actions/oocana-node@main
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           create-layer: "true"
+      - name: replace oocana # cargo test will build the binary, so we only need to copy it
+        run: cp target/debug/oocana oocana-node/packages/oocana/
+      - name: test flow and other oocana api
+        run: pnpm run test
+        working-directory: oocana-node
       - name: upload logs
         uses: actions/upload-artifact@v4
         with:
