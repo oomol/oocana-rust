@@ -116,9 +116,7 @@ jobs:
           npm install
         working-directory: oocana-python
       - name: replace oocana
-        run: |
-          cp target/oocana flow-examples/node_modules/@oomol/oocana/
-        working-directory: oocana-python
+        run: cp target/oocana oocana-python/flow-examples/node_modules/@oomol/oocana/
       - name: test flow and other oocana api
         run: |
           source .venv/bin/activate
