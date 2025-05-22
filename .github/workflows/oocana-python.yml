@@ -25,7 +25,6 @@ jobs:
           chmod +x target/oocana
       - uses: oomol/oocana-python/.github/actions/oocana-python@main
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
           path: oocana-python
       - name: Start MQTT Broker
         run: |
