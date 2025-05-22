@@ -65,9 +65,9 @@ jobs:
         with:
           name: oocana
           path: target
-      - name: check download
+      - name: add permissions
         run: |
-          ls -al target
+          chmod +x target/oocana
       - uses: oomol/oocana-node/.github/actions/oocana-node@main
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -98,6 +98,9 @@ jobs:
         with:
           name: oocana
           path: target
+      - name: add permissions
+        run: |
+          chmod +x target/oocana
       - uses: oomol/oocana-python/.github/actions/oocana-python@main
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
