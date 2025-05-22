@@ -51,11 +51,15 @@ jobs:
     uses: ./.github/workflows/oocana-node.yml
     with:
       create-layer: true
+    secrets:
+      layer-token: ${{ secrets.ACCESS_REPO }}
   test-python:
     needs: [skip, rust-build]
     uses: ./.github/workflows/oocana-python.yml
     with:
       create-layer: true
+    secrets:
+      layer-token: ${{ secrets.ACCESS_REPO }}
   build:
     runs-on: ubuntu-latest
     needs: [skip, test-python, test-node]

@@ -6,6 +6,10 @@ on:
         required: false
         type: boolean
         default: false
+    secrets:
+      layer-token:
+        required: false
+        description: "GitHub token for ovmlayer, required if create-layer is true"
 
 jobs:
   test-node:
@@ -15,7 +19,7 @@ jobs:
         if: ${{ inputs.create-layer }}
       - uses: ./.github/actions/ovmlayer
         with:
-          token: ${{ secrets.ACCESS_REPO }}
+          token: ${{ secrets.layer-token }}
         if: ${{ inputs.create-layer }}
       - name: Download oocana
         uses: actions/download-artifact@v4
