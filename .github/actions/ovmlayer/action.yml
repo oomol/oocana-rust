@@ -34,7 +34,7 @@ runs:
       shell: bash
     - name: setup ovmlayer environment
       run: |
-        sudo apt update && sudo apt install -y --no-install-recommends tar xz-utils zstd
+        sudo apt update && sudo apt install -y --no-install-recommends tar zstd
       shell: bash
     - name: download base rootfs
       run: |
