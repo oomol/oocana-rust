@@ -46,6 +46,14 @@ jobs:
           token: ${{ secrets.ACCESS_REPO }}
       - name: test layer api
         run: cargo test --package layer -- --nocapture --test-threads=1 # 部分单测 API 互相干扰，需要一个个测试
+      - name: build oocana
+        run: cargo build
+      - name: upload oocana
+        uses: actions/upload-artifact@v4
+        with:
+          name: oocana
+          path: target/debug/oocana
+
   test-node:
     needs: [skip, rust-build]
     uses: ./.github/workflows/oocana-node.yml
