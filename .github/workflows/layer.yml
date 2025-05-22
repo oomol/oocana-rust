@@ -31,8 +31,8 @@ jobs:
             - ".github/actions/ovmlayer/action.yml"
             - "!layer/**.md"
 
-  build:
-    runs-on: ubuntu-24.04-arm
+  rust-build:
+    runs-on: ubuntu-latest
     needs: [skip]
     if: ${{ needs.skip.outputs.should_skip == 'false' }}
     timeout-minutes: 10
@@ -46,28 +46,42 @@ jobs:
           token: ${{ secrets.ACCESS_REPO }}
       - name: test layer api
         run: cargo test --package layer -- --nocapture --test-threads=1 # 部分单测 API 互相干扰，需要一个个测试
-      - name: Start MQTT Broker
-        run: |
-          sudo apt update && sudo apt install -y --no-install-recommends mosquitto
-          mosquitto -d -p 47688
-      - uses: oomol/oocana-node/.github/actions/oocana-node@main
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          create-layer: "true"
-          path: oocana-node
-      - name: replace oocana # cargo test with package only build needed library, so we need build it again
-        run: |
-          cargo build
-          cp target/debug/oocana oocana-node/packages/oocana/
-      - name: test flow and other oocana api
-        run: pnpm run test
-        working-directory: oocana-node
-      - name: upload logs
+      - name: build oocana
+        run: cargo build
+      - name: upload oocana
         uses: actions/upload-artifact@v4
         with:
-          name: oocana-logs
-          path: |
-            ~/.oocana/sessions/
-            /tmp/ovmlayer.log
-          retention-days: 1
-        if: failure()
+          name: oocana
+          path: target/debug/oocana
+
+  test-node:
+    needs: [skip, rust-build]
+    uses: ./.github/workflows/oocana-node.yml
+    with:
+      create-layer: true
+    secrets:
+      layer-token: ${{ secrets.ACCESS_REPO }}
+  test-python:
+    needs: [skip, rust-build]
+    uses: ./.github/workflows/oocana-python.yml
+    with:
+      create-layer: true
+    secrets:
+      layer-token: ${{ secrets.ACCESS_REPO }}
+  build:
+    runs-on: ubuntu-latest
+    needs: [skip, test-python, test-node]
+    if: ${{ always() }}
+    steps:
+      - name: check
+        run: |
+          exit_on_result() {
+            if [[ "$2" == "failure" || "$2" == "cancelled" ]]; then
+              echo "Job '$1' failed or was cancelled."
+              exit 1
+            fi
+          }
+
+          exit_on_result "test-node" "${{ needs.test-node.result }}"
+          exit_on_result "test-python" "${{ needs.test-python.result }}"
+          echo all needs jobs : "${{ toJson(needs)}}"

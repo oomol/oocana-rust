@@ -1,0 +1,60 @@
+name: Test on oocana-node
+on:
+  workflow_call:
+    inputs:
+      create-layer:
+        required: false
+        type: boolean
+        default: false
+    secrets:
+      layer-token:
+        required: false
+        description: "GitHub token for ovmlayer, required if create-layer is true"
+
+jobs:
+  test-python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        if: ${{ inputs.create-layer }}
+      - uses: ./.github/actions/ovmlayer
+        with:
+          token: ${{ secrets.layer-token }}
+        if: ${{ inputs.create-layer }}
+      - name: Download oocana
+        uses: actions/download-artifact@v4
+        with:
+          name: oocana
+          path: target
+      - name: add permissions
+        run: |
+          chmod +x target/oocana
+      - uses: oomol/oocana-python/.github/actions/oocana-python@main
+        with:
+          path: oocana-python
+          create-layer: ${{ inputs.create-layer }}
+      - name: Start MQTT Broker
+        run: |
+          sudo apt update && sudo apt install -y --no-install-recommends mosquitto
+          mosquitto -d -p 47688
+      - name: install oocana-python
+        run: |
+          cd flow-examples
+          npm install
+        working-directory: oocana-python
+      - name: replace oocana
+        run: cp target/oocana oocana-python/flow-examples/node_modules/@oomol/oocana/
+      - name: test flow and other oocana api
+        run: |
+          source .venv/bin/activate
+          cd flow-examples
+          npm run test
+        working-directory: oocana-python
+      - name: upload logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: oocana-python-logs
+          path: |
+            ~/.oocana/sessions/
+          retention-days: 1
+        if: failure()

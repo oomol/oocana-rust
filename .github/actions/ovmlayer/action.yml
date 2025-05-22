@@ -8,7 +8,7 @@ inputs:
   rootfs:
     description: "rootfs tar"
     required: false
-    default: "https://github.com/oomol/ovmlayer-rootfs/releases/download/base-rootfs%400.3.0/arm64-rootfs.tar"
+    default: "https://github.com/oomol/ovmlayer-rootfs/releases/download/base-rootfs%400.3.0/amd64-rootfs.tar"
   ref:
     description: "GitHub ref"
     required: false
@@ -34,7 +34,7 @@ runs:
       shell: bash
     - name: setup ovmlayer environment
       run: |
-        sudo apt update && sudo apt install -y --no-install-recommends tar xz-utils zstd
+        sudo apt update && sudo apt install -y --no-install-recommends tar zstd
       shell: bash
     - name: download base rootfs
       run: |

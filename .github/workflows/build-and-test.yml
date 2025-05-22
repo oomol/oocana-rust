@@ -31,7 +31,7 @@ jobs:
             - '!.github/**'
             - '.github/workflows/build-and-test.yml'
 
-  build:
+  rust-test:
     runs-on: ubuntu-latest
     needs: [skip]
     # Squash commits will add # at the end, filtering out squash commit pushes to reduce duplicate builds.
@@ -49,20 +49,34 @@ jobs:
       - name: Test
         timeout-minutes: 10
         run: cargo test --workspace --exclude layer
-      - uses: oomol/oocana-node/.github/actions/oocana-node@main
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          path: oocana-node
-      - name: replace oocana # cargo test will build the binary, so we only need to copy it
-        run: cp target/debug/oocana oocana-node/packages/oocana/
-      - name: test flow and other oocana api
-        run: pnpm run test
-        working-directory: oocana-node
-      - name: upload logs # only enable when debugging
+      - name: build oocana
+        run: cargo build
+      - name: upload oocana
         uses: actions/upload-artifact@v4
         with:
-          name: oocana-logs
-          path: |
-            ~/.oocana/sessions/
+          name: oocana
+          path: target/debug/oocana
           retention-days: 1
-        if: failure()
+  test-node:
+    needs: [skip, rust-test]
+    uses: ./.github/workflows/oocana-node.yml
+  test-python:
+    needs: [skip, rust-test]
+    uses: ./.github/workflows/oocana-python.yml
+  build:
+    runs-on: ubuntu-latest
+    needs: [skip, test-python, test-node]
+    if: ${{ always() }}
+    steps:
+      - name: check
+        run: |
+          exit_on_result() {
+            if [[ "$2" == "failure" || "$2" == "cancelled" ]]; then
+              echo "Job '$1' failed or was cancelled."
+              exit 1
+            fi
+          }
+
+          exit_on_result "test-node" "${{ needs.test-node.result }}"
+          exit_on_result "test-python" "${{ needs.test-python.result }}"
+          echo all needs jobs : "${{ toJson(needs)}}"
