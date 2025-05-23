@@ -211,7 +211,7 @@ impl SubflowBlock {
                                 manifest::SlotProvider::Inline(inline_slot) => {
                                     let manifest_subflow = manifest::SubflowBlock {
                                         nodes: inline_slot.nodes.clone(),
-                                        inputs_def: None,
+                                        inputs_def: Some(inline_slot.inputs_def()),
                                         outputs_def: None,
                                         outputs_from: Some(inline_slot.outputs_from.clone()),
                                         injection: None,
