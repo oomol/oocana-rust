@@ -112,7 +112,6 @@ impl Connections {
                                     from_node.node_id,
                                     from_node.output_handle
                                 );
-                                continue;
                             }
                             continue;
                         }
