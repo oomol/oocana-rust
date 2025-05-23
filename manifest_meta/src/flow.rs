@@ -140,6 +140,7 @@ impl SubflowBlock {
                 node.node_id(),
                 node.inputs_from(),
                 &find_value_node,
+                &inputs_def,
             );
         }
 
