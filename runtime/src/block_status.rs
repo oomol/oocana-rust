@@ -12,9 +12,9 @@ pub enum Status {
         result: Arc<OutputValue>,
         handle: HandleName,
     },
-    OutputMap {
+    Outputs {
         job_id: JobId,
-        map: HashMap<HandleName, Arc<OutputValue>>,
+        outputs: HashMap<HandleName, Arc<OutputValue>>,
     },
     Done {
         job_id: JobId,
@@ -41,8 +41,8 @@ impl BlockStatusTx {
             })
             .unwrap();
     }
-    pub fn output_map(&self, job_id: JobId, map: HashMap<HandleName, Arc<OutputValue>>) {
-        self.tx.send(Status::OutputMap { job_id, map }).unwrap();
+    pub fn outputs(&self, job_id: JobId, outputs: HashMap<HandleName, Arc<OutputValue>>) {
+        self.tx.send(Status::Outputs { job_id, outputs }).unwrap();
     }
     pub fn finish(
         &self,
