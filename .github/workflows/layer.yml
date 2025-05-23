@@ -27,7 +27,10 @@ jobs:
         with:
           paths: |
             - "**"
+            - "!.github/**"
             - ".github/workflows/layer.yml"
+            - ".github/workflows/oocana-node.yml"
+            - ".github/workflows/oocana-python.yml"
             - ".github/actions/ovmlayer/action.yml"
             - "!layer/**.md"
 
