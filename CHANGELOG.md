@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.28.0 (2025-05-23)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* refactor: use oocana-node host action by @leavesster in https://github.com/oomol/oocana-rust/pull/126
+* chore: test node and python both by @leavesster in https://github.com/oomol/oocana-rust/pull/127
+* chore: test ovmlayer action when modify by @leavesster in https://github.com/oomol/oocana-rust/pull/128
+* fix: check from flow's input by @leavesster in https://github.com/oomol/oocana-rust/pull/129
+* feat: inline slot add outputs def by @leavesster in https://github.com/oomol/oocana-rust/pull/131
+* refactor!: rename output map to outputs by @leavesster in https://github.com/oomol/oocana-rust/pull/132
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.27.18...v0.28.0
+
 ## 0.27.18 (2025-05-21)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
