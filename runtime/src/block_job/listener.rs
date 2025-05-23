@@ -230,10 +230,12 @@ pub fn listen_to_worker(args: ListenerArgs) -> tokio::task::JoinHandle<()> {
                     // reporter.done(&error_message);
                     // block_status.error(error_message.unwrap_or_default());
                 }
-                scheduler::ReceiveMessage::BlockOutputMap { job_id, map, .. } => {
+                scheduler::ReceiveMessage::BlockOutputs {
+                    job_id, outputs, ..
+                } => {
                     let mut reporter_map = HashMap::new();
                     let mut output_map = HashMap::new();
-                    for (key, value) in map.iter() {
+                    for (key, value) in outputs.iter() {
                         output_map.insert(
                             key.clone(),
                             Arc::new(OutputValue {
@@ -243,8 +245,8 @@ pub fn listen_to_worker(args: ListenerArgs) -> tokio::task::JoinHandle<()> {
                         );
                         reporter_map.insert(key.to_string(), value.clone());
                     }
-                    block_status.output_map(job_id, output_map);
-                    reporter.output_map(&reporter_map);
+                    block_status.outputs(job_id, output_map);
+                    reporter.outputs(&reporter_map);
                 }
                 scheduler::ReceiveMessage::BlockOutput {
                     output: value,

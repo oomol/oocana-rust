@@ -136,13 +136,13 @@ pub enum ReporterMessage<'a> {
         output: &'a JsonValue,
         handle: &'a str,
     },
-    BlockOutputMap {
+    BlockOutputs {
         session_id: &'a str,
         job_id: &'a str,
         #[serde(skip_serializing_if = "Option::is_none")]
         block_path: &'a Option<String>,
         stacks: &'a Vec<BlockJobStackLevel>,
-        map: &'a HashMap<String, JsonValue>,
+        outputs: &'a HashMap<String, JsonValue>,
     },
     BlockLog {
         session_id: &'a str,

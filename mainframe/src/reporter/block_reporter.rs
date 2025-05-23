@@ -61,13 +61,13 @@ impl BlockReporterTx {
         });
     }
 
-    pub fn output_map(&self, map: &HashMap<String, JsonValue>) {
-        self.tx.send(ReporterMessage::BlockOutputMap {
+    pub fn outputs(&self, outputs: &HashMap<String, JsonValue>) {
+        self.tx.send(ReporterMessage::BlockOutputs {
             session_id: &self.tx.session_id,
             job_id: &self.job_id,
             block_path: &self.block_path,
             stacks: self.stacks.vec(),
-            map,
+            outputs,
         });
     }
 

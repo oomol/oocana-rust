@@ -263,7 +263,10 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                         }
                     }
                 }
-                block_status::Status::OutputMap { job_id, map } => {
+                block_status::Status::Outputs {
+                    job_id,
+                    outputs: map,
+                } => {
                     if let Some(job) = run_flow_ctx.jobs.get(&job_id) {
                         if let Some(node) = flow_shared.flow_block.nodes.get(&job.node_id) {
                             if let Some(tos) = node.to() {
