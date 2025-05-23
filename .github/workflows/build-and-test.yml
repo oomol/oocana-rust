@@ -29,6 +29,8 @@ jobs:
             - '!**.md'
             - '!.vscode/*'
             - '!.github/**'
+            - ".github/workflows/oocana-node.yml"
+            - ".github/workflows/oocana-python.yml"
             - '.github/workflows/build-and-test.yml'
 
   rust-test:
