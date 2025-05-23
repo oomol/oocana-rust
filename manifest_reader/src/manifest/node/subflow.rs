@@ -1,10 +1,13 @@
-use std::collections::HashMap;
+use std::{
+    collections::{HashMap, HashSet},
+    process::Output,
+};
 
 use serde::Deserialize;
 
 use crate::{
     extend_node_common_field,
-    manifest::{InputHandle, InputHandles, NodeInputFrom},
+    manifest::{InputHandle, InputHandles, NodeInputFrom, OutputHandle, OutputHandles},
 };
 
 use super::{
@@ -90,6 +93,32 @@ impl InlineSlot {
             }
         }
         inputs
+    }
+
+    pub fn outputs_def(&self) -> OutputHandles {
+        let mut outputs = HashMap::new();
+        let node_ids = self
+            .nodes
+            .iter()
+            .map(|node| node.node_id())
+            .collect::<HashSet<_>>();
+        for output in &self.outputs_from {
+            if output.from_node.as_ref().is_some_and(|from_node| {
+                from_node
+                    .iter()
+                    .any(|node| node_ids.contains(&node.node_id))
+            }) {
+                outputs.insert(
+                    output.handle.to_owned(),
+                    OutputHandle {
+                        handle: output.handle.to_owned(),
+                        json_schema: None,
+                        name: None,
+                    },
+                );
+            }
+        }
+        outputs
     }
 }
 
