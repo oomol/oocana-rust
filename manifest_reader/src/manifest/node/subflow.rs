@@ -1,6 +1,11 @@
+use std::collections::HashMap;
+
 use serde::Deserialize;
 
-use crate::{extend_node_common_field, manifest::NodeInputFrom};
+use crate::{
+    extend_node_common_field,
+    manifest::{InputHandle, InputHandles, NodeInputFrom},
+};
 
 use super::{
     common::{default_concurrency, NodeId},
@@ -58,6 +63,34 @@ pub struct InlineSlot {
     pub slot_node_id: NodeId,
     pub nodes: Vec<Node>, // TODO: more strict type
     pub outputs_from: Vec<NodeInputFrom>,
+}
+
+impl InlineSlot {
+    pub fn inputs_def(&self) -> InputHandles {
+        let mut inputs = HashMap::new();
+        for node in &self.nodes {
+            if let Some(inputs_from) = node.inputs_from() {
+                for input in inputs_from {
+                    if let Some(handle) = input.from_flow.as_ref() {
+                        let handle = handle
+                            .iter()
+                            .find(|h| h.input_handle == input.handle)
+                            .unwrap();
+                        inputs.insert(
+                            handle.input_handle.to_owned(),
+                            InputHandle {
+                                handle: handle.input_handle.to_owned(),
+                                value: None,
+                                json_schema: None,
+                                name: None,
+                            },
+                        );
+                    }
+                }
+            }
+        }
+        inputs
+    }
 }
 
 #[derive(Deserialize, Debug, Clone)]

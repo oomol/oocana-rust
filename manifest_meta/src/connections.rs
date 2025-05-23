@@ -80,6 +80,7 @@ impl Connections {
         node_id: &NodeId,
         inputs_from: Option<&Vec<manifest::NodeInputFrom>>,
         find_value_node: &impl Fn(&NodeId) -> Option<manifest::ValueNode>,
+        flow_inputs_def: &Option<HashMap<HandleName, manifest::InputHandle>>,
     ) {
         if let Some(inputs_from) = inputs_from {
             for input_from in inputs_from {
@@ -111,7 +112,6 @@ impl Connections {
                                     from_node.node_id,
                                     from_node.output_handle
                                 );
-                                continue;
                             }
                             continue;
                         }
@@ -137,20 +137,27 @@ impl Connections {
 
                 if let Some(from_flow) = &input_from.from_flow {
                     for flow_handle in from_flow {
-                        self.node_inputs_froms.add(
-                            node_id.to_owned(),
-                            input_from.handle.to_owned(),
-                            HandleFrom::FromFlowInput {
-                                input_handle: flow_handle.input_handle.to_owned(),
-                            },
-                        );
-                        self.flow_inputs_tos.add(
-                            flow_handle.input_handle.to_owned(),
-                            HandleTo::ToNodeInput {
-                                node_id: node_id.to_owned(),
-                                node_input_handle: input_from.handle.to_owned(),
-                            },
-                        );
+                        if flow_inputs_def
+                            .as_ref()
+                            .is_some_and(|def| def.contains_key(&flow_handle.input_handle))
+                        {
+                            self.node_inputs_froms.add(
+                                node_id.to_owned(),
+                                input_from.handle.to_owned(),
+                                HandleFrom::FromFlowInput {
+                                    input_handle: flow_handle.input_handle.to_owned(),
+                                },
+                            );
+                            self.flow_inputs_tos.add(
+                                flow_handle.input_handle.to_owned(),
+                                HandleTo::ToNodeInput {
+                                    node_id: node_id.to_owned(),
+                                    node_input_handle: input_from.handle.to_owned(),
+                                },
+                            );
+                        } else {
+                            tracing::debug!("ignore node connection because flow input({}) is not in runtime flow inputs def", flow_handle.input_handle);
+                        }
                     }
                 }
             }
