@@ -112,11 +112,6 @@ impl SubflowBlock {
             injection: scripts,
         } = manifest;
 
-        let mut connections =
-            Connections::new(nodes.iter().map(|n| n.node_id().to_owned()).collect());
-
-        connections.parse_flow_outputs_from(outputs_from);
-
         // filter out ignored value nodes
         let value_nodes = nodes
             .iter()
@@ -135,7 +130,21 @@ impl SubflowBlock {
             value_nodes.iter().find(|n| n.node_id == *node_id).cloned()
         };
 
-        for node in nodes.iter() {
+        let nodes_in_flow: Vec<manifest::Node> = nodes
+            .into_iter()
+            .filter(|node| !node.should_ignore() && !value_nodes_id.contains(node.node_id()))
+            .collect();
+
+        let mut connections = Connections::new(
+            nodes_in_flow
+                .iter()
+                .map(|n| n.node_id().to_owned())
+                .collect(),
+        );
+
+        connections.parse_flow_outputs_from(outputs_from);
+
+        for node in nodes_in_flow.iter() {
             connections.parse_node_inputs_from(
                 node.node_id(),
                 node.inputs_from(),
@@ -143,12 +152,6 @@ impl SubflowBlock {
                 &inputs_def,
             );
         }
-
-        // node 的 skip 属性为 true，这个 node 不会放到 flow 列表，但是仍然保留连线逻辑。所以要在 parse_node_inputs_from 处理完之后删除。
-        let nodes_in_flow: Vec<manifest::Node> = nodes
-            .into_iter()
-            .filter(|node| !node.should_ignore() && !value_nodes_id.contains(node.node_id()))
-            .collect();
 
         let find_node = |node_id: &NodeId| -> Option<&manifest::Node> {
             nodes_in_flow.iter().find(|n| n.node_id() == node_id)
