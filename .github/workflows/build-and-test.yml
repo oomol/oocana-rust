@@ -79,6 +79,7 @@ jobs:
             fi
           }
 
+          exit_on_result "skip" "${{ needs.skip.result }}"
           exit_on_result "test-node" "${{ needs.test-node.result }}"
           exit_on_result "test-python" "${{ needs.test-python.result }}"
           echo all needs jobs : "${{ toJson(needs)}}"
