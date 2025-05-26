@@ -549,26 +549,28 @@ fn produce_new_value(
                 );
 
                 if should_run_output_node {
-                    let node = shared
-                        .flow_block
-                        .nodes
-                        .get(node_id)
-                        .expect("Node not found");
-
-                    if ctx.node_input_values.is_node_fulfill(node) {
-                        let node_queue = ctx.node_queue_pool.entry(node_id.to_owned()).or_default();
-                        if node_queue.jobs.len() < node.concurrency() as usize {
-                            run_node(node, shared, ctx);
-                        } else {
-                            // 说明这次数据填平了一次 pending
-                            if ctx.node_input_values.node_pending_fulfill(node_id)
-                                > previous_pending_fulfill
-                            {
-                                node_queue.pending.insert(JobId::random());
+                    if let Some(node) = shared.flow_block.nodes.get(node_id) {
+                        if ctx.node_input_values.is_node_fulfill(node) {
+                            let node_queue =
+                                ctx.node_queue_pool.entry(node_id.to_owned()).or_default();
+                            if node_queue.jobs.len() < node.concurrency() as usize {
+                                run_node(node, shared, ctx);
                             } else {
-                                info!("node queue fulfill number is {}", previous_pending_fulfill);
+                                // 说明这次数据填平了一次 pending
+                                if ctx.node_input_values.node_pending_fulfill(node_id)
+                                    > previous_pending_fulfill
+                                {
+                                    node_queue.pending.insert(JobId::random());
+                                } else {
+                                    info!(
+                                        "node queue fulfill number is {}",
+                                        previous_pending_fulfill
+                                    );
+                                }
                             }
                         }
+                    } else {
+                        warn!("node {} not found in flow block", node_id);
                     }
                 }
             }
