@@ -75,19 +75,18 @@ impl InlineSlot {
             if let Some(inputs_from) = node.inputs_from() {
                 for input in inputs_from {
                     if let Some(handle) = input.from_flow.as_ref() {
-                        let handle = handle
-                            .iter()
-                            .find(|h| h.input_handle == input.handle)
-                            .unwrap();
-                        inputs.insert(
-                            handle.input_handle.to_owned(),
-                            InputHandle {
-                                handle: handle.input_handle.to_owned(),
-                                value: None,
-                                json_schema: None,
-                                name: None,
-                            },
-                        );
+                        if let Some(handle) = handle.iter().find(|h| h.input_handle == input.handle)
+                        {
+                            inputs.insert(
+                                handle.input_handle.to_owned(),
+                                InputHandle {
+                                    handle: handle.input_handle.to_owned(),
+                                    value: None,
+                                    json_schema: None,
+                                    name: None,
+                                },
+                            );
+                        }
                     }
                 }
             }
