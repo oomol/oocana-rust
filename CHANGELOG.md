@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.28.1 (2025-05-26)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* fix: skip ignore node connection by @leavesster in https://github.com/oomol/oocana-rust/pull/133
+* fix: inline slot can have from node without from flow by @leavesster in https://github.com/oomol/oocana-rust/pull/134
+* chore(action): avoid github action job failed make required check success by @leavesster in https://github.com/oomol/oocana-rust/pull/135
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.28.0...v0.28.1
+
 ## 0.28.0 (2025-05-23)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
