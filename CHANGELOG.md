@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.28.2 (2025-05-27)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* fix: slot inline flow missing input def by @leavesster in https://github.com/oomol/oocana-rust/pull/137
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.28.1...v0.28.2
+
 ## 0.28.1 (2025-05-26)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
