@@ -290,8 +290,6 @@ pub struct ServiceParams<'a> {
 
 pub struct ExecutorCheckResult {
     pub executor_state: ExecutorSpawnState,
-    pub executor_map_name: String,
-    pub identifier: String,
     pub layer: Option<RuntimeLayer>, // layer is only exist when executor_exist is false
 }
 
@@ -822,8 +820,6 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
     if executor_state != ExecutorSpawnState::None {
         return Ok(ExecutorCheckResult {
             executor_state,
-            executor_map_name,
-            identifier: scope.identifier(),
             layer: None,
         });
     } else if no_layer_feature {
@@ -837,8 +833,6 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
 
         return Ok(ExecutorCheckResult {
             executor_state,
-            executor_map_name,
-            identifier: scope.identifier(),
             layer: None,
         });
     }
@@ -928,8 +922,6 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
 
     Ok(ExecutorCheckResult {
         executor_state,
-        executor_map_name,
-        identifier: scope.identifier(),
         layer,
     })
 }
@@ -1029,15 +1021,10 @@ where
 
                         let ExecutorCheckResult {
                             executor_state,
-                            executor_map_name,
-                            identifier,
                             layer,
+                            ..
                         } = result.unwrap();
 
-                        info!(
-                            "execute service block. executor: {:?} executor_map: {} state: {:?}",
-                            executor_name, executor_map_name, executor_state
-                        );
                         if executor_state == ExecutorSpawnState::None {
                             let r = spawn_executor(
                                 &executor_name,
@@ -1066,7 +1053,7 @@ where
                                 service_executor: &service_executor,
                                 outputs: &outputs,
                                 service_hash,
-                                identifier: &identifier,
+                                identifier: &scope.identifier(),
                             })
                             .unwrap();
                             impl_tx.run_service_block(&executor_name, data).await;
@@ -1093,26 +1080,20 @@ where
                         });
 
                         if let Err(e) = result {
-                            tx.send(SchedulerCommand::ExecutorExit {
+                            let _ = tx.send(SchedulerCommand::ExecutorExit {
                                 executor: executor_name.clone(),
                                 code: -1,
                                 reason: Some(format!("{}", e)),
-                            })
-                            .unwrap();
+                            });
                             continue;
                         }
 
                         let ExecutorCheckResult {
                             executor_state,
-                            executor_map_name,
-                            identifier,
                             layer,
+                            ..
                         } = result.unwrap();
 
-                        info!(
-                            "execute block. executor: {:?} executor_map: {} state: {:?}",
-                            executor_name, executor_map_name, executor_state
-                        );
                         if executor_state == ExecutorSpawnState::None {
                             let r = spawn_executor(
                                 &executor_name,
@@ -1140,7 +1121,7 @@ where
                                 dir: &dir,
                                 executor: &executor,
                                 outputs: &outputs,
-                                identifier: &identifier,
+                                identifier: &scope.identifier(),
                             })
                             .unwrap();
                             impl_tx.run_block(&executor_name, data).await;
