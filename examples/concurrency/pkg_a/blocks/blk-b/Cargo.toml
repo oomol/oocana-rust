@@ -1,6 +1,6 @@
 [package]
 name = "concurrency-blk-b"
-version = "0.28.1"
+version = "0.28.2"
 authors = ["CRIMX <straybugs@gmail.com>"]
 description = "Add one"
 edition = "2021"
