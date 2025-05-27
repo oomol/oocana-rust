@@ -1,7 +1,4 @@
-use std::{
-    collections::{HashMap, HashSet},
-    process::Output,
-};
+use std::collections::{HashMap, HashSet};
 
 use serde::Deserialize;
 
@@ -73,14 +70,13 @@ impl InlineSlot {
         let mut inputs = HashMap::new();
         for node in &self.nodes {
             if let Some(inputs_from) = node.inputs_from() {
-                for input in inputs_from {
-                    if let Some(handle) = input.from_flow.as_ref() {
-                        if let Some(handle) = handle.iter().find(|h| h.input_handle == input.handle)
-                        {
+                for input_from in inputs_from {
+                    if let Some(from_flow) = input_from.from_flow.as_ref() {
+                        for flow_source in from_flow {
                             inputs.insert(
-                                handle.input_handle.to_owned(),
+                                flow_source.input_handle.to_owned(),
                                 InputHandle {
-                                    handle: handle.input_handle.to_owned(),
+                                    handle: flow_source.input_handle.to_owned(),
                                     value: None,
                                     json_schema: None,
                                     name: None,
