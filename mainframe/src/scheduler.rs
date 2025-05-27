@@ -1095,6 +1095,12 @@ where
                         } = result.unwrap();
 
                         if executor_state == ExecutorSpawnState::None {
+                            tracing::info!(
+                                "run block with job id {} but need spawning executor {} identifier: {} first",
+                                job_id,
+                                executor_name,
+                                scope.identifier()
+                            );
                             let r = spawn_executor(
                                 &executor_name,
                                 layer,
@@ -1113,6 +1119,12 @@ where
                                 .unwrap();
                             }
                         } else {
+                            tracing::info!(
+                                "run block with job id {} in executor {} identifier: {}",
+                                job_id,
+                                executor_name,
+                                scope.identifier()
+                            );
                             let data = serde_json::to_vec(&ExecutePayload::BlockPayload {
                                 session_id: &session_id,
                                 executor_name: &executor_name,
