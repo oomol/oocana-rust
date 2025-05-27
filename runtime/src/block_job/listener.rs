@@ -10,7 +10,7 @@ use manifest_meta::{
     ServiceExecutorOptions, TaskBlockExecutor, OOMOL_BIN_DATA, OOMOL_SECRET_DATA, OOMOL_VAR_DATA,
 };
 use serde_json::Value;
-use tracing::{info, warn};
+use tracing::{debug, info, warn};
 use utils::output::OutputValue;
 
 use crate::block_status::BlockStatusTx;
@@ -113,7 +113,7 @@ pub fn listen_to_worker(args: ListenerArgs) -> tokio::task::JoinHandle<()> {
                         .as_ref()
                         .is_none_or(|id| id != &block_scope.identifier())
                     {
-                        info!(
+                        debug!(
                             "executor {} identifier {:?} is not equal to block identifier {:?}",
                             executor_name,
                             identifier,
@@ -124,7 +124,7 @@ pub fn listen_to_worker(args: ListenerArgs) -> tokio::task::JoinHandle<()> {
 
                     if let Some(ref executor) = executor {
                         if executor_name != executor.name() {
-                            info!(
+                            debug!(
                                 "executor {} is not equal to block executor {}",
                                 executor_name,
                                 executor.name()
@@ -145,7 +145,7 @@ pub fn listen_to_worker(args: ListenerArgs) -> tokio::task::JoinHandle<()> {
                         });
                     } else if let Some(ref service) = service {
                         if executor_name != service.executor_name {
-                            info!(
+                            debug!(
                                 "executor {} is not equal to block executor {}",
                                 executor_name, service.executor_name
                             );
@@ -189,7 +189,7 @@ pub fn listen_to_worker(args: ListenerArgs) -> tokio::task::JoinHandle<()> {
                         .as_ref()
                         .is_none_or(|id| id != &block_scope.identifier())
                     {
-                        info!(
+                        debug!(
                             "executor {} identifier {:?} is not equal to block identifier {:?}",
                             executor_name,
                             identifier,
