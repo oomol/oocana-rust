@@ -844,7 +844,10 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
         if let Some(store) = injection_store {
             let target = manifest_meta::InjectionTarget::Package(scope.package_path().to_owned());
             if let Some(meta) = store.get(&target) {
-                tracing::info!("found injection store for target: {:?}", target);
+                tracing::info!(
+                    "scope layer need create with injection. target: {:?}",
+                    target
+                );
                 for node in meta.nodes.iter() {
                     bind_paths.push(BindPath::new(
                         node.absolute_entry
@@ -916,7 +919,7 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
             });
         }
 
-        info!("final package is None, skip layer creation {:?}", scope);
+        info!("scope {:?} don't need layer", scope);
         None
     };
 
@@ -1026,6 +1029,12 @@ where
                         } = result.unwrap();
 
                         if executor_state == ExecutorSpawnState::None {
+                            tracing::info!(
+                                "run service block with job id {} but need spawning executor {} identifier: {} first",
+                                job_id,
+                                executor_name,
+                                scope.identifier()
+                            );
                             let r = spawn_executor(
                                 &executor_name,
                                 layer,
@@ -1043,6 +1052,12 @@ where
                                 .unwrap();
                             }
                         } else {
+                            tracing::info!(
+                                "run service block with job id {} in executor {} identifier: {}",
+                                job_id,
+                                executor_name,
+                                scope.identifier()
+                            );
                             let data = serde_json::to_vec(&ExecutePayload::ServiceBlockPayload {
                                 session_id: &session_id,
                                 job_id: &job_id,
