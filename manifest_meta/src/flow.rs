@@ -247,9 +247,10 @@ impl SubflowBlock {
                                         &mut path_finder,
                                     )?;
 
-                                    let scope = if get_block_value_type(&task_slot.task)
-                                        == BlockValueType::Pkg
-                                        && task.package_path.is_some()
+                                    let scope = if matches!(
+                                        get_block_value_type(&task_slot.task),
+                                        BlockValueType::Pkg { .. }
+                                    ) && task.package_path.is_some()
                                     {
                                         RunningScope::Package {
                                             path: task.package_path.clone().unwrap(),
@@ -274,9 +275,10 @@ impl SubflowBlock {
                                         &mut path_finder,
                                     )?;
 
-                                    let scope = if get_block_value_type(&slot_flow.slotflow)
-                                        == BlockValueType::Pkg
-                                        && slotflow.package_path.is_some()
+                                    let scope = if matches!(
+                                        get_block_value_type(&slot_flow.slotflow),
+                                        BlockValueType::Pkg { .. }
+                                    ) && slotflow.package_path.is_some()
                                     {
                                         RunningScope::Package {
                                             path: slotflow.package_path.clone().unwrap(),
@@ -306,9 +308,10 @@ impl SubflowBlock {
                                         tracing::warn!("this subflow has slot node");
                                     }
 
-                                    let scope = if get_block_value_type(&subflow_slot.subflow)
-                                        == BlockValueType::Pkg
-                                        && slot_flow.package_path.is_some()
+                                    let scope = if matches!(
+                                        get_block_value_type(&subflow_slot.subflow),
+                                        BlockValueType::Pkg { .. }
+                                    ) && slot_flow.package_path.is_some()
                                     {
                                         RunningScope::Package {
                                             path: slot_flow.package_path.clone().unwrap(),
