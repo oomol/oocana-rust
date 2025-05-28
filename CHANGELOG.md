@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.28.3 (2025-05-28)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* refactor: improve log by @leavesster in https://github.com/oomol/oocana-rust/pull/139
+* fix: inline slotflow has some special path by @leavesster in https://github.com/oomol/oocana-rust/pull/141
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.28.2...v0.28.3
+
 ## 0.28.2 (2025-05-27)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
