@@ -119,10 +119,10 @@ pub fn parse_search_paths(search_paths: &Option<String>) -> Option<Vec<PathBuf>>
                 .map(parser::expand_tilde)
                 .collect::<Vec<PathBuf>>(),
         )
-    } else { utils::config::search_paths().map(|search_paths| search_paths
-                .iter()
-                .map(parser::expand_tilde)
-                .collect()) };
+    } else {
+        utils::config::search_paths()
+            .map(|search_paths| search_paths.iter().map(parser::expand_tilde).collect())
+    };
 
     if let Some(ref extra_paths) = config::extra_search_path() {
         if let Some(ref mut paths) = search_paths {
@@ -130,12 +130,7 @@ pub fn parse_search_paths(search_paths: &Option<String>) -> Option<Vec<PathBuf>>
                 paths.push(parser::expand_tilde(extra_path));
             }
         } else {
-            search_paths = Some(
-                extra_paths
-                    .iter()
-                    .map(parser::expand_tilde)
-                    .collect(),
-            );
+            search_paths = Some(extra_paths.iter().map(parser::expand_tilde).collect());
         }
     }
     search_paths

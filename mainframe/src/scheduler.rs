@@ -290,8 +290,6 @@ pub struct ServiceParams<'a> {
 
 pub struct ExecutorCheckResult {
     pub executor_state: ExecutorSpawnState,
-    pub executor_map_name: String,
-    pub identifier: String,
     pub layer: Option<RuntimeLayer>, // layer is only exist when executor_exist is false
 }
 
@@ -822,8 +820,6 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
     if executor_state != ExecutorSpawnState::None {
         return Ok(ExecutorCheckResult {
             executor_state,
-            executor_map_name,
-            identifier: scope.identifier(),
             layer: None,
         });
     } else if no_layer_feature {
@@ -837,8 +833,6 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
 
         return Ok(ExecutorCheckResult {
             executor_state,
-            executor_map_name,
-            identifier: scope.identifier(),
             layer: None,
         });
     }
@@ -850,7 +844,10 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
         if let Some(store) = injection_store {
             let target = manifest_meta::InjectionTarget::Package(scope.package_path().to_owned());
             if let Some(meta) = store.get(&target) {
-                tracing::info!("found injection store for target: {:?}", target);
+                tracing::info!(
+                    "scope layer need create with injection. target: {:?}",
+                    target
+                );
                 for node in meta.nodes.iter() {
                     bind_paths.push(BindPath::new(
                         node.absolute_entry
@@ -922,14 +919,12 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
             });
         }
 
-        info!("final package is None, skip layer creation {:?}", scope);
+        info!("scope {:?} does not need layer", scope);
         None
     };
 
     Ok(ExecutorCheckResult {
         executor_state,
-        executor_map_name,
-        identifier: scope.identifier(),
         layer,
     })
 }
@@ -1029,16 +1024,17 @@ where
 
                         let ExecutorCheckResult {
                             executor_state,
-                            executor_map_name,
-                            identifier,
                             layer,
+                            ..
                         } = result.unwrap();
 
-                        info!(
-                            "execute service block. executor: {:?} executor_map: {} state: {:?}",
-                            executor_name, executor_map_name, executor_state
-                        );
                         if executor_state == ExecutorSpawnState::None {
+                            tracing::info!(
+                                "run service block with job id {} but need spawning executor {} identifier: {} first",
+                                job_id,
+                                executor_name,
+                                scope.identifier()
+                            );
                             let r = spawn_executor(
                                 &executor_name,
                                 layer,
@@ -1056,6 +1052,12 @@ where
                                 .unwrap();
                             }
                         } else {
+                            tracing::info!(
+                                "run service block with job id {} in executor {} identifier: {}",
+                                job_id,
+                                executor_name,
+                                scope.identifier()
+                            );
                             let data = serde_json::to_vec(&ExecutePayload::ServiceBlockPayload {
                                 session_id: &session_id,
                                 job_id: &job_id,
@@ -1066,7 +1068,7 @@ where
                                 service_executor: &service_executor,
                                 outputs: &outputs,
                                 service_hash,
-                                identifier: &identifier,
+                                identifier: &scope.identifier(),
                             })
                             .unwrap();
                             impl_tx.run_service_block(&executor_name, data).await;
@@ -1093,27 +1095,27 @@ where
                         });
 
                         if let Err(e) = result {
-                            tx.send(SchedulerCommand::ExecutorExit {
+                            let _ = tx.send(SchedulerCommand::ExecutorExit {
                                 executor: executor_name.clone(),
                                 code: -1,
                                 reason: Some(format!("{}", e)),
-                            })
-                            .unwrap();
+                            });
                             continue;
                         }
 
                         let ExecutorCheckResult {
                             executor_state,
-                            executor_map_name,
-                            identifier,
                             layer,
+                            ..
                         } = result.unwrap();
 
-                        info!(
-                            "execute block. executor: {:?} executor_map: {} state: {:?}",
-                            executor_name, executor_map_name, executor_state
-                        );
                         if executor_state == ExecutorSpawnState::None {
+                            tracing::info!(
+                                "run block with job id {} but need spawning executor {} identifier: {} first",
+                                job_id,
+                                executor_name,
+                                scope.identifier()
+                            );
                             let r = spawn_executor(
                                 &executor_name,
                                 layer,
@@ -1132,6 +1134,12 @@ where
                                 .unwrap();
                             }
                         } else {
+                            tracing::info!(
+                                "run block with job id {} in executor {} identifier: {}",
+                                job_id,
+                                executor_name,
+                                scope.identifier()
+                            );
                             let data = serde_json::to_vec(&ExecutePayload::BlockPayload {
                                 session_id: &session_id,
                                 executor_name: &executor_name,
@@ -1140,7 +1148,7 @@ where
                                 dir: &dir,
                                 executor: &executor,
                                 outputs: &outputs,
-                                identifier: &identifier,
+                                identifier: &scope.identifier(),
                             })
                             .unwrap();
                             impl_tx.run_block(&executor_name, data).await;

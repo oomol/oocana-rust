@@ -113,10 +113,13 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
         temp_root,
     } = block_args;
     let session_id = SessionId::new(session);
-    tracing::info!("Session {} started", session_id);
+    tracing::info!("Session start with session id: {}", session_id);
 
     let addr = broker_address.parse::<SocketAddr>().unwrap_or_else(|_| {
-        warn!("Invalid broker address: {broker_address:?}, using default");
+        warn!(
+            "Invalid broker address: {broker_address:?}, falling back to 127.0.0.1:{}",
+            utils::config::default_broker_port()
+        );
         SocketAddr::new(
             std::net::IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1)),
             utils::config::default_broker_port(),
@@ -191,19 +194,15 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
     if flow_tmp_dir.join(OOCANA_RESULT_FILE).exists() {
         let r = fs::remove_dir_all(&flow_tmp_dir);
         if r.is_err() {
-            warn!("Failed to remove tmp dir: {:?}", r);
+            warn!("Failed to clean tmp dir {:?}", r);
         } else {
-            info!("Remove successful tmp dir: {:?}", flow_tmp_dir);
+            info!("Clean previous tmp dir {:?}", flow_tmp_dir);
         }
     }
 
-    if flow_tmp_dir.is_dir() {
-        info!("tmp_dir already exists: {:?}", flow_tmp_dir);
-    } else if !flow_tmp_dir.exists() {
-        info!("create tmp_dir: {:?}", flow_tmp_dir);
+    if !flow_tmp_dir.exists() {
+        info!("create flow tmp dir {:?}", flow_tmp_dir);
         fs::create_dir_all(&flow_tmp_dir)?;
-    } else {
-        warn!("tmp_dir is not a directory: {:?}", flow_tmp_dir);
     }
 
     let (scheduler_tx, scheduler_rx) = mainframe::scheduler::create(
@@ -277,31 +276,21 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
     _ = scheduler_handle.await;
     _ = reporter_handle.await;
 
-    tracing::info!("Session {} finished, result: {:?}", session_id, result);
+    tracing::info!(
+        "Session finished with session id {} result: {:?}",
+        session_id,
+        result
+    );
 
     if result.is_ok() {
-        info!(
-            "session finish successfully. this tmp dir will clear before next run {:?}",
-            flow_tmp_dir
-        );
-
+        // Write a result file to indicate the flow has run successfully. so that the next run can clean up the tmp dir.
         let result_file = flow_tmp_dir.join(OOCANA_RESULT_FILE);
         if let Err(err) = fs::write(&result_file, "0") {
             warn!(
                 "Failed to write result file at {:?}: {:?}",
                 result_file, err
             );
-            // Retry writing the result file
-            if let Err(retry_err) = fs::write(&result_file, "0") {
-                warn!(
-                    "Retry failed to write result file at {:?}: {:?}",
-                    result_file, retry_err
-                );
-                // Additional follow-up action can be added here, e.g., alerting the user/administrator
-            }
         }
-    } else {
-        info!("session finish with error. keep tmp dir {:?}", flow_tmp_dir);
     }
 
     result
