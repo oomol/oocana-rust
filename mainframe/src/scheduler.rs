@@ -919,7 +919,7 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
             });
         }
 
-        info!("scope {:?} don't need layer", scope);
+        info!("scope {:?} does not need layer", scope);
         None
     };
 
