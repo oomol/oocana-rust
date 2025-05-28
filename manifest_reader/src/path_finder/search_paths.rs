@@ -4,7 +4,7 @@ use std::fs::canonicalize;
 use std::path::{Component, Path, PathBuf};
 
 pub struct BlockManifestParams<'a> {
-    pub value: &'a str,
+    pub block_value: BlockValueType,
     pub base_name: &'a str,
     pub block_dir: &'a str,
     pub search_paths: &'a Vec<PathBuf>,
@@ -16,7 +16,7 @@ pub struct BlockManifestParams<'a> {
 /// search block manifest in <block_dir>/<block_name>/<base_name>.oo.[yaml|yml] in working_dir or search_paths.
 pub fn search_block_manifest(params: BlockManifestParams) -> Option<PathBuf> {
     let BlockManifestParams {
-        value,
+        block_value: value,
         base_name,
         block_dir,
         search_paths,
@@ -24,8 +24,8 @@ pub fn search_block_manifest(params: BlockManifestParams) -> Option<PathBuf> {
         pkg_version,
     } = params;
 
-    let block_type = calculate_block_value_type(value);
-    match block_type {
+    // let block_type = calculate_block_value_type(value);
+    match value {
         BlockValueType::SelfBlock { name: block_name } => {
             let mut self_manifest_path = working_dir.to_path_buf();
             self_manifest_path.pop();

@@ -5,7 +5,10 @@ use std::{
 };
 use utils::error::Result;
 
-use super::search_paths::{search_block_manifest, BlockManifestParams};
+use super::{
+    calculate_block_value_type,
+    search_paths::{search_block_manifest, BlockManifestParams},
+};
 
 pub struct ServiceManifestParams<'a> {
     pub value: &'a str,
@@ -22,7 +25,7 @@ pub fn find_service(params: ServiceManifestParams) -> Result<PathBuf> {
         pkg_version,
     } = params;
     if let Some(path) = search_block_manifest(BlockManifestParams {
-        value,
+        block_value: calculate_block_value_type(value),
         base_name: "service",
         block_dir: "services",
         working_dir: base_dir,
@@ -33,7 +36,7 @@ pub fn find_service(params: ServiceManifestParams) -> Result<PathBuf> {
     }
 
     if let Some(path) = search_block_manifest(BlockManifestParams {
-        value,
+        block_value: calculate_block_value_type(value),
         base_name: "service",
         block_dir: "blocks",
         working_dir: base_dir,

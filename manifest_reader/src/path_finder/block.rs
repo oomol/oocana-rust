@@ -1,4 +1,7 @@
-use super::search_paths::{search_block_manifest, BlockManifestParams};
+use super::{
+    calculate_block_value_type,
+    search_paths::{search_block_manifest, BlockManifestParams},
+};
 use path_clean::PathClean;
 use std::{
     collections::HashMap,
@@ -21,7 +24,7 @@ pub fn find_task_block(params: TaskBlockManifestParams) -> Result<PathBuf> {
         pkg_version,
     } = params;
     if let Some(path) = search_block_manifest(BlockManifestParams {
-        value,
+        block_value: calculate_block_value_type(value),
         base_name: "block",
         block_dir: "blocks",
         working_dir: base_dir,
@@ -32,7 +35,7 @@ pub fn find_task_block(params: TaskBlockManifestParams) -> Result<PathBuf> {
     }
 
     if let Some(path) = search_block_manifest(BlockManifestParams {
-        value,
+        block_value: calculate_block_value_type(value),
         base_name: "task",
         block_dir: "tasks",
         working_dir: base_dir,
@@ -69,7 +72,7 @@ pub fn find_flow_block(params: SubflowBlockManifestParams) -> Result<PathBuf> {
         pkg_version,
     } = params;
     match search_block_manifest(BlockManifestParams {
-        value,
+        block_value: calculate_block_value_type(value),
         base_name: "subflow",
         block_dir: "subflows",
         working_dir: base_dir,
@@ -105,7 +108,7 @@ pub fn find_slot_flow(params: SlotBlockManifestParams) -> Result<PathBuf> {
         pkg_version,
     } = params;
     match search_block_manifest(BlockManifestParams {
-        value,
+        block_value: calculate_block_value_type(value),
         base_name: "slotflow",
         block_dir: "slotflows",
         working_dir: base_dir,
