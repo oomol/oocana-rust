@@ -39,7 +39,9 @@ impl TaskNodeBlock {
     pub fn block_type(&self) -> BlockValueType {
         match self {
             TaskNodeBlock::File(f) => get_block_value_type(f),
-            TaskNodeBlock::Inline(_) => BlockValueType::SelfBlock,
+            TaskNodeBlock::Inline(_) => BlockValueType::SelfBlock {
+                name: "inline".to_string(), // TODO: should be a random name
+            },
         }
     }
 }
