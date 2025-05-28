@@ -1,6 +1,7 @@
 use super::{
     calculate_block_value_type,
     search_paths::{search_block_manifest, BlockManifestParams},
+    BlockValueType,
 };
 use path_clean::PathClean;
 use std::{
@@ -107,6 +108,16 @@ pub fn find_slot_flow(params: SlotBlockManifestParams) -> Result<PathBuf> {
         search_paths,
         pkg_version,
     } = params;
+
+    let slot_block_value = calculate_block_value_type(value);
+
+    if !matches!(slot_block_value, BlockValueType::SelfBlock { .. }) {
+        return Err(utils::error::Error::new(&format!(
+            "Slot block currently only accept self block(self:: prefix), but got: {}",
+            value
+        )));
+    }
+
     match search_block_manifest(BlockManifestParams {
         block_value: calculate_block_value_type(value),
         base_name: "slotflow",
