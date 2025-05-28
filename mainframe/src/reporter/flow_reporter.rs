@@ -31,7 +31,10 @@ fn flow_type(flow_path: &Option<String>) -> FlowType {
         }
         None => FlowType::Flow,
         // slotflow has some special flow paths, so we fallback all special path to slotflow
-        _ => FlowType::SlotFlow,
+        Some(path) => {
+            tracing::info!("Flow path {} with special suffix is slotFlow", path);
+            FlowType::SlotFlow
+        }
     }
 }
 
