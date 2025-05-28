@@ -7,7 +7,7 @@ use std::{
 
 use manifest_reader::{
     manifest::{self, HandleName, InputDefPatch, InputHandles, OutputHandles},
-    path_finder::{find_package_file, get_block_value_type, BlockPathFinder, BlockValueType},
+    path_finder::{calculate_block_value_type, find_package_file, BlockPathFinder, BlockValueType},
     reader::read_package,
 };
 
@@ -191,7 +191,7 @@ impl SubflowBlock {
                         node,
                         &None,
                         &flow.package_path,
-                        get_block_value_type(&subflow_node.subflow),
+                        calculate_block_value_type(&subflow_node.subflow),
                     );
 
                     let running_scope = match running_target {
@@ -247,9 +247,10 @@ impl SubflowBlock {
                                         &mut path_finder,
                                     )?;
 
-                                    let scope = if get_block_value_type(&task_slot.task)
-                                        == BlockValueType::Pkg
-                                        && task.package_path.is_some()
+                                    let scope = if matches!(
+                                        calculate_block_value_type(&task_slot.task),
+                                        BlockValueType::Pkg { .. }
+                                    ) && task.package_path.is_some()
                                     {
                                         RunningScope::Package {
                                             path: task.package_path.clone().unwrap(),
@@ -274,9 +275,10 @@ impl SubflowBlock {
                                         &mut path_finder,
                                     )?;
 
-                                    let scope = if get_block_value_type(&slot_flow.slotflow)
-                                        == BlockValueType::Pkg
-                                        && slotflow.package_path.is_some()
+                                    let scope = if matches!(
+                                        calculate_block_value_type(&slot_flow.slotflow),
+                                        BlockValueType::Pkg { .. }
+                                    ) && slotflow.package_path.is_some()
                                     {
                                         RunningScope::Package {
                                             path: slotflow.package_path.clone().unwrap(),
@@ -306,9 +308,10 @@ impl SubflowBlock {
                                         tracing::warn!("this subflow has slot node");
                                     }
 
-                                    let scope = if get_block_value_type(&subflow_slot.subflow)
-                                        == BlockValueType::Pkg
-                                        && slot_flow.package_path.is_some()
+                                    let scope = if matches!(
+                                        calculate_block_value_type(&subflow_slot.subflow),
+                                        BlockValueType::Pkg { .. }
+                                    ) && slot_flow.package_path.is_some()
                                     {
                                         RunningScope::Package {
                                             path: slot_flow.package_path.clone().unwrap(),

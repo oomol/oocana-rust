@@ -4,7 +4,7 @@ use tracing::warn;
 use crate::{
     extend_node_common_field,
     manifest::{InputHandle, NodeInputFrom, TaskBlock},
-    path_finder::{get_block_value_type, BlockValueType},
+    path_finder::{calculate_block_value_type, BlockValueType},
 };
 
 use super::common::{default_concurrency, NodeId};
@@ -38,8 +38,10 @@ impl TaskNodeBlock {
 
     pub fn block_type(&self) -> BlockValueType {
         match self {
-            TaskNodeBlock::File(f) => get_block_value_type(f),
-            TaskNodeBlock::Inline(_) => BlockValueType::SelfBlock,
+            TaskNodeBlock::File(f) => calculate_block_value_type(f),
+            TaskNodeBlock::Inline(_) => BlockValueType::SelfBlock {
+                name: "inline".to_string(), // TODO: should be a random name
+            },
         }
     }
 }

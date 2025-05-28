@@ -10,7 +10,7 @@ use manifest_meta::{
     ServiceExecutorOptions, TaskBlockExecutor, OOMOL_BIN_DATA, OOMOL_SECRET_DATA, OOMOL_VAR_DATA,
 };
 use serde_json::Value;
-use tracing::{debug, info, warn};
+use tracing::{debug, warn};
 use utils::output::OutputValue;
 
 use crate::block_status::BlockStatusTx;
