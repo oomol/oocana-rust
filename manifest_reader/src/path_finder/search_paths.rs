@@ -117,14 +117,6 @@ pub enum BlockValueType {
 
 const SELF_BLOCK_PREFIX: &str = "self::";
 
-pub fn calculate_block_type_and_name(
-    block_value: &str,
-) -> (BlockValueType, String, Option<String>) {
-    let block_type = get_block_value_type(block_value);
-    let (block_name, pkg_name) = get_block_name_and_pkg(block_value);
-    (block_type, block_name, pkg_name)
-}
-
 pub fn get_block_value_type(block_value: &str) -> BlockValueType {
     if block_value.starts_with(SELF_BLOCK_PREFIX) {
         return BlockValueType::SelfBlock {
