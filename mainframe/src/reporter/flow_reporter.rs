@@ -20,13 +20,18 @@ enum FlowType {
 
 fn flow_type(flow_path: &Option<String>) -> FlowType {
     match flow_path {
+        Some(path) if path.ends_with("flow.oo.yaml") || path.ends_with("flow.oo.yml") => {
+            FlowType::Flow
+        }
         Some(path) if path.ends_with("subflow.oo.yaml") || path.ends_with("subflow.oo.yml") => {
             FlowType::Subflow
         }
         Some(path) if path.ends_with("slotflow.oo.yaml") || path.ends_with("slotflow.oo.yml") => {
             FlowType::SlotFlow
         }
-        _ => FlowType::Flow,
+        None => FlowType::Flow,
+        // slotflow has some special flow paths, so we fallback all special path to slotflow
+        _ => FlowType::SlotFlow,
     }
 }
 
