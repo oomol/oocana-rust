@@ -26,8 +26,35 @@ fn flow_type(flow_path: &Option<String>) -> FlowType {
         Some(path) if path.ends_with("slotflow.oo.yaml") || path.ends_with("slotflow.oo.yml") => {
             FlowType::SlotFlow
         }
-        _ => FlowType::Flow,
+        Some(path) if path.ends_with("flow.oo.yaml") || path.ends_with("flow.oo.yml") => {
+            FlowType::Flow
+        }
+        None => FlowType::Flow,
+        // slotflow has some special flow paths, so we fallback all special path to slotflow
+        Some(path) => {
+            tracing::info!("Flow path {} with special suffix is slotFlow", path);
+            FlowType::SlotFlow
+        }
     }
+}
+
+#[test]
+fn test_flow_type() {
+    assert!(matches!(
+        flow_type(&Some("test/flow.oo.yaml".to_string())),
+        FlowType::Flow
+    ));
+    assert!(matches!(
+        flow_type(&Some(
+            "flow-examples/packages/array/subflows/map/subflow.oo.yaml".to_string()
+        )),
+        FlowType::Subflow
+    ));
+    assert!(matches!(
+        flow_type(&Some("test/slotflow.oo.yaml".to_string())),
+        FlowType::SlotFlow
+    ));
+    assert!(matches!(flow_type(&None), FlowType::Flow));
 }
 
 impl FlowReporterTx {
