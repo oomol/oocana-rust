@@ -3,7 +3,7 @@ use tracing::warn;
 use super::manifest_file::{find_oo_yaml, find_oo_yaml_in_dir, find_oo_yaml_without_suffix};
 use std::collections::HashMap;
 use std::fs::canonicalize;
-use std::path::{self, Component, Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
 pub struct BlockManifestParams<'a> {
     pub block_value: BlockValueType,
@@ -49,7 +49,7 @@ pub fn search_block_manifest(params: BlockManifestParams) -> Option<PathBuf> {
             pkg_name,
             block_name,
         } => {
-            let manifest_path = if let Some(pkg) = pkg_name {
+            let manifest_path: PathBuf = if let Some(pkg) = pkg_name {
                 if let Some(version) = pkg_version.get(&pkg) {
                     // Use "{pkg_name}-{version}" as the package directory
                     [&format!("{}-{}", pkg, version), block_dir, &block_name]
@@ -60,8 +60,8 @@ pub fn search_block_manifest(params: BlockManifestParams) -> Option<PathBuf> {
                     [&pkg, block_dir, &block_name].iter().collect()
                 }
             } else {
-                warn!("pkg_name is None, using block_name as manifest path");
-                path::PathBuf::from(block_name)
+                warn!("pkg_name is None, using block_name as manifest path. this should be never happen.");
+                PathBuf::from(block_name)
             };
             find_block_manifest_file(BlockSearchParams {
                 manifest_path: &manifest_path,
