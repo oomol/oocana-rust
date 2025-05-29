@@ -205,23 +205,40 @@ fn is_normal_path_component(component: Component) -> bool {
 
 #[cfg(test)]
 mod tests {
-    // use super::*;
+    use super::*;
 
-    // #[test]
-    // fn test_get_block_value_type() {
-    //     assert_eq!(
-    //         get_block_value_type("self::block1"),
-    //         BlockValueType::SelfBlock
-    //     );
-    //     assert_eq!(get_block_value_type("block1"), BlockValueType::Direct);
-    //     assert_eq!(get_block_value_type("pkg1::block1"), BlockValueType::Pkg);
-    //     assert_eq!(
-    //         get_block_value_type("/abs/path/block1"),
-    //         BlockValueType::AbsPath
-    //     );
-    //     assert_eq!(
-    //         get_block_value_type("./rel/path/block1"),
-    //         BlockValueType::RelPath
-    //     );
-    // }
+    #[test]
+    fn test_get_block_value_type() {
+        assert_eq!(
+            calculate_block_value_type("self::block1"),
+            BlockValueType::SelfBlock {
+                name: "block1".to_string()
+            }
+        );
+        assert_eq!(
+            calculate_block_value_type("block1"),
+            BlockValueType::Direct {
+                path: "block1".to_string()
+            }
+        );
+        assert_eq!(
+            calculate_block_value_type("pkg1::block1"),
+            BlockValueType::Pkg {
+                pkg_name: Some("pkg1".to_string()),
+                block_name: "block1".to_string()
+            }
+        );
+        assert_eq!(
+            calculate_block_value_type("/abs/path/block1"),
+            BlockValueType::AbsPath {
+                path: "/abs/path/block1".to_string()
+            }
+        );
+        assert_eq!(
+            calculate_block_value_type("./rel/path/block1"),
+            BlockValueType::RelPath {
+                path: "./rel/path/block1".to_string()
+            }
+        );
+    }
 }
