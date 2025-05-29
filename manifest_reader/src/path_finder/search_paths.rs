@@ -1,7 +1,9 @@
+use tracing::warn;
+
 use super::manifest_file::{find_oo_yaml, find_oo_yaml_in_dir, find_oo_yaml_without_suffix};
 use std::collections::HashMap;
 use std::fs::canonicalize;
-use std::path::{Component, Path, PathBuf};
+use std::path::{self, Component, Path, PathBuf};
 
 pub struct BlockManifestParams<'a> {
     pub block_value: BlockValueType,
@@ -35,9 +37,8 @@ pub fn search_block_manifest(params: BlockManifestParams) -> Option<PathBuf> {
             find_manifest_yaml_file(&self_manifest_path, base_name)
         }
         BlockValueType::Direct { path: block_path } => {
-            let manifest_path = vec![block_path];
             find_block_manifest_file(BlockSearchParams {
-                manifest_path: &manifest_path,
+                manifest_path: &PathBuf::from(block_path),
                 base_name,
                 flow_dir: working_dir,
                 search_paths,
@@ -48,17 +49,19 @@ pub fn search_block_manifest(params: BlockManifestParams) -> Option<PathBuf> {
             pkg_name,
             block_name,
         } => {
-            let manifest_path = if let Some(ref pkg) = pkg_name {
-                if let Some(version) = pkg_version.get(pkg) {
-                    // {pkg_name}-{version}
-                    let pkg = format!("{}-{}", pkg, version);
-                    vec![pkg, block_dir.to_string(), block_name]
+            let manifest_path = if let Some(pkg) = pkg_name {
+                if let Some(version) = pkg_version.get(&pkg) {
+                    // Use "{pkg_name}-{version}" as the package directory
+                    [&format!("{}-{}", pkg, version), block_dir, &block_name]
+                        .iter()
+                        .collect()
                 } else {
-                    vec![pkg.to_string(), block_dir.to_string(), block_name]
+                    warn!("can't find package version for {}", pkg);
+                    [&pkg, block_dir, &block_name].iter().collect()
                 }
             } else {
-                // 按理说，不应该走到这里，因为这种情况应该是直接的 block_name
-                vec![block_name]
+                warn!("pkg_name is None, using block_name as manifest path");
+                path::PathBuf::from(block_dir)
             };
             find_block_manifest_file(BlockSearchParams {
                 manifest_path: &manifest_path,
@@ -153,7 +156,7 @@ pub fn calculate_block_value_type(block_value: &str) -> BlockValueType {
 }
 
 struct BlockSearchParams<'a> {
-    pub manifest_path: &'a Vec<String>, // block directory path, like <pkg_name>/<block_type+'s'><block_name> or <block_name>
+    pub manifest_path: &'a Path, // block directory path, like <pkg_name>/<block_type+'s'><block_name> or <block_name>
     pub base_name: &'a str, // base_name is the name of the manifest without the suffix (oo.yaml, oo.yml)
     pub flow_dir: &'a Path, // flow directory, oocana will treat flow dir as the pkg_dir. otherwise, oocana will treat flow_dir as the last search path.
     pub search_paths: &'a Vec<PathBuf>, // search paths for pkg_dir.
@@ -171,14 +174,14 @@ fn find_block_manifest_file(params: BlockSearchParams) -> Option<PathBuf> {
     } = params;
 
     for search_path in search_paths.iter() {
-        let candidate_path = search_path.join(manifest_path.iter().collect::<PathBuf>());
+        let candidate_path = search_path.join(manifest_path);
         let file_path = find_oo_yaml_in_dir(&candidate_path, base_name);
         if let Some(path) = file_path {
             return canonicalize(&path).ok();
         }
     }
 
-    let candidate_path = flow_dir.join(manifest_path.iter().collect::<PathBuf>());
+    let candidate_path = flow_dir.join(manifest_path);
     let p = if manifest_maybe_file {
         find_oo_yaml(&candidate_path, base_name)
     } else {
