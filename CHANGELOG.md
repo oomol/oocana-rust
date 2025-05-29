@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.28.4 (2025-05-29)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* feat: refactor search type and make slotflow only accept self block by @leavesster in https://github.com/oomol/oocana-rust/pull/142
+* refactor: refactor some parameters by @leavesster in https://github.com/oomol/oocana-rust/pull/144
+* chore(devcontainer): follow new ovmlayer build by @leavesster in https://github.com/oomol/oocana-rust/pull/145
+* fix: slotflow has no inputs_def which missing connection by @leavesster in https://github.com/oomol/oocana-rust/pull/146
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.28.3...v0.28.4
+
 ## 0.28.3 (2025-05-28)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
