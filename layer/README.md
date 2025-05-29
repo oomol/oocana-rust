@@ -34,7 +34,7 @@ mv base-rootfs.tar ~/oomol/layer_blocker
 > ovmlayer 会占用 docker 创建的 /dev/loop 设备。在多个项目使用 ovmlayer 环境时，会抢占 /dev/loop 设备，导致无法使用。所以目前最好只开一个使用 ovmlayer 的项目。
 另外，这种情况下，在退出使用 ovmlayer 的项目时，需要手动调用 `losetup -D` 卸载当前容器对 /dev/loop 设备的占用。然后使用 `losetup -a` 查看是否还有其他占用，如果有，需要手动卸载。
 
-> 由于 devcontainer 生命周期的问题，有时候 ovmlayer 启动会有问题，此时需要再次运行 `setup.sh`。
+> 由于 devcontainer 生命周期的问题，有时候 ovmlayer 启动会有问题，此时需要再次运行 `.devcontainer/setup.sh`。
 
 * 容器内操作
 

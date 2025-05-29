@@ -40,7 +40,8 @@
     "thiserror",
     "ttlhashmap",
     "unmerge",
-    "Unmerging"
+    "Unmerging",
+    "zstd"
   ],
   "ignorePaths": [
     "**/coverage/**",

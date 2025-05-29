@@ -1,1 +1,2 @@
-apt update && apt install -y git sudo locales-all tar xz-utils uuid-runtime mosquitto
+set -xe
+apt update && apt install -y --no-install-recommends git sudo tar zstd mosquitto
