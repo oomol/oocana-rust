@@ -7,6 +7,7 @@
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	"features": {
 		"ghcr.io/devcontainers/features/rust:1": {},
+		"ghcr.io/devcontainers/features/go:1": {},
 		"ghcr.io/devcontainers/features/node:1": {
 			"nodeGypDependencies": true,
 			"installYarnUsingApt": false,
@@ -105,8 +106,8 @@
 		"--device=/dev/loop-control"
 	],
 	"remoteUser": "root",
-	"onCreateCommand": "sudo ln -sf /workspaces/ovmlayer/ovmlayer /usr/local/bin/ovmlayer",
-	"postCreateCommand": "sudo mknod /dev/loop0 b 7 0; ./layer/setup.sh",
+	"onCreateCommand": "./.devcontainer/build.sh",
+	"postCreateCommand": "sudo mknod /dev/loop0 b 7 0; ./.devcontainer/setup.sh",
 	// orb 的虚拟机，需要手动创建 loop0 设备。同时如果 orb 整个退出再重开 container loop0 会丢失，所以需要在 container 启动时创建 loop0 设备
 	"postStartCommand": "test -e /dev/loop0 || sudo mknod /dev/loop0 b 7 0"
 }
