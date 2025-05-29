@@ -9,7 +9,7 @@ pub struct BlockManifestParams<'a> {
     pub block_value: BlockValueType,
     pub base_name: &'a str,
     pub block_dir: &'a str,
-    pub search_paths: &'a Vec<PathBuf>,
+    pub search_paths: &'a [PathBuf],
     pub working_dir: &'a Path,
     pub pkg_version: &'a HashMap<String, String>,
 }
@@ -159,7 +159,7 @@ struct BlockSearchParams<'a> {
     pub manifest_path: &'a Path, // block directory path, like <pkg_name>/<block_type+'s'><block_name> or <block_name>
     pub base_name: &'a str, // base_name is the name of the manifest without the suffix (oo.yaml, oo.yml)
     pub flow_dir: &'a Path, // flow directory, oocana will treat flow dir as the pkg_dir. otherwise, oocana will treat flow_dir as the last search path.
-    pub search_paths: &'a Vec<PathBuf>, // search paths for pkg_dir.
+    pub search_paths: &'a [PathBuf], // search paths for pkg_dir.
     pub manifest_maybe_file: bool, // if false, manifest is must be a directory.
 }
 
