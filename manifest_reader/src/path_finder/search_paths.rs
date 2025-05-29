@@ -61,7 +61,7 @@ pub fn search_block_manifest(params: BlockManifestParams) -> Option<PathBuf> {
                 }
             } else {
                 warn!("pkg_name is None, using block_name as manifest path");
-                path::PathBuf::from(block_dir)
+                path::PathBuf::from(block_name)
             };
             find_block_manifest_file(BlockSearchParams {
                 manifest_path: &manifest_path,
