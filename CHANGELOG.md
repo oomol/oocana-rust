@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.28.5 (2025-05-30)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* chore: use new rootfs by @leavesster in https://github.com/oomol/oocana-rust/pull/147
+* refactor: rename slotflow block to slotflow by @leavesster in https://github.com/oomol/oocana-rust/pull/149
+* fix: revert subflow event name by @leavesster in https://github.com/oomol/oocana-rust/pull/150
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.28.4...v0.28.5
+
 ## 0.28.4 (2025-05-29)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
