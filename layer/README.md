@@ -25,7 +25,7 @@ if [ $arch != "arm64" ]; then
     arch="amd64"
 fi
 
-curl -o base-rootfs.tar -L https://github.com/oomol/ovmlayer-rootfs/releases/download/base-rootfs%400.3.0/$arch-rootfs.tar
+curl -o base-rootfs.tar -L https://github.com/oomol/ovmlayer-rootfs/releases/download/base-rootfs%400.4.0/$arch-rootfs.tar
 mv base-rootfs.tar ~/oomol/layer_blocker
 ```
 
