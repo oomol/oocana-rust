@@ -86,14 +86,6 @@ impl Connections {
             for input_from in inputs_from {
                 if let Some(from_nodes) = &input_from.from_node {
                     for from_node in from_nodes {
-                        if !self.nodes.contains(&from_node.node_id) {
-                            tracing::warn!(
-                                "ignore node connection because node({}) is not in runtime flow",
-                                from_node.node_id
-                            );
-                            continue;
-                        }
-
                         if let Some(value_node) = find_value_node(&from_node.node_id) {
                             if let Some(input) = value_node.get_handle(&from_node.output_handle) {
                                 self.node_inputs_froms.add(
@@ -113,6 +105,14 @@ impl Connections {
                                     from_node.output_handle
                                 );
                             }
+                            continue;
+                        }
+
+                        if !self.nodes.contains(&from_node.node_id) {
+                            tracing::warn!(
+                                "ignore node connection because node({}) is not in runtime nodes or value nodes",
+                                from_node.node_id
+                            );
                             continue;
                         }
 
