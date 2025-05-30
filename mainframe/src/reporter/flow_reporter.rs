@@ -84,7 +84,7 @@ impl FlowReporterTx {
                 stacks: self.stacks.vec(),
                 create_at: ReporterMessage::now(),
             }),
-            FlowType::SlotFlow => self.tx.send(ReporterMessage::SlotflowBlockStarted {
+            FlowType::SlotFlow => self.tx.send(ReporterMessage::SlotflowStarted {
                 session_id: &self.tx.session_id,
                 job_id: &self.job_id,
                 block_path: &self.path,
@@ -156,7 +156,7 @@ impl FlowReporterTx {
                 handle,
             }),
             FlowType::Flow => {}
-            FlowType::SlotFlow => self.tx.send(ReporterMessage::SlotflowBlockOutput {
+            FlowType::SlotFlow => self.tx.send(ReporterMessage::SlotflowOutput {
                 session_id: &self.tx.session_id,
                 job_id: &self.job_id,
                 block_path: &self.path,

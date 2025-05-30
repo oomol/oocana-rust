@@ -75,7 +75,7 @@ pub enum ReporterMessage<'a> {
         error: &'a Option<String>,
         finish_at: u128,
     },
-    SlotflowBlockStarted {
+    SlotflowStarted {
         session_id: &'a str,
         job_id: &'a str,
         block_path: &'a Option<String>,
@@ -91,7 +91,7 @@ pub enum ReporterMessage<'a> {
         error: &'a Option<String>,
         finish_at: u128,
     },
-    SlotflowBlockOutput {
+    SlotflowOutput {
         session_id: &'a str,
         job_id: &'a str,
         block_path: &'a Option<String>,
@@ -99,7 +99,7 @@ pub enum ReporterMessage<'a> {
         output: Arc<OutputValue>,
         handle: &'a str,
     },
-    SubflowBlockOutput {
+    SubflowOutput {
         session_id: &'a str,
         job_id: &'a str,
         block_path: &'a Option<String>,
