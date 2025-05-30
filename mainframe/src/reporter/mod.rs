@@ -99,7 +99,7 @@ pub enum ReporterMessage<'a> {
         output: Arc<OutputValue>,
         handle: &'a str,
     },
-    SubflowOutput {
+    SubflowBlockOutput {
         session_id: &'a str,
         job_id: &'a str,
         block_path: &'a Option<String>,
