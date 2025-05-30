@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.28.6 (2025-05-30)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* chore(action): rename action to avoid duplicate require check only wait one job by @leavesster in https://github.com/oomol/oocana-rust/pull/151
+* fix: value node should be search before from node by @leavesster in https://github.com/oomol/oocana-rust/pull/152
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.28.5...v0.28.6
+
 ## 0.28.5 (2025-05-30)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
