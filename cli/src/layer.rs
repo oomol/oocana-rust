@@ -128,8 +128,8 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
                         }
 
                         if find_package_file(&path).is_some() {
-                            tracing::debug!("find package file in {path:?}");
                             let status = layer::package_layer_status(&path)?;
+                            tracing::debug!("find package file in {path:?} with status {status:?}");
                             package_map.insert(path, format!("{status:?}"));
                         }
                     }
@@ -137,6 +137,7 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
                     tracing::warn!("directory {p:?} is not a directory");
                 }
             }
+            tracing::debug!("scan result: {package_map:?}");
             println!("{package_map:?}");
         }
         LayerAction::Export { package, dest } => {
