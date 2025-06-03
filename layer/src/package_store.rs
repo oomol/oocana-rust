@@ -58,10 +58,22 @@ pub fn package_layer_status<P: AsRef<Path>>(package_path: P) -> Result<PackageLa
 
     match package {
         Some(p) => {
-            if p.version == version && p.validate().is_ok() {
+            if p.version != version {
+                tracing::debug!(
+                    "{} layer version mismatch, expected: {:?}, found: {:?}",
+                    package_path.display(),
+                    version,
+                    p.version
+                );
+                Ok(PackageLayerStatus::NotInStore)
+            } else if p.validate().is_ok() {
                 Ok(PackageLayerStatus::Exist)
             } else {
-                tracing::debug!("package layer version mismatch or layers not exist");
+                tracing::debug!(
+                    "{} layer validation failed: {}",
+                    package_path.display(),
+                    p.validate().unwrap_err()
+                );
                 Ok(PackageLayerStatus::NotInStore)
             }
         }
