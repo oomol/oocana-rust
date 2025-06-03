@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.28.7 (2025-06-03)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* chore: log scan result by @leavesster in https://github.com/oomol/oocana-rust/pull/154
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.28.6...v0.28.7
+
 ## 0.28.6 (2025-05-30)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
