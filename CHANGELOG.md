@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.28.8 (2025-06-12)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* feat: preserve json order by @leavesster in https://github.com/oomol/oocana-rust/pull/156
+* fix: spawn timeout reach executor exit case by @leavesster in https://github.com/oomol/oocana-rust/pull/158
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.28.7...v0.28.8
+
 ## 0.28.7 (2025-06-03)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
