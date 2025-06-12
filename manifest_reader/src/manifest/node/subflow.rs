@@ -32,6 +32,8 @@ pub enum SlotProvider {
 pub struct SlotFlowProvider {
     pub slot_node_id: NodeId,
     pub slotflow: String,
+    pub inputs_def: Option<Vec<InputHandle>>,
+    pub inputs_from: Option<Vec<NodeInputFrom>>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
