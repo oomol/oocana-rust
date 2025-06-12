@@ -244,8 +244,9 @@ pub struct ExecutorState {
 pub enum ExecutorSpawnState {
     #[default]
     None,
-    Spawned, // spawn 但是没有收到 ready 信息
-    Ready,   // 收到 ready 信息
+    Spawned,  // spawn 但是没有收到 ready 信息
+    Ready,    // 收到 ready 信息
+    Finished, // executor only finished during session finished. This enum is used to indicate that the executor has finished its work and is no longer running. If this state is reached do not try to send executor spawn timeout.
 }
 
 #[derive(Debug, Clone)]
@@ -679,7 +680,7 @@ fn spawn_executor(
                 .get(&executor_map_name_clone)
                 .cloned()
                 .unwrap_or_default();
-            if executor_state.spawn_state == ExecutorSpawnState::Ready {
+            if executor_state.spawn_state != ExecutorSpawnState::Spawned {
                 return;
             }
             txx.send(SchedulerCommand::SpawnExecutorTimeout {
@@ -738,7 +739,7 @@ fn spawn_executor(
                 write_map.insert(
                     executor_map_name_clone.clone(),
                     ExecutorState {
-                        spawn_state: ExecutorSpawnState::None,
+                        spawn_state: ExecutorSpawnState::Finished,
                         pid: None,
                     },
                 );
