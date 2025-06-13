@@ -80,6 +80,7 @@ impl InlineSlot {
                                     value: None,
                                     json_schema: None,
                                     name: None,
+                                    remember: false,
                                 },
                             );
                         }
