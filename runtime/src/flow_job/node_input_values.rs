@@ -22,6 +22,8 @@ type InputValues = HashMap<HandleName, Arc<OutputValue>>;
 /// Values are collected for each Node handle before starting a Node job
 pub struct NodeInputValues {
     store: NodeInputStore,
+    // used to store last values for each node input when `remember` is true
+    memory_store: NodeInputStore,
     last_values: Option<NodeInputStore>,
 }
 
@@ -29,6 +31,7 @@ impl NodeInputValues {
     pub fn new(save_cache: bool) -> Self {
         Self {
             store: HashMap::new(),
+            memory_store: HashMap::new(),
             last_values: if save_cache {
                 Some(HashMap::new())
             } else {
@@ -63,12 +66,14 @@ impl NodeInputValues {
             match serde_json::from_reader::<_, NodeInputStore>(reader) {
                 Ok(store) => Self {
                     store: store.clone(),
+                    memory_store: HashMap::new(),
                     last_values: Some(store),
                 },
                 Err(e) => {
                     warn!("Failed to deserialize: {:?}", e);
                     Self {
                         store: HashMap::new(),
+                        memory_store: HashMap::new(),
                         last_values,
                     }
                 }
@@ -76,6 +81,7 @@ impl NodeInputValues {
         } else {
             Self {
                 store: HashMap::new(),
+                memory_store: HashMap::new(),
                 last_values,
             }
         }
@@ -206,15 +212,44 @@ impl NodeInputValues {
         }
     }
 
+    fn remember_value(&mut self, node_id: &NodeId, handle: &HandleName, value: Arc<OutputValue>) {
+        let vec = self
+            .memory_store
+            .entry(node_id.clone())
+            .or_default()
+            .entry(handle.to_owned())
+            .or_default();
+
+        vec.clear();
+        vec.push_back(Arc::clone(&value));
+    }
+
     pub fn take(&mut self, node: &Node) -> Option<InputValues> {
         let mut value_map: InputValues = HashMap::new();
+        let mut to_remember: Vec<(HandleName, Arc<OutputValue>)> = Vec::new();
+        let node_id = node.node_id();
 
-        if let Some(input_values) = self.store.get_mut(node.node_id()) {
+        if let Some(input_values) = self.store.get_mut(node_id) {
             for (handle, values) in input_values {
                 if let Some(first) = values.pop_front() {
                     value_map.insert(handle.to_owned(), Arc::clone(&first));
+
+                    if values.is_empty() && need_remember_value(node, handle) {
+                        to_remember.push((handle.to_owned(), Arc::clone(&first)));
+                    }
+                } else if let Some(remembered_value) = self
+                    .memory_store
+                    .get(node_id)
+                    .and_then(|m| m.get(handle))
+                    .and_then(|v| v.get(0))
+                {
+                    value_map.insert(handle.to_owned(), Arc::clone(&remembered_value));
                 }
             }
+        }
+
+        for (handle, value) in to_remember {
+            self.remember_value(node_id, &handle, value);
         }
 
         if let Some(inputs_def) = node.inputs_def() {
@@ -260,6 +295,15 @@ impl NodeInputValues {
             Some(value_map)
         }
     }
+}
+
+fn need_remember_value(node: &Node, handle: &HandleName) -> bool {
+    if let Some(inputs_def) = node.inputs_def() {
+        if let Some(def) = inputs_def.get(handle) {
+            return def.remember;
+        }
+    }
+    false
 }
 
 // key 是 flow path，value 是 flow path 对应缓存文件
