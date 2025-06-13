@@ -34,6 +34,8 @@ struct TempInputHandle {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub json_schema: Option<serde_json::Value>,
     pub name: Option<String>,
+    #[serde(default)]
+    pub remember: bool,
 }
 
 impl From<TempInputHandle> for InputHandle {
@@ -43,6 +45,7 @@ impl From<TempInputHandle> for InputHandle {
             value,
             json_schema,
             name,
+            remember,
             ..
         } = temp;
         let value = if temp.nullable {
@@ -59,6 +62,7 @@ impl From<TempInputHandle> for InputHandle {
             value,
             json_schema,
             name,
+            remember,
         }
     }
 }
@@ -79,6 +83,8 @@ pub struct InputHandle {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub json_schema: Option<serde_json::Value>,
     pub name: Option<String>,
+    #[serde(default)]
+    pub remember: bool,
 }
 
 impl InputHandle {
@@ -88,6 +94,7 @@ impl InputHandle {
             value: None,
             json_schema: None,
             name: None,
+            remember: false,
         }
     }
 }
