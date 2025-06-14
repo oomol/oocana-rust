@@ -657,17 +657,18 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
         },
     };
 
-    let nodes_value_store: Option<Arc<RwLock<NodeInputValues>>> = if matches!(node, Node::Flow(_)) {
-        let arc = ctx
-            .flow_value_store
-            .get_or_insert_with(HashMap::new)
-            .entry(node.node_id().to_owned())
-            .or_insert_with(|| Arc::new(RwLock::new(NodeInputValues::new(false))))
-            .clone();
-        Some(arc)
-    } else {
-        None
-    };
+    let nodes_value_store: Option<Arc<RwLock<NodeInputValues>>> =
+        if matches!(block, manifest_meta::Block::Flow(_)) {
+            let arc = ctx
+                .flow_value_store
+                .get_or_insert_with(HashMap::new)
+                .entry(node.node_id().to_owned())
+                .or_insert_with(|| Arc::new(RwLock::new(NodeInputValues::new(false))))
+                .clone();
+            Some(arc)
+        } else {
+            None
+        };
 
     let handle = run_block({
         RunBlockArgs {
