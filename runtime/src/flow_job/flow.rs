@@ -574,11 +574,7 @@ fn produce_new_value(
                     flow_output_handle.to_owned(),
                 );
             }
-            HandleTo::ToSlotInput {
-                node_id,
-                slot_node_id,
-                slot_input_handle,
-            } => {
+            HandleTo::ToSlotInput { .. } => {
                 // TODO: implement to slot
             }
         }
