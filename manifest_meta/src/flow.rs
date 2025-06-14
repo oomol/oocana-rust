@@ -92,6 +92,14 @@ impl fmt::Display for ServiceQueryResult {
 }
 
 impl SubflowBlock {
+    pub fn update_node(&mut self, node_id: &NodeId, node: Node) {
+        if let Some(existing_node) = self.nodes.get_mut(node_id) {
+            *existing_node = node;
+        } else {
+            self.nodes.insert(node_id.clone(), node);
+        }
+    }
+
     pub fn has_slot(&self) -> bool {
         self.nodes
             .values()
@@ -200,7 +208,7 @@ impl SubflowBlock {
         for node in &nodes_in_flow {
             match node {
                 manifest::Node::Subflow(subflow_node) => {
-                    let flow = block_resolver
+                    let mut flow = block_resolver
                         .resolve_flow_block(&subflow_node.subflow, &mut path_finder)?;
                     let inputs_def =
                         parse_inputs_def(&subflow_node.inputs_from, &flow.as_ref().inputs_def);
@@ -315,6 +323,61 @@ impl SubflowBlock {
                                     } else {
                                         RunningScope::Slot {}
                                     };
+
+                                    // add addition slot inputs to slot node
+
+                                    if let Some(slot_node) =
+                                        flow.nodes.get(&slotflow_provider.slot_node_id)
+                                    {
+                                        if let Node::Slot(slot_node) = slot_node {
+                                            let mut new_inputs_def = slot_node
+                                                .slot
+                                                .as_ref()
+                                                .inputs_def
+                                                .clone()
+                                                .unwrap_or_default();
+                                            if let Some(addition_def) =
+                                                &slotflow_provider.inputs_def
+                                            {
+                                                for input in addition_def.iter() {
+                                                    if !new_inputs_def.contains_key(&input.handle) {
+                                                        new_inputs_def.insert(
+                                                            input.handle.to_owned(),
+                                                            input.clone(),
+                                                        );
+                                                    } else {
+                                                        tracing::warn!(
+                                                            "slot node {} already has input {}",
+                                                            slotflow_provider.slot_node_id,
+                                                            input.handle
+                                                        );
+                                                    }
+                                                }
+
+                                                let mut new_slot_node = slot_node.clone();
+                                                new_slot_node.inputs_def =
+                                                    Some(new_inputs_def.clone());
+
+                                                // Cannot mutate inside Arc, so clone, update, and re-wrap if needed
+                                                let mut flow_inner = (*flow).clone();
+                                                flow_inner.update_node(
+                                                    &slotflow_provider.slot_node_id,
+                                                    Node::Slot(new_slot_node),
+                                                );
+                                                flow = Arc::new(flow_inner);
+                                            }
+                                        } else {
+                                            warn!(
+                                                "{} is not a slot node",
+                                                slotflow_provider.slot_node_id
+                                            );
+                                        }
+                                    } else {
+                                        warn!(
+                                            "slot node not found: {}",
+                                            slotflow_provider.slot_node_id
+                                        );
+                                    }
 
                                     let slot_block = Slot::Subflow(SubflowSlot {
                                         slot_node_id: slotflow_provider.slot_node_id.to_owned(),
