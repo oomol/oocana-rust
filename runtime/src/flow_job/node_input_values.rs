@@ -20,6 +20,7 @@ type NodeInputStore = HashMap<NodeId, InputMap>;
 type InputValues = HashMap<HandleName, Arc<OutputValue>>;
 
 /// Values are collected for each Node handle before starting a Node job
+#[derive(Default)]
 pub struct NodeInputValues {
     store: NodeInputStore,
     // used to store last values for each node input when `remember` is true

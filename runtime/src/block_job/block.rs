@@ -8,7 +8,11 @@ use mainframe::reporter::ReporterMessage;
 use manifest_meta::{Block, InputDefPatchMap, NodeId, Slot, SubflowBlock};
 
 use super::{service_job, task_job};
-use crate::{block_status::BlockStatusTx, flow_job, shared::Shared};
+use crate::{
+    block_status::{create, BlockStatusRx, BlockStatusTx},
+    flow_job::NodeInputValues,
+};
+use crate::{flow_job, shared::Shared};
 
 pub struct BlockJobHandle {
     // TODO: Remove this field
@@ -42,8 +46,9 @@ pub struct RunBlockArgs {
     pub job_id: JobId,
     pub inputs: Option<BlockInputs>,
     pub block_status: BlockStatusTx,
+    pub flow_block_status: Option<(BlockStatusTx, BlockStatusRx)>,
+    pub nodes_value_store: Option<NodeInputValues>,
     pub nodes: Option<HashSet<NodeId>>,
-    pub input_values: Option<String>,
     pub parent_scope: RunningPackageScope,
     pub scope: RunningPackageScope,
     pub timeout: Option<u64>,
@@ -80,8 +85,9 @@ pub fn run_block(block_args: RunBlockArgs) -> Option<BlockJobHandle> {
         job_id,
         inputs,
         block_status,
+        flow_block_status,
         nodes,
-        input_values,
+        nodes_value_store,
         timeout,
         parent_scope,
         scope,
@@ -99,8 +105,9 @@ pub fn run_block(block_args: RunBlockArgs) -> Option<BlockJobHandle> {
                 flow_job_id: job_id,
                 inputs,
                 parent_block_status: block_status,
+                flow_block_status: flow_block_status.unwrap_or(create()),
                 nodes,
-                input_values,
+                nodes_value_store: nodes_value_store.unwrap_or_default(),
                 parent_scope,
                 scope,
                 slot_blocks: slot_blocks.unwrap_or_default(),
