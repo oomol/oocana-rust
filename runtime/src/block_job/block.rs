@@ -45,7 +45,6 @@ pub struct RunBlockArgs {
     pub block_status: BlockStatusTx,
     pub nodes_value_store: Option<Arc<RwLock<NodeInputValues>>>,
     pub nodes: Option<HashSet<NodeId>>,
-    pub input_values: Option<String>,
     pub parent_scope: RunningPackageScope,
     pub scope: RunningPackageScope,
     pub timeout: Option<u64>,
@@ -83,7 +82,6 @@ pub fn run_block(block_args: RunBlockArgs) -> Option<BlockJobHandle> {
         inputs,
         block_status,
         nodes,
-        input_values,
         nodes_value_store,
         timeout,
         parent_scope,
@@ -106,7 +104,6 @@ pub fn run_block(block_args: RunBlockArgs) -> Option<BlockJobHandle> {
                 // crash if nodes is None
                 nodes_value_store: nodes_value_store
                     .expect("Nodes value store is required for flow block"),
-                input_values,
                 parent_scope,
                 scope,
                 slot_blocks: slot_blocks.unwrap_or_default(),

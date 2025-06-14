@@ -97,7 +97,6 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
             inputs: None,
             block_status: block_status_tx.clone(),
             nodes,
-            input_values: None,
             timeout: None,
             nodes_value_store: Some(Arc::new(nodes_value_store.into())),
             inputs_def_patch: None,
