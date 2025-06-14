@@ -151,6 +151,25 @@ impl SubflowBlock {
                 &find_value_node,
                 &inputs_def,
             );
+
+            if matches!(node, manifest::Node::Subflow(ref subflow_node) if subflow_node.slots.as_ref().is_some_and(|s| s.len() > 0))
+            {
+                match node {
+                    manifest::Node::Subflow(subflow_node) => {
+                        subflow_node.slots.as_ref().map(|slots| {
+                            for provider in slots {
+                                connections.parse_slot_inputs_from(
+                                    node.node_id(),
+                                    provider,
+                                    provider.inputs_from(),
+                                    &find_value_node,
+                                );
+                            }
+                        });
+                    }
+                    _ => {}
+                }
+            }
         }
 
         let find_node = |node_id: &NodeId| -> Option<&manifest::Node> {

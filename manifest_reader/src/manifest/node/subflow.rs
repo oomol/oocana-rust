@@ -28,6 +28,26 @@ pub enum SlotProvider {
     SlotFlow(SlotFlowProvider),
 }
 
+impl SlotProvider {
+    pub fn node_id(&self) -> NodeId {
+        match self {
+            SlotProvider::Inline(slot) => slot.slot_node_id.clone(),
+            SlotProvider::Task(slot) => slot.slot_node_id.clone(),
+            SlotProvider::Subflow(slot) => slot.slot_node_id.clone(),
+            SlotProvider::SlotFlow(slot_flow) => slot_flow.slot_node_id.clone(),
+        }
+    }
+
+    pub fn inputs_from(&self) -> Vec<NodeInputFrom> {
+        match self {
+            SlotProvider::Inline(_) => vec![],
+            SlotProvider::Task(_) => vec![],
+            SlotProvider::Subflow(_) => vec![],
+            SlotProvider::SlotFlow(slot_flow) => slot_flow.inputs_from.clone().unwrap_or_default(),
+        }
+    }
+}
+
 #[derive(Deserialize, Debug, Clone)]
 pub struct SlotFlowProvider {
     pub slot_node_id: NodeId,
