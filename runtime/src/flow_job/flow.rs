@@ -2,6 +2,7 @@ use std::{
     collections::{HashMap, HashSet},
     path::PathBuf,
     sync::{Arc, RwLock},
+    vec,
 };
 
 use uuid::Uuid;
@@ -9,6 +10,7 @@ use uuid::Uuid;
 use crate::{
     block_job::{run_block, BlockJobHandle, RunBlockArgs},
     block_status::{self, BlockStatusRx, BlockStatusTx},
+    flow_job::flow,
     shared::Shared,
 };
 use mainframe::reporter::FlowReporterTx;
@@ -281,6 +283,25 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                             }
                         }
                     }
+                }
+                block_status::Status::ToNode {
+                    node_id,
+                    handle,
+                    result,
+                } => {
+                    produce_new_value(
+                        &result,
+                        // accept value from sender, convert to HandleTo::ToNodeInput
+                        &vec![HandleTo::ToNodeInput {
+                            node_id: node_id,
+                            node_input_handle: handle,
+                        }],
+                        &flow_shared,
+                        &mut run_flow_ctx,
+                        true,
+                        &filtered_nodes,
+                        &reporter,
+                    );
                 }
                 block_status::Status::Done {
                     job_id,
@@ -601,16 +622,28 @@ fn produce_new_value(
                 // but if the flow is not running, we need to update the flow value store
                 // but the flow value don't need to be shared, we can just pass the nodes value store to the flow, so we don't need to use Arc<RwLock>
 
-                let node_values = ctx
-                    .flow_value_store
-                    .get_or_insert_with(HashMap::new)
-                    .entry(node_id.to_owned())
-                    .or_insert_with(|| Arc::new(RwLock::new(NodeInputValues::new(false))));
-                node_values.write().unwrap().insert(
-                    slot_node_id.to_owned(),
-                    slot_input_handle.to_owned(),
-                    Arc::clone(value),
-                );
+                if let Some(flow_block_status_tx) = ctx
+                    .flow_block_status
+                    .as_ref()
+                    .and_then(|m| m.get(node_id).cloned())
+                {
+                    flow_block_status_tx.output(
+                        shared.job_id.to_owned(),
+                        Arc::clone(value),
+                        slot_input_handle.to_owned(),
+                    );
+                } else {
+                    let node_values = ctx
+                        .flow_value_store
+                        .get_or_insert_with(HashMap::new)
+                        .entry(node_id.to_owned())
+                        .or_insert_with(|| Arc::new(RwLock::new(NodeInputValues::new(false))));
+                    node_values.write().unwrap().insert(
+                        slot_node_id.to_owned(),
+                        slot_input_handle.to_owned(),
+                        Arc::clone(value),
+                    );
+                }
             }
         }
     }

@@ -4,7 +4,7 @@ use flume::{Receiver, Sender};
 use job::JobId;
 use utils::output::OutputValue;
 
-use manifest_meta::HandleName;
+use manifest_meta::{HandleName, Node, NodeId};
 
 pub enum Status {
     Output {
@@ -15,6 +15,11 @@ pub enum Status {
     Outputs {
         job_id: JobId,
         outputs: HashMap<HandleName, Arc<OutputValue>>,
+    },
+    ToNode {
+        node_id: NodeId,
+        handle: HandleName,
+        result: Arc<OutputValue>,
     },
     Done {
         job_id: JobId,
@@ -43,6 +48,15 @@ impl BlockStatusTx {
     }
     pub fn outputs(&self, job_id: JobId, outputs: HashMap<HandleName, Arc<OutputValue>>) {
         self.tx.send(Status::Outputs { job_id, outputs }).unwrap();
+    }
+    pub fn value_to_node(&self, node_id: NodeId, result: Arc<OutputValue>, handle: HandleName) {
+        self.tx
+            .send(Status::ToNode {
+                node_id,
+                handle,
+                result,
+            })
+            .unwrap();
     }
     pub fn finish(
         &self,
