@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use manifest_reader::manifest::{self};
+use manifest_reader::manifest::{self, SlotProvider};
 
 use super::{
     node::{HandleFrom, HandleTo},
@@ -13,6 +13,8 @@ pub struct Connections {
     pub node_inputs_froms: ConnNodesFroms,
     pub node_outputs_tos: ConnNodesTos,
 
+    pub slot_inputs_froms: ConnNodesFroms,
+
     pub flow_inputs_tos: ConnNodeTos,
     pub flow_outputs_froms: ConnNodeFroms,
 }
@@ -24,8 +26,89 @@ impl Connections {
             node_inputs_froms: ConnNodesFroms::new(),
             node_outputs_tos: ConnNodesTos::new(),
 
+            slot_inputs_froms: ConnNodesFroms::new(),
+
             flow_inputs_tos: ConnNodeTos::new(),
             flow_outputs_froms: ConnNodeFroms::new(),
+        }
+    }
+
+    /// add node connection from node to slot provider
+    /// we can only add to outputs_tos to source nodes, but not inputs_froms for slot nodes because the slot node is not actually in same flow context.
+    pub fn parse_slot_inputs_from(
+        &mut self,
+        node_id: &NodeId,
+        provider: &SlotProvider,
+        inputs_from: Vec<manifest::NodeInputFrom>,
+        find_value_node: &impl Fn(&NodeId) -> Option<manifest::ValueNode>,
+    ) {
+        for slot_input_from in inputs_from {
+            if let Some(from_nodes) = slot_input_from.from_node {
+                for from_node in from_nodes {
+                    if let Some(value_node) = find_value_node(&from_node.node_id) {
+                        if let Some(input) = value_node.get_handle(&from_node.output_handle) {
+                            self.slot_inputs_froms.add(
+                                format!("{}-{}", node_id, provider.node_id()).into(),
+                                slot_input_from.handle.to_owned(),
+                                HandleFrom::FromValue {
+                                    value: input.value.clone(),
+                                },
+                            );
+                            tracing::debug!(
+                                "value node only add node_inputs_froms has no node_outputs_tos"
+                            );
+                            continue;
+                        } else {
+                            tracing::warn!(
+                                "ignore slot connection because value node({}) has no output handle({})",
+                                from_node.node_id,
+                                from_node.output_handle
+                            );
+                        }
+                        continue;
+                    }
+
+                    if !self.nodes.contains(&from_node.node_id) {
+                        tracing::warn!(
+                            "ignore slot connection because node({}) is not in runtime nodes or value nodes",
+                            from_node.node_id
+                        );
+                        continue;
+                    }
+
+                    self.slot_inputs_froms.add(
+                        format!("{}-{}", node_id, provider.node_id()).into(),
+                        slot_input_from.handle.to_owned(),
+                        HandleFrom::FromParentFlowInput {
+                            node_id_in_parent_flow: from_node.node_id.to_owned(),
+                            node_output_handle: from_node.output_handle.to_owned(),
+                        },
+                    );
+
+                    self.node_outputs_tos.add(
+                        from_node.node_id.to_owned(),
+                        from_node.output_handle.to_owned(),
+                        HandleTo::ToSlotInput {
+                            node_id: node_id.to_owned(),
+                            slot_node_id: provider.node_id(),
+                            slot_input_handle: slot_input_from.handle.to_owned(),
+                        },
+                    );
+                }
+            }
+
+            if let Some(from_flow) = slot_input_from.from_flow {
+                for flow_handle in from_flow {
+                    self.flow_inputs_tos.add(
+                        flow_handle.input_handle.to_owned(),
+                        HandleTo::ToSlotInput {
+                            node_id: node_id.to_owned(),
+                            slot_node_id: provider.node_id(),
+                            slot_input_handle: slot_input_from.handle.to_owned(),
+                        },
+                    );
+                }
+            }
         }
     }
 

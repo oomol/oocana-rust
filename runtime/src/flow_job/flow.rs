@@ -2,13 +2,14 @@ use std::{
     collections::{HashMap, HashSet},
     path::PathBuf,
     sync::Arc,
+    vec,
 };
 
 use uuid::Uuid;
 
 use crate::{
     block_job::{run_block, BlockJobHandle, RunBlockArgs},
-    block_status::{self, BlockStatusTx},
+    block_status::{self, BlockStatusRx, BlockStatusTx},
     shared::Shared,
 };
 use mainframe::reporter::FlowReporterTx;
@@ -56,6 +57,8 @@ struct RunFlowContext {
     jobs: HashMap<JobId, BlockInFlowJobHandle>,
     block_status: BlockStatusTx,
     node_queue_pool: HashMap<NodeId, NodeQueue>,
+    flow_value_store: Option<HashMap<NodeId, NodeInputValues>>,
+    flow_block_status: Option<HashMap<NodeId, BlockStatusTx>>,
 }
 
 #[derive(Default)]
@@ -71,8 +74,9 @@ pub struct RunFlowArgs {
     pub flow_job_id: JobId,
     pub inputs: Option<BlockInputs>,
     pub parent_block_status: BlockStatusTx,
+    pub flow_block_status: (BlockStatusTx, BlockStatusRx),
+    pub nodes_value_store: NodeInputValues,
     pub nodes: Option<HashSet<NodeId>>,
-    pub input_values: Option<String>,
     pub parent_scope: RunningPackageScope,
     pub scope: RunningPackageScope,
     pub slot_blocks: HashMap<NodeId, Slot>,
@@ -113,8 +117,9 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
         flow_job_id,
         inputs,
         parent_block_status,
+        flow_block_status,
         ref mut nodes,
-        input_values,
+        nodes_value_store,
         slot_blocks,
         scope,
         parent_scope,
@@ -127,34 +132,18 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
     ));
     reporter.started(&inputs);
 
-    let (block_status_tx, block_status_rx) = block_status::create();
+    let (block_status_tx, block_status_rx) = flow_block_status;
 
     let mut filtered_nodes = nodes.clone();
-
-    let flow_cache_path = if shared.use_cache && stacks.is_root() {
-        get_flow_cache_path(&flow_block.path_str)
-    } else {
-        None
-    };
-
-    // 暂时默认，不由外部参数来决定
-    let save_cache = true;
     let mut run_flow_ctx = RunFlowContext {
-        node_input_values: match (shared.use_cache, flow_cache_path) {
-            (true, Some(path)) => NodeInputValues::recover_from(path, save_cache),
-            _ => NodeInputValues::new(save_cache),
-        },
+        node_input_values: nodes_value_store,
         parent_block_status,
         jobs: HashMap::new(),
         block_status: block_status_tx,
         node_queue_pool: HashMap::new(),
+        flow_value_store: None,
+        flow_block_status: None,
     };
-
-    if let Some(node_input_values) = input_values {
-        run_flow_ctx
-            .node_input_values
-            .merge_input_values(node_input_values);
-    }
 
     let flow_shared = FlowShared {
         flow_block,
@@ -286,6 +275,25 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                             }
                         }
                     }
+                }
+                block_status::Status::ToNode {
+                    node_id,
+                    handle,
+                    result,
+                } => {
+                    produce_new_value(
+                        &result,
+                        // accept value from sender, convert to HandleTo::ToNodeInput
+                        &vec![HandleTo::ToNodeInput {
+                            node_id: node_id,
+                            node_input_handle: handle,
+                        }],
+                        &flow_shared,
+                        &mut run_flow_ctx,
+                        true,
+                        &filtered_nodes,
+                        &reporter,
+                    );
                 }
                 block_status::Status::Done {
                     job_id,
@@ -584,6 +592,39 @@ fn produce_new_value(
                     flow_output_handle.to_owned(),
                 );
             }
+            HandleTo::ToSlotInput {
+                node_id,
+                slot_node_id,
+                slot_input_handle,
+            } => {
+                // if flow is already running, we don't need to update the flow value store
+                // we just use flow's block_status_tx to send the value to flow directly
+                // but if the flow is not running, we need to update the flow value store
+                // but the flow value don't need to be shared, we can just pass the nodes value store to the flow, so we don't need to use Arc<RwLock>
+
+                if let Some(flow_block_status_tx) = ctx
+                    .flow_block_status
+                    .as_ref()
+                    .and_then(|m| m.get(node_id).cloned())
+                {
+                    flow_block_status_tx.output(
+                        shared.job_id.to_owned(),
+                        Arc::clone(value),
+                        slot_input_handle.to_owned(),
+                    );
+                } else {
+                    let node_values = ctx
+                        .flow_value_store
+                        .get_or_insert_with(HashMap::new)
+                        .entry(node_id.to_owned())
+                        .or_insert_with(|| NodeInputValues::new(false));
+                    node_values.insert(
+                        slot_node_id.to_owned(),
+                        slot_input_handle.to_owned(),
+                        Arc::clone(value),
+                    );
+                }
+            }
         }
     }
 }
@@ -638,6 +679,15 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
         },
     };
 
+    let is_flow_block = matches!(block, manifest_meta::Block::Flow(_));
+    let flow_block_status = is_flow_block.then(|| {
+        let (block_status_tx, block_status_rx) = block_status::create();
+        ctx.flow_block_status
+            .get_or_insert_with(HashMap::new)
+            .insert(node.node_id().to_owned(), block_status_tx.clone());
+        (block_status_tx, block_status_rx)
+    });
+
     let handle = run_block({
         RunBlockArgs {
             block: block,
@@ -648,11 +698,18 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
                 shared.flow_block.path_str.to_owned(),
                 node.node_id().to_owned(),
             ),
+            flow_block_status,
+            nodes_value_store: match is_flow_block {
+                true => ctx
+                    .flow_value_store
+                    .as_mut()
+                    .and_then(|store| store.remove(node.node_id())),
+                false => None,
+            },
             job_id: job_id.to_owned(),
             inputs: ctx.node_input_values.take(node),
             block_status: ctx.block_status.clone(),
             nodes: None,
-            input_values: None,
             parent_scope: shared.scope.clone(),
             scope: package_scope,
             timeout: node.timeout(),
@@ -683,7 +740,7 @@ fn is_finish(ctx: &RunFlowContext) -> bool {
     ctx.jobs.is_empty()
 }
 
-fn get_flow_cache_path(flow: &str) -> Option<PathBuf> {
+pub fn get_flow_cache_path(flow: &str) -> Option<PathBuf> {
     utils::cache::cache_meta_file_path().and_then(|path| {
         CacheMetaMap::load(path)
             .ok()
