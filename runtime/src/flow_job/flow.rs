@@ -679,32 +679,14 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
         },
     };
 
-    let nodes_value_store = if matches!(block, manifest_meta::Block::Flow(_)) {
-        if ctx
-            .flow_value_store
-            .as_ref()
-            .is_none_or(|m| !m.contains_key(node.node_id()))
-        {
-            None
-        } else {
-            ctx.flow_value_store
-                .get_or_insert_default()
-                .remove(node.node_id())
-        }
-    } else {
-        None
-    };
-
-    let flow_block_status: Option<(BlockStatusTx, BlockStatusRx)> =
-        if matches!(block, manifest_meta::Block::Flow(_)) {
-            let (block_status_tx, block_status_rx) = block_status::create();
-            ctx.flow_block_status
-                .get_or_insert_with(HashMap::new)
-                .insert(node.node_id().to_owned(), block_status_tx.clone());
-            Some((block_status_tx, block_status_rx))
-        } else {
-            None
-        };
+    let is_flow_block = matches!(block, manifest_meta::Block::Flow(_));
+    let flow_block_status = is_flow_block.then(|| {
+        let (block_status_tx, block_status_rx) = block_status::create();
+        ctx.flow_block_status
+            .get_or_insert_with(HashMap::new)
+            .insert(node.node_id().to_owned(), block_status_tx.clone());
+        (block_status_tx, block_status_rx)
+    });
 
     let handle = run_block({
         RunBlockArgs {
@@ -717,7 +699,13 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
                 node.node_id().to_owned(),
             ),
             flow_block_status,
-            nodes_value_store,
+            nodes_value_store: match is_flow_block {
+                true => ctx
+                    .flow_value_store
+                    .as_mut()
+                    .and_then(|store| store.remove(node.node_id())),
+                false => None,
+            },
             job_id: job_id.to_owned(),
             inputs: ctx.node_input_values.take(node),
             block_status: ctx.block_status.clone(),
