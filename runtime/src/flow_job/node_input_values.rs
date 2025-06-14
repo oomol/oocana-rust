@@ -113,11 +113,11 @@ impl NodeInputValues {
 
     pub fn is_node_fulfill(&self, node: &Node) -> bool {
         if let Some(inputs_def) = node.inputs_def() {
-            for handle in inputs_def.values() {
+            for input_def in inputs_def.values() {
                 // has_from 为 false，说明没有连线。
-                if !node.has_from(&handle.handle) {
+                if !node.has_from(&input_def.handle) {
                     // 无连线有 value 认为该 input 已满足。
-                    if handle.value.is_some() {
+                    if input_def.value.is_some() {
                         continue;
                     }
 
@@ -125,14 +125,21 @@ impl NodeInputValues {
                     return false;
                 }
 
-                if node.has_value_from(&handle.handle) {
+                if node.has_value_from(&input_def.handle) {
                     continue;
                 }
 
-                if let Some(input_values) = self.store.get(node.node_id()) {
-                    if input_values.get(&handle.handle).is_none()
-                        || input_values.get(&handle.handle).unwrap().is_empty()
-                    {
+                if let Some(node_values) = self.store.get(node.node_id()) {
+                    let no_handle_value = node_values
+                        .get(&input_def.handle)
+                        .is_none_or(|v| v.is_empty());
+                    let no_memory_value = self
+                        .memory_store
+                        .get(node.node_id())
+                        .and_then(|m| m.get(&input_def.handle))
+                        .is_none_or(|v| v.is_empty());
+
+                    if no_handle_value && no_memory_value {
                         return false;
                     }
                 } else {
