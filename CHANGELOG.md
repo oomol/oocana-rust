@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.28.9 (2025-06-14)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* feat: input def add remember option by @leavesster in https://github.com/oomol/oocana-rust/pull/160
+* fix: remember options need change node fulfill logic by @leavesster in https://github.com/oomol/oocana-rust/pull/162
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.28.8...v0.28.9
+
 ## 0.28.8 (2025-06-12)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
