@@ -591,7 +591,12 @@ fn produce_new_value(
                 slot_node_id,
                 slot_input_handle,
             } => {
-                // TODO: should trigger slot if slot node input is fulfilled.
+                // TODO:
+                // if flow is already running, we don't need to update the flow value store
+                // we just use flow's block_status_tx to send the value to flow directly
+                // but if the flow is not running, we need to update the flow value store
+                // but the flow value don't need to be shared, we can just pass the nodes value store to the flow, so we don't need to use Arc<RwLock>
+
                 let node_values = ctx
                     .flow_value_store
                     .get_or_insert_with(HashMap::new)
