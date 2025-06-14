@@ -4,7 +4,7 @@ use flume::{Receiver, Sender};
 use job::JobId;
 use utils::output::OutputValue;
 
-use manifest_meta::{HandleName, Node, NodeId};
+use manifest_meta::{HandleName, NodeId};
 
 pub enum Status {
     Output {

@@ -98,7 +98,8 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
             block_status: block_status_tx.clone(),
             nodes,
             timeout: None,
-            nodes_value_store: Some(Arc::new(nodes_value_store.into())),
+            flow_block_status: None,
+            nodes_value_store: Some(nodes_value_store),
             inputs_def_patch: None,
             parent_scope: RunningPackageScope {
                 package_path: workspace.clone(),
@@ -136,6 +137,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
         match status {
             block_status::Status::Outputs { .. } => {}
             block_status::Status::Output { .. } => {}
+            block_status::Status::ToNode { .. } => {}
             block_status::Status::Done { error, .. } => {
                 if let Some(err) = error {
                     result_error = Some(err);

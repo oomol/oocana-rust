@@ -1,7 +1,7 @@
 use std::{
     collections::{HashMap, HashSet},
     path::PathBuf,
-    sync::{Arc, RwLock},
+    sync::Arc,
     vec,
 };
 
@@ -10,7 +10,6 @@ use uuid::Uuid;
 use crate::{
     block_job::{run_block, BlockJobHandle, RunBlockArgs},
     block_status::{self, BlockStatusRx, BlockStatusTx},
-    flow_job::flow,
     shared::Shared,
 };
 use mainframe::reporter::FlowReporterTx;
