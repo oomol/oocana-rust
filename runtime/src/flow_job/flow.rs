@@ -8,7 +8,7 @@ use uuid::Uuid;
 
 use crate::{
     block_job::{run_block, BlockJobHandle, RunBlockArgs},
-    block_status::{self, BlockStatusTx},
+    block_status::{self, BlockStatusRx, BlockStatusTx},
     shared::Shared,
 };
 use mainframe::reporter::FlowReporterTx;
@@ -57,6 +57,7 @@ struct RunFlowContext {
     block_status: BlockStatusTx,
     node_queue_pool: HashMap<NodeId, NodeQueue>,
     flow_value_store: Option<HashMap<NodeId, Arc<RwLock<NodeInputValues>>>>,
+    flow_block_status: Option<HashMap<NodeId, BlockStatusTx>>,
 }
 
 #[derive(Default)]
@@ -72,6 +73,7 @@ pub struct RunFlowArgs {
     pub flow_job_id: JobId,
     pub inputs: Option<BlockInputs>,
     pub parent_block_status: BlockStatusTx,
+    pub flow_block_status: (BlockStatusTx, BlockStatusRx),
     pub nodes_value_store: Arc<RwLock<NodeInputValues>>,
     pub nodes: Option<HashSet<NodeId>>,
     pub parent_scope: RunningPackageScope,
@@ -114,6 +116,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
         flow_job_id,
         inputs,
         parent_block_status,
+        flow_block_status,
         ref mut nodes,
         nodes_value_store,
         slot_blocks,
@@ -128,7 +131,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
     ));
     reporter.started(&inputs);
 
-    let (block_status_tx, block_status_rx) = block_status::create();
+    let (block_status_tx, block_status_rx) = flow_block_status;
 
     let mut filtered_nodes = nodes.clone();
     let mut run_flow_ctx = RunFlowContext {
@@ -138,6 +141,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
         block_status: block_status_tx,
         node_queue_pool: HashMap::new(),
         flow_value_store: None,
+        flow_block_status: None,
     };
 
     let flow_shared = FlowShared {
@@ -675,6 +679,17 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
             None
         };
 
+    let flow_block_status: Option<(BlockStatusTx, BlockStatusRx)> =
+        if matches!(block, manifest_meta::Block::Flow(_)) {
+            let (block_status_tx, block_status_rx) = block_status::create();
+            ctx.flow_block_status
+                .get_or_insert_with(HashMap::new)
+                .insert(node.node_id().to_owned(), block_status_tx.clone());
+            Some((block_status_tx, block_status_rx))
+        } else {
+            None
+        };
+
     let handle = run_block({
         RunBlockArgs {
             block: block,
@@ -685,6 +700,7 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
                 shared.flow_block.path_str.to_owned(),
                 node.node_id().to_owned(),
             ),
+            flow_block_status,
             nodes_value_store,
             job_id: job_id.to_owned(),
             inputs: ctx.node_input_values.write().unwrap().take(node),
