@@ -20,36 +20,36 @@ extend_node_common_field!(SubflowNode {
 #[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum SlotProvider {
-    Inline(InlineSlot),
-    Task(TaskSlot),
+    Inline(InlineSlotProvider),
+    Task(TaskSlotProvider),
     /// this subflow is a subflow without any slots
-    Subflow(SubflowSlot),
+    Subflow(SubflowSlotProvider),
     /// this slotflow is a subflow with slots
-    SlotFlow(SlotFlow),
+    SlotFlow(SlotFlowProvider),
 }
 
 #[derive(Deserialize, Debug, Clone)]
-pub struct SlotFlow {
+pub struct SlotFlowProvider {
     pub slot_node_id: NodeId,
     pub slotflow: String,
 }
 
 #[derive(Deserialize, Debug, Clone)]
-pub struct TmpInlineSlot {
+pub struct TmpInlineSlotProvider {
     pub slot_node_id: NodeId,
     pub nodes: Vec<Node>,
     pub outputs_from: Vec<NodeInputFrom>,
 }
 
-impl From<TmpInlineSlot> for InlineSlot {
-    fn from(tmp: TmpInlineSlot) -> Self {
+impl From<TmpInlineSlotProvider> for InlineSlotProvider {
+    fn from(tmp: TmpInlineSlotProvider) -> Self {
         let nodes = tmp
             .nodes
             .into_iter()
             .filter(|node| matches!(node, Node::Task(_) | Node::Service(_) | Node::Value(_)))
             .collect();
 
-        InlineSlot {
+        InlineSlotProvider {
             slot_node_id: tmp.slot_node_id,
             nodes,
             outputs_from: tmp.outputs_from,
@@ -58,14 +58,14 @@ impl From<TmpInlineSlot> for InlineSlot {
 }
 
 #[derive(Deserialize, Debug, Clone)]
-#[serde(from = "TmpInlineSlot")]
-pub struct InlineSlot {
+#[serde(from = "TmpInlineSlotProvider")]
+pub struct InlineSlotProvider {
     pub slot_node_id: NodeId,
     pub nodes: Vec<Node>, // TODO: more strict type
     pub outputs_from: Vec<NodeInputFrom>,
 }
 
-impl InlineSlot {
+impl InlineSlotProvider {
     pub fn inputs_def(&self) -> InputHandles {
         let mut inputs = HashMap::new();
         for node in &self.nodes {
@@ -119,13 +119,13 @@ impl InlineSlot {
 }
 
 #[derive(Deserialize, Debug, Clone)]
-pub struct SubflowSlot {
+pub struct SubflowSlotProvider {
     pub slot_node_id: NodeId,
     pub subflow: String,
 }
 
 #[derive(Deserialize, Debug, Clone)]
-pub struct TaskSlot {
+pub struct TaskSlotProvider {
     pub slot_node_id: NodeId,
     pub task: String,
 }
