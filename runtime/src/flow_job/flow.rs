@@ -1,7 +1,7 @@
 use std::{
     collections::{HashMap, HashSet},
     path::PathBuf,
-    sync::Arc,
+    sync::{Arc, RwLock},
 };
 
 use uuid::Uuid;
@@ -51,11 +51,12 @@ struct FlowShared {
 }
 
 struct RunFlowContext {
-    node_input_values: NodeInputValues,
+    node_input_values: Arc<RwLock<NodeInputValues>>,
     parent_block_status: BlockStatusTx,
     jobs: HashMap<JobId, BlockInFlowJobHandle>,
     block_status: BlockStatusTx,
     node_queue_pool: HashMap<NodeId, NodeQueue>,
+    flow_value_store: Option<HashMap<NodeId, Arc<RwLock<NodeInputValues>>>>,
 }
 
 #[derive(Default)]
@@ -71,7 +72,7 @@ pub struct RunFlowArgs {
     pub flow_job_id: JobId,
     pub inputs: Option<BlockInputs>,
     pub parent_block_status: BlockStatusTx,
-    pub nodes_value_store: NodeInputValues,
+    pub nodes_value_store: Arc<RwLock<NodeInputValues>>,
     pub nodes: Option<HashSet<NodeId>>,
     pub input_values: Option<String>,
     pub parent_scope: RunningPackageScope,
@@ -138,13 +139,8 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
         jobs: HashMap::new(),
         block_status: block_status_tx,
         node_queue_pool: HashMap::new(),
+        flow_value_store: None,
     };
-
-    if let Some(node_input_values) = input_values {
-        run_flow_ctx
-            .node_input_values
-            .merge_input_values(node_input_values);
-    }
 
     let flow_shared = FlowShared {
         flow_block,
@@ -157,11 +153,13 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
     };
 
     if let Some(ref origin_nodes) = nodes {
+        let mut node_input_values_guard = run_flow_ctx.node_input_values.write().unwrap();
         let (runnable_nodes, pending_nodes, upstream_nodes) = find_upstream_nodes(
             origin_nodes,
             &flow_shared.flow_block,
-            &mut run_flow_ctx.node_input_values,
+            &mut *node_input_values_guard,
         );
+        drop(node_input_values_guard); // release the lock before calling reporter
 
         reporter.will_run_nodes(
             &runnable_nodes,
@@ -188,7 +186,12 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
         let mut runnable_nodes: Vec<String> = Vec::new();
         let mut pending_nodes: Vec<String> = Vec::new();
         for node in flow_shared.flow_block.nodes.values() {
-            if run_flow_ctx.node_input_values.is_node_fulfill(node) {
+            if run_flow_ctx
+                .node_input_values
+                .read()
+                .unwrap()
+                .is_node_fulfill(node)
+            {
                 runnable_nodes.push(node.node_id().to_string());
             } else {
                 pending_nodes.push(node.node_id().to_string());
@@ -306,7 +309,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
 
                     if let Some(ref err) = error {
                         save_flow_cache(
-                            &run_flow_ctx.node_input_values,
+                            &*run_flow_ctx.node_input_values.read().unwrap(),
                             &flow_shared.flow_block.path_str,
                         );
 
@@ -354,7 +357,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                 }
                 block_status::Status::Error { error } => {
                     save_flow_cache(
-                        &run_flow_ctx.node_input_values,
+                        &*run_flow_ctx.node_input_values.read().unwrap(),
                         &flow_shared.flow_block.path_str,
                     );
 
@@ -384,7 +387,10 @@ fn flow_success(shared: &FlowShared, ctx: &RunFlowContext, reporter: &FlowReport
     reporter.done(&None);
     ctx.parent_block_status
         .finish(shared.job_id.to_owned(), None, None);
-    save_flow_cache(&ctx.node_input_values, &shared.flow_block.path_str);
+    save_flow_cache(
+        &*ctx.node_input_values.read().unwrap(),
+        &shared.flow_block.path_str,
+    );
 }
 
 fn run_pending_node(job_id: JobId, flow_shared: &FlowShared, run_flow_ctx: &mut RunFlowContext) {
@@ -530,9 +536,13 @@ fn produce_new_value(
                 let should_run_output_node =
                     run_next_node && (filter_nodes.as_ref().is_none() || in_run_nodes);
 
-                let previous_pending_fulfill = ctx.node_input_values.node_pending_fulfill(node_id);
+                let previous_pending_fulfill = ctx
+                    .node_input_values
+                    .read()
+                    .unwrap()
+                    .node_pending_fulfill(node_id);
                 // still need to insert value, even if the node is not in the run_nodes list
-                ctx.node_input_values.insert(
+                ctx.node_input_values.write().unwrap().insert(
                     node_id.to_owned(),
                     node_input_handle.to_owned(),
                     Arc::clone(value),
@@ -540,14 +550,18 @@ fn produce_new_value(
 
                 if should_run_output_node {
                     if let Some(node) = shared.flow_block.nodes.get(node_id) {
-                        if ctx.node_input_values.is_node_fulfill(node) {
+                        if ctx.node_input_values.read().unwrap().is_node_fulfill(node) {
                             let node_queue =
                                 ctx.node_queue_pool.entry(node_id.to_owned()).or_default();
                             if node_queue.jobs.len() < node.concurrency() as usize {
                                 run_node(node, shared, ctx);
                             } else {
                                 // 说明这次数据填平了一次 pending
-                                if ctx.node_input_values.node_pending_fulfill(node_id)
+                                if ctx
+                                    .node_input_values
+                                    .read()
+                                    .unwrap()
+                                    .node_pending_fulfill(node_id)
                                     > previous_pending_fulfill
                                 {
                                     node_queue.pending.insert(JobId::random());
@@ -574,8 +588,22 @@ fn produce_new_value(
                     flow_output_handle.to_owned(),
                 );
             }
-            HandleTo::ToSlotInput { .. } => {
-                // TODO: implement to slot
+            HandleTo::ToSlotInput {
+                node_id,
+                slot_node_id,
+                slot_input_handle,
+            } => {
+                // TODO: should trigger slot if slot node input is fulfilled.
+                let node_values = ctx
+                    .flow_value_store
+                    .get_or_insert_with(HashMap::new)
+                    .entry(node_id.to_owned())
+                    .or_insert_with(|| Arc::new(RwLock::new(NodeInputValues::new(false))));
+                node_values.write().unwrap().insert(
+                    slot_node_id.to_owned(),
+                    slot_input_handle.to_owned(),
+                    Arc::clone(value),
+                );
             }
         }
     }
@@ -631,9 +659,14 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
         },
     };
 
-    let nodes_value_store = if matches!(node, Node::Flow(_)) {
-        // TODO: get store
-        None
+    let nodes_value_store: Option<Arc<RwLock<NodeInputValues>>> = if matches!(node, Node::Flow(_)) {
+        let arc = ctx
+            .flow_value_store
+            .get_or_insert_with(HashMap::new)
+            .entry(node.node_id().to_owned())
+            .or_insert_with(|| Arc::new(RwLock::new(NodeInputValues::new(false))))
+            .clone();
+        Some(arc)
     } else {
         None
     };
@@ -650,7 +683,7 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
             ),
             nodes_value_store,
             job_id: job_id.to_owned(),
-            inputs: ctx.node_input_values.take(node),
+            inputs: ctx.node_input_values.write().unwrap().take(node),
             block_status: ctx.block_status.clone(),
             nodes: None,
             input_values: None,

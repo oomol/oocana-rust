@@ -1,6 +1,6 @@
 use std::{
     collections::{HashMap, HashSet},
-    sync::Arc,
+    sync::{Arc, RwLock},
 };
 
 use job::{BlockInputs, BlockJobStacks, JobId, RunningPackageScope};
@@ -43,7 +43,7 @@ pub struct RunBlockArgs {
     pub job_id: JobId,
     pub inputs: Option<BlockInputs>,
     pub block_status: BlockStatusTx,
-    pub nodes_value_store: Option<NodeInputValues>,
+    pub nodes_value_store: Option<Arc<RwLock<NodeInputValues>>>,
     pub nodes: Option<HashSet<NodeId>>,
     pub input_values: Option<String>,
     pub parent_scope: RunningPackageScope,

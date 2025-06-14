@@ -78,10 +78,14 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
 
     let workspace = scope_workspace.expect("workspace not found");
 
-    let nodes_value_store = match (shared.use_cache, get_flow_cache_path(&&block_path)) {
+    let mut nodes_value_store = match (shared.use_cache, get_flow_cache_path(&&block_path)) {
         (true, Some(path)) => NodeInputValues::recover_from(path, shared.use_cache),
         _ => NodeInputValues::new(shared.use_cache),
     };
+
+    if let Some(node_input_values) = input_values {
+        nodes_value_store.merge_input_values(node_input_values);
+    }
 
     let handle = block_job::run_block({
         block_job::RunBlockArgs {
@@ -93,9 +97,9 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
             inputs: None,
             block_status: block_status_tx.clone(),
             nodes,
-            input_values,
+            input_values: None,
             timeout: None,
-            nodes_value_store: Some(nodes_value_store),
+            nodes_value_store: Some(Arc::new(nodes_value_store.into())),
             inputs_def_patch: None,
             parent_scope: RunningPackageScope {
                 package_path: workspace.clone(),
