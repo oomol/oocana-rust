@@ -8,6 +8,7 @@ use mainframe::reporter::ReporterMessage;
 use manifest_meta::{Block, InputDefPatchMap, NodeId, Slot, SubflowBlock};
 
 use super::{service_job, task_job};
+use crate::flow_job::NodeInputValues;
 use crate::{block_status::BlockStatusTx, flow_job, shared::Shared};
 
 pub struct BlockJobHandle {
@@ -42,6 +43,7 @@ pub struct RunBlockArgs {
     pub job_id: JobId,
     pub inputs: Option<BlockInputs>,
     pub block_status: BlockStatusTx,
+    pub nodes_value_store: Option<NodeInputValues>,
     pub nodes: Option<HashSet<NodeId>>,
     pub input_values: Option<String>,
     pub parent_scope: RunningPackageScope,
@@ -82,6 +84,7 @@ pub fn run_block(block_args: RunBlockArgs) -> Option<BlockJobHandle> {
         block_status,
         nodes,
         input_values,
+        nodes_value_store,
         timeout,
         parent_scope,
         scope,
@@ -100,6 +103,9 @@ pub fn run_block(block_args: RunBlockArgs) -> Option<BlockJobHandle> {
                 inputs,
                 parent_block_status: block_status,
                 nodes,
+                // crash if nodes is None
+                nodes_value_store: nodes_value_store
+                    .expect("Nodes value store is required for flow block"),
                 input_values,
                 parent_scope,
                 scope,
