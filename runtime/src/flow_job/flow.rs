@@ -597,7 +597,6 @@ fn produce_new_value(
                 slot_node_id,
                 slot_input_handle,
             } => {
-                // TODO:
                 // if flow is already running, we don't need to update the flow value store
                 // we just use flow's block_status_tx to send the value to flow directly
                 // but if the flow is not running, we need to update the flow value store
