@@ -44,6 +44,10 @@ pub enum HandleFrom {
     FromValue {
         value: Option<Option<JsonValue>>,
     },
+    FromParentFlowInput {
+        node_id_in_parent_flow: NodeId, // this node is in parent flow, not the current flow
+        node_output_handle: HandleName,
+    },
 }
 
 #[derive(Debug, Clone)]

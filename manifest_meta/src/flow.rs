@@ -336,6 +336,9 @@ impl SubflowBlock {
                                                 .inputs_def
                                                 .clone()
                                                 .unwrap_or_default();
+
+                                            let mut new_froms =
+                                                slot_node.from.clone().unwrap_or_default();
                                             if let Some(addition_def) =
                                                 &slotflow_provider.inputs_def
                                             {
@@ -354,9 +357,26 @@ impl SubflowBlock {
                                                     }
                                                 }
 
+                                                let slot_froms = connections
+                                                    .slot_inputs_froms
+                                                    .remove(
+                                                        &format!(
+                                                            "{}-{}",
+                                                            subflow_node.node_id,
+                                                            slotflow_provider.slot_node_id,
+                                                        )
+                                                        .into(),
+                                                    )
+                                                    .unwrap_or_default();
+                                                for (handle, froms) in slot_froms {
+                                                    new_froms.insert(handle, froms);
+                                                }
+
                                                 let mut new_slot_node = slot_node.clone();
-                                                new_slot_node.inputs_def =
-                                                    Some(new_inputs_def.clone());
+                                                {
+                                                    new_slot_node.inputs_def = Some(new_inputs_def);
+                                                    new_slot_node.from = Some(new_froms);
+                                                }
 
                                                 // Cannot mutate inside Arc, so clone, update, and re-wrap if needed
                                                 let mut flow_inner = (*flow).clone();

@@ -13,6 +13,8 @@ pub struct Connections {
     pub node_inputs_froms: ConnNodesFroms,
     pub node_outputs_tos: ConnNodesTos,
 
+    pub slot_inputs_froms: ConnNodesFroms,
+
     pub flow_inputs_tos: ConnNodeTos,
     pub flow_outputs_froms: ConnNodeFroms,
 }
@@ -23,6 +25,8 @@ impl Connections {
             nodes,
             node_inputs_froms: ConnNodesFroms::new(),
             node_outputs_tos: ConnNodesTos::new(),
+
+            slot_inputs_froms: ConnNodesFroms::new(),
 
             flow_inputs_tos: ConnNodeTos::new(),
             flow_outputs_froms: ConnNodeFroms::new(),
@@ -42,19 +46,17 @@ impl Connections {
             if let Some(from_nodes) = slot_input_from.from_node {
                 for from_node in from_nodes {
                     if let Some(value_node) = find_value_node(&from_node.node_id) {
-                        if let Some(_input) = value_node.get_handle(&from_node.output_handle) {
-                            // TODO: support value node
-
-                            // self.node_inputs_froms.add(
-                            //     provider.node_id(),
-                            //     slot_input_from.handle.to_owned(),
-                            //     HandleFrom::FromValue {
-                            //         value: input.value.clone(),
-                            //     },
-                            // );
-                            // tracing::debug!(
-                            //     "value node only add node_inputs_froms has no node_outputs_tos"
-                            // );
+                        if let Some(input) = value_node.get_handle(&from_node.output_handle) {
+                            self.slot_inputs_froms.add(
+                                format!("{}-{}", node_id, provider.node_id()).into(),
+                                slot_input_from.handle.to_owned(),
+                                HandleFrom::FromValue {
+                                    value: input.value.clone(),
+                                },
+                            );
+                            tracing::debug!(
+                                "value node only add node_inputs_froms has no node_outputs_tos"
+                            );
                             continue;
                         } else {
                             tracing::warn!(
@@ -73,6 +75,15 @@ impl Connections {
                         );
                         continue;
                     }
+
+                    self.slot_inputs_froms.add(
+                        format!("{}-{}", node_id, provider.node_id()).into(),
+                        slot_input_from.handle.to_owned(),
+                        HandleFrom::FromParentFlowInput {
+                            node_id_in_parent_flow: from_node.node_id.to_owned(),
+                            node_output_handle: from_node.output_handle.to_owned(),
+                        },
+                    );
 
                     self.node_outputs_tos.add(
                         from_node.node_id.to_owned(),
