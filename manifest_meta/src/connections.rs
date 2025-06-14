@@ -30,6 +30,7 @@ impl Connections {
     }
 
     /// add node connection from node to slot provider
+    /// we can only add to outputs_tos to source nodes, but not inputs_froms for slot nodes because the slot node is not actually in same flow context.
     pub fn parse_slot_inputs_from(
         &mut self,
         node_id: &NodeId,
