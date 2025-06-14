@@ -227,15 +227,17 @@ impl SubflowBlock {
                     };
 
                     let mut slot_blocks: HashMap<NodeId, Slot> = HashMap::new();
-                    if let Some(slots) = subflow_node.slots.as_ref() {
-                        for slot in slots {
-                            match slot {
-                                manifest::SlotProvider::Inline(inline_slot) => {
+                    if let Some(slot_providers) = subflow_node.slots.as_ref() {
+                        for provider in slot_providers {
+                            match provider {
+                                manifest::SlotProvider::Inline(inline_slot_provider) => {
                                     let manifest_subflow = manifest::SubflowBlock {
-                                        nodes: inline_slot.nodes.clone(),
-                                        inputs_def: Some(inline_slot.inputs_def()),
-                                        outputs_def: Some(inline_slot.outputs_def()),
-                                        outputs_from: Some(inline_slot.outputs_from.clone()),
+                                        nodes: inline_slot_provider.nodes.clone(),
+                                        inputs_def: Some(inline_slot_provider.inputs_def()),
+                                        outputs_def: Some(inline_slot_provider.outputs_def()),
+                                        outputs_from: Some(
+                                            inline_slot_provider.outputs_from.clone(),
+                                        ),
                                         injection: None,
                                     };
 
@@ -243,7 +245,7 @@ impl SubflowBlock {
                                         "{}#{}>{}",
                                         flow_path.to_string_lossy().to_string(),
                                         subflow_node.node_id,
-                                        inline_slot.slot_node_id
+                                        inline_slot_provider.slot_node_id
                                     );
                                     let subflow = SubflowBlock::from_manifest(
                                         manifest_subflow,
@@ -253,21 +255,25 @@ impl SubflowBlock {
                                     )?;
 
                                     let slot_block = Slot::Subflow(SubflowSlot {
-                                        slot_node_id: inline_slot.slot_node_id.to_owned(),
+                                        slot_node_id: inline_slot_provider.slot_node_id.to_owned(),
                                         subflow: Arc::new(subflow),
                                         scope: RunningScope::Slot {},
                                     });
-                                    slot_blocks
-                                        .insert(inline_slot.slot_node_id.to_owned(), slot_block);
+                                    slot_blocks.insert(
+                                        inline_slot_provider.slot_node_id.to_owned(),
+                                        slot_block,
+                                    );
                                 }
-                                manifest::SlotProvider::Task(task_slot) => {
+                                manifest::SlotProvider::Task(task_slot_provider) => {
                                     let task = block_resolver.resolve_task_node_block(
-                                        manifest::TaskNodeBlock::File(task_slot.task.to_owned()),
+                                        manifest::TaskNodeBlock::File(
+                                            task_slot_provider.task.to_owned(),
+                                        ),
                                         &mut path_finder,
                                     )?;
 
                                     let scope = if matches!(
-                                        calculate_block_value_type(&task_slot.task),
+                                        calculate_block_value_type(&task_slot_provider.task),
                                         BlockValueType::Pkg { .. }
                                     ) && task.package_path.is_some()
                                     {
@@ -281,21 +287,23 @@ impl SubflowBlock {
                                     };
 
                                     let slot_block = Slot::Task(TaskSlot {
-                                        slot_node_id: task_slot.slot_node_id.to_owned(),
+                                        slot_node_id: task_slot_provider.slot_node_id.to_owned(),
                                         task,
                                         scope,
                                     });
-                                    slot_blocks
-                                        .insert(task_slot.slot_node_id.to_owned(), slot_block);
+                                    slot_blocks.insert(
+                                        task_slot_provider.slot_node_id.to_owned(),
+                                        slot_block,
+                                    );
                                 }
-                                manifest::SlotProvider::SlotFlow(slot_flow) => {
+                                manifest::SlotProvider::SlotFlow(slotflow_provider) => {
                                     let slotflow = block_resolver.resolve_slot_flow_block(
-                                        &slot_flow.slotflow,
+                                        &slotflow_provider.slotflow,
                                         &mut path_finder,
                                     )?;
 
                                     let scope = if matches!(
-                                        calculate_block_value_type(&slot_flow.slotflow),
+                                        calculate_block_value_type(&slotflow_provider.slotflow),
                                         BlockValueType::Pkg { .. }
                                     ) && slotflow.package_path.is_some()
                                     {
@@ -309,17 +317,19 @@ impl SubflowBlock {
                                     };
 
                                     let slot_block = Slot::Subflow(SubflowSlot {
-                                        slot_node_id: slot_flow.slot_node_id.to_owned(),
+                                        slot_node_id: slotflow_provider.slot_node_id.to_owned(),
                                         subflow: slotflow,
                                         scope,
                                     });
 
-                                    slot_blocks
-                                        .insert(slot_flow.slot_node_id.to_owned(), slot_block);
+                                    slot_blocks.insert(
+                                        slotflow_provider.slot_node_id.to_owned(),
+                                        slot_block,
+                                    );
                                 }
-                                manifest::SlotProvider::Subflow(subflow_slot) => {
+                                manifest::SlotProvider::Subflow(subflow_slot_provider) => {
                                     let slot_flow = block_resolver.resolve_flow_block(
-                                        &subflow_slot.subflow,
+                                        &subflow_slot_provider.subflow,
                                         &mut path_finder,
                                     )?;
 
@@ -328,7 +338,7 @@ impl SubflowBlock {
                                     }
 
                                     let scope = if matches!(
-                                        calculate_block_value_type(&subflow_slot.subflow),
+                                        calculate_block_value_type(&subflow_slot_provider.subflow),
                                         BlockValueType::Pkg { .. }
                                     ) && slot_flow.package_path.is_some()
                                     {
@@ -342,13 +352,15 @@ impl SubflowBlock {
                                     };
 
                                     let slot_block = Slot::Subflow(SubflowSlot {
-                                        slot_node_id: subflow_slot.slot_node_id.to_owned(),
+                                        slot_node_id: subflow_slot_provider.slot_node_id.to_owned(),
                                         subflow: slot_flow,
                                         scope,
                                     });
 
-                                    slot_blocks
-                                        .insert(subflow_slot.slot_node_id.to_owned(), slot_block);
+                                    slot_blocks.insert(
+                                        subflow_slot_provider.slot_node_id.to_owned(),
+                                        slot_block,
+                                    );
                                 }
                             }
                         }
