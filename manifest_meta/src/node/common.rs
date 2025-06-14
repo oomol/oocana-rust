@@ -55,4 +55,9 @@ pub enum HandleTo {
         node_id: NodeId,
         node_input_handle: HandleName,
     },
+    ToSlotInput {
+        node_id: NodeId,
+        slot_node_id: NodeId,
+        slot_input_handle: HandleName,
+    },
 }
