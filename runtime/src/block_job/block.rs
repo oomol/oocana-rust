@@ -1,6 +1,6 @@
 use std::{
     collections::{HashMap, HashSet},
-    sync::{Arc, RwLock},
+    sync::Arc,
 };
 
 use job::{BlockInputs, BlockJobStacks, JobId, RunningPackageScope};
@@ -47,7 +47,7 @@ pub struct RunBlockArgs {
     pub inputs: Option<BlockInputs>,
     pub block_status: BlockStatusTx,
     pub flow_block_status: Option<(BlockStatusTx, BlockStatusRx)>,
-    pub nodes_value_store: Option<Arc<RwLock<NodeInputValues>>>,
+    pub nodes_value_store: Option<NodeInputValues>,
     pub nodes: Option<HashSet<NodeId>>,
     pub parent_scope: RunningPackageScope,
     pub scope: RunningPackageScope,
@@ -107,9 +107,7 @@ pub fn run_block(block_args: RunBlockArgs) -> Option<BlockJobHandle> {
                 parent_block_status: block_status,
                 flow_block_status: flow_block_status.unwrap_or(create()),
                 nodes,
-                // crash if nodes is None
-                nodes_value_store: nodes_value_store
-                    .expect("Nodes value store is required for flow block"),
+                nodes_value_store: nodes_value_store.unwrap_or_default(),
                 parent_scope,
                 scope,
                 slot_blocks: slot_blocks.unwrap_or_default(),
