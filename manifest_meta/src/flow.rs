@@ -371,7 +371,10 @@ impl SubflowBlock {
                                                         new_inputs_def.insert(
                                                             input.handle.to_owned(),
                                                             // this input should be always remembered true
-                                                            input.clone(),
+                                                            InputHandle {
+                                                                remember: true,
+                                                                ..input.clone()
+                                                            },
                                                         );
 
                                                         // add subflow inputs_def
@@ -379,12 +382,7 @@ impl SubflowBlock {
                                                             runtime_handle_name.clone(),
                                                             InputHandle {
                                                                 handle: runtime_handle_name.clone(),
-                                                                value: input.value.clone(),
-                                                                json_schema: input
-                                                                    .json_schema
-                                                                    .clone(),
-                                                                name: input.name.clone(),
-                                                                remember: input.remember,
+                                                                ..input.clone()
                                                             },
                                                         );
 

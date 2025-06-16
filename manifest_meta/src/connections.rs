@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use manifest_reader::manifest::{self, SlotProvider};
+use manifest_reader::manifest::{self};
 
 use crate::flow::generate_runtime_handle_name;
 
