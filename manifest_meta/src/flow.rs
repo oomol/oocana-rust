@@ -91,7 +91,6 @@ impl fmt::Display for ServiceQueryResult {
     }
 }
 
-pub static ORIGIN_HANDLE_PREFIX: &str = "origin";
 pub static RUNTIME_HANDLE_PREFIX: &str = "runtime";
 
 pub fn generate_runtime_handle_name(node_id: &str, handle: &HandleName) -> HandleName {
