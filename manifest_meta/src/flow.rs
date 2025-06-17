@@ -112,6 +112,17 @@ impl SubflowBlock {
         }
     }
 
+    pub fn update_flow_inputs_tos(
+        &mut self,
+        input_handle: &HandleName,
+        handle_tos: &[crate::HandleTo],
+    ) {
+        self.flow_inputs_tos
+            .entry(input_handle.to_owned())
+            .or_default()
+            .extend(handle_tos.iter().cloned());
+    }
+
     pub fn from_manifest(
         manifest: manifest::SubflowBlock,
         flow_path: PathBuf,
@@ -352,6 +363,8 @@ impl SubflowBlock {
 
                                             let mut new_froms =
                                                 slot_node.from.clone().unwrap_or_default();
+                                            let mut new_flow_inputs_tos =
+                                                flow.flow_inputs_tos.clone();
                                             if let Some(addition_def) =
                                                 &slotflow_provider.inputs_def
                                             {
@@ -394,7 +407,18 @@ impl SubflowBlock {
                                                         .entry(input.handle.to_owned())
                                                         .or_default()
                                                         .push(crate::HandleFrom::FromFlowInput {
-                                                            input_handle: runtime_handle_name,
+                                                            input_handle: runtime_handle_name
+                                                                .clone(),
+                                                        });
+
+                                                    new_flow_inputs_tos
+                                                        .entry(runtime_handle_name.to_owned())
+                                                        .or_default()
+                                                        .push(crate::HandleTo::ToNodeInput {
+                                                            node_id: slot_node.node_id.clone(),
+                                                            node_input_handle: input
+                                                                .handle
+                                                                .to_owned(),
                                                         });
                                                 }
 
@@ -410,6 +434,14 @@ impl SubflowBlock {
                                                     &slotflow_provider.slot_node_id,
                                                     Node::Slot(new_slot_node),
                                                 );
+                                                for (input_handle, handle_tos) in
+                                                    new_flow_inputs_tos.iter()
+                                                {
+                                                    flow_inner.update_flow_inputs_tos(
+                                                        input_handle,
+                                                        handle_tos,
+                                                    );
+                                                }
                                                 flow = Arc::new(flow_inner);
                                             }
                                         } else {
