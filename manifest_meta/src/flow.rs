@@ -98,10 +98,6 @@ pub fn generate_runtime_handle_name(node_id: &str, handle: &HandleName) -> Handl
     format!("{}::{}-{}", RUNTIME_HANDLE_PREFIX, node_id, handle).into()
 }
 
-pub fn generate_origin_handle_name(handle: &HandleName) -> HandleName {
-    format!("{}::{}", ORIGIN_HANDLE_PREFIX, handle).into()
-}
-
 impl SubflowBlock {
     pub fn has_slot(&self) -> bool {
         self.nodes
@@ -492,35 +488,22 @@ impl SubflowBlock {
                     }
 
                     let inputs_def = if addition_inputs_def.len() > 0 {
-                        let mut merged_inputs_def = HashMap::new();
-                        for (handle, input) in subflow_inputs_def.unwrap_or_default().into_iter() {
-                            merged_inputs_def.insert(
-                                generate_origin_handle_name(&handle),
-                                InputHandle {
-                                    handle: generate_origin_handle_name(&handle),
-                                    value: input.value.clone(),
-                                    json_schema: input.json_schema.clone(),
-                                    name: input.name.clone(),
-                                    remember: input.remember.clone(),
-                                },
-                            );
+                        let mut merged_inputs_def = subflow_inputs_def.clone().unwrap_or_default();
+                        for (handle, input) in addition_inputs_def.iter() {
+                            if !merged_inputs_def.contains_key(handle) {
+                                merged_inputs_def.insert(
+                                    handle.to_owned(),
+                                    InputHandle {
+                                        handle: handle.to_owned(),
+                                        remember: true,
+                                        ..input.clone()
+                                    },
+                                );
+                            }
                         }
                         Some(merged_inputs_def)
                     } else {
                         subflow_inputs_def
-                    };
-
-                    let inputs_def_patch = if addition_inputs_def.len() > 0 {
-                        let mut merged_inputs_def_patch = HashMap::new();
-                        if let Some(patch) = subflow_inputs_def_patch {
-                            for (handle, patches) in patch.into_iter() {
-                                merged_inputs_def_patch
-                                    .insert(generate_origin_handle_name(&handle), patches);
-                            }
-                        }
-                        Some(merged_inputs_def_patch)
-                    } else {
-                        subflow_inputs_def_patch
                     };
 
                     new_nodes.insert(
@@ -533,7 +516,7 @@ impl SubflowBlock {
                             timeout: subflow_node.timeout,
                             inputs_def,
                             concurrency: subflow_node.concurrency,
-                            inputs_def_patch,
+                            inputs_def_patch: subflow_inputs_def_patch,
                             scope: running_scope,
                             slots: if slot_blocks.is_empty() {
                                 None
