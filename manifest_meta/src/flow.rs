@@ -220,7 +220,7 @@ impl SubflowBlock {
                     let subflow_inputs_def =
                         parse_inputs_def(&subflow_node.inputs_from, &flow.as_ref().inputs_def);
                     let subflow_inputs_def_patch = get_inputs_def_patch(&subflow_node.inputs_from);
-                    let mut to = connections.node_outputs_tos.remove(&subflow_node.node_id);
+                    let to = connections.node_outputs_tos.remove(&subflow_node.node_id);
 
                     let mut addition_inputs_def: InputHandles = HashMap::new();
 
@@ -381,23 +381,6 @@ impl SubflowBlock {
                                                                 ..input.clone()
                                                             },
                                                         );
-
-                                                        // add to slot node connections
-                                                        to.as_mut().and_then(|tos| {
-                                                            tos.insert(
-                                                                runtime_handle_name.clone(),
-                                                                vec![
-                                                                    crate::HandleTo::ToNodeInput {
-                                                                        node_id: slot_node
-                                                                            .node_id
-                                                                            .to_owned(),
-                                                                        node_input_handle: input
-                                                                            .handle
-                                                                            .to_owned(),
-                                                                    },
-                                                                ],
-                                                            )
-                                                        });
                                                     } else {
                                                         tracing::warn!(
                                                             "slot node {} already has input {}",
