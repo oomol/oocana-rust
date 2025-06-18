@@ -109,13 +109,10 @@ impl Node {
         if let Some(from) = self.from() {
             if let Some(handle_froms) = from.get(handle) {
                 if handle_froms.len() == 1 {
-                    match handle_froms.get(0) {
-                        Some(from) => {
-                            if let HandleFrom::FromValue { .. } = from {
-                                return true;
-                            }
+                    if let Some(from) = handle_froms.first() {
+                        if let HandleFrom::FromValue { .. } = from {
+                            return true;
                         }
-                        None => {}
                     }
                 }
             }
@@ -127,13 +124,10 @@ impl Node {
         if let Some(from) = self.from() {
             if let Some(handle_froms) = from.get(handle) {
                 if handle_froms.len() == 1 {
-                    match handle_froms.get(0) {
-                        Some(from) => {
-                            if let HandleFrom::FromValue { value } = from {
-                                return value.clone();
-                            }
+                    if let Some(from) = handle_froms.first() {
+                        if let HandleFrom::FromValue { value } = from {
+                            return value.clone();
                         }
-                        None => {}
                     }
                 }
             }

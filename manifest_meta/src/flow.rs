@@ -177,22 +177,19 @@ impl SubflowBlock {
                 &inputs_def,
             );
 
-            if matches!(node, manifest::Node::Subflow(ref subflow_node) if subflow_node.slots.as_ref().is_some_and(|s| s.len() > 0))
+            if matches!(node, manifest::Node::Subflow(ref subflow_node) if subflow_node.slots.as_ref().is_some_and(|s| !s.is_empty()))
             {
-                match node {
-                    manifest::Node::Subflow(subflow_node) => {
-                        subflow_node.slots.as_ref().map(|slots| {
-                            for provider in slots {
-                                connections.parse_slot_inputs_from(
-                                    node.node_id(),
-                                    &provider.node_id(),
-                                    provider.inputs_from(),
-                                    &find_value_node,
-                                );
-                            }
-                        });
-                    }
-                    _ => {}
+                if let manifest::Node::Subflow(subflow_node) = node {
+                    subflow_node.slots.as_ref().map(|slots| {
+                        for provider in slots {
+                            connections.parse_slot_inputs_from(
+                                node.node_id(),
+                                &provider.node_id(),
+                                provider.inputs_from(),
+                                &find_value_node,
+                            );
+                        }
+                    });
                 }
             }
         }
@@ -469,7 +466,7 @@ impl SubflowBlock {
                         }
                     }
 
-                    let inputs_def = if addition_inputs_def.len() > 0 {
+                    let inputs_def = if !addition_inputs_def.is_empty() {
                         let mut merged_inputs_def = subflow_inputs_def.clone().unwrap_or_default();
                         for (handle, input) in addition_inputs_def.iter() {
                             if !merged_inputs_def.contains_key(handle) {

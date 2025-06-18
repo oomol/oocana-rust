@@ -154,13 +154,11 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
     {
         // /app/workspace/flows/a/flow.oo.yaml -> /app/workspace
         p.parent()
-            .map(|p| p.parent())
-            .flatten()
-            .map(|p| p.parent())
-            .flatten()
+            .and_then(|p| p.parent())
+            .and_then(|p| p.parent())
     } else {
         // /app/workspace/flows/a -> /app/workspace
-        p.parent().map(|p| p.parent()).flatten()
+        p.parent().and_then(|p| p.parent())
     };
     let flow_tmp_name = {
         let p = PathBuf::from(block_path);
@@ -176,7 +174,7 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
             .map(|f| {
                 format!(
                     "{}-{}",
-                    f.to_string_lossy().to_string(),
+                    f.to_string_lossy(),
                     calculate_short_hash(block_path, 8)
                 )
             })
