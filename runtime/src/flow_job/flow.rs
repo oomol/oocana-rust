@@ -369,7 +369,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
 
 fn remove_job_and_is_finished(job_id: &JobId, run_flow_ctx: &mut RunFlowContext) -> bool {
     run_flow_ctx.jobs.remove(job_id);
-    return is_finish(run_flow_ctx);
+    is_finish(run_flow_ctx)
 }
 
 fn flow_success(shared: &FlowShared, ctx: &RunFlowContext, reporter: &FlowReporterTx) {
@@ -623,7 +623,7 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
 
     let handle = run_block({
         RunBlockArgs {
-            block: block,
+            block,
             shared: Arc::clone(&shared.shared),
             parent_flow: Some(Arc::clone(&shared.flow_block)),
             stacks: shared.stacks.stack(

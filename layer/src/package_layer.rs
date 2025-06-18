@@ -171,7 +171,7 @@ impl PackageLayer {
 
         let file = File::create(format!("{}/{}", dest, LAYER_FILENAME))?;
         let writer = std::io::BufWriter::new(file);
-        let export = PackageLayerExport { layers: layers };
+        let export = PackageLayerExport { layers };
         serde_json::to_writer_pretty(writer, &export)?;
 
         Ok(())
