@@ -18,6 +18,8 @@ use job::{BlockJobStacks, JobId, RunningPackageScope};
 use manifest_meta::{read_flow_or_block, Block, BlockResolver, NodeId};
 use utils::error::Result;
 
+use crate::flow_job::{flow::get_flow_cache_path, NodeInputValues};
+
 const SESSION_CANCEL_INFO: &str = "Cancelled";
 
 pub struct RunArgs<'a> {
@@ -80,6 +82,21 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
 
     let workspace = scope_workspace.expect("workspace not found");
 
+    let flow_cache_path = if let Some(path) = block.path_str() {
+        get_flow_cache_path(path)
+    } else {
+        None
+    };
+
+    let mut node_value_store = match (shared.use_cache, flow_cache_path) {
+        (true, Some(cache_path)) => NodeInputValues::recover_from(cache_path, true),
+        _ => NodeInputValues::new(true),
+    };
+
+    if let Some(patch_value_str) = input_values {
+        node_value_store.merge_input_values(patch_value_str);
+    }
+
     let handle = block_job::run_block({
         block_job::RunBlockArgs {
             block,
@@ -89,8 +106,8 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
             job_id,
             inputs: None,
             block_status: block_status_tx.clone(),
+            node_value_store: Some(node_value_store),
             nodes,
-            input_values,
             timeout: None,
             inputs_def_patch: None,
             parent_scope: RunningPackageScope {

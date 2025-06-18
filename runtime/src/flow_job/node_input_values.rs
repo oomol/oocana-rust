@@ -248,9 +248,9 @@ impl NodeInputValues {
                     .memory_store
                     .get(node_id)
                     .and_then(|m| m.get(handle))
-                    .and_then(|v| v.get(0))
+                    .and_then(|v| v.front())
                 {
-                    value_map.insert(handle.to_owned(), Arc::clone(&remembered_value));
+                    value_map.insert(handle.to_owned(), Arc::clone(remembered_value));
                 }
             }
         }

@@ -70,9 +70,9 @@ pub struct RunFlowArgs {
     pub stacks: BlockJobStacks,
     pub flow_job_id: JobId,
     pub inputs: Option<BlockInputs>,
+    pub node_value_store: NodeInputValues,
     pub parent_block_status: BlockStatusTx,
     pub nodes: Option<HashSet<NodeId>>,
-    pub input_values: Option<String>,
     pub parent_scope: RunningPackageScope,
     pub scope: RunningPackageScope,
     pub slot_blocks: HashMap<NodeId, Slot>,
@@ -113,8 +113,8 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
         flow_job_id,
         inputs,
         parent_block_status,
+        node_value_store,
         ref mut nodes,
-        input_values,
         slot_blocks,
         scope,
         parent_scope,
@@ -130,31 +130,13 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
     let (block_status_tx, block_status_rx) = block_status::create();
 
     let mut filtered_nodes = nodes.clone();
-
-    let flow_cache_path = if shared.use_cache && stacks.is_root() {
-        get_flow_cache_path(&flow_block.path_str)
-    } else {
-        None
-    };
-
-    // 暂时默认，不由外部参数来决定
-    let save_cache = true;
     let mut run_flow_ctx = RunFlowContext {
-        node_input_values: match (shared.use_cache, flow_cache_path) {
-            (true, Some(path)) => NodeInputValues::recover_from(path, save_cache),
-            _ => NodeInputValues::new(save_cache),
-        },
+        node_input_values: node_value_store,
         parent_block_status,
         jobs: HashMap::new(),
         block_status: block_status_tx,
         node_queue_pool: HashMap::new(),
     };
-
-    if let Some(node_input_values) = input_values {
-        run_flow_ctx
-            .node_input_values
-            .merge_input_values(node_input_values);
-    }
 
     let flow_shared = FlowShared {
         flow_block,
@@ -387,7 +369,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
 
 fn remove_job_and_is_finished(job_id: &JobId, run_flow_ctx: &mut RunFlowContext) -> bool {
     run_flow_ctx.jobs.remove(job_id);
-    return is_finish(run_flow_ctx);
+    is_finish(run_flow_ctx)
 }
 
 fn flow_success(shared: &FlowShared, ctx: &RunFlowContext, reporter: &FlowReporterTx) {
@@ -641,7 +623,7 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
 
     let handle = run_block({
         RunBlockArgs {
-            block: block,
+            block,
             shared: Arc::clone(&shared.shared),
             parent_flow: Some(Arc::clone(&shared.flow_block)),
             stacks: shared.stacks.stack(
@@ -649,11 +631,11 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
                 shared.flow_block.path_str.to_owned(),
                 node.node_id().to_owned(),
             ),
+            node_value_store: None,
             job_id: job_id.to_owned(),
             inputs: ctx.node_input_values.take(node),
             block_status: ctx.block_status.clone(),
             nodes: None,
-            input_values: None,
             parent_scope: shared.scope.clone(),
             scope: package_scope,
             timeout: node.timeout(),
@@ -684,7 +666,7 @@ fn is_finish(ctx: &RunFlowContext) -> bool {
     ctx.jobs.is_empty()
 }
 
-fn get_flow_cache_path(flow: &str) -> Option<PathBuf> {
+pub fn get_flow_cache_path(flow: &str) -> Option<PathBuf> {
     utils::cache::cache_meta_file_path().and_then(|path| {
         CacheMetaMap::load(path)
             .ok()

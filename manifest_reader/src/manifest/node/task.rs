@@ -114,6 +114,6 @@ mod tests {
         let node: TaskNode = serde_yaml::from_str(yaml).unwrap();
         assert_eq!(node.node_id, NodeId::from("example_node".to_owned()));
         assert_eq!(node.concurrency, 5);
-        assert_eq!(node.ignore, false);
+        assert!(!node.ignore);
     }
 }
