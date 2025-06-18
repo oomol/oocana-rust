@@ -8,7 +8,11 @@ use mainframe::reporter::ReporterMessage;
 use manifest_meta::{Block, InputDefPatchMap, NodeId, Slot, SubflowBlock};
 
 use super::{service_job, task_job};
-use crate::{block_status::BlockStatusTx, flow_job, shared::Shared};
+use crate::{
+    block_status::BlockStatusTx,
+    flow_job::{self, NodeInputValues},
+    shared::Shared,
+};
 
 pub struct BlockJobHandle {
     // TODO: Remove this field
@@ -43,6 +47,7 @@ pub struct RunBlockArgs {
     pub inputs: Option<BlockInputs>,
     pub block_status: BlockStatusTx,
     pub nodes: Option<HashSet<NodeId>>,
+    pub node_value_store: Option<NodeInputValues>,
     pub parent_scope: RunningPackageScope,
     pub scope: RunningPackageScope,
     pub timeout: Option<u64>,
@@ -79,6 +84,7 @@ pub fn run_block(block_args: RunBlockArgs) -> Option<BlockJobHandle> {
         job_id,
         inputs,
         block_status,
+        node_value_store,
         nodes,
         timeout,
         parent_scope,
@@ -99,6 +105,7 @@ pub fn run_block(block_args: RunBlockArgs) -> Option<BlockJobHandle> {
                 parent_block_status: block_status,
                 nodes,
                 parent_scope,
+                node_value_store: node_value_store.unwrap_or(NodeInputValues::new(false)),
                 scope,
                 slot_blocks: slot_blocks.unwrap_or_default(),
             }
