@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.28.11 (2025-06-18)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* feat: remove inline slot provider by @leavesster in https://github.com/oomol/oocana-rust/pull/167
+* chore: improve github action check by @leavesster in https://github.com/oomol/oocana-rust/pull/169
+* feat: report partial and cache on session start and finish by @leavesster in https://github.com/oomol/oocana-rust/pull/170
+* refactor: move node value store and input value to top function  by @leavesster in https://github.com/oomol/oocana-rust/pull/171
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.28.10...v0.28.11
+
 ## 0.28.10 (2025-06-18)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
