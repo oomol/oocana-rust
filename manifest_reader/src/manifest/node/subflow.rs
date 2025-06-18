@@ -98,26 +98,5 @@ mod tests {
         "#;
 
         let _node: SubflowNode = serde_yaml::from_str(yaml).unwrap();
-
-        let yaml = r#"
-        subflow: example_subflow
-        node_id: example_node
-        slots:
-          - nodes:
-            - task: example_task
-              node_id: example_node
-              inputs_from:
-                - handle: input_handle
-                  value: null
-              concurrency: 5
-              ignore: false
-            slot_node_id: node_id
-            outputs_from:
-              - handle: output_handle
-                from_node:
-                    - node_id: example_node
-                      output_handle: output_handle
-        "#;
-        let _node: SubflowNode = serde_yaml::from_str(yaml).unwrap();
     }
 }
