@@ -26,6 +26,7 @@ pub enum ReporterMessage<'a> {
         create_at: u128,
         path: &'a str,
         partial: bool,
+        cache: bool,
     },
     SessionFinished {
         session_id: &'a str,
@@ -33,6 +34,8 @@ pub enum ReporterMessage<'a> {
         path: &'a str,
         #[serde(skip_serializing_if = "Option::is_none")]
         error: &'a Option<String>,
+        partial: bool,
+        cache: bool,
     },
     FlowStarted {
         session_id: &'a str,
@@ -194,21 +197,24 @@ pub struct ReporterTx {
 }
 
 impl ReporterTx {
-    pub fn session_started(&self, path: &str, partial: bool) {
+    pub fn session_started(&self, path: &str, partial: bool, cache: bool) {
         self.send(ReporterMessage::SessionStarted {
             session_id: &self.session_id,
             create_at: ReporterMessage::now(),
             path,
             partial,
+            cache,
         });
     }
 
-    pub fn session_finished(&self, path: &str, err: &Option<String>) {
+    pub fn session_finished(&self, path: &str, err: &Option<String>, partial: bool, cache: bool) {
         self.send(ReporterMessage::SessionFinished {
             session_id: &self.session_id,
             finish_at: ReporterMessage::now(),
             path,
             error: err,
+            partial,
+            cache,
         });
     }
 

@@ -46,6 +46,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
     let job_id = job_id.unwrap_or_else(JobId::random);
     let stacks = BlockJobStacks::new();
     let partial = nodes.is_some();
+    let cache = shared.use_cache;
 
     let block = match read_flow_or_block(block_name, block_reader, path_finder) {
         Ok(block) => block,
@@ -53,10 +54,13 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
             log_error!("Failed to read block: {}", err);
             // 解析文件失败时，不会运行任何 block。汇报一次 session 开始结束。
             // 错误信息会输出在 stderr 同时 exit code 会以非零状态输出。
-            shared.reporter.session_started(block_name, partial);
-            shared
-                .reporter
-                .session_finished(block_name, &Some(format!("Failed to read block {:?}", err)));
+            shared.reporter.session_started(block_name, partial, cache);
+            shared.reporter.session_finished(
+                block_name,
+                &Some(format!("Failed to read block {:?}", err)),
+                partial,
+                cache,
+            );
             return Err(err);
         }
     };
@@ -66,7 +70,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
         .map(|p| p.to_owned())
         .unwrap_or_else(|| block_name.to_string());
 
-    shared.reporter.session_started(&block_path, partial);
+    shared.reporter.session_started(&block_path, partial, cache);
 
     let nodes = nodes.map(|nodes| nodes.into_iter().map(NodeId::new).collect());
 
@@ -139,7 +143,9 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
     }
 
     signal_handler.abort();
-    shared.reporter.session_finished(&block_path, &result_error);
+    shared
+        .reporter
+        .session_finished(&block_path, &result_error, partial, cache);
     info!("session finished: {}", block_path);
 
     drop(handle);
