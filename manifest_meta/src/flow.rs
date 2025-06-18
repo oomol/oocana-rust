@@ -6,7 +6,7 @@ use std::{
 };
 
 use manifest_reader::{
-    manifest::{self, HandleName, InputDefPatch, InputHandles, OutputHandles},
+    manifest::{self, HandleName, InputDefPatch, InputHandle, InputHandles, OutputHandles},
     path_finder::{calculate_block_value_type, find_package_file, BlockPathFinder, BlockValueType},
     reader::read_package,
 };
@@ -91,11 +91,36 @@ impl fmt::Display for ServiceQueryResult {
     }
 }
 
+pub static RUNTIME_HANDLE_PREFIX: &str = "runtime";
+
+pub fn generate_runtime_handle_name(node_id: &str, handle: &HandleName) -> HandleName {
+    format!("{}::{}-{}", RUNTIME_HANDLE_PREFIX, node_id, handle).into()
+}
+
 impl SubflowBlock {
     pub fn has_slot(&self) -> bool {
         self.nodes
             .values()
             .any(|node| matches!(node, Node::Slot(_)))
+    }
+
+    pub fn update_node(&mut self, node_id: &NodeId, node: Node) {
+        if let Some(existing_node) = self.nodes.get_mut(node_id) {
+            *existing_node = node;
+        } else {
+            self.nodes.insert(node_id.clone(), node);
+        }
+    }
+
+    pub fn update_flow_inputs_tos(
+        &mut self,
+        input_handle: &HandleName,
+        handle_tos: &[crate::HandleTo],
+    ) {
+        self.flow_inputs_tos
+            .entry(input_handle.to_owned())
+            .or_default()
+            .extend(handle_tos.iter().cloned());
     }
 
     pub fn from_manifest(
@@ -151,6 +176,25 @@ impl SubflowBlock {
                 &find_value_node,
                 &inputs_def,
             );
+
+            if matches!(node, manifest::Node::Subflow(ref subflow_node) if subflow_node.slots.as_ref().is_some_and(|s| s.len() > 0))
+            {
+                match node {
+                    manifest::Node::Subflow(subflow_node) => {
+                        subflow_node.slots.as_ref().map(|slots| {
+                            for provider in slots {
+                                connections.parse_slot_inputs_from(
+                                    node.node_id(),
+                                    &provider.node_id(),
+                                    provider.inputs_from(),
+                                    &find_value_node,
+                                );
+                            }
+                        });
+                    }
+                    _ => {}
+                }
+            }
         }
 
         let find_node = |node_id: &NodeId| -> Option<&manifest::Node> {
@@ -181,11 +225,14 @@ impl SubflowBlock {
         for node in &nodes_in_flow {
             match node {
                 manifest::Node::Subflow(subflow_node) => {
-                    let flow = block_resolver
+                    let mut flow = block_resolver
                         .resolve_flow_block(&subflow_node.subflow, &mut path_finder)?;
-                    let inputs_def =
+                    let subflow_inputs_def =
                         parse_inputs_def(&subflow_node.inputs_from, &flow.as_ref().inputs_def);
-                    let inputs_def_patch = get_inputs_def_patch(&subflow_node.inputs_from);
+                    let subflow_inputs_def_patch = get_inputs_def_patch(&subflow_node.inputs_from);
+                    let to = connections.node_outputs_tos.remove(&subflow_node.node_id);
+
+                    let mut addition_inputs_def: InputHandles = HashMap::new();
 
                     let running_target = calculate_running_target(
                         node,
@@ -208,15 +255,17 @@ impl SubflowBlock {
                     };
 
                     let mut slot_blocks: HashMap<NodeId, Slot> = HashMap::new();
-                    if let Some(slots) = subflow_node.slots.as_ref() {
-                        for slot in slots {
-                            match slot {
-                                manifest::SlotProvider::Inline(inline_slot) => {
+                    if let Some(slot_providers) = subflow_node.slots.as_ref() {
+                        for provider in slot_providers {
+                            match provider {
+                                manifest::SlotProvider::Inline(inline_slot_provider) => {
                                     let manifest_subflow = manifest::SubflowBlock {
-                                        nodes: inline_slot.nodes.clone(),
-                                        inputs_def: Some(inline_slot.inputs_def()),
-                                        outputs_def: Some(inline_slot.outputs_def()),
-                                        outputs_from: Some(inline_slot.outputs_from.clone()),
+                                        nodes: inline_slot_provider.nodes.clone(),
+                                        inputs_def: Some(inline_slot_provider.inputs_def()),
+                                        outputs_def: Some(inline_slot_provider.outputs_def()),
+                                        outputs_from: Some(
+                                            inline_slot_provider.outputs_from.clone(),
+                                        ),
                                         injection: None,
                                     };
 
@@ -224,7 +273,7 @@ impl SubflowBlock {
                                         "{}#{}>{}",
                                         flow_path.to_string_lossy().to_string(),
                                         subflow_node.node_id,
-                                        inline_slot.slot_node_id
+                                        inline_slot_provider.slot_node_id
                                     );
                                     let subflow = SubflowBlock::from_manifest(
                                         manifest_subflow,
@@ -234,21 +283,25 @@ impl SubflowBlock {
                                     )?;
 
                                     let slot_block = Slot::Subflow(SubflowSlot {
-                                        slot_node_id: inline_slot.slot_node_id.to_owned(),
+                                        slot_node_id: inline_slot_provider.slot_node_id.to_owned(),
                                         subflow: Arc::new(subflow),
                                         scope: RunningScope::Slot {},
                                     });
-                                    slot_blocks
-                                        .insert(inline_slot.slot_node_id.to_owned(), slot_block);
+                                    slot_blocks.insert(
+                                        inline_slot_provider.slot_node_id.to_owned(),
+                                        slot_block,
+                                    );
                                 }
-                                manifest::SlotProvider::Task(task_slot) => {
+                                manifest::SlotProvider::Task(task_slot_provider) => {
                                     let task = block_resolver.resolve_task_node_block(
-                                        manifest::TaskNodeBlock::File(task_slot.task.to_owned()),
+                                        manifest::TaskNodeBlock::File(
+                                            task_slot_provider.task.to_owned(),
+                                        ),
                                         &mut path_finder,
                                     )?;
 
                                     let scope = if matches!(
-                                        calculate_block_value_type(&task_slot.task),
+                                        calculate_block_value_type(&task_slot_provider.task),
                                         BlockValueType::Pkg { .. }
                                     ) && task.package_path.is_some()
                                     {
@@ -262,21 +315,23 @@ impl SubflowBlock {
                                     };
 
                                     let slot_block = Slot::Task(TaskSlot {
-                                        slot_node_id: task_slot.slot_node_id.to_owned(),
+                                        slot_node_id: task_slot_provider.slot_node_id.to_owned(),
                                         task,
                                         scope,
                                     });
-                                    slot_blocks
-                                        .insert(task_slot.slot_node_id.to_owned(), slot_block);
+                                    slot_blocks.insert(
+                                        task_slot_provider.slot_node_id.to_owned(),
+                                        slot_block,
+                                    );
                                 }
-                                manifest::SlotProvider::SlotFlow(slot_flow) => {
+                                manifest::SlotProvider::SlotFlow(slotflow_provider) => {
                                     let slotflow = block_resolver.resolve_slot_flow_block(
-                                        &slot_flow.slotflow,
+                                        &slotflow_provider.slotflow,
                                         &mut path_finder,
                                     )?;
 
                                     let scope = if matches!(
-                                        calculate_block_value_type(&slot_flow.slotflow),
+                                        calculate_block_value_type(&slotflow_provider.slotflow),
                                         BlockValueType::Pkg { .. }
                                     ) && slotflow.package_path.is_some()
                                     {
@@ -290,17 +345,126 @@ impl SubflowBlock {
                                     };
 
                                     let slot_block = Slot::Subflow(SubflowSlot {
-                                        slot_node_id: slot_flow.slot_node_id.to_owned(),
+                                        slot_node_id: slotflow_provider.slot_node_id.to_owned(),
                                         subflow: slotflow,
                                         scope,
                                     });
 
-                                    slot_blocks
-                                        .insert(slot_flow.slot_node_id.to_owned(), slot_block);
+                                    if let Some(slot_node) =
+                                        flow.nodes.get(&slotflow_provider.slot_node_id)
+                                    {
+                                        if let Node::Slot(slot_node) = slot_node {
+                                            let mut new_inputs_def = slot_node
+                                                .slot
+                                                .as_ref()
+                                                .inputs_def
+                                                .clone()
+                                                .unwrap_or_default();
+
+                                            let mut new_froms =
+                                                slot_node.from.clone().unwrap_or_default();
+                                            let mut new_flow_inputs_tos =
+                                                flow.flow_inputs_tos.clone();
+                                            if let Some(addition_def) =
+                                                &slotflow_provider.inputs_def
+                                            {
+                                                for input in addition_def.iter() {
+                                                    let runtime_handle_name =
+                                                        generate_runtime_handle_name(
+                                                            &slot_node.node_id,
+                                                            &input.handle,
+                                                        );
+                                                    if !new_inputs_def.contains_key(&input.handle) {
+                                                        // add slot node inputs_def
+                                                        new_inputs_def.insert(
+                                                            input.handle.to_owned(),
+                                                            // this input should be always remembered true
+                                                            InputHandle {
+                                                                remember: true,
+                                                                ..input.clone()
+                                                            },
+                                                        );
+
+                                                        // add subflow inputs_def
+                                                        addition_inputs_def.insert(
+                                                            runtime_handle_name.clone(),
+                                                            InputHandle {
+                                                                handle: runtime_handle_name.clone(),
+                                                                ..input.clone()
+                                                            },
+                                                        );
+                                                    } else {
+                                                        tracing::warn!(
+                                                            "slot node {} already has input {}",
+                                                            slotflow_provider.slot_node_id,
+                                                            input.handle
+                                                        );
+                                                        continue;
+                                                    }
+
+                                                    // add slot node from connections
+                                                    new_froms
+                                                        .entry(input.handle.to_owned())
+                                                        .or_default()
+                                                        .push(crate::HandleFrom::FromFlowInput {
+                                                            input_handle: runtime_handle_name
+                                                                .clone(),
+                                                        });
+
+                                                    new_flow_inputs_tos
+                                                        .entry(runtime_handle_name.to_owned())
+                                                        .or_default()
+                                                        .push(crate::HandleTo::ToNodeInput {
+                                                            node_id: slot_node.node_id.clone(),
+                                                            node_input_handle: input
+                                                                .handle
+                                                                .to_owned(),
+                                                        });
+                                                }
+
+                                                let mut new_slot_node = slot_node.clone();
+                                                {
+                                                    new_slot_node.inputs_def = Some(new_inputs_def);
+                                                    new_slot_node.from = Some(new_froms);
+                                                }
+
+                                                // Cannot mutate inside Arc, so clone, update, and re-wrap if needed
+                                                let mut flow_inner = (*flow).clone();
+                                                flow_inner.update_node(
+                                                    &slotflow_provider.slot_node_id,
+                                                    Node::Slot(new_slot_node),
+                                                );
+                                                for (input_handle, handle_tos) in
+                                                    new_flow_inputs_tos.iter()
+                                                {
+                                                    flow_inner.update_flow_inputs_tos(
+                                                        input_handle,
+                                                        handle_tos,
+                                                    );
+                                                }
+                                                flow = Arc::new(flow_inner);
+                                            }
+                                        } else {
+                                            warn!(
+                                                "{} is not a slot node",
+                                                slotflow_provider.slot_node_id
+                                            );
+                                        }
+                                    } else {
+                                        warn!(
+                                            "slot node not found: {}",
+                                            slotflow_provider.slot_node_id
+                                        );
+                                    }
+
+                                    slot_blocks.insert(
+                                        slotflow_provider.slot_node_id.to_owned(),
+                                        slot_block,
+                                    );
                                 }
-                                manifest::SlotProvider::Subflow(subflow_slot) => {
+                                manifest::SlotProvider::Subflow(subflow_provider) => {
                                     let slot_flow = block_resolver.resolve_flow_block(
-                                        &subflow_slot.subflow,
+                                        &subflow_provider.subflow,
                                         &mut path_finder,
                                     )?;
 
@@ -309,7 +473,7 @@ impl SubflowBlock {
                                     }
 
                                     let scope = if matches!(
-                                        calculate_block_value_type(&subflow_slot.subflow),
+                                        calculate_block_value_type(&subflow_provider.subflow),
                                         BlockValueType::Pkg { .. }
                                     ) && slot_flow.package_path.is_some()
                                     {
@@ -323,31 +487,50 @@ impl SubflowBlock {
                                     };
 
                                     let slot_block = Slot::Subflow(SubflowSlot {
-                                        slot_node_id: subflow_slot.slot_node_id.to_owned(),
+                                        slot_node_id: subflow_provider.slot_node_id.to_owned(),
                                         subflow: slot_flow,
                                         scope,
                                     });
 
-                                    slot_blocks
-                                        .insert(subflow_slot.slot_node_id.to_owned(), slot_block);
+                                    slot_blocks.insert(
+                                        subflow_provider.slot_node_id.to_owned(),
+                                        slot_block,
+                                    );
                                 }
                             }
                         }
                     }
 
-                    // TODO: flow 注入
+                    let inputs_def = if addition_inputs_def.len() > 0 {
+                        let mut merged_inputs_def = subflow_inputs_def.clone().unwrap_or_default();
+                        for (handle, input) in addition_inputs_def.iter() {
+                            if !merged_inputs_def.contains_key(handle) {
+                                merged_inputs_def.insert(
+                                    handle.to_owned(),
+                                    InputHandle {
+                                        handle: handle.to_owned(),
+                                        remember: true,
+                                        ..input.clone()
+                                    },
+                                );
+                            }
+                        }
+                        Some(merged_inputs_def)
+                    } else {
+                        subflow_inputs_def
+                    };
 
                     new_nodes.insert(
                         subflow_node.node_id.to_owned(),
                         Node::Flow(SubflowNode {
                             from: connections.node_inputs_froms.remove(&subflow_node.node_id),
-                            to: connections.node_outputs_tos.remove(&subflow_node.node_id),
+                            to,
                             flow,
                             node_id: subflow_node.node_id.to_owned(),
                             timeout: subflow_node.timeout,
                             inputs_def,
                             concurrency: subflow_node.concurrency,
-                            inputs_def_patch,
+                            inputs_def_patch: subflow_inputs_def_patch,
                             scope: running_scope,
                             slots: if slot_blocks.is_empty() {
                                 None

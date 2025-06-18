@@ -2,6 +2,8 @@ use std::collections::{HashMap, HashSet};
 
 use manifest_reader::manifest::{self};
 
+use crate::flow::generate_runtime_handle_name;
+
 use super::{
     node::{HandleFrom, HandleTo},
     HandleName, HandlesFroms, HandlesTos, NodeId,
@@ -26,6 +28,91 @@ impl Connections {
 
             flow_inputs_tos: ConnNodeTos::new(),
             flow_outputs_froms: ConnNodeFroms::new(),
+        }
+    }
+
+    /// add node connection from node to slot provider
+    pub fn parse_slot_inputs_from(
+        &mut self,
+        subflow_node_id: &NodeId,
+        slot_node_id: &NodeId,
+        inputs_from: Vec<manifest::NodeInputFrom>,
+        find_value_node: &impl Fn(&NodeId) -> Option<manifest::ValueNode>,
+    ) {
+        for slot_input_from in inputs_from {
+            let runtime_handle =
+                generate_runtime_handle_name(&slot_node_id, &slot_input_from.handle);
+            if let Some(from_nodes) = slot_input_from.from_node {
+                for from_node in from_nodes {
+                    if let Some(value_node) = find_value_node(&from_node.node_id) {
+                        if let Some(input) = value_node.get_handle(&from_node.output_handle) {
+                            self.node_inputs_froms.add(
+                                subflow_node_id.to_owned(),
+                                runtime_handle.clone(),
+                                HandleFrom::FromValue {
+                                    value: input.value.clone(),
+                                },
+                            );
+                            tracing::debug!(
+                                "value node only add node_inputs_froms has no node_outputs_tos"
+                            );
+                            continue;
+                        } else {
+                            tracing::warn!(
+                                "ignore slot connection because value node({}) has no output handle({})",
+                                from_node.node_id,
+                                from_node.output_handle
+                            );
+                        }
+                        continue;
+                    }
+
+                    if !self.nodes.contains(&from_node.node_id) {
+                        tracing::warn!(
+                            "ignore slot connection because node({}) is not in runtime nodes or value nodes",
+                            from_node.node_id
+                        );
+                        continue;
+                    }
+
+                    self.node_inputs_froms.add(
+                        subflow_node_id.to_owned(),
+                        runtime_handle.clone(),
+                        HandleFrom::FromNodeOutput {
+                            node_id: from_node.node_id.to_owned(),
+                            node_output_handle: from_node.output_handle.to_owned(),
+                        },
+                    );
+
+                    self.node_outputs_tos.add(
+                        from_node.node_id.to_owned(),
+                        from_node.output_handle.to_owned(),
+                        HandleTo::ToNodeInput {
+                            node_id: subflow_node_id.to_owned(),
+                            node_input_handle: runtime_handle.clone(),
+                        },
+                    );
+                }
+            }
+
+            if let Some(from_flow) = slot_input_from.from_flow {
+                for flow_handle in from_flow {
+                    self.flow_inputs_tos.add(
+                        flow_handle.input_handle.to_owned(),
+                        HandleTo::ToNodeInput {
+                            node_id: subflow_node_id.to_owned(),
+                            node_input_handle: runtime_handle.clone(),
+                        },
+                    );
+                    self.node_inputs_froms.add(
+                        subflow_node_id.to_owned(),
+                        runtime_handle.clone(),
+                        HandleFrom::FromFlowInput {
+                            input_handle: flow_handle.input_handle.to_owned(),
+                        },
+                    );
+                }
+            }
         }
     }
 
