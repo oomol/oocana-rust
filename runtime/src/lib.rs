@@ -88,10 +88,14 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
         None
     };
 
-    let node_value_store = match (shared.use_cache, flow_cache_path) {
+    let mut node_value_store = match (shared.use_cache, flow_cache_path) {
         (true, Some(cache_path)) => NodeInputValues::recover_from(cache_path, true),
         _ => NodeInputValues::new(true),
     };
+
+    if let Some(patch_value_str) = input_values {
+        node_value_store.merge_input_values(patch_value_str);
+    }
 
     // TODO: use input_values
     let handle = block_job::run_block({
