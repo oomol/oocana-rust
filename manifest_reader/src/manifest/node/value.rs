@@ -39,6 +39,6 @@ mod tests {
 
         assert_eq!(node.node_id, NodeId::from("example_node".to_owned()));
         assert_eq!(node.values.len(), 1);
-        assert_eq!(node.ignore, false);
+        assert!(!node.ignore);
     }
 }
