@@ -1,6 +1,6 @@
 [package]
 name = "manifest_meta"
-version = "0.28.10"
+version = "0.28.11"
 authors = ["CRIMX <straybugs@gmail.com>"]
 description = "Oocana block meta"
 edition = "2021"
