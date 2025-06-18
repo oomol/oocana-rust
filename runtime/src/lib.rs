@@ -83,7 +83,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
     let workspace = scope_workspace.expect("workspace not found");
 
     let flow_cache_path = if let Some(path) = block.path_str() {
-        get_flow_cache_path(&path)
+        get_flow_cache_path(path)
     } else {
         None
     };

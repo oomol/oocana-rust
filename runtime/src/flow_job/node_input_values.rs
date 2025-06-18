@@ -250,7 +250,7 @@ impl NodeInputValues {
                     .and_then(|m| m.get(handle))
                     .and_then(|v| v.get(0))
                 {
-                    value_map.insert(handle.to_owned(), Arc::clone(&remembered_value));
+                    value_map.insert(handle.to_owned(), Arc::clone(remembered_value));
                 }
             }
         }

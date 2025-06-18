@@ -41,7 +41,7 @@ impl Connections {
     ) {
         for slot_input_from in inputs_from {
             let runtime_handle =
-                generate_runtime_handle_name(&slot_node_id, &slot_input_from.handle);
+                generate_runtime_handle_name(slot_node_id, &slot_input_from.handle);
             if let Some(from_nodes) = slot_input_from.from_node {
                 for from_node in from_nodes {
                     if let Some(value_node) = find_value_node(&from_node.node_id) {
