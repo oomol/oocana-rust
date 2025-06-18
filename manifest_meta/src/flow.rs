@@ -258,40 +258,6 @@ impl SubflowBlock {
                     if let Some(slot_providers) = subflow_node.slots.as_ref() {
                         for provider in slot_providers {
                             match provider {
-                                manifest::SlotProvider::Inline(inline_slot_provider) => {
-                                    let manifest_subflow = manifest::SubflowBlock {
-                                        nodes: inline_slot_provider.nodes.clone(),
-                                        inputs_def: Some(inline_slot_provider.inputs_def()),
-                                        outputs_def: Some(inline_slot_provider.outputs_def()),
-                                        outputs_from: Some(
-                                            inline_slot_provider.outputs_from.clone(),
-                                        ),
-                                        injection: None,
-                                    };
-
-                                    let flow_path_with_node_id = format!(
-                                        "{}#{}>{}",
-                                        flow_path.to_string_lossy().to_string(),
-                                        subflow_node.node_id,
-                                        inline_slot_provider.slot_node_id
-                                    );
-                                    let subflow = SubflowBlock::from_manifest(
-                                        manifest_subflow,
-                                        PathBuf::from(flow_path_with_node_id),
-                                        block_resolver,
-                                        path_finder.clone(),
-                                    )?;
-
-                                    let slot_block = Slot::Subflow(SubflowSlot {
-                                        slot_node_id: inline_slot_provider.slot_node_id.to_owned(),
-                                        subflow: Arc::new(subflow),
-                                        scope: RunningScope::Slot {},
-                                    });
-                                    slot_blocks.insert(
-                                        inline_slot_provider.slot_node_id.to_owned(),
-                                        slot_block,
-                                    );
-                                }
                                 manifest::SlotProvider::Task(task_slot_provider) => {
                                     let task = block_resolver.resolve_task_node_block(
                                         manifest::TaskNodeBlock::File(
