@@ -97,7 +97,6 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
         node_value_store.merge_input_values(patch_value_str);
     }
 
-    // TODO: use input_values
     let handle = block_job::run_block({
         block_job::RunBlockArgs {
             block,
