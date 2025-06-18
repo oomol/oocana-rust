@@ -80,6 +80,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
 
     let workspace = scope_workspace.expect("workspace not found");
 
+    // TODO: use input_values
     let handle = block_job::run_block({
         block_job::RunBlockArgs {
             block,
@@ -90,7 +91,6 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
             inputs: None,
             block_status: block_status_tx.clone(),
             nodes,
-            input_values,
             timeout: None,
             inputs_def_patch: None,
             parent_scope: RunningPackageScope {

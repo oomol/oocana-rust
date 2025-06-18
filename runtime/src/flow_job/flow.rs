@@ -72,7 +72,6 @@ pub struct RunFlowArgs {
     pub inputs: Option<BlockInputs>,
     pub parent_block_status: BlockStatusTx,
     pub nodes: Option<HashSet<NodeId>>,
-    pub input_values: Option<String>,
     pub parent_scope: RunningPackageScope,
     pub scope: RunningPackageScope,
     pub slot_blocks: HashMap<NodeId, Slot>,
@@ -114,7 +113,6 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
         inputs,
         parent_block_status,
         ref mut nodes,
-        input_values,
         slot_blocks,
         scope,
         parent_scope,
@@ -149,12 +147,6 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
         block_status: block_status_tx,
         node_queue_pool: HashMap::new(),
     };
-
-    if let Some(node_input_values) = input_values {
-        run_flow_ctx
-            .node_input_values
-            .merge_input_values(node_input_values);
-    }
 
     let flow_shared = FlowShared {
         flow_block,
@@ -653,7 +645,6 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
             inputs: ctx.node_input_values.take(node),
             block_status: ctx.block_status.clone(),
             nodes: None,
-            input_values: None,
             parent_scope: shared.scope.clone(),
             scope: package_scope,
             timeout: node.timeout(),
