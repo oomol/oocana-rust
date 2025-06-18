@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.28.10 (2025-06-18)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* fix: the addition of the slot input should not replicate flows inputs to by @leavesster in https://github.com/oomol/oocana-rust/pull/165
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.28.9...v0.28.10
+
 ## 0.28.9 (2025-06-18)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
