@@ -1,16 +1,11 @@
-use std::collections::{HashMap, HashSet};
-
 use serde::Deserialize;
 
 use crate::{
     extend_node_common_field,
-    manifest::{InputHandle, InputHandles, NodeInputFrom, OutputHandle, OutputHandles},
+    manifest::{InputHandle, NodeInputFrom},
 };
 
-use super::{
-    common::{default_concurrency, NodeId},
-    Node,
-};
+use super::common::{default_concurrency, NodeId};
 
 extend_node_common_field!(SubflowNode {
     subflow: String,
@@ -20,7 +15,6 @@ extend_node_common_field!(SubflowNode {
 #[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum SlotProvider {
-    Inline(InlineSlotProvider),
     Task(TaskSlotProvider),
     /// this subflow is a subflow without any slots
     Subflow(SubflowSlotProvider),
@@ -31,7 +25,6 @@ pub enum SlotProvider {
 impl SlotProvider {
     pub fn node_id(&self) -> NodeId {
         match self {
-            SlotProvider::Inline(slot) => slot.slot_node_id.clone(),
             SlotProvider::Task(slot) => slot.slot_node_id.clone(),
             SlotProvider::Subflow(slot) => slot.slot_node_id.clone(),
             SlotProvider::SlotFlow(slot_flow) => slot_flow.slot_node_id.clone(),
@@ -40,7 +33,6 @@ impl SlotProvider {
 
     pub fn inputs_from(&self) -> Vec<NodeInputFrom> {
         match self {
-            SlotProvider::Inline(_) => vec![],
             SlotProvider::Task(_) => vec![],
             SlotProvider::Subflow(_) => vec![],
             SlotProvider::SlotFlow(slot_flow) => slot_flow.inputs_from.clone().unwrap_or_default(),
@@ -54,90 +46,6 @@ pub struct SlotFlowProvider {
     pub slotflow: String,
     pub inputs_def: Option<Vec<InputHandle>>,
     pub inputs_from: Option<Vec<NodeInputFrom>>,
-}
-
-#[derive(Deserialize, Debug, Clone)]
-pub struct TmpInlineSlotProvider {
-    pub slot_node_id: NodeId,
-    pub nodes: Vec<Node>,
-    pub outputs_from: Vec<NodeInputFrom>,
-}
-
-impl From<TmpInlineSlotProvider> for InlineSlotProvider {
-    fn from(tmp: TmpInlineSlotProvider) -> Self {
-        let nodes = tmp
-            .nodes
-            .into_iter()
-            .filter(|node| matches!(node, Node::Task(_) | Node::Service(_) | Node::Value(_)))
-            .collect();
-
-        InlineSlotProvider {
-            slot_node_id: tmp.slot_node_id,
-            nodes,
-            outputs_from: tmp.outputs_from,
-        }
-    }
-}
-
-#[derive(Deserialize, Debug, Clone)]
-#[serde(from = "TmpInlineSlotProvider")]
-pub struct InlineSlotProvider {
-    pub slot_node_id: NodeId,
-    pub nodes: Vec<Node>, // TODO: more strict type
-    pub outputs_from: Vec<NodeInputFrom>,
-}
-
-impl InlineSlotProvider {
-    pub fn inputs_def(&self) -> InputHandles {
-        let mut inputs = HashMap::new();
-        for node in &self.nodes {
-            if let Some(inputs_from) = node.inputs_from() {
-                for input_from in inputs_from {
-                    if let Some(from_flow) = input_from.from_flow.as_ref() {
-                        for flow_source in from_flow {
-                            inputs.insert(
-                                flow_source.input_handle.to_owned(),
-                                InputHandle {
-                                    handle: flow_source.input_handle.to_owned(),
-                                    value: None,
-                                    json_schema: None,
-                                    name: None,
-                                    remember: false,
-                                },
-                            );
-                        }
-                    }
-                }
-            }
-        }
-        inputs
-    }
-
-    pub fn outputs_def(&self) -> OutputHandles {
-        let mut outputs = HashMap::new();
-        let node_ids = self
-            .nodes
-            .iter()
-            .map(|node| node.node_id())
-            .collect::<HashSet<_>>();
-        for output in &self.outputs_from {
-            if output.from_node.as_ref().is_some_and(|from_node| {
-                from_node
-                    .iter()
-                    .any(|node| node_ids.contains(&node.node_id))
-            }) {
-                outputs.insert(
-                    output.handle.to_owned(),
-                    OutputHandle {
-                        handle: output.handle.to_owned(),
-                        json_schema: None,
-                        name: None,
-                    },
-                );
-            }
-        }
-        outputs
-    }
 }
 
 #[derive(Deserialize, Debug, Clone)]

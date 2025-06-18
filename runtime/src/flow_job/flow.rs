@@ -12,7 +12,7 @@ use crate::{
     shared::Shared,
 };
 use mainframe::reporter::FlowReporterTx;
-use tracing::{info, warn};
+use tracing::warn;
 use utils::output::OutputValue;
 
 use job::{BlockInputs, BlockJobStacks, JobId, RunningPackageScope};
