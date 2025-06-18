@@ -556,15 +556,16 @@ fn produce_new_value(
                             if node_queue.jobs.len() < node.concurrency() as usize {
                                 run_node(node, shared, ctx);
                             } else {
-                                // 说明这次数据填平了一次 pending
-                                if ctx.node_input_values.node_pending_fulfill(node_id)
-                                    > previous_pending_fulfill
-                                {
+                                let pending_fulfill =
+                                    ctx.node_input_values.node_pending_fulfill(node_id);
+                                // this value is fulfill the node's input again, we need added a pending job to queue.
+                                if pending_fulfill > previous_pending_fulfill {
                                     node_queue.pending.insert(JobId::random());
+                                    tracing::info!("node queue ({}) is full, add a pending job. current jobs count: {}, concurrency: {}",node_id,node_queue.jobs.len(),node.concurrency());
                                 } else {
-                                    info!(
-                                        "node queue fulfill number is {}",
-                                        previous_pending_fulfill
+                                    tracing::info!(
+                                        "this node ({}) is fulfill because has pending job, this input value event not won't trigger because it not fulfill more than before",
+                                        node_id
                                     );
                                 }
                             }

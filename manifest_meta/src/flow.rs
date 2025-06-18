@@ -363,8 +363,10 @@ impl SubflowBlock {
 
                                             let mut new_froms =
                                                 slot_node.from.clone().unwrap_or_default();
-                                            let mut new_flow_inputs_tos =
-                                                flow.flow_inputs_tos.clone();
+                                            let mut addition_flow_inputs_tos: HashMap<
+                                                HandleName,
+                                                Vec<crate::HandleTo>,
+                                            > = HashMap::new();
                                             if let Some(addition_def) =
                                                 &slotflow_provider.inputs_def
                                             {
@@ -411,7 +413,7 @@ impl SubflowBlock {
                                                                 .clone(),
                                                         });
 
-                                                    new_flow_inputs_tos
+                                                    addition_flow_inputs_tos
                                                         .entry(runtime_handle_name.to_owned())
                                                         .or_default()
                                                         .push(crate::HandleTo::ToNodeInput {
@@ -435,7 +437,7 @@ impl SubflowBlock {
                                                     Node::Slot(new_slot_node),
                                                 );
                                                 for (input_handle, handle_tos) in
-                                                    new_flow_inputs_tos.iter()
+                                                    addition_flow_inputs_tos.iter()
                                                 {
                                                     flow_inner.update_flow_inputs_tos(
                                                         input_handle,
