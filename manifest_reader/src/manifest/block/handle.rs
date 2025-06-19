@@ -22,30 +22,32 @@ pub struct HandleName(String);
 #[derive(Deserialize, Serialize, Debug, Clone)]
 struct TempInputHandle {
     pub handle: HandleName,
+    pub description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub json_schema: Option<serde_json::Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub kind: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub nullable: Option<bool>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
         with = "::serde_with::rust::double_option"
     )]
     pub value: Option<Option<serde_json::Value>>,
-    /// 如果为 true，表示 value 字段不存在时，将 value 的值从 None 更改为 Some(None)。
-    #[serde(default)]
-    pub nullable: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub json_schema: Option<serde_json::Value>,
-    pub name: Option<String>,
 }
 
 impl From<TempInputHandle> for InputHandle {
     fn from(temp: TempInputHandle) -> Self {
         let TempInputHandle {
             handle,
-            value,
+            description,
             json_schema,
-            name,
-            ..
+            kind,
+            nullable,
+            value,
         } = temp;
-        let value = if temp.nullable {
+        let value = if temp.nullable.is_some_and(|nullable| nullable) {
             if value.is_none() {
                 Some(None)
             } else {
@@ -56,9 +58,11 @@ impl From<TempInputHandle> for InputHandle {
         };
         Self {
             handle,
-            value,
+            description,
             json_schema,
-            name,
+            kind,
+            nullable,
+            value,
             remember: false,
         }
     }
@@ -68,18 +72,20 @@ impl From<TempInputHandle> for InputHandle {
 #[serde(from = "TempInputHandle")]
 pub struct InputHandle {
     pub handle: HandleName,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub json_schema: Option<serde_json::Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub kind: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub nullable: Option<bool>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
         with = "::serde_with::rust::double_option"
     )]
-    /// 没有 value 字段，是 None;
-    /// 有 value 这个 key ，但是值为 null 或者没填（yaml规范），是 Some(None);
-    /// 有具体内容时，是 Some(Some(值))
     pub value: Option<Option<serde_json::Value>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub json_schema: Option<serde_json::Value>,
-    pub name: Option<String>,
     #[serde(default, skip_serializing)]
     pub remember: bool,
 }
@@ -90,7 +96,9 @@ impl InputHandle {
             handle,
             value: None,
             json_schema: None,
-            name: None,
+            kind: None,
+            description: None,
+            nullable: None,
             remember: false,
         }
     }
