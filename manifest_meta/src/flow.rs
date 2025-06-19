@@ -288,8 +288,15 @@ impl SubflowBlock {
                                     );
                                 }
                                 manifest::SlotProvider::SlotFlow(slotflow_provider) => {
+                                    let slotflow_inputs_def = flow
+                                        .nodes
+                                        .get(&slotflow_provider.slot_node_id)
+                                        .and_then(|n| n.inputs_def())
+                                        .cloned();
+
                                     let slotflow = block_resolver.resolve_slot_flow_block(
                                         &slotflow_provider.slotflow,
+                                        slotflow_inputs_def,
                                         &mut path_finder,
                                     )?;
 

@@ -243,22 +243,9 @@ impl Connections {
                                 },
                             );
                         } else {
-                            // TODO: slotflow.oo.yaml has no inputs def, just add it ignore inputs def currently.
-                            // this is a workaround, need to be fixed later (generate inputs def in runtime)
-                            tracing::warn!("node connection add some flow input({}) but not in flow inputs def", flow_handle.input_handle);
-                            self.node_inputs_froms.add(
-                                node_id.to_owned(),
-                                input_from.handle.to_owned(),
-                                HandleFrom::FromFlowInput {
-                                    input_handle: flow_handle.input_handle.to_owned(),
-                                },
-                            );
-                            self.flow_inputs_tos.add(
-                                flow_handle.input_handle.to_owned(),
-                                HandleTo::ToNodeInput {
-                                    node_id: node_id.to_owned(),
-                                    node_input_handle: input_from.handle.to_owned(),
-                                },
+                            tracing::warn!(
+                                "node connection has some flow input({}) not in flow inputs def",
+                                flow_handle.input_handle
                             );
                         }
                     }
