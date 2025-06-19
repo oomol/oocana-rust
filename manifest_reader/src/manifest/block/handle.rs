@@ -156,12 +156,13 @@ mod tests {
             json_schema: Some(serde_json::json!({
                 "contentMediaType": "oomol/secret"
             })),
-            name: Some("var1".to_string()),
+            kind: Some("var1".to_string()),
+            description: None,
         };
         let serialized = serde_json::to_string(&output_handle).unwrap();
         assert_eq!(
             serialized,
-            r#"{"handle":"output","json_schema":{"contentMediaType":"oomol/secret"},"name":"var1"}"#
+            r#"{"handle":"output","json_schema":{"contentMediaType":"oomol/secret"},"kind":"var1"}"#
         );
 
         let deserialized: OutputHandle = serde_json::from_str(&serialized).unwrap();
@@ -171,7 +172,7 @@ mod tests {
     #[test]
     fn deserialize_content_media_type_output_handle() {
         use super::*;
-        let serialized = r#"{"handle":"output","json_schema":{"contentMediaType":"oomol/secret"},"name":"var1"}"#;
+        let serialized = r#"{"handle":"output","json_schema":{"contentMediaType":"oomol/secret"},"kind":"var1"}"#;
         let deserialized: OutputHandle = serde_json::from_str(serialized).unwrap();
         assert_eq!(deserialized.handle, HandleName::new("output".to_string()));
 
@@ -186,7 +187,7 @@ mod tests {
             _ => panic!("Expected HandleJsonSchema"),
         }
 
-        assert_eq!(deserialized.name, Some("var1".to_string()));
+        assert_eq!(deserialized.kind, Some("var1".to_string()));
     }
 
     #[test]
