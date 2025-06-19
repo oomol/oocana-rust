@@ -587,6 +587,7 @@ impl SubflowBlock {
 
                     let task = block_resolver
                         .resolve_task_node_block(task_node_block.clone(), &mut path_finder)?;
+
                     let running_target = calculate_running_target(
                         node,
                         &task_node.inject,
@@ -665,7 +666,7 @@ impl SubflowBlock {
                         running_scope = RunningScope::default();
                     }
 
-                    let merge_inputs_def =
+                    let merged_inputs_def =
                         if task.additional_inputs && task_node.inputs_def.is_some() {
                             let mut inputs_def = task.inputs_def.clone().unwrap_or_default();
                             if let Some(node_addition_inputs) = task_node.inputs_def.as_ref() {
@@ -680,11 +681,33 @@ impl SubflowBlock {
                             task.inputs_def.clone()
                         };
 
-                    let inputs_def = parse_inputs_def(&task_node.inputs_from, &merge_inputs_def);
+                    let inputs_def = parse_inputs_def(&task_node.inputs_from, &merged_inputs_def);
 
                     let inputs_def_patch = get_inputs_def_patch(&task_node.inputs_from);
 
                     let from_map = connections.node_inputs_froms.remove(&task_node.node_id);
+
+                    let merged_outputs_def = if task.additional_outputs
+                        && task.outputs_def.is_some()
+                    {
+                        let mut outputs_def = task.outputs_def.clone().unwrap_or_default();
+                        if let Some(node_addition_outputs) = task_node.outputs_def.as_ref() {
+                            for output in node_addition_outputs.iter() {
+                                if !outputs_def.contains_key(&output.handle) {
+                                    outputs_def.insert(output.handle.to_owned(), output.clone());
+                                }
+                            }
+                        }
+                        Some(outputs_def)
+                    } else {
+                        task.outputs_def.clone()
+                    };
+
+                    let mut task_inner = (*task).clone();
+                    task_inner.outputs_def = merged_outputs_def;
+                    // TODO: this behavior change task's outputs_def, this task is a new task.
+                    //       maybe we should refactor this later.
+                    let task = Arc::new(task_inner);
 
                     new_nodes.insert(
                         task_node.node_id.to_owned(),

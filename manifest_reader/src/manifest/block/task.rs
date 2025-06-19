@@ -11,15 +11,18 @@ struct TmpTaskBlock {
     pub outputs_def: Option<Vec<OutputHandle>>,
     #[serde(default)]
     pub additional_inputs: bool,
+    #[serde(default)]
+    pub additional_outputs: bool,
 }
 
 impl From<TmpTaskBlock> for TaskBlock {
     fn from(tmp: TmpTaskBlock) -> Self {
-        TaskBlock {
+        Self {
             executor: tmp.executor,
             inputs_def: to_input_handles(tmp.inputs_def),
             outputs_def: to_output_handles(tmp.outputs_def),
             additional_inputs: tmp.additional_inputs,
+            additional_outputs: tmp.additional_outputs,
         }
     }
 }
@@ -31,6 +34,7 @@ pub struct TaskBlock {
     pub inputs_def: Option<InputHandles>,
     pub outputs_def: Option<OutputHandles>,
     pub additional_inputs: bool,
+    pub additional_outputs: bool,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
