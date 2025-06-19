@@ -229,7 +229,7 @@ impl SubflowBlock {
                     let subflow_inputs_def_patch = get_inputs_def_patch(&subflow_node.inputs_from);
                     let to = connections.node_outputs_tos.remove(&subflow_node.node_id);
 
-                    let mut addition_inputs_def: InputHandles = HashMap::new();
+                    let mut addition_subflow_inputs_def: InputHandles = HashMap::new();
 
                     let running_target = calculate_running_target(
                         node,
@@ -351,7 +351,7 @@ impl SubflowBlock {
                                                         );
 
                                                         // add subflow inputs_def
-                                                        addition_inputs_def.insert(
+                                                        addition_subflow_inputs_def.insert(
                                                             runtime_handle_name.clone(),
                                                             InputHandle {
                                                                 handle: runtime_handle_name.clone(),
@@ -367,14 +367,45 @@ impl SubflowBlock {
                                                         continue;
                                                     }
 
-                                                    // add slot node from connections
-                                                    new_froms
-                                                        .entry(input.handle.to_owned())
-                                                        .or_default()
-                                                        .push(crate::HandleFrom::FromFlowInput {
-                                                            input_handle: runtime_handle_name
-                                                                .clone(),
-                                                        });
+                                                    if let Some(input_from) = slotflow_provider
+                                                        .inputs_from
+                                                        .as_ref()
+                                                        .and_then(|inputs_from| {
+                                                            inputs_from
+                                                                .iter()
+                                                                .find(|i| i.handle == input.handle)
+                                                        })
+                                                    {
+                                                        if input_from.from_node.is_some()
+                                                            || input_from.from_flow.is_some()
+                                                        {
+                                                            new_froms
+                                                            .entry(input.handle.to_owned())
+                                                            .or_default()
+                                                            .push(
+                                                                crate::HandleFrom::FromFlowInput {
+                                                                    input_handle:
+                                                                        runtime_handle_name.clone(),
+                                                                },
+                                                            );
+                                                        } else if let Some(value) =
+                                                            &input_from.value
+                                                        {
+                                                            // todo: handle value
+                                                        } else {
+                                                            warn!(
+                                                                "slot node {} input {} has no value or from_node/from_flow",
+                                                                slotflow_provider.slot_node_id,
+                                                                input.handle
+                                                            );
+                                                        }
+                                                    } else {
+                                                        warn!(
+                                                            "slot node {} input {} not found in inputs_from",
+                                                            slotflow_provider.slot_node_id,
+                                                            input.handle
+                                                        );
+                                                    }
 
                                                     addition_flow_inputs_tos
                                                         .entry(runtime_handle_name.to_owned())
@@ -466,9 +497,9 @@ impl SubflowBlock {
                         }
                     }
 
-                    let inputs_def = if !addition_inputs_def.is_empty() {
+                    let inputs_def = if !addition_subflow_inputs_def.is_empty() {
                         let mut merged_inputs_def = subflow_inputs_def.clone().unwrap_or_default();
-                        for (handle, input) in addition_inputs_def.iter() {
+                        for (handle, input) in addition_subflow_inputs_def.iter() {
                             if !merged_inputs_def.contains_key(handle) {
                                 merged_inputs_def.insert(
                                     handle.to_owned(),
