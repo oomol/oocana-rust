@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.28.12 (2025-06-19)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* fix: slot provider need support input from's value by @leavesster in https://github.com/oomol/oocana-rust/pull/172
+* fix: calculate pending count need consider remember by @leavesster in https://github.com/oomol/oocana-rust/pull/174
+* fix: read slotflow inputs def from subflow slot input def and slot node input def by @leavesster in https://github.com/oomol/oocana-rust/pull/175
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.28.11...v0.28.12
+
 ## 0.28.11 (2025-06-18)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
