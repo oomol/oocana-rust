@@ -288,8 +288,35 @@ impl SubflowBlock {
                                     );
                                 }
                                 manifest::SlotProvider::SlotFlow(slotflow_provider) => {
+                                    let mut slotflow_inputs_def = flow
+                                        .nodes
+                                        .get(&slotflow_provider.slot_node_id)
+                                        .and_then(|n| n.inputs_def())
+                                        .cloned();
+
+                                    if let Some(slotflow_node_inputs_def) =
+                                        slotflow_provider.inputs_def.as_ref()
+                                    {
+                                        for input_def in slotflow_node_inputs_def.iter() {
+                                            if !slotflow_inputs_def.as_ref().map_or(false, |d| {
+                                                d.contains_key(&input_def.handle)
+                                            }) {
+                                                slotflow_inputs_def
+                                                    .get_or_insert_with(HashMap::new)
+                                                    .insert(
+                                                        input_def.handle.to_owned(),
+                                                        InputHandle {
+                                                            handle: input_def.handle.to_owned(),
+                                                            ..input_def.clone()
+                                                        },
+                                                    );
+                                            }
+                                        }
+                                    }
+
                                     let slotflow = block_resolver.resolve_slot_flow_block(
                                         &slotflow_provider.slotflow,
+                                        slotflow_inputs_def,
                                         &mut path_finder,
                                     )?;
 

@@ -1,4 +1,8 @@
-use manifest_reader::{manifest, path_finder::BlockPathFinder, reader::read_task_block};
+use manifest_reader::{
+    manifest::{self, InputHandles},
+    path_finder::BlockPathFinder,
+    reader::read_task_block,
+};
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
@@ -44,11 +48,12 @@ impl BlockResolver {
     pub fn resolve_slot_flow_block(
         &mut self,
         slot_flow_name: &str,
+        inputs_def: Option<InputHandles>,
         path_finder: &mut BlockPathFinder,
     ) -> Result<Arc<SubflowBlock>> {
         let slot_flow_path = path_finder.find_slot_slotflow_path(slot_flow_name)?;
 
-        self.read_flow_block(&slot_flow_path, path_finder)
+        self.read_slotflow_block(&slot_flow_path, inputs_def, path_finder)
     }
 
     pub fn resolve_task_node_block(
@@ -167,6 +172,17 @@ impl BlockResolver {
         task_cache.insert(task_path.to_owned(), Arc::clone(&task));
 
         Ok(task)
+    }
+
+    fn read_slotflow_block(
+        &mut self,
+        slot_flow_path: &Path,
+        inputs_def: Option<InputHandles>,
+        resolver: &mut BlockPathFinder,
+    ) -> Result<Arc<SubflowBlock>> {
+        let slotflow = flow_resolver::read_slotflow(inputs_def, slot_flow_path, self, resolver)?;
+
+        Ok(Arc::new(slotflow))
     }
 
     fn read_flow_block(
