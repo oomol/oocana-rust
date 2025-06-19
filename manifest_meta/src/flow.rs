@@ -391,7 +391,11 @@ impl SubflowBlock {
                                                         } else if let Some(value) =
                                                             &input_from.value
                                                         {
-                                                            // todo: handle value
+                                                            new_inputs_def
+                                                                .entry(input.handle.to_owned())
+                                                                .and_modify(|def| {
+                                                                    def.value = Some(value.clone());
+                                                                });
                                                         } else {
                                                             warn!(
                                                                 "slot node {} input {} has no value or from_node/from_flow",
