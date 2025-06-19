@@ -665,7 +665,7 @@ impl SubflowBlock {
                         running_scope = RunningScope::default();
                     }
 
-                    let merge_inputs_def =
+                    let merged_inputs_def =
                         if task.additional_inputs && task_node.inputs_def.is_some() {
                             let mut inputs_def = task.inputs_def.clone().unwrap_or_default();
                             if let Some(node_addition_inputs) = task_node.inputs_def.as_ref() {
@@ -680,7 +680,7 @@ impl SubflowBlock {
                             task.inputs_def.clone()
                         };
 
-                    let inputs_def = parse_inputs_def(&task_node.inputs_from, &merge_inputs_def);
+                    let inputs_def = parse_inputs_def(&task_node.inputs_from, &merged_inputs_def);
 
                     let inputs_def_patch = get_inputs_def_patch(&task_node.inputs_from);
 
