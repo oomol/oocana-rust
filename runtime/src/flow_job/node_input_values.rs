@@ -173,10 +173,13 @@ impl NodeInputValues {
         false
     }
 
-    pub fn node_pending_fulfill(&self, node_id: &NodeId) -> usize {
-        if let Some(input_values) = self.store.get(node_id) {
+    pub fn node_pending_fulfill(&self, node: &Node) -> usize {
+        if let Some(input_values) = self.store.get(node.node_id()) {
             let mut count = usize::MAX;
-            for (_, v) in input_values.iter() {
+            for (h, v) in input_values.iter() {
+                if need_remember_value(node, h) {
+                    continue;
+                }
                 count = min(count, v.len())
             }
             return count;
