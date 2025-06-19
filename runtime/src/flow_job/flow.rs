@@ -522,7 +522,12 @@ fn produce_new_value(
                 let should_run_output_node =
                     run_next_node && (filter_nodes.as_ref().is_none() || in_run_nodes);
 
-                let previous_pending_fulfill = ctx.node_input_values.node_pending_fulfill(node_id);
+                let previous_pending_fulfill =
+                    if let Some(node) = shared.flow_block.nodes.get(node_id) {
+                        ctx.node_input_values.node_pending_fulfill(node)
+                    } else {
+                        0
+                    };
                 // still need to insert value, even if the node is not in the run_nodes list
                 ctx.node_input_values.insert(
                     node_id.to_owned(),
@@ -539,7 +544,7 @@ fn produce_new_value(
                                 run_node(node, shared, ctx);
                             } else {
                                 let pending_fulfill =
-                                    ctx.node_input_values.node_pending_fulfill(node_id);
+                                    ctx.node_input_values.node_pending_fulfill(node);
                                 // this value is fulfill the node's input again, we need added a pending job to queue.
                                 if pending_fulfill > previous_pending_fulfill {
                                     node_queue.pending.insert(JobId::random());
