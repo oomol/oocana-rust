@@ -13,6 +13,7 @@ pub struct TaskBlock {
     pub path: Option<PathBuf>,
     pub path_str: Option<String>,
     pub additional_inputs: bool,
+    pub additional_outputs: bool,
     // TODO: package_path is not reliable, it should be removed. use block type instead.
     pub package_path: Option<PathBuf>,
 }
@@ -54,6 +55,7 @@ impl TaskBlock {
             inputs_def,
             outputs_def,
             additional_inputs,
+            additional_outputs,
         } = manifest;
 
         Self {
@@ -64,6 +66,7 @@ impl TaskBlock {
             path,
             package_path: package,
             additional_inputs,
+            additional_outputs,
         }
     }
 }
