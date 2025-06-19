@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.28.14 (2025-06-19)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* feat: retain all def field to passthrough to block by @leavesster in https://github.com/oomol/oocana-rust/pull/178
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.28.13...v0.28.14
+
 ## 0.28.13 (2025-06-19)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
