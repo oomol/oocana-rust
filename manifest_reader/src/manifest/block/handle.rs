@@ -108,11 +108,15 @@ impl InputHandle {
 pub struct OutputHandle {
     pub handle: HandleName,
     #[serde(skip_serializing_if = "Option::is_none")]
-    // 真实的格式是 json schema 规范格式 + contentMediaType 字段，但是在 rust 里面这种 json + 额外字段的结构不好描述。
-    // 除非把 json schema 的格式写成结构体，然后再加一个 contentMediaType 字段，但暂时没有这么大的必要性。
+    pub description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    // The actual format is the JSON Schema specification format plus a contentMediaType field.
+    // However, in Rust, it's difficult to describe such a structure (JSON + extra field).
+    // Unless we define the JSON Schema format as a struct and then add a contentMediaType field,
+    // but for now, there's no strong need for that.
     pub json_schema: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
+    pub kind: Option<String>,
 }
 
 pub const OOMOL_VAR_DATA: &str = "oomol/var";
