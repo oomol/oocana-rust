@@ -3,7 +3,7 @@ use tracing::warn;
 
 use crate::{
     extend_node_common_field,
-    manifest::{InputHandle, NodeInputFrom, TaskBlock},
+    manifest::{InputHandle, NodeInputFrom, OutputHandle, TaskBlock},
     path_finder::{calculate_block_value_type, BlockValueType},
 };
 
@@ -13,6 +13,7 @@ extend_node_common_field!(TaskNode {
     task: TaskNodeBlock,
     inject: Option<Injection>,
     inputs_def: Option<Vec<InputHandle>>,
+    outputs_def: Option<Vec<OutputHandle>>,
 });
 
 #[derive(Deserialize, Debug, Clone)]
