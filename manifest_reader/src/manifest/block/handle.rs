@@ -22,33 +22,32 @@ pub struct HandleName(String);
 #[derive(Deserialize, Serialize, Debug, Clone)]
 struct TempInputHandle {
     pub handle: HandleName,
+    pub description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub json_schema: Option<serde_json::Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub kind: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub nullable: Option<bool>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
         with = "::serde_with::rust::double_option"
     )]
     pub value: Option<Option<serde_json::Value>>,
-    /// 如果为 true，表示 value 字段不存在时，将 value 的值从 None 更改为 Some(None)。
-    #[serde(default)]
-    pub nullable: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub json_schema: Option<serde_json::Value>,
-    pub name: Option<String>,
-    #[serde(default)]
-    pub remember: bool,
 }
 
 impl From<TempInputHandle> for InputHandle {
     fn from(temp: TempInputHandle) -> Self {
         let TempInputHandle {
             handle,
-            value,
+            description,
             json_schema,
-            name,
-            remember,
-            ..
+            kind,
+            nullable,
+            value,
         } = temp;
-        let value = if temp.nullable {
+        let value = if temp.nullable.is_some_and(|nullable| nullable) {
             if value.is_none() {
                 Some(None)
             } else {
@@ -59,10 +58,12 @@ impl From<TempInputHandle> for InputHandle {
         };
         Self {
             handle,
-            value,
+            description,
             json_schema,
-            name,
-            remember,
+            kind,
+            nullable,
+            value,
+            remember: false,
         }
     }
 }
@@ -71,19 +72,21 @@ impl From<TempInputHandle> for InputHandle {
 #[serde(from = "TempInputHandle")]
 pub struct InputHandle {
     pub handle: HandleName,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub json_schema: Option<serde_json::Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub kind: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub nullable: Option<bool>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
         with = "::serde_with::rust::double_option"
     )]
-    /// 没有 value 字段，是 None;
-    /// 有 value 这个 key ，但是值为 null 或者没填（yaml规范），是 Some(None);
-    /// 有具体内容时，是 Some(Some(值))
     pub value: Option<Option<serde_json::Value>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub json_schema: Option<serde_json::Value>,
-    pub name: Option<String>,
-    #[serde(default)]
+    #[serde(default, skip_serializing)]
     pub remember: bool,
 }
 
@@ -93,7 +96,9 @@ impl InputHandle {
             handle,
             value: None,
             json_schema: None,
-            name: None,
+            kind: None,
+            description: None,
+            nullable: None,
             remember: false,
         }
     }
@@ -103,11 +108,15 @@ impl InputHandle {
 pub struct OutputHandle {
     pub handle: HandleName,
     #[serde(skip_serializing_if = "Option::is_none")]
-    // 真实的格式是 json schema 规范格式 + contentMediaType 字段，但是在 rust 里面这种 json + 额外字段的结构不好描述。
-    // 除非把 json schema 的格式写成结构体，然后再加一个 contentMediaType 字段，但暂时没有这么大的必要性。
+    pub description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    // The actual format is the JSON Schema specification format plus a contentMediaType field.
+    // However, in Rust, it's difficult to describe such a structure (JSON + extra field).
+    // Unless we define the JSON Schema format as a struct and then add a contentMediaType field,
+    // but for now, there's no strong need for that.
     pub json_schema: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
+    pub kind: Option<String>,
 }
 
 pub const OOMOL_VAR_DATA: &str = "oomol/var";
@@ -147,12 +156,13 @@ mod tests {
             json_schema: Some(serde_json::json!({
                 "contentMediaType": "oomol/secret"
             })),
-            name: Some("var1".to_string()),
+            kind: Some("var1".to_string()),
+            description: None,
         };
         let serialized = serde_json::to_string(&output_handle).unwrap();
         assert_eq!(
             serialized,
-            r#"{"handle":"output","json_schema":{"contentMediaType":"oomol/secret"},"name":"var1"}"#
+            r#"{"handle":"output","json_schema":{"contentMediaType":"oomol/secret"},"kind":"var1"}"#
         );
 
         let deserialized: OutputHandle = serde_json::from_str(&serialized).unwrap();
@@ -162,7 +172,7 @@ mod tests {
     #[test]
     fn deserialize_content_media_type_output_handle() {
         use super::*;
-        let serialized = r#"{"handle":"output","json_schema":{"contentMediaType":"oomol/secret"},"name":"var1"}"#;
+        let serialized = r#"{"handle":"output","json_schema":{"contentMediaType":"oomol/secret"},"kind":"var1"}"#;
         let deserialized: OutputHandle = serde_json::from_str(serialized).unwrap();
         assert_eq!(deserialized.handle, HandleName::new("output".to_string()));
 
@@ -177,7 +187,7 @@ mod tests {
             _ => panic!("Expected HandleJsonSchema"),
         }
 
-        assert_eq!(deserialized.name, Some("var1".to_string()));
+        assert_eq!(deserialized.kind, Some("var1".to_string()));
     }
 
     #[test]
