@@ -376,10 +376,7 @@ impl SubflowBlock {
                                                                 .find(|i| i.handle == input.handle)
                                                         })
                                                     {
-                                                        if input_from.from_node.is_some()
-                                                            || input_from.from_flow.is_some()
-                                                        {
-                                                            new_froms
+                                                        new_froms
                                                             .entry(input.handle.to_owned())
                                                             .or_default()
                                                             .push(
@@ -388,20 +385,13 @@ impl SubflowBlock {
                                                                         runtime_handle_name.clone(),
                                                                 },
                                                             );
-                                                        } else if let Some(value) =
-                                                            &input_from.value
-                                                        {
-                                                            new_inputs_def
-                                                                .entry(input.handle.to_owned())
+
+                                                        if let Some(value) = &input_from.value {
+                                                            addition_subflow_inputs_def
+                                                                .entry(runtime_handle_name.clone())
                                                                 .and_modify(|def| {
                                                                     def.value = Some(value.clone());
                                                                 });
-                                                        } else {
-                                                            warn!(
-                                                                "slot node {} input {} has no value or from_node/from_flow",
-                                                                slotflow_provider.slot_node_id,
-                                                                input.handle
-                                                            );
                                                         }
                                                     } else {
                                                         warn!(
