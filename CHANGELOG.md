@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.28.13 (2025-06-19)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* feat: task support additional outputs by @leavesster in https://github.com/oomol/oocana-rust/pull/176
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.28.12...v0.28.13
+
 ## 0.28.12 (2025-06-19)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
