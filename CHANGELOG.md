@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.28.15 (2025-06-20)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* feat: improve finish result field value by @leavesster in https://github.com/oomol/oocana-rust/pull/180
+* fix: cache value override input value by @leavesster in https://github.com/oomol/oocana-rust/pull/182
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.28.14...v0.28.15
+
 ## 0.28.14 (2025-06-19)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->

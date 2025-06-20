@@ -1,6 +1,6 @@
 [package]
 name = "layer"
-version = "0.28.14"
+version = "0.28.15"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
