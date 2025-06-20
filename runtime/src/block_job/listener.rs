@@ -269,24 +269,28 @@ pub fn listen_to_worker(args: ListenerArgs) -> tokio::task::JoinHandle<()> {
                     if let Some(error) = error {
                         block_status.finish(job_id, None, Some(error.clone()));
                         reporter.finished(None, Some(error));
-                        // consider return not continue;
                         continue;
                     }
 
-                    let mut reporter_map = HashMap::new();
-                    let mut output_map = HashMap::new();
-                    for (key, value) in result.unwrap_or_default().iter() {
-                        output_map.insert(
-                            key.clone(),
-                            Arc::new(OutputValue {
-                                value: value.clone(),
-                                cacheable: is_cacheable(key, value, &outputs_def),
-                            }),
-                        );
-                        reporter_map.insert(key.to_string(), value.clone());
+                    if let Some(result) = result {
+                        let mut reporter_map = HashMap::new();
+                        let mut output_map = HashMap::new();
+                        for (key, value) in result.iter() {
+                            output_map.insert(
+                                key.clone(),
+                                Arc::new(OutputValue {
+                                    value: value.clone(),
+                                    cacheable: is_cacheable(key, value, &outputs_def),
+                                }),
+                            );
+                            reporter_map.insert(key.to_string(), value.clone());
+                        }
+                        reporter.finished(Some(reporter_map), None);
+                        block_status.finish(job_id, Some(output_map), None);
+                    } else {
+                        reporter.finished(None, None);
+                        block_status.finish(job_id, None, None);
                     }
-                    reporter.finished(Some(reporter_map), None);
-                    block_status.finish(job_id, Some(output_map), None);
                 }
                 scheduler::ReceiveMessage::BlockError { error, .. } => {
                     reporter.error(&error);
