@@ -115,7 +115,7 @@ impl NodeInputValues {
         if let Some(inputs_def) = node.inputs_def() {
             for input_def in inputs_def.values() {
                 if !node.has_connection(&input_def.handle) {
-                    // TODO: don't use input_def.value, use input_froms.value. issue #183
+                    // TODO: issue #183
                     if input_def.value.is_some() {
                         continue;
                     }
