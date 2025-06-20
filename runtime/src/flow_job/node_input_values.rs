@@ -239,6 +239,11 @@ impl NodeInputValues {
 
         if let Some(input_values) = self.store.get_mut(node_id) {
             for (handle, values) in input_values {
+                if !node.has_connection(handle) {
+                    warn!("node: {} has no connection for handle: {}, but store has this handle's value, maybe the value is from last run cache", node_id, handle);
+                    continue;
+                }
+
                 if let Some(first) = values.pop_front() {
                     value_map.insert(handle.to_owned(), Arc::clone(&first));
 
