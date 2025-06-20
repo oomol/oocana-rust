@@ -105,7 +105,7 @@ impl Node {
         }
     }
 
-    pub fn has_value_from(&self, handle: &HandleName) -> bool {
+    pub fn has_only_one_value_from(&self, handle: &HandleName) -> bool {
         if let Some(from) = self.from() {
             if let Some(handle_froms) = from.get(handle) {
                 if handle_froms.len() == 1 {
@@ -120,7 +120,7 @@ impl Node {
         false
     }
 
-    pub fn only_has_one_value(&self, handle: &HandleName) -> Option<Option<JsonValue>> {
+    pub fn get_value_from(&self, handle: &HandleName) -> Option<Option<JsonValue>> {
         if let Some(from) = self.from() {
             if let Some(handle_froms) = from.get(handle) {
                 if handle_froms.len() == 1 {
@@ -135,7 +135,7 @@ impl Node {
         None
     }
 
-    pub fn has_from(&self, handle: &HandleName) -> bool {
+    pub fn has_connection(&self, handle: &HandleName) -> bool {
         if let Some(from) = self.from() {
             if let Some(handle_froms) = from.get(handle) {
                 if !handle_froms.is_empty() {

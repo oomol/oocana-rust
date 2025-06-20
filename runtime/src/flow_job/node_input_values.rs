@@ -114,9 +114,8 @@ impl NodeInputValues {
     pub fn is_node_fulfill(&self, node: &Node) -> bool {
         if let Some(inputs_def) = node.inputs_def() {
             for input_def in inputs_def.values() {
-                // has_from 为 false，说明没有连线。
-                if !node.has_from(&input_def.handle) {
-                    // 无连线有 value 认为该 input 已满足。
+                if !node.has_connection(&input_def.handle) {
+                    // TODO: don't use input_def.value, use input_froms.value
                     if input_def.value.is_some() {
                         continue;
                     }
@@ -125,7 +124,7 @@ impl NodeInputValues {
                     return false;
                 }
 
-                if node.has_value_from(&input_def.handle) {
+                if node.has_only_one_value_from(&input_def.handle) {
                     continue;
                 }
 
@@ -152,8 +151,7 @@ impl NodeInputValues {
 
     pub fn node_has_input(&self, node: &Node, handle_name: HandleName) -> bool {
         if let Some(inputs_def) = node.inputs_def() {
-            // 没有连线的话，查看是否有 value 值。有值认为也存在。
-            if !node.has_from(&handle_name) {
+            if !node.has_connection(&handle_name) {
                 return inputs_def
                     .get(&handle_name)
                     .map(|f| f.value.is_some())
@@ -161,7 +159,7 @@ impl NodeInputValues {
             }
         }
 
-        if node.has_value_from(&handle_name) {
+        if node.has_only_one_value_from(&handle_name) {
             return true;
         }
 
@@ -268,8 +266,8 @@ impl NodeInputValues {
                     continue;
                 }
 
-                if node.has_value_from(handle) {
-                    if let Some(value) = node.only_has_one_value(handle) {
+                if node.has_only_one_value_from(handle) {
+                    if let Some(value) = node.get_value_from(handle) {
                         value_map.insert(
                             handle.to_owned(),
                             Arc::new(OutputValue {
