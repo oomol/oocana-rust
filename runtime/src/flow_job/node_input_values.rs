@@ -115,7 +115,7 @@ impl NodeInputValues {
         if let Some(inputs_def) = node.inputs_def() {
             for input_def in inputs_def.values() {
                 if !node.has_connection(&input_def.handle) {
-                    // TODO: don't use input_def.value, use input_froms.value
+                    // TODO: don't use input_def.value, use input_froms.value. issue #183
                     if input_def.value.is_some() {
                         continue;
                     }
@@ -151,16 +151,17 @@ impl NodeInputValues {
 
     pub fn node_has_input(&self, node: &Node, handle_name: HandleName) -> bool {
         if let Some(inputs_def) = node.inputs_def() {
+            if node.has_only_one_value_from(&handle_name) {
+                return true;
+            }
+
+            // issue #183
             if !node.has_connection(&handle_name) {
                 return inputs_def
                     .get(&handle_name)
                     .map(|f| f.value.is_some())
                     .unwrap_or(false);
             }
-        }
-
-        if node.has_only_one_value_from(&handle_name) {
-            return true;
         }
 
         if let Some(input_values) = self.store.get(node.node_id()) {
@@ -284,6 +285,7 @@ impl NodeInputValues {
                     continue;
                 }
 
+                // issue #183
                 if let Some(value) = &def.value {
                     value_map.insert(
                         handle.to_owned(),
