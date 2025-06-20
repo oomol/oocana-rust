@@ -114,9 +114,8 @@ impl NodeInputValues {
     pub fn is_node_fulfill(&self, node: &Node) -> bool {
         if let Some(inputs_def) = node.inputs_def() {
             for input_def in inputs_def.values() {
-                // has_from 为 false，说明没有连线。
-                if !node.has_from(&input_def.handle) {
-                    // 无连线有 value 认为该 input 已满足。
+                if !node.has_connection(&input_def.handle) {
+                    // TODO: issue #183
                     if input_def.value.is_some() {
                         continue;
                     }
@@ -125,7 +124,7 @@ impl NodeInputValues {
                     return false;
                 }
 
-                if node.has_value_from(&input_def.handle) {
+                if node.has_only_one_value_from(&input_def.handle) {
                     continue;
                 }
 
@@ -152,17 +151,17 @@ impl NodeInputValues {
 
     pub fn node_has_input(&self, node: &Node, handle_name: HandleName) -> bool {
         if let Some(inputs_def) = node.inputs_def() {
-            // 没有连线的话，查看是否有 value 值。有值认为也存在。
-            if !node.has_from(&handle_name) {
+            if node.has_only_one_value_from(&handle_name) {
+                return true;
+            }
+
+            // issue #183
+            if !node.has_connection(&handle_name) {
                 return inputs_def
                     .get(&handle_name)
                     .map(|f| f.value.is_some())
                     .unwrap_or(false);
             }
-        }
-
-        if node.has_value_from(&handle_name) {
-            return true;
         }
 
         if let Some(input_values) = self.store.get(node.node_id()) {
@@ -241,6 +240,11 @@ impl NodeInputValues {
 
         if let Some(input_values) = self.store.get_mut(node_id) {
             for (handle, values) in input_values {
+                if !node.has_connection(handle) {
+                    warn!("node: {} has no connection for handle: {}, but store has this handle's value, maybe the value is from last run cache", node_id, handle);
+                    continue;
+                }
+
                 if let Some(first) = values.pop_front() {
                     value_map.insert(handle.to_owned(), Arc::clone(&first));
 
@@ -268,8 +272,8 @@ impl NodeInputValues {
                     continue;
                 }
 
-                if node.has_value_from(handle) {
-                    if let Some(value) = node.only_has_one_value(handle) {
+                if node.has_only_one_value_from(handle) {
+                    if let Some(value) = node.get_value_from(handle) {
                         value_map.insert(
                             handle.to_owned(),
                             Arc::new(OutputValue {
@@ -281,6 +285,7 @@ impl NodeInputValues {
                     continue;
                 }
 
+                // issue #183
                 if let Some(value) = &def.value {
                     value_map.insert(
                         handle.to_owned(),
