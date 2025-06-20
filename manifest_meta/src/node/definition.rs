@@ -138,8 +138,14 @@ impl Node {
     pub fn has_connection(&self, handle: &HandleName) -> bool {
         if let Some(from) = self.from() {
             if let Some(handle_froms) = from.get(handle) {
-                if !handle_froms.is_empty() {
-                    return true;
+                if handle_froms.len() == 1
+                    && handle_froms
+                        .first()
+                        .is_some_and(|f| matches!(f, HandleFrom::FromValue { .. }))
+                {
+                    return false;
+                } else {
+                    return !handle_froms.is_empty();
                 }
             }
         }
