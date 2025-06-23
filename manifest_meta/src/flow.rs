@@ -100,6 +100,61 @@ pub fn generate_runtime_handle_name(node_id: &str, handle: &HandleName) -> Handl
     format!("{}::{}-{}", RUNTIME_HANDLE_PREFIX, node_id, handle).into()
 }
 
+pub fn generate_node_inputs(
+    inputs_def: &Option<InputHandles>,
+    froms: &Option<HandlesFroms>,
+    node_inputs_from: &Option<Vec<manifest::NodeInputFrom>>,
+    // TODO: patch can be get from node_inputs_from. get patches from node_inputs_from
+    patches: &Option<HashMap<HandleName, Vec<InputDefPatch>>>,
+) -> HashMap<HandleName, NodeInput> {
+    let mut inputs = HashMap::new();
+    // inputs_def should contain all input handles. in the future, maybe has input from not in inputs_def.
+    if let Some(def) = inputs_def {
+        for (handle, input_def) in def.iter() {
+            let from = froms.as_ref().and_then(|froms| froms.get(handle)).cloned();
+            let patch = patches
+                .as_ref()
+                .and_then(|patches| patches.get(handle))
+                .cloned();
+            let value = if from.as_ref().is_some_and(|f| f.len() == 1)
+                && matches!(
+                    from.as_ref().unwrap()[0],
+                    crate::HandleFrom::FromValue { .. }
+                ) {
+                from.as_ref().and_then(|f| {
+                    f.first().and_then(|hf| {
+                        if let crate::HandleFrom::FromValue { value } = hf {
+                            value.clone()
+                        } else {
+                            None
+                        }
+                    })
+                })
+            } else {
+                node_inputs_from.as_ref().and_then(|inputs_from| {
+                    inputs_from.iter().find_map(|input_from| {
+                        if input_from.handle == *handle {
+                            input_from.value.clone()
+                        } else {
+                            None
+                        }
+                    })
+                })
+            };
+            inputs.insert(
+                handle.to_owned(),
+                NodeInput {
+                    def: input_def.clone(),
+                    patch,
+                    value,
+                    from,
+                },
+            );
+        }
+    }
+    inputs
+}
+
 impl SubflowBlock {
     pub fn has_slot(&self) -> bool {
         self.nodes
@@ -541,20 +596,12 @@ impl SubflowBlock {
                     };
 
                     let from = connections.node_inputs_froms.remove(&subflow_node.node_id);
-                    let mut inputs = HashMap::new();
-                    for (handle, input) in inputs_def.as_ref().unwrap_or(&HashMap::new()).iter() {
-                        inputs.insert(
-                            handle.to_owned(),
-                            NodeInput {
-                                def: input.clone(),
-                                patch: subflow_inputs_def_patch
-                                    .as_ref()
-                                    .and_then(|patch| patch.get(handle).cloned()),
-                                value: input.value.clone(), // TODO: remove value
-                                from: from.as_ref().and_then(|from| from.get(handle)).cloned(),
-                            },
-                        );
-                    }
+                    let inputs = generate_node_inputs(
+                        &inputs_def,
+                        &from,
+                        &subflow_node.inputs_from,
+                        &subflow_inputs_def_patch,
+                    );
 
                     new_nodes.insert(
                         subflow_node.node_id.to_owned(),
@@ -591,20 +638,12 @@ impl SubflowBlock {
                     let inputs_def_patch = get_inputs_def_patch(&service_node.inputs_from);
                     let from = connections.node_inputs_froms.remove(&service_node.node_id);
 
-                    let mut inputs = HashMap::new();
-                    for (handle, input) in inputs_def.as_ref().unwrap_or(&HashMap::new()).iter() {
-                        inputs.insert(
-                            handle.to_owned(),
-                            NodeInput {
-                                def: input.clone(),
-                                patch: inputs_def_patch
-                                    .as_ref()
-                                    .and_then(|patch| patch.get(handle).cloned()),
-                                value: input.value.clone(), // TODO: remove value
-                                from: from.as_ref().and_then(|from| from.get(handle)).cloned(),
-                            },
-                        );
-                    }
+                    let inputs = generate_node_inputs(
+                        &inputs_def,
+                        &from,
+                        &service_node.inputs_from,
+                        &inputs_def_patch,
+                    );
 
                     new_nodes.insert(
                         service_node.node_id.to_owned(),
@@ -759,20 +798,12 @@ impl SubflowBlock {
                     //       maybe we should refactor this later.
                     let task = Arc::new(task_inner);
 
-                    let mut inputs = HashMap::new();
-                    for (handle, input) in inputs_def.as_ref().unwrap_or(&HashMap::new()).iter() {
-                        inputs.insert(
-                            handle.to_owned(),
-                            NodeInput {
-                                def: input.clone(),
-                                patch: inputs_def_patch
-                                    .as_ref()
-                                    .and_then(|patch| patch.get(handle).cloned()),
-                                value: input.value.clone(), // TODO: remove value
-                                from: from.as_ref().and_then(|from| from.get(handle)).cloned(),
-                            },
-                        );
-                    }
+                    let inputs = generate_node_inputs(
+                        &inputs_def,
+                        &from,
+                        &task_node.inputs_from,
+                        &inputs_def_patch,
+                    );
 
                     new_nodes.insert(
                         task_node.node_id.to_owned(),
@@ -801,21 +832,12 @@ impl SubflowBlock {
                     let inputs_def_patch = get_inputs_def_patch(&slot_node.inputs_from);
 
                     let from = connections.node_inputs_froms.remove(&slot_node.node_id);
-                    let mut inputs = HashMap::new();
-                    for (handle, input) in inputs_def.as_ref().unwrap_or(&HashMap::new()).iter() {
-                        inputs.insert(
-                            handle.to_owned(),
-                            NodeInput {
-                                def: input.clone(),
-                                patch: inputs_def_patch
-                                    .as_ref()
-                                    .and_then(|patch| patch.get(handle).cloned()),
-                                value: input.value.clone(), // TODO: remove value
-                                from: from.as_ref().and_then(|from| from.get(handle)).cloned(),
-                            },
-                        );
-                    }
-
+                    let inputs = generate_node_inputs(
+                        &inputs_def,
+                        &from,
+                        &slot_node.inputs_from,
+                        &inputs_def_patch,
+                    );
                     new_nodes.insert(
                         slot_node.node_id.to_owned(),
                         Node::Slot(SlotNode {
