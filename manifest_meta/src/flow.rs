@@ -294,8 +294,7 @@ impl SubflowBlock {
                 manifest::Node::Subflow(subflow_node) => {
                     let mut flow = block_resolver
                         .resolve_flow_block(&subflow_node.subflow, &mut path_finder)?;
-                    let subflow_inputs_def =
-                        parse_inputs_def(&subflow_node.inputs_from, &flow.as_ref().inputs_def);
+                    let subflow_inputs_def = flow.inputs_def.clone();
                     let subflow_inputs_def_patch = get_inputs_def_patch(&subflow_node.inputs_from);
                     let to = connections.node_outputs_tos.remove(&subflow_node.node_id);
 
@@ -645,8 +644,7 @@ impl SubflowBlock {
                         service_node.service.to_owned(),
                         &mut path_finder,
                     )?;
-                    let inputs_def =
-                        parse_inputs_def(&service_node.inputs_from, &service.as_ref().inputs_def);
+                    let inputs_def = service.inputs_def.clone();
                     let inputs_def_patch = get_inputs_def_patch(&service_node.inputs_from);
                     let from = connections.node_inputs_froms.remove(&service_node.node_id);
 
@@ -781,7 +779,7 @@ impl SubflowBlock {
                             task.inputs_def.clone()
                         };
 
-                    let inputs_def = parse_inputs_def(&task_node.inputs_from, &merged_inputs_def);
+                    let inputs_def = merged_inputs_def.clone();
 
                     let inputs_def_patch = get_inputs_def_patch(&task_node.inputs_from);
 
@@ -839,8 +837,7 @@ impl SubflowBlock {
                 }
                 manifest::Node::Slot(slot_node) => {
                     let slot = block_resolver.resolve_slot_node_block(slot_node.slot.to_owned())?;
-                    let inputs_def =
-                        parse_inputs_def(&slot_node.inputs_from, &slot.as_ref().inputs_def);
+                    let inputs_def = slot.as_ref().inputs_def.clone();
                     let inputs_def_patch = get_inputs_def_patch(&slot_node.inputs_from);
 
                     let from = connections.node_inputs_froms.remove(&slot_node.node_id);
@@ -965,36 +962,6 @@ impl SubflowBlock {
         });
 
         services
-    }
-}
-
-fn parse_inputs_def(
-    node_inputs_from: &Option<Vec<manifest::NodeInputFrom>>,
-    inputs_def: &Option<InputHandles>,
-) -> Option<InputHandles> {
-    match inputs_def {
-        Some(inputs_def) => {
-            let mut merged_inputs_def = inputs_def.clone();
-            if let Some(inputs_from) = node_inputs_from {
-                for input in inputs_from {
-                    // 如果 node_inputs_from 中的 input 不在 inputs_def 中，则不合并进 node 实例中的 inputs_def 中。这样可以避免后续做很多判断。
-                    if !merged_inputs_def.contains_key(&input.handle) {
-                        continue;
-                    }
-
-                    merged_inputs_def
-                        .entry(input.handle.to_owned())
-                        .and_modify(|def| {
-                            // input_def 里面的 value 在实际运行中，是不会被使用的，要用 from 里面的值替换。
-                            // 如果 from 里面没有对应 input def 的值，也需要考虑删除 def 的值。目前没考虑。
-                            def.value = input.value.clone();
-                        });
-                }
-            }
-
-            Some(merged_inputs_def)
-        }
-        None => None,
     }
 }
 
