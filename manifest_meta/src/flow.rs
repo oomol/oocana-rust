@@ -141,6 +141,9 @@ pub fn generate_node_inputs(
                     })
                 })
             };
+            if value.is_none() && input_def.value.is_some() {
+                tracing::warn!("input: ({}) has value in block's inputs_def, but inputs_from has no value. For now the block's inputs_dev's value will be ignored", handle);
+            }
 
             let connection_from = from.map(|f| {
                 f.iter()
@@ -160,6 +163,7 @@ pub fn generate_node_inputs(
             );
         }
     }
+    tracing::debug!("node inputs: {:?}", inputs);
     inputs
 }
 
