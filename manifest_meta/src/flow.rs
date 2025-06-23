@@ -144,7 +144,7 @@ pub fn generate_node_inputs(
 
             let connection_from = from.map(|f| {
                 f.iter()
-                    .filter(|ff| matches!(ff, crate::HandleFrom::FromValue { .. }))
+                    .filter(|ff| !matches!(ff, crate::HandleFrom::FromValue { .. }))
                     .cloned()
                     .collect::<Vec<_>>()
             });
