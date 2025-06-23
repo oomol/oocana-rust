@@ -141,13 +141,21 @@ pub fn generate_node_inputs(
                     })
                 })
             };
+
+            let connection_from = from.map(|f| {
+                f.iter()
+                    .filter(|ff| matches!(ff, crate::HandleFrom::FromValue { .. }))
+                    .cloned()
+                    .collect::<Vec<_>>()
+            });
+
             inputs.insert(
                 handle.to_owned(),
                 NodeInput {
                     def: input_def.clone(),
                     patch,
                     value,
-                    from,
+                    from: connection_from, // this connection is always from node's outputs
                 },
             );
         }
