@@ -1,9 +1,17 @@
 use std::collections::HashMap;
 
 use manifest_reader::{
-    manifest::{HandleName, InputDefPatch, NodeId},
+    manifest::{HandleName, InputDefPatch, InputHandle, NodeId},
     JsonValue,
 };
+
+#[derive(Debug, Clone)]
+pub struct NodeInput {
+    pub def: InputHandle,
+    pub patch: Option<Vec<InputDefPatch>>,
+    pub value: Option<Option<JsonValue>>,
+    pub from: Option<Vec<HandleFrom>>,
+}
 
 #[macro_export(local_inner_macros)]
 macro_rules! extend_node_common_field {
@@ -13,11 +21,12 @@ macro_rules! extend_node_common_field {
             $(pub $field: $type,)*
             pub node_id: NodeId,
             pub timeout: Option<u64>,
-            pub from: Option<HandlesFroms>,
             pub to: Option<HandlesTos>,
+            pub inputs: Option<HashMap<HandleName, NodeInput>>,
+            pub from: Option<HandlesFroms>,
             pub inputs_def: Option<InputHandles>,
-            pub concurrency: i32,
             pub inputs_def_patch: Option<HashMap<HandleName, Vec<InputDefPatch>>>,
+            pub concurrency: i32,
         }
     };
 }

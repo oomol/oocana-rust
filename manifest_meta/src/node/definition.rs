@@ -7,7 +7,7 @@ use crate::{scope::RunningScope, Block, HandleName, NodeId, ServiceBlock, SlotBl
 
 use crate::extend_node_common_field;
 
-use super::common::{HandlesFroms, HandlesTos, InputDefPatchMap};
+use super::common::{HandlesFroms, HandlesTos, InputDefPatchMap, NodeInput};
 use super::subflow::SubflowNode;
 use super::HandleFrom;
 
@@ -93,6 +93,15 @@ impl Node {
             Self::Flow(flow) => flow.flow.outputs_def.as_ref(),
             Self::Slot(slot) => slot.slot.outputs_def.as_ref(),
             Self::Service(service) => service.block.outputs_def.as_ref(),
+        }
+    }
+
+    pub fn inputs(&self) -> Option<&HashMap<HandleName, NodeInput>> {
+        match self {
+            Self::Task(task) => task.inputs.as_ref(),
+            Self::Flow(flow) => flow.inputs.as_ref(),
+            Self::Slot(slot) => slot.inputs.as_ref(),
+            Self::Service(service) => service.inputs.as_ref(),
         }
     }
 

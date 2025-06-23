@@ -12,7 +12,10 @@ use manifest_reader::{
 };
 
 use crate::{
-    node::subflow::{Slot, SubflowSlot, TaskSlot},
+    node::{
+        common::NodeInput,
+        subflow::{Slot, SubflowSlot, TaskSlot},
+    },
     scope::{calculate_running_target, RunningScope, RunningTarget},
 };
 
@@ -537,15 +540,36 @@ impl SubflowBlock {
                         subflow_inputs_def
                     };
 
+                    let from = connections.node_inputs_froms.remove(&subflow_node.node_id);
+                    let mut inputs = HashMap::new();
+                    for (handle, input) in inputs_def.as_ref().unwrap_or(&HashMap::new()).iter() {
+                        inputs.insert(
+                            handle.to_owned(),
+                            NodeInput {
+                                def: input.clone(),
+                                patch: subflow_inputs_def_patch
+                                    .as_ref()
+                                    .and_then(|patch| patch.get(handle).cloned()),
+                                value: input.value.clone(), // TODO: remove value
+                                from: from.as_ref().and_then(|from| from.get(handle)).cloned(),
+                            },
+                        );
+                    }
+
                     new_nodes.insert(
                         subflow_node.node_id.to_owned(),
                         Node::Flow(SubflowNode {
-                            from: connections.node_inputs_froms.remove(&subflow_node.node_id),
+                            from,
                             to,
                             flow,
                             node_id: subflow_node.node_id.to_owned(),
                             timeout: subflow_node.timeout,
                             inputs_def,
+                            inputs: if inputs.is_empty() {
+                                None
+                            } else {
+                                Some(inputs)
+                            },
                             concurrency: subflow_node.concurrency,
                             inputs_def_patch: subflow_inputs_def_patch,
                             scope: running_scope,
@@ -565,17 +589,37 @@ impl SubflowBlock {
                     let inputs_def =
                         parse_inputs_def(&service_node.inputs_from, &service.as_ref().inputs_def);
                     let inputs_def_patch = get_inputs_def_patch(&service_node.inputs_from);
+                    let from = connections.node_inputs_froms.remove(&service_node.node_id);
+
+                    let mut inputs = HashMap::new();
+                    for (handle, input) in inputs_def.as_ref().unwrap_or(&HashMap::new()).iter() {
+                        inputs.insert(
+                            handle.to_owned(),
+                            NodeInput {
+                                def: input.clone(),
+                                patch: inputs_def_patch
+                                    .as_ref()
+                                    .and_then(|patch| patch.get(handle).cloned()),
+                                value: input.value.clone(), // TODO: remove value
+                                from: from.as_ref().and_then(|from| from.get(handle)).cloned(),
+                            },
+                        );
+                    }
 
                     new_nodes.insert(
                         service_node.node_id.to_owned(),
                         Node::Service(ServiceNode {
-                            from: connections.node_inputs_froms.remove(&service_node.node_id),
+                            from,
                             to: connections.node_outputs_tos.remove(&service_node.node_id),
                             node_id: service_node.node_id.to_owned(),
-                            // title: subflow_node.title,
                             timeout: service_node.timeout,
                             block: service,
                             inputs_def,
+                            inputs: if inputs.is_empty() {
+                                None
+                            } else {
+                                Some(inputs)
+                            },
                             concurrency: service_node.concurrency,
                             inputs_def_patch,
                         }),
@@ -690,7 +734,7 @@ impl SubflowBlock {
 
                     let inputs_def_patch = get_inputs_def_patch(&task_node.inputs_from);
 
-                    let from_map = connections.node_inputs_froms.remove(&task_node.node_id);
+                    let from = connections.node_inputs_froms.remove(&task_node.node_id);
 
                     let merged_outputs_def = if task.additional_outputs
                         && task.outputs_def.is_some()
@@ -715,15 +759,35 @@ impl SubflowBlock {
                     //       maybe we should refactor this later.
                     let task = Arc::new(task_inner);
 
+                    let mut inputs = HashMap::new();
+                    for (handle, input) in inputs_def.as_ref().unwrap_or(&HashMap::new()).iter() {
+                        inputs.insert(
+                            handle.to_owned(),
+                            NodeInput {
+                                def: input.clone(),
+                                patch: inputs_def_patch
+                                    .as_ref()
+                                    .and_then(|patch| patch.get(handle).cloned()),
+                                value: input.value.clone(), // TODO: remove value
+                                from: from.as_ref().and_then(|from| from.get(handle)).cloned(),
+                            },
+                        );
+                    }
+
                     new_nodes.insert(
                         task_node.node_id.to_owned(),
                         Node::Task(TaskNode {
-                            from: from_map,
+                            from,
                             to: connections.node_outputs_tos.remove(&task_node.node_id),
                             node_id: task_node.node_id.to_owned(),
                             timeout: task_node.timeout,
                             scope: running_scope,
                             task,
+                            inputs: if inputs.is_empty() {
+                                None
+                            } else {
+                                Some(inputs)
+                            },
                             inputs_def,
                             concurrency: task_node.concurrency,
                             inputs_def_patch,
@@ -736,15 +800,36 @@ impl SubflowBlock {
                         parse_inputs_def(&slot_node.inputs_from, &slot.as_ref().inputs_def);
                     let inputs_def_patch = get_inputs_def_patch(&slot_node.inputs_from);
 
+                    let from = connections.node_inputs_froms.remove(&slot_node.node_id);
+                    let mut inputs = HashMap::new();
+                    for (handle, input) in inputs_def.as_ref().unwrap_or(&HashMap::new()).iter() {
+                        inputs.insert(
+                            handle.to_owned(),
+                            NodeInput {
+                                def: input.clone(),
+                                patch: inputs_def_patch
+                                    .as_ref()
+                                    .and_then(|patch| patch.get(handle).cloned()),
+                                value: input.value.clone(), // TODO: remove value
+                                from: from.as_ref().and_then(|from| from.get(handle)).cloned(),
+                            },
+                        );
+                    }
+
                     new_nodes.insert(
                         slot_node.node_id.to_owned(),
                         Node::Slot(SlotNode {
-                            from: connections.node_inputs_froms.remove(&slot_node.node_id),
+                            from,
                             to: connections.node_outputs_tos.remove(&slot_node.node_id),
                             node_id: slot_node.node_id.to_owned(),
                             timeout: slot_node.timeout,
                             slot,
                             inputs_def,
+                            inputs: if inputs.is_empty() {
+                                None
+                            } else {
+                                Some(inputs)
+                            },
                             concurrency: slot_node.concurrency,
                             inputs_def_patch,
                         }),

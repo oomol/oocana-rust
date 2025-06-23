@@ -1,4 +1,4 @@
-use super::common::{HandlesFroms, HandlesTos};
+use super::common::{HandlesFroms, HandlesTos, NodeInput};
 use crate::{extend_node_common_field, Block, RunningScope, SubflowBlock, TaskBlock};
 use crate::{HandleName, NodeId};
 use manifest_reader::manifest::{InputDefPatch, InputHandles};
