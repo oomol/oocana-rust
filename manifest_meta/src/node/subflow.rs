@@ -1,7 +1,6 @@
 use super::common::{HandlesTos, NodeInput};
 use crate::{extend_node_common_field, Block, RunningScope, SubflowBlock, TaskBlock};
 use crate::{HandleName, NodeId};
-use manifest_reader::manifest::{InputDefPatch, InputHandles};
 use std::collections::HashMap;
 use std::sync::Arc;
 

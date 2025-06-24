@@ -360,8 +360,7 @@ impl SubflowBlock {
                                     let mut slotflow_inputs_def = flow
                                         .nodes
                                         .get(&slotflow_provider.slot_node_id)
-                                        .and_then(|n| n.inputs_def())
-                                        .cloned();
+                                        .and_then(|n| n.inputs_def());
 
                                     if let Some(slotflow_node_inputs_def) =
                                         slotflow_provider.inputs_def.as_ref()

@@ -1,6 +1,6 @@
 use std::{collections::HashMap, path::PathBuf, sync::Arc};
 
-use manifest_reader::manifest::{InputDefPatch, InputHandles, OutputHandles};
+use manifest_reader::manifest::{InputHandles, OutputHandles};
 
 use crate::{scope::RunningScope, Block, HandleName, NodeId, ServiceBlock, SlotBlock, TaskBlock};
 
@@ -67,12 +67,18 @@ impl Node {
         }
     }
 
-    pub fn inputs_def(&self) -> Option<&InputHandles> {
-        match self {
-            Self::Task(task) => task.inputs_def.as_ref(),
-            Self::Flow(flow) => flow.inputs_def.as_ref(),
-            Self::Slot(slot) => slot.inputs_def.as_ref(),
-            Self::Service(service) => service.inputs_def.as_ref(),
+    pub fn inputs_def(&self) -> Option<InputHandles> {
+        let inputs = self.inputs();
+        let mut inputs_def = HashMap::new();
+        if let Some(inputs) = inputs {
+            for (handle, input) in inputs.iter() {
+                inputs_def.insert(handle.clone(), input.def.clone());
+            }
+        }
+        if inputs_def.is_empty() {
+            None
+        } else {
+            Some(inputs_def)
         }
     }
 
@@ -94,12 +100,19 @@ impl Node {
         }
     }
 
-    pub fn inputs_def_patch(&self) -> Option<&InputDefPatchMap> {
-        match self {
-            Self::Task(task) => task.inputs_def_patch.as_ref(),
-            Self::Flow(flow) => flow.inputs_def_patch.as_ref(),
-            Self::Slot(slot) => slot.inputs_def_patch.as_ref(),
-            Self::Service(service) => service.inputs_def_patch.as_ref(),
+    pub fn inputs_def_patch(&self) -> Option<InputDefPatchMap> {
+        let inputs = self.inputs();
+        let mut patches = HashMap::new();
+
+        for (handle, input) in inputs.iter().flat_map(|inputs| inputs.iter()) {
+            if let Some(patch) = &input.patch {
+                patches.insert(handle.clone(), patch.clone());
+            }
+        }
+        if patches.is_empty() {
+            None
+        } else {
+            Some(patches)
         }
     }
 
