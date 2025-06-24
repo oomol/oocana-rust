@@ -136,9 +136,9 @@ impl NodeInputValues {
         true
     }
 
-    pub fn node_has_input(&self, node: &Node, handle_name: HandleName) -> bool {
+    pub fn node_has_input(&self, node: &Node, handle_name: &HandleName) -> bool {
         if let Some(inputs) = node.inputs() {
-            if let Some(input) = inputs.get(&handle_name) {
+            if let Some(input) = inputs.get(handle_name) {
                 if input.from.as_ref().is_none_or(|f| f.is_empty()) && input.value.is_some() {
                     return true;
                 }
@@ -146,7 +146,7 @@ impl NodeInputValues {
         }
 
         if let Some(input_values) = self.store.get(node.node_id()) {
-            if let Some(values) = input_values.get(&handle_name) {
+            if let Some(values) = input_values.get(handle_name) {
                 return !values.is_empty();
             }
         }
