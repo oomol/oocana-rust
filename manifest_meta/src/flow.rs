@@ -524,7 +524,6 @@ impl SubflowBlock {
 
                                                 let mut new_slot_node = slot_node.clone();
                                                 {
-                                                    new_slot_node.inputs_def = Some(new_inputs_def);
                                                     new_slot_node.inputs = new_inputs.into();
                                                 }
 
@@ -635,14 +634,12 @@ impl SubflowBlock {
                             flow,
                             node_id: subflow_node.node_id.to_owned(),
                             timeout: subflow_node.timeout,
-                            inputs_def,
                             inputs: if inputs.is_empty() {
                                 None
                             } else {
                                 Some(inputs)
                             },
                             concurrency: subflow_node.concurrency,
-                            inputs_def_patch: subflow_inputs_def_patch,
                             scope: running_scope,
                             slots: if slot_blocks.is_empty() {
                                 None
@@ -675,14 +672,12 @@ impl SubflowBlock {
                             node_id: service_node.node_id.to_owned(),
                             timeout: service_node.timeout,
                             block: service,
-                            inputs_def,
                             inputs: if inputs.is_empty() {
                                 None
                             } else {
                                 Some(inputs)
                             },
                             concurrency: service_node.concurrency,
-                            inputs_def_patch,
                         }),
                     );
                 }
@@ -840,9 +835,7 @@ impl SubflowBlock {
                             } else {
                                 Some(inputs)
                             },
-                            inputs_def,
                             concurrency: task_node.concurrency,
-                            inputs_def_patch,
                         }),
                     );
                 }
@@ -865,14 +858,12 @@ impl SubflowBlock {
                             node_id: slot_node.node_id.to_owned(),
                             timeout: slot_node.timeout,
                             slot,
-                            inputs_def,
                             inputs: if inputs.is_empty() {
                                 None
                             } else {
                                 Some(inputs)
                             },
                             concurrency: slot_node.concurrency,
-                            inputs_def_patch,
                         }),
                     );
                 }
