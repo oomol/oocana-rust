@@ -513,6 +513,13 @@ impl SubflowBlock {
                                                 {
                                                     new_slot_node.inputs_def = Some(new_inputs_def);
                                                     new_slot_node.from = Some(new_froms);
+                                                    new_slot_node.inputs =
+                                                        Some(generate_node_inputs(
+                                                            &new_slot_node.inputs_def,
+                                                            &new_slot_node.from,
+                                                            &None,
+                                                            &None,
+                                                        ));
                                                 }
 
                                                 // Cannot mutate inside Arc, so clone, update, and re-wrap if needed
