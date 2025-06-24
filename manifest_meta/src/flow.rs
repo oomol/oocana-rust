@@ -421,8 +421,8 @@ impl SubflowBlock {
                                                 .clone()
                                                 .unwrap_or_default();
 
-                                            let mut new_froms =
-                                                slot_node.from.clone().unwrap_or_default();
+                                            let mut new_inputs =
+                                                slot_node.inputs.clone().unwrap_or_default();
                                             let mut addition_flow_inputs_tos: HashMap<
                                                 HandleName,
                                                 Vec<crate::HandleTo>,
@@ -437,13 +437,23 @@ impl SubflowBlock {
                                                             &input.handle,
                                                         );
                                                     if !new_inputs_def.contains_key(&input.handle) {
-                                                        // add slot node inputs_def
-                                                        new_inputs_def.insert(
-                                                            input.handle.to_owned(),
+                                                        let runtime_addition_input = InputHandle {
                                                             // this input should be always remembered true
-                                                            InputHandle {
-                                                                remember: true,
-                                                                ..input.clone()
+                                                            remember: true,
+                                                            ..input.clone()
+                                                        };
+                                                        new_inputs_def.insert(
+                                                            runtime_handle_name.clone(),
+                                                            runtime_addition_input.clone(),
+                                                        );
+
+                                                        new_inputs.insert(
+                                                            runtime_handle_name.clone(),
+                                                            NodeInput {
+                                                                def: runtime_addition_input,
+                                                                patch: None,
+                                                                value: None,
+                                                                from: None,
                                                             },
                                                         );
 
@@ -473,15 +483,18 @@ impl SubflowBlock {
                                                                 .find(|i| i.handle == input.handle)
                                                         })
                                                     {
-                                                        new_froms
-                                                            .entry(input.handle.to_owned())
-                                                            .or_default()
-                                                            .push(
-                                                                crate::HandleFrom::FromFlowInput {
-                                                                    input_handle:
-                                                                        runtime_handle_name.clone(),
-                                                                },
-                                                            );
+                                                        new_inputs
+                                                            .entry(runtime_handle_name.clone())
+                                                            .and_modify(|node_handle| {
+                                                                node_handle
+                                                                    .from
+                                                                    .get_or_insert_with(Vec::new)
+                                                                    .push(
+                                                                        crate::HandleFrom::FromFlowInput {
+                                                                            input_handle: runtime_handle_name.clone(),
+                                                                        },
+                                                                    );
+                                                            });
 
                                                         if let Some(value) = &input_from.value {
                                                             addition_subflow_inputs_def
@@ -512,13 +525,7 @@ impl SubflowBlock {
                                                 let mut new_slot_node = slot_node.clone();
                                                 {
                                                     new_slot_node.inputs_def = Some(new_inputs_def);
-                                                    new_slot_node.inputs =
-                                                        Some(generate_node_inputs(
-                                                            &new_slot_node.inputs_def,
-                                                            &new_slot_node.from,
-                                                            &None,
-                                                            &None,
-                                                        ));
+                                                    new_slot_node.inputs = new_inputs.into();
                                                 }
 
                                                 // Cannot mutate inside Arc, so clone, update, and re-wrap if needed
