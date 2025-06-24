@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.28.17 (2025-06-24)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* fix: should consider value from before has connection by @leavesster in https://github.com/oomol/oocana-rust/pull/187
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.28.16...v0.28.17
+
 ## 0.28.16 (2025-06-24)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->

@@ -204,7 +204,7 @@ dependencies = [
 
 [[package]]
 name = "blk-b"
-version = "0.28.16"
+version = "0.28.17"
 dependencies = [
  "oocana_sdk",
  "tokio",
@@ -212,7 +212,7 @@ dependencies = [
 
 [[package]]
 name = "blk_a"
-version = "0.28.16"
+version = "0.28.17"
 dependencies = [
  "oocana_sdk",
  "tokio",
@@ -220,7 +220,7 @@ dependencies = [
 
 [[package]]
 name = "blk_d"
-version = "0.28.16"
+version = "0.28.17"
 dependencies = [
  "oocana_sdk",
  "tokio",
@@ -367,7 +367,7 @@ checksum = "f46ad14479a25103f283c0f10005961cf086d8dc42205bb44c46ac563475dca6"
 
 [[package]]
 name = "cli"
-version = "0.28.16"
+version = "0.28.17"
 dependencies = [
  "clap 4.5.32",
  "dirs",
@@ -389,7 +389,7 @@ checksum = "5b63caa9aa9397e2d9480a9b13673856c78d8ac123288526c37d7839f2a86990"
 
 [[package]]
 name = "concurrency-blk-b"
-version = "0.28.16"
+version = "0.28.17"
 dependencies = [
  "oocana_sdk",
  "tokio",
@@ -397,7 +397,7 @@ dependencies = [
 
 [[package]]
 name = "concurrency_blk_a"
-version = "0.28.16"
+version = "0.28.17"
 dependencies = [
  "oocana_sdk",
  "tokio",
@@ -961,7 +961,7 @@ checksum = "b9e0384b61958566e926dc50660321d12159025e767c18e043daf26b70104c39"
 
 [[package]]
 name = "identity"
-version = "0.28.16"
+version = "0.28.17"
 dependencies = [
  "oocana_sdk",
  "tokio",
@@ -1012,7 +1012,7 @@ checksum = "4a5f13b858c8d314ee3e8f639011f7ccefe71f97f96e50151fb991f267928e2c"
 
 [[package]]
 name = "job"
-version = "0.28.16"
+version = "0.28.17"
 dependencies = [
  "derive_more",
  "manifest_meta",
@@ -1045,7 +1045,7 @@ dependencies = [
 
 [[package]]
 name = "layer"
-version = "0.28.16"
+version = "0.28.17"
 dependencies = [
  "ctor",
  "dirs",
@@ -1100,7 +1100,7 @@ checksum = "30bde2b3dc3671ae49d8e2e9f044c7c005836e7a023ee57cffa25ab82764bb9e"
 
 [[package]]
 name = "mainframe"
-version = "0.28.16"
+version = "0.28.17"
 dependencies = [
  "async-trait",
  "flume 0.11.1",
@@ -1118,7 +1118,7 @@ dependencies = [
 
 [[package]]
 name = "mainframe_mqtt"
-version = "0.28.16"
+version = "0.28.17"
 dependencies = [
  "async-trait",
  "flume 0.11.1",
@@ -1136,7 +1136,7 @@ dependencies = [
 
 [[package]]
 name = "manifest_meta"
-version = "0.28.16"
+version = "0.28.17"
 dependencies = [
  "layer",
  "manifest_reader",
@@ -1146,7 +1146,7 @@ dependencies = [
 
 [[package]]
 name = "manifest_reader"
-version = "0.28.16"
+version = "0.28.17"
 dependencies = [
  "derive_more",
  "path-clean",
@@ -1250,7 +1250,7 @@ checksum = "d75b0bedcc4fe52caa0e03d9f1151a323e4aa5e2d78ba3580400cd3c9e2bc4bc"
 
 [[package]]
 name = "one_shot"
-version = "0.28.16"
+version = "0.28.17"
 dependencies = [
  "flume 0.11.1",
  "job",
@@ -1270,7 +1270,7 @@ dependencies = [
 
 [[package]]
 name = "oocana"
-version = "0.28.16"
+version = "0.28.17"
 dependencies = [
  "assert_cmd",
  "better-panic",
@@ -1284,7 +1284,7 @@ dependencies = [
 
 [[package]]
 name = "oocana_sdk"
-version = "0.28.16"
+version = "0.28.17"
 dependencies = [
  "clap 3.2.25",
  "job",
@@ -1457,7 +1457,7 @@ checksum = "8b870d8c151b6f2fb93e84a13146138f05d02ed11c7e7c54f8826aaaf7c9f184"
 
 [[package]]
 name = "pkg_v"
-version = "0.28.16"
+version = "0.28.17"
 dependencies = [
  "oocana_sdk",
  "tokio",
@@ -1770,7 +1770,7 @@ dependencies = [
 
 [[package]]
 name = "runtime"
-version = "0.28.16"
+version = "0.28.17"
 dependencies = [
  "dirs",
  "flume 0.11.1",
@@ -2521,7 +2521,7 @@ checksum = "06abde3611657adf66d383f00b093d7faecc7fa57071cce2578660c9f1010821"
 
 [[package]]
 name = "utils"
-version = "0.28.16"
+version = "0.28.17"
 dependencies = [
  "anyhow",
  "config",
