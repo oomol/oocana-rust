@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.28.16 (2025-06-24)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* fix: add merged inputs def to block inputs def by @leavesster in https://github.com/oomol/oocana-rust/pull/185
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.28.15...v0.28.16
+
 ## 0.28.15 (2025-06-20)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
