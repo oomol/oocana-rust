@@ -6,7 +6,7 @@ use crate::{scope::RunningScope, Block, HandleName, NodeId, ServiceBlock, SlotBl
 
 use crate::extend_node_common_field;
 
-use super::common::{HandlesFroms, HandlesTos, InputDefPatchMap, NodeInput};
+use super::common::{HandlesTos, InputDefPatchMap, NodeInput};
 use super::subflow::SubflowNode;
 
 extend_node_common_field!(TaskNode {

@@ -23,7 +23,6 @@ macro_rules! extend_node_common_field {
             pub timeout: Option<u64>,
             pub to: Option<HandlesTos>,
             pub inputs: Option<HashMap<HandleName, NodeInput>>,
-            pub from: Option<HandlesFroms>,
             pub inputs_def: Option<InputHandles>,
             pub inputs_def_patch: Option<HashMap<HandleName, Vec<InputDefPatch>>>,
             pub concurrency: i32,

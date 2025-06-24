@@ -512,7 +512,6 @@ impl SubflowBlock {
                                                 let mut new_slot_node = slot_node.clone();
                                                 {
                                                     new_slot_node.inputs_def = Some(new_inputs_def);
-                                                    new_slot_node.from = Some(new_froms);
                                                     new_slot_node.inputs =
                                                         Some(generate_node_inputs(
                                                             &new_slot_node.inputs_def,
@@ -625,7 +624,6 @@ impl SubflowBlock {
                     new_nodes.insert(
                         subflow_node.node_id.to_owned(),
                         Node::Flow(SubflowNode {
-                            from,
                             to,
                             flow,
                             node_id: subflow_node.node_id.to_owned(),
@@ -666,7 +664,6 @@ impl SubflowBlock {
                     new_nodes.insert(
                         service_node.node_id.to_owned(),
                         Node::Service(ServiceNode {
-                            from,
                             to: connections.node_outputs_tos.remove(&service_node.node_id),
                             node_id: service_node.node_id.to_owned(),
                             timeout: service_node.timeout,
@@ -826,7 +823,6 @@ impl SubflowBlock {
                     new_nodes.insert(
                         task_node.node_id.to_owned(),
                         Node::Task(TaskNode {
-                            from,
                             to: connections.node_outputs_tos.remove(&task_node.node_id),
                             node_id: task_node.node_id.to_owned(),
                             timeout: task_node.timeout,
@@ -858,7 +854,6 @@ impl SubflowBlock {
                     new_nodes.insert(
                         slot_node.node_id.to_owned(),
                         Node::Slot(SlotNode {
-                            from,
                             to: connections.node_outputs_tos.remove(&slot_node.node_id),
                             node_id: slot_node.node_id.to_owned(),
                             timeout: slot_node.timeout,
