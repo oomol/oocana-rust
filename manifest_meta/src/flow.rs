@@ -145,6 +145,7 @@ pub fn generate_node_inputs(
                 tracing::warn!("input: ({}) has value in block's inputs_def, but inputs_from has no value. For now the block's inputs_dev's value will be ignored", handle);
             }
 
+            // we filter out `HandleFrom::FromValue` here, because FromValue will be used to set the value directly
             let connection_from = from.map(|f| {
                 f.iter()
                     .filter(|ff| !matches!(ff, crate::HandleFrom::FromValue { .. }))
@@ -158,7 +159,7 @@ pub fn generate_node_inputs(
                     def: input_def.clone(),
                     patch,
                     value,
-                    from: connection_from, // this connection is always from node's outputs
+                    from: connection_from,
                 },
             );
         }
