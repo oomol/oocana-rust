@@ -413,13 +413,6 @@ impl SubflowBlock {
                                         flow.nodes.get(&slotflow_provider.slot_node_id)
                                     {
                                         if let Node::Slot(slot_node) = slot_node {
-                                            let mut new_inputs_def = slot_node
-                                                .slot
-                                                .as_ref()
-                                                .inputs_def
-                                                .clone()
-                                                .unwrap_or_default();
-
                                             let mut new_inputs =
                                                 slot_node.inputs.clone().unwrap_or_default();
                                             let mut addition_flow_inputs_tos: HashMap<
@@ -435,16 +428,12 @@ impl SubflowBlock {
                                                             &slot_node.node_id,
                                                             &input.handle,
                                                         );
-                                                    if !new_inputs_def.contains_key(&input.handle) {
+                                                    if !new_inputs.contains_key(&input.handle) {
                                                         let runtime_addition_input = InputHandle {
                                                             // this input should be always remembered true
                                                             remember: true,
                                                             ..input.clone()
                                                         };
-                                                        new_inputs_def.insert(
-                                                            runtime_handle_name.clone(),
-                                                            runtime_addition_input.clone(),
-                                                        );
 
                                                         new_inputs.insert(
                                                             runtime_handle_name.clone(),
