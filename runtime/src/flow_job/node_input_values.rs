@@ -114,6 +114,10 @@ impl NodeInputValues {
     pub fn is_node_fulfill(&self, node: &Node) -> bool {
         if let Some(inputs_def) = node.inputs_def() {
             for input_def in inputs_def.values() {
+                if node.has_only_one_value_from(&input_def.handle) {
+                    continue;
+                }
+
                 if !node.has_connection(&input_def.handle) {
                     // TODO: issue #183
                     if input_def.value.is_some() {
@@ -122,10 +126,6 @@ impl NodeInputValues {
 
                     // 未来有其他配置项，作用于无连线状态时，在这里更新即可。现在无连线，同时无 value，继续往下走。会一直卡住。
                     return false;
-                }
-
-                if node.has_only_one_value_from(&input_def.handle) {
-                    continue;
                 }
 
                 if let Some(node_values) = self.store.get(node.node_id()) {
