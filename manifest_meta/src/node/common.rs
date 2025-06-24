@@ -32,8 +32,6 @@ pub type HandlesFroms = HashMap<HandleName, Vec<HandleFrom>>;
 
 pub type HandlesTos = HashMap<HandleName, Vec<HandleTo>>;
 
-pub type NodesHandlesFroms = HashMap<NodeId, HandlesFroms>;
-
 pub type NodesHandlesTos = HashMap<NodeId, HandlesTos>;
 
 pub type InputDefPatchMap = HashMap<HandleName, Vec<InputDefPatch>>;

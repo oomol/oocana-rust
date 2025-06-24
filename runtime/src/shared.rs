@@ -2,7 +2,7 @@ use job::SessionId;
 use std::{collections::HashMap, sync::Arc};
 
 use mainframe::{reporter::ReporterTx, scheduler::SchedulerTx};
-use manifest_meta::{HandleName, NodesHandlesFroms, NodesHandlesTos, SubflowBlock};
+use manifest_meta::{HandleName, SubflowBlock};
 use utils::output::OutputValue;
 
 use crate::delay_abort::DelayAbortTx;
@@ -19,6 +19,4 @@ pub struct Shared {
 pub struct FlowContext {
     pub flow_block: Arc<SubflowBlock>,
     pub flow_inputs: Option<HashMap<HandleName, Arc<OutputValue>>>,
-    pub slots_inputs_to: Option<NodesHandlesTos>,
-    pub slots_outputs_from: Option<NodesHandlesFroms>,
 }
