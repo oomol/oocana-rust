@@ -188,9 +188,9 @@ impl NodeInputValues {
 
     pub fn remove_input_values(&mut self, node: &Node, from_nodes: &HashSet<NodeId>) {
         if let Some(inputs_map) = self.store.get_mut(node.node_id()) {
-            if let Some(froms) = node.from() {
-                for (handle, froms) in froms {
-                    for from in froms {
+            if let Some(inputs) = node.inputs() {
+                for (handle, node_input) in inputs {
+                    for from in node_input.from.iter().flatten() {
                         if let manifest_meta::HandleFrom::FromNodeOutput { node_id, .. } = from {
                             if from_nodes.contains(node_id) {
                                 inputs_map.remove(handle);

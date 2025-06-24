@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use manifest_meta::{SubflowBlock, HandleFrom, Node, NodeId};
+use manifest_meta::{HandleFrom, Node, NodeId, SubflowBlock};
 
 use super::node_input_values::NodeInputValues;
 
@@ -9,7 +9,11 @@ pub struct RunToNode {
 }
 
 impl RunToNode {
-    pub fn new(flow: &SubflowBlock, to_node: Option<NodeId>, input: Option<&NodeInputValues>) -> Self {
+    pub fn new(
+        flow: &SubflowBlock,
+        to_node: Option<NodeId>,
+        input: Option<&NodeInputValues>,
+    ) -> Self {
         Self {
             should_run_nodes: to_node.and_then(|to_node| {
                 if let Some(node) = flow.nodes.get(&to_node) {
@@ -41,7 +45,9 @@ impl RunToNode {
 }
 
 fn calc_node_deps(
-    node: &Node, flow: &SubflowBlock, should_run_nodes: &mut HashSet<NodeId>,
+    node: &Node,
+    flow: &SubflowBlock,
+    should_run_nodes: &mut HashSet<NodeId>,
     node_input_values: &Option<&NodeInputValues>,
 ) {
     should_run_nodes.insert(node.node_id().to_owned());
@@ -52,19 +58,25 @@ fn calc_node_deps(
         }
     }
 
-    if let Some(froms) = node.from() {
-        for (handle_name, handle_froms) in froms.iter() {
-            // 有输入值的话，不再递归查找依赖。
-            if let Some(inputs_values) = node_input_values {
-                if inputs_values.node_has_input(node, handle_name.clone()) {
-                    continue;
-                }
+    if let Some(inputs) = node.inputs() {
+        for (handle_name, input) in inputs.iter() {
+            if node_input_values
+                .as_ref()
+                .map_or(false, |values| values.node_has_input(node, handle_name))
+            {
+                continue;
             }
-            for handle_from in handle_froms {
+
+            for handle_from in input.from.iter().flatten() {
                 if let HandleFrom::FromNodeOutput { node_id, .. } = handle_from {
                     if !should_run_nodes.contains(node_id) {
-                        if let Some(node) = flow.nodes.get(node_id) {
-                            calc_node_deps(node, flow, should_run_nodes, node_input_values);
+                        if let Some(dependent_node) = flow.nodes.get(node_id) {
+                            calc_node_deps(
+                                dependent_node,
+                                flow,
+                                should_run_nodes,
+                                node_input_values,
+                            );
                         }
                     }
                 }
