@@ -121,9 +121,9 @@ pub enum BlockValueType {
 const SELF_BLOCK_PREFIX: &str = "self::";
 
 pub fn calculate_block_value_type(block_value: &str) -> BlockValueType {
-    if block_value.starts_with(SELF_BLOCK_PREFIX) {
+    if let Some(prefix) = block_value.strip_prefix(SELF_BLOCK_PREFIX) {
         return BlockValueType::SelfBlock {
-            name: block_value[SELF_BLOCK_PREFIX.len()..].to_string(),
+            name: prefix.to_string(),
         };
     }
 

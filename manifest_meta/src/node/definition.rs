@@ -118,10 +118,8 @@ impl Node {
         if let Some(from) = self.from() {
             if let Some(handle_froms) = from.get(handle) {
                 if handle_froms.len() == 1 {
-                    if let Some(from) = handle_froms.first() {
-                        if let HandleFrom::FromValue { .. } = from {
-                            return true;
-                        }
+                    if let Some(HandleFrom::FromValue { .. }) = handle_froms.first() {
+                        return true;
                     }
                 }
             }
@@ -133,10 +131,8 @@ impl Node {
         if let Some(from) = self.from() {
             if let Some(handle_froms) = from.get(handle) {
                 if handle_froms.len() == 1 {
-                    if let Some(from) = handle_froms.first() {
-                        if let HandleFrom::FromValue { value } = from {
-                            return value.clone();
-                        }
+                    if let Some(HandleFrom::FromValue { value }) = handle_froms.first() {
+                        return value.clone();
                     }
                 }
             }

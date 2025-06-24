@@ -250,7 +250,7 @@ impl SubflowBlock {
             if matches!(node, manifest::Node::Subflow(ref subflow_node) if subflow_node.slots.as_ref().is_some_and(|s| !s.is_empty()))
             {
                 if let manifest::Node::Subflow(subflow_node) = node {
-                    subflow_node.slots.as_ref().map(|slots| {
+                    if let Some(slots) = subflow_node.slots.as_ref() {
                         for provider in slots {
                             connections.parse_slot_inputs_from(
                                 node.node_id(),
@@ -259,7 +259,7 @@ impl SubflowBlock {
                                 &find_value_node,
                             );
                         }
-                    });
+                    }
                 }
             }
         }
@@ -367,9 +367,10 @@ impl SubflowBlock {
                                         slotflow_provider.inputs_def.as_ref()
                                     {
                                         for input_def in slotflow_node_inputs_def.iter() {
-                                            if !slotflow_inputs_def.as_ref().map_or(false, |d| {
-                                                d.contains_key(&input_def.handle)
-                                            }) {
+                                            if !slotflow_inputs_def
+                                                .as_ref()
+                                                .is_some_and(|d| d.contains_key(&input_def.handle))
+                                            {
                                                 slotflow_inputs_def
                                                     .get_or_insert_with(HashMap::new)
                                                     .insert(
