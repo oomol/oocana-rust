@@ -1,7 +1,6 @@
 use std::{collections::HashMap, path::PathBuf, sync::Arc};
 
 use manifest_reader::manifest::{InputDefPatch, InputHandles, OutputHandles};
-use manifest_reader::JsonValue;
 
 use crate::{scope::RunningScope, Block, HandleName, NodeId, ServiceBlock, SlotBlock, TaskBlock};
 
@@ -9,7 +8,6 @@ use crate::extend_node_common_field;
 
 use super::common::{HandlesFroms, HandlesTos, InputDefPatchMap, NodeInput};
 use super::subflow::SubflowNode;
-use super::HandleFrom;
 
 extend_node_common_field!(TaskNode {
     task: Arc<TaskBlock>,
@@ -60,15 +58,6 @@ impl Node {
         }
     }
 
-    pub fn from(&self) -> Option<&HandlesFroms> {
-        match self {
-            Self::Task(task) => task.from.as_ref(),
-            Self::Flow(flow) => flow.from.as_ref(),
-            Self::Slot(slot) => slot.from.as_ref(),
-            Self::Service(service) => service.from.as_ref(),
-        }
-    }
-
     pub fn to(&self) -> Option<&HandlesTos> {
         match self {
             Self::Task(task) => task.to.as_ref(),
@@ -112,32 +101,6 @@ impl Node {
             Self::Slot(slot) => slot.inputs_def_patch.as_ref(),
             Self::Service(service) => service.inputs_def_patch.as_ref(),
         }
-    }
-
-    pub fn has_only_one_value_from(&self, handle: &HandleName) -> bool {
-        if let Some(from) = self.from() {
-            if let Some(handle_froms) = from.get(handle) {
-                if handle_froms.len() == 1 {
-                    if let Some(HandleFrom::FromValue { .. }) = handle_froms.first() {
-                        return true;
-                    }
-                }
-            }
-        }
-        false
-    }
-
-    pub fn get_value_from(&self, handle: &HandleName) -> Option<Option<JsonValue>> {
-        if let Some(from) = self.from() {
-            if let Some(handle_froms) = from.get(handle) {
-                if handle_froms.len() == 1 {
-                    if let Some(HandleFrom::FromValue { value }) = handle_froms.first() {
-                        return value.clone();
-                    }
-                }
-            }
-        }
-        None
     }
 
     pub fn has_connection(&self, handle: &HandleName) -> bool {
