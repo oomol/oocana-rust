@@ -361,19 +361,19 @@ impl SubflowBlock {
                                     );
                                 }
                                 manifest::SlotProvider::SlotFlow(slotflow_provider) => {
-                                    // slotflow inputs def is not defined in the slotflow, we need to create it from slot node inputs_def, and merge slotflow_provider.inputs_def
+                                    // slotflow inputs def is not defined in the slotflow, we need to create it from slot node inputs_def
+                                    // and merge all slotflow_provider.inputs_def into it.
+                                    // it is user's responsibility to ensure that these inputs_def are not conflicting.
                                     let mut slotflow_inputs_def = flow
                                         .nodes
                                         .get(&slotflow_provider.slot_node_id)
                                         .and_then(|n| n.inputs_def());
 
-                                    if let Some(slotflow_provider_additional_inputs_def) =
+                                    if let Some(additional_slotflow_inputs_def) =
                                         slotflow_provider.inputs_def.as_ref()
                                     {
-                                        for input_def in
-                                            slotflow_provider_additional_inputs_def.iter()
-                                        {
-                                            // merge slotflow_provider.inputs_def to slotflow_inputs_def
+                                        for input_def in additional_slotflow_inputs_def.iter() {
+                                            // TODO: can add some warning if handle name is already defined
                                             if !slotflow_inputs_def
                                                 .as_ref()
                                                 .is_some_and(|d| d.contains_key(&input_def.handle))
@@ -382,10 +382,7 @@ impl SubflowBlock {
                                                     .get_or_insert_with(HashMap::new)
                                                     .insert(
                                                         input_def.handle.to_owned(),
-                                                        InputHandle {
-                                                            handle: input_def.handle.to_owned(),
-                                                            ..input_def.clone()
-                                                        },
+                                                        input_def.clone(),
                                                     );
                                             }
                                         }
@@ -417,75 +414,80 @@ impl SubflowBlock {
                                         scope,
                                     });
 
-                                    if let Some(slot_node) =
+                                    // update slot node's inputs if slotflow_provider.inputs_def and inputs_from are defined.
+                                    // we will generate the new input handle name as `runtime::slot_node_id::input_handle` format, so the slotflow_provider.inputs_def can be same as the slot node's inputs_def
+                                    if let Some(Node::Slot(slot_node)) =
                                         flow.nodes.get(&slotflow_provider.slot_node_id)
                                     {
-                                        if let Node::Slot(slot_node) = slot_node {
-                                            // update slot_node's inputs with slotflow_provider.inputs_def and inputs_from
-                                            let mut new_slot_node_inputs =
-                                                slot_node.inputs.clone().unwrap_or_default();
-                                            let mut addition_flow_inputs_tos: HashMap<
-                                                HandleName,
-                                                Vec<crate::HandleTo>,
-                                            > = HashMap::new();
-                                            if let Some(slotflow_provider_additional_inputs_def) =
-                                                &slotflow_provider.inputs_def
-                                            {
-                                                for input in
-                                                    slotflow_provider_additional_inputs_def.iter()
+                                        let mut new_slot_node_inputs =
+                                            slot_node.inputs.clone().unwrap_or_default();
+                                        let mut additional_flow_inputs_tos: HashMap<
+                                            HandleName,
+                                            Vec<crate::HandleTo>,
+                                        > = HashMap::new();
+                                        if let Some(additional_inputs_def) =
+                                            &slotflow_provider.inputs_def
+                                        {
+                                            for input in additional_inputs_def.iter() {
+                                                let runtime_handle_name =
+                                                    generate_runtime_handle_name(
+                                                        &slot_node.node_id,
+                                                        &input.handle,
+                                                    );
+
+                                                // just avoid user add this format handle name to slot node inputs
+                                                if new_slot_node_inputs.contains_key(&input.handle)
                                                 {
-                                                    let runtime_handle_name =
-                                                        generate_runtime_handle_name(
-                                                            &slot_node.node_id,
-                                                            &input.handle,
-                                                        );
-                                                    if !new_slot_node_inputs
-                                                        .contains_key(&input.handle)
-                                                    {
-                                                        let runtime_addition_input = InputHandle {
-                                                            // this input should be always remembered true
-                                                            remember: true,
-                                                            ..input.clone()
-                                                        };
+                                                    tracing::warn!(
+                                                        "slot node {} already has input {}",
+                                                        slotflow_provider.slot_node_id,
+                                                        input.handle
+                                                    );
+                                                    continue;
+                                                }
 
-                                                        new_slot_node_inputs.insert(
-                                                            runtime_handle_name.clone(),
-                                                            NodeInput {
-                                                                def: runtime_addition_input,
-                                                                patch: None,
-                                                                value: None,
-                                                                from: None,
-                                                            },
-                                                        );
+                                                new_slot_node_inputs.insert(
+                                                    input.handle.clone(),
+                                                    NodeInput {
+                                                        def: input.clone(),
+                                                        patch: None,
+                                                        value: None,
+                                                        from: None, // from will be added later
+                                                    },
+                                                );
 
-                                                        // add subflow inputs_def
-                                                        addition_subflow_inputs_def.insert(
-                                                            runtime_handle_name.clone(),
-                                                            InputHandle {
-                                                                handle: runtime_handle_name.clone(),
-                                                                ..input.clone()
-                                                            },
-                                                        );
-                                                    } else {
-                                                        tracing::warn!(
-                                                            "slot node {} already has input {}",
-                                                            slotflow_provider.slot_node_id,
-                                                            input.handle
-                                                        );
-                                                        continue;
+                                                addition_subflow_inputs_def.insert(
+                                                    runtime_handle_name.clone(),
+                                                    InputHandle {
+                                                        handle: runtime_handle_name.clone(),
+                                                        ..input.clone()
+                                                    },
+                                                );
+
+                                                if let Some(input_from) = slotflow_provider
+                                                    .inputs_from
+                                                    .as_ref()
+                                                    .and_then(|inputs_from| {
+                                                        inputs_from
+                                                            .iter()
+                                                            .find(|i| i.handle == input.handle)
+                                                    })
+                                                {
+                                                    if let Some(value) = &input_from.value {
+                                                        // TODO: should add value to NodeInput
                                                     }
 
-                                                    if let Some(input_from) = slotflow_provider
-                                                        .inputs_from
+                                                    if input_from
+                                                        .from_flow
                                                         .as_ref()
-                                                        .and_then(|inputs_from| {
-                                                            inputs_from
-                                                                .iter()
-                                                                .find(|i| i.handle == input.handle)
-                                                        })
+                                                        .is_some_and(|f| !f.is_empty())
+                                                        || input_from
+                                                            .from_node
+                                                            .as_ref()
+                                                            .is_some_and(|n| !n.is_empty())
                                                     {
                                                         new_slot_node_inputs
-                                                            .entry(runtime_handle_name.clone())
+                                                            .entry(input.handle.clone())
                                                             .and_modify(|node_input| {
                                                                 node_input
                                                                     .from
@@ -496,60 +498,44 @@ impl SubflowBlock {
                                                                         },
                                                                     );
                                                             });
-
-                                                        if let Some(value) = &input_from.value {
-                                                            addition_subflow_inputs_def
-                                                                .entry(runtime_handle_name.clone())
-                                                                .and_modify(|def| {
-                                                                    def.value = Some(value.clone());
-                                                                });
-                                                        }
-                                                    } else {
-                                                        warn!(
+                                                    }
+                                                } else {
+                                                    warn!(
                                                             "slot node {} input {} not found in inputs_from",
                                                             slotflow_provider.slot_node_id,
                                                             input.handle
                                                         );
-                                                    }
-
-                                                    addition_flow_inputs_tos
-                                                        .entry(runtime_handle_name.to_owned())
-                                                        .or_default()
-                                                        .push(crate::HandleTo::ToNodeInput {
-                                                            node_id: slot_node.node_id.clone(),
-                                                            node_input_handle: input
-                                                                .handle
-                                                                .to_owned(),
-                                                        });
                                                 }
 
-                                                let mut new_slot_node = slot_node.clone();
-                                                {
-                                                    new_slot_node.inputs =
-                                                        new_slot_node_inputs.into();
-                                                }
-
-                                                // Cannot mutate inside Arc, so clone, update, and re-wrap if needed
-                                                let mut flow_inner = (*flow).clone();
-                                                flow_inner.update_node(
-                                                    &slotflow_provider.slot_node_id,
-                                                    Node::Slot(new_slot_node),
-                                                );
-                                                for (input_handle, handle_tos) in
-                                                    addition_flow_inputs_tos.iter()
-                                                {
-                                                    flow_inner.update_flow_inputs_tos(
-                                                        input_handle,
-                                                        handle_tos,
-                                                    );
-                                                }
-                                                flow = Arc::new(flow_inner);
+                                                additional_flow_inputs_tos
+                                                    .entry(runtime_handle_name.to_owned())
+                                                    .or_default()
+                                                    .push(crate::HandleTo::ToNodeInput {
+                                                        node_id: slot_node.node_id.clone(),
+                                                        node_input_handle: input.handle.to_owned(),
+                                                    });
                                             }
-                                        } else {
-                                            warn!(
-                                                "{} is not a slot node",
-                                                slotflow_provider.slot_node_id
+
+                                            let mut new_slot_node = slot_node.clone();
+                                            {
+                                                new_slot_node.inputs = new_slot_node_inputs.into();
+                                            }
+
+                                            // Cannot mutate inside Arc, so clone, update, and re-wrap if needed
+                                            let mut flow_inner = (*flow).clone();
+                                            flow_inner.update_node(
+                                                &slotflow_provider.slot_node_id,
+                                                Node::Slot(new_slot_node),
                                             );
+                                            for (input_handle, handle_tos) in
+                                                additional_flow_inputs_tos.iter()
+                                            {
+                                                flow_inner.update_flow_inputs_tos(
+                                                    input_handle,
+                                                    handle_tos,
+                                                );
+                                            }
+                                            flow = Arc::new(flow_inner);
                                         }
                                     } else {
                                         warn!(
