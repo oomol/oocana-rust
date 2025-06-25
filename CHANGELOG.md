@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.28.18 (2025-06-25)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* fix: use output file to pass scan result by @leavesster in https://github.com/oomol/oocana-rust/pull/189
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.28.17...v0.28.18
+
 ## 0.28.17 (2025-06-24)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
