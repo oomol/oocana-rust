@@ -361,15 +361,19 @@ impl SubflowBlock {
                                     );
                                 }
                                 manifest::SlotProvider::SlotFlow(slotflow_provider) => {
+                                    // slotflow inputs def is not defined in the slotflow, we need to create it from slot node inputs_def, and merge slotflow_provider.inputs_def
                                     let mut slotflow_inputs_def = flow
                                         .nodes
                                         .get(&slotflow_provider.slot_node_id)
                                         .and_then(|n| n.inputs_def());
 
-                                    if let Some(slotflow_node_inputs_def) =
+                                    if let Some(slotflow_provider_additional_inputs_def) =
                                         slotflow_provider.inputs_def.as_ref()
                                     {
-                                        for input_def in slotflow_node_inputs_def.iter() {
+                                        for input_def in
+                                            slotflow_provider_additional_inputs_def.iter()
+                                        {
+                                            // merge slotflow_provider.inputs_def to slotflow_inputs_def
                                             if !slotflow_inputs_def
                                                 .as_ref()
                                                 .is_some_and(|d| d.contains_key(&input_def.handle))
@@ -417,29 +421,34 @@ impl SubflowBlock {
                                         flow.nodes.get(&slotflow_provider.slot_node_id)
                                     {
                                         if let Node::Slot(slot_node) = slot_node {
-                                            let mut new_inputs =
+                                            // update slot_node's inputs with slotflow_provider.inputs_def and inputs_from
+                                            let mut new_slot_node_inputs =
                                                 slot_node.inputs.clone().unwrap_or_default();
                                             let mut addition_flow_inputs_tos: HashMap<
                                                 HandleName,
                                                 Vec<crate::HandleTo>,
                                             > = HashMap::new();
-                                            if let Some(addition_def) =
+                                            if let Some(slotflow_provider_additional_inputs_def) =
                                                 &slotflow_provider.inputs_def
                                             {
-                                                for input in addition_def.iter() {
+                                                for input in
+                                                    slotflow_provider_additional_inputs_def.iter()
+                                                {
                                                     let runtime_handle_name =
                                                         generate_runtime_handle_name(
                                                             &slot_node.node_id,
                                                             &input.handle,
                                                         );
-                                                    if !new_inputs.contains_key(&input.handle) {
+                                                    if !new_slot_node_inputs
+                                                        .contains_key(&input.handle)
+                                                    {
                                                         let runtime_addition_input = InputHandle {
                                                             // this input should be always remembered true
                                                             remember: true,
                                                             ..input.clone()
                                                         };
 
-                                                        new_inputs.insert(
+                                                        new_slot_node_inputs.insert(
                                                             runtime_handle_name.clone(),
                                                             NodeInput {
                                                                 def: runtime_addition_input,
@@ -475,10 +484,10 @@ impl SubflowBlock {
                                                                 .find(|i| i.handle == input.handle)
                                                         })
                                                     {
-                                                        new_inputs
+                                                        new_slot_node_inputs
                                                             .entry(runtime_handle_name.clone())
-                                                            .and_modify(|node_handle| {
-                                                                node_handle
+                                                            .and_modify(|node_input| {
+                                                                node_input
                                                                     .from
                                                                     .get_or_insert_with(Vec::new)
                                                                     .push(
@@ -516,7 +525,8 @@ impl SubflowBlock {
 
                                                 let mut new_slot_node = slot_node.clone();
                                                 {
-                                                    new_slot_node.inputs = new_inputs.into();
+                                                    new_slot_node.inputs =
+                                                        new_slot_node_inputs.into();
                                                 }
 
                                                 // Cannot mutate inside Arc, so clone, update, and re-wrap if needed
