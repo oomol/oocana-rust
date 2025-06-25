@@ -4,6 +4,7 @@ use crate::fun::{find_env_file, load_bind_paths};
 use clap::Subcommand;
 use layer::import_package_layer;
 use manifest_reader::path_finder::find_package_file;
+use std::io::Write;
 use tracing::info;
 use utils::error::{Error, Result};
 
@@ -47,6 +48,11 @@ pub enum LayerAction {
     Scan {
         #[arg(help = "package search path dir which sub directory has package", long)]
         search_paths: Vec<String>,
+        #[arg(
+            help = "output file path, if not provided, it will print to stdout",
+            long
+        )]
+        output: Option<String>,
     },
     #[command(about = "export package layer. It requires the package layer exists")]
     Export {
@@ -114,7 +120,10 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
             info!("package ({package}) status: {status:?}");
             println!("{status:?}");
         }
-        LayerAction::Scan { search_paths } => {
+        LayerAction::Scan {
+            search_paths,
+            output,
+        } => {
             let mut package_map = HashMap::new();
             for dir in search_paths {
                 let p = std::path::PathBuf::from(dir);
@@ -137,8 +146,15 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
                     tracing::warn!("directory {p:?} is not a directory");
                 }
             }
-            tracing::debug!("scan result: {package_map:?}");
-            println!("{package_map:?}");
+
+            if let Some(output_path) = output {
+                let mut file = std::fs::File::create(output_path)?;
+                write!(file, "{package_map:?}")?;
+                file.flush()?;
+                tracing::info!("scan result written to {output_path}");
+            } else {
+                tracing::info!("scan result: {package_map:?}");
+            }
         }
         LayerAction::Export { package, dest } => {
             let status = layer::package_layer_status(package)?;
