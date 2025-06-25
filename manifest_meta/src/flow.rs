@@ -663,6 +663,11 @@ impl SubflowBlock {
                     };
 
                     if !layer::feature_enabled() && running_scope.package_path().is_some() {
+                        tracing::warn!(
+                            "layer feature is not enabled, but task node {} has package path: {:?}. fallback to default scope",
+                            task_node.node_id,
+                            running_scope.package_path()
+                        );
                         running_scope = RunningScope::default();
                     }
 
