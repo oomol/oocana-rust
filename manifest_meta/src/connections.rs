@@ -113,6 +113,19 @@ impl Connections {
                     );
                 }
             }
+
+            // slot input from value is not a common case, we need add it to node_inputs_froms
+            // so that we can use it. in other connection input from value will merged on generate node inputs.
+            // but slot input from value is not merged, so we need to add it to node_inputs_froms.
+            if let Some(value) = slot_input_from.value {
+                self.node_inputs_froms.add(
+                    subflow_node_id.to_owned(),
+                    runtime_handle,
+                    HandleFrom::FromValue {
+                        value: Some(value.clone()),
+                    },
+                );
+            }
         }
     }
 

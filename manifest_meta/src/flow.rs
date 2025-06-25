@@ -474,7 +474,12 @@ impl SubflowBlock {
                                                     })
                                                 {
                                                     if let Some(value) = &input_from.value {
-                                                        // TODO: should add value to NodeInput
+                                                        new_slot_node_inputs
+                                                            .entry(input.handle.clone())
+                                                            .and_modify(|node_input| {
+                                                                node_input.value =
+                                                                    Some(value.clone());
+                                                            });
                                                     }
 
                                                     if input_from
