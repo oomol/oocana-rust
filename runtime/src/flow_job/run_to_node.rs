@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use manifest_meta::{HandleFrom, Node, NodeId, SubflowBlock};
+use manifest_meta::{Node, NodeId, SubflowBlock};
 
 use super::node_input_values::NodeInputValues;
 
@@ -67,8 +67,8 @@ fn calc_node_deps(
                 continue;
             }
 
-            for handle_from in input.from.iter().flatten() {
-                if let HandleFrom::FromNodeOutput { node_id, .. } = handle_from {
+            for node_source in input.from.iter().flatten() {
+                if let manifest_meta::HandleSource::NodeOutput { node_id, .. } = node_source {
                     if !should_run_nodes.contains(node_id) {
                         if let Some(dependent_node) = flow.nodes.get(node_id) {
                             calc_node_deps(

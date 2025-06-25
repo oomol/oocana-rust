@@ -145,12 +145,25 @@ pub fn generate_node_inputs(
                 tracing::warn!("input: ({}) has value in block's inputs_def, but inputs_from has no value. For now the block's inputs_dev's value will be ignored", handle);
             }
 
-            // we filter out `HandleFrom::FromValue` here, because FromValue will be used to set the value directly
-            // TODO: maybe we should use new type to distinguish between `HandleFrom::FromValue` and other `HandleFrom`
             let connection_from = from.map(|f| {
                 f.iter()
-                    .filter(|ff| !matches!(ff, crate::HandleFrom::FromValue { .. }))
-                    .cloned()
+                    .filter_map(|ff| match ff {
+                        crate::HandleFrom::FromFlowInput { input_handle } => {
+                            Some(crate::node::HandleSource::FlowInput {
+                                input_handle: input_handle.clone(),
+                            })
+                        }
+                        crate::HandleFrom::FromNodeOutput {
+                            node_id,
+                            node_output_handle: output_handle,
+                        } => Some(crate::node::HandleSource::NodeOutput {
+                            node_id: node_id.clone(),
+                            output_handle: output_handle.clone(),
+                        }),
+                        _ => {
+                            return None;
+                        }
+                    })
                     .collect::<Vec<_>>()
             });
 
@@ -502,7 +515,7 @@ impl SubflowBlock {
                                                                     .from
                                                                     .get_or_insert_with(Vec::new)
                                                                     .push(
-                                                                        crate::HandleFrom::FromFlowInput {
+                                                                        crate::node::HandleSource::FlowInput {
                                                                             input_handle: runtime_handle_name.clone(),
                                                                         },
                                                                     );

@@ -191,7 +191,7 @@ impl NodeInputValues {
             if let Some(inputs) = node.inputs() {
                 for (handle, node_input) in inputs {
                     for from in node_input.from.iter().flatten() {
-                        if let manifest_meta::HandleFrom::FromNodeOutput { node_id, .. } = from {
+                        if let manifest_meta::HandleSource::NodeOutput { node_id, .. } = from {
                             if from_nodes.contains(node_id) {
                                 inputs_map.remove(handle);
                             }
