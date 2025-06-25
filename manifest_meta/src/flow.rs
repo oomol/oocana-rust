@@ -146,6 +146,7 @@ pub fn generate_node_inputs(
             }
 
             // we filter out `HandleFrom::FromValue` here, because FromValue will be used to set the value directly
+            // TODO: maybe we should use new type to distinguish between `HandleFrom::FromValue` and other `HandleFrom`
             let connection_from = from.map(|f| {
                 f.iter()
                     .filter(|ff| !matches!(ff, crate::HandleFrom::FromValue { .. }))
