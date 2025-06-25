@@ -154,6 +154,7 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
                 tracing::info!("scan result written to {output_path}");
             } else {
                 tracing::info!("scan result: {package_map:?}");
+                println!("{package_map:?}");
             }
         }
         LayerAction::Export { package, dest } => {
