@@ -70,10 +70,8 @@ impl Node {
     pub fn inputs_def(&self) -> Option<InputHandles> {
         let inputs = self.inputs();
         let mut inputs_def = HashMap::new();
-        if let Some(inputs) = inputs {
-            for (handle, input) in inputs.iter() {
-                inputs_def.insert(handle.clone(), input.def.clone());
-            }
+        for (handle, input) in inputs {
+            inputs_def.insert(handle.clone(), input.def.clone());
         }
         if inputs_def.is_empty() {
             None
@@ -91,12 +89,12 @@ impl Node {
         }
     }
 
-    pub fn inputs(&self) -> Option<&HashMap<HandleName, NodeInput>> {
+    pub fn inputs(&self) -> &HashMap<HandleName, NodeInput> {
         match self {
-            Self::Task(task) => task.inputs.as_ref(),
-            Self::Flow(flow) => flow.inputs.as_ref(),
-            Self::Slot(slot) => slot.inputs.as_ref(),
-            Self::Service(service) => service.inputs.as_ref(),
+            Self::Task(task) => &task.inputs,
+            Self::Flow(flow) => &flow.inputs,
+            Self::Slot(slot) => &slot.inputs,
+            Self::Service(service) => &service.inputs,
         }
     }
 
@@ -104,7 +102,7 @@ impl Node {
         let inputs = self.inputs();
         let mut patches = HashMap::new();
 
-        for (handle, input) in inputs.iter().flat_map(|inputs| inputs.iter()) {
+        for (handle, input) in inputs.iter() {
             if let Some(patch) = &input.patch {
                 patches.insert(handle.clone(), patch.clone());
             }
@@ -117,11 +115,9 @@ impl Node {
     }
 
     pub fn has_connection(&self, handle: &HandleName) -> bool {
-        self.inputs().map_or(false, |inputs| {
-            inputs
-                .get(handle)
-                .is_some_and(|input| input.from.as_ref().is_some_and(|f| !f.is_empty()))
-        })
+        self.inputs()
+            .get(handle)
+            .is_some_and(|input| input.from.as_ref().is_some_and(|f| !f.is_empty()))
     }
 
     pub fn package_path(&self) -> Option<PathBuf> {

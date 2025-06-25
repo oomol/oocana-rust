@@ -433,8 +433,7 @@ impl SubflowBlock {
                                     if let Some(Node::Slot(slot_node)) =
                                         flow.nodes.get(&slotflow_provider.slot_node_id)
                                     {
-                                        let mut new_slot_node_inputs =
-                                            slot_node.inputs.clone().unwrap_or_default();
+                                        let mut new_slot_node_inputs = slot_node.inputs.clone();
                                         let mut additional_flow_inputs_tos: HashMap<
                                             HandleName,
                                             Vec<crate::HandleTo>,
@@ -643,11 +642,7 @@ impl SubflowBlock {
                             flow,
                             node_id: subflow_node.node_id.to_owned(),
                             timeout: subflow_node.timeout,
-                            inputs: if inputs.is_empty() {
-                                None
-                            } else {
-                                Some(inputs)
-                            },
+                            inputs,
                             concurrency: subflow_node.concurrency,
                             scope: running_scope,
                             slots: if slot_blocks.is_empty() {
@@ -681,11 +676,7 @@ impl SubflowBlock {
                             node_id: service_node.node_id.to_owned(),
                             timeout: service_node.timeout,
                             block: service,
-                            inputs: if inputs.is_empty() {
-                                None
-                            } else {
-                                Some(inputs)
-                            },
+                            inputs,
                             concurrency: service_node.concurrency,
                         }),
                     );
@@ -839,11 +830,7 @@ impl SubflowBlock {
                             timeout: task_node.timeout,
                             scope: running_scope,
                             task,
-                            inputs: if inputs.is_empty() {
-                                None
-                            } else {
-                                Some(inputs)
-                            },
+                            inputs,
                             concurrency: task_node.concurrency,
                         }),
                     );
@@ -867,11 +854,7 @@ impl SubflowBlock {
                             node_id: slot_node.node_id.to_owned(),
                             timeout: slot_node.timeout,
                             slot,
-                            inputs: if inputs.is_empty() {
-                                None
-                            } else {
-                                Some(inputs)
-                            },
+                            inputs,
                             concurrency: slot_node.concurrency,
                         }),
                     );

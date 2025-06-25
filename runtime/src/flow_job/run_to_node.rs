@@ -58,26 +58,19 @@ fn calc_node_deps(
         }
     }
 
-    if let Some(inputs) = node.inputs() {
-        for (handle_name, input) in inputs.iter() {
-            if node_input_values
-                .as_ref()
-                .map_or(false, |values| values.node_has_input(node, handle_name))
-            {
-                continue;
-            }
+    for (handle_name, input) in node.inputs() {
+        if node_input_values
+            .as_ref()
+            .map_or(false, |values| values.node_has_input(node, handle_name))
+        {
+            continue;
+        }
 
-            for node_source in input.from.iter().flatten() {
-                if let manifest_meta::HandleSource::NodeOutput { node_id, .. } = node_source {
-                    if !should_run_nodes.contains(node_id) {
-                        if let Some(dependent_node) = flow.nodes.get(node_id) {
-                            calc_node_deps(
-                                dependent_node,
-                                flow,
-                                should_run_nodes,
-                                node_input_values,
-                            );
-                        }
+        for node_source in input.from.iter().flatten() {
+            if let manifest_meta::HandleSource::NodeOutput { node_id, .. } = node_source {
+                if !should_run_nodes.contains(node_id) {
+                    if let Some(dependent_node) = flow.nodes.get(node_id) {
+                        calc_node_deps(dependent_node, flow, should_run_nodes, node_input_values);
                     }
                 }
             }

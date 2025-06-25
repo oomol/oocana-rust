@@ -112,36 +112,33 @@ impl NodeInputValues {
     }
 
     pub fn is_node_fulfill(&self, node: &Node) -> bool {
-        if let Some(inputs) = node.inputs() {
-            for (handle, input) in inputs {
-                if input.from.as_ref().is_none_or(|f| f.is_empty()) && input.value.is_some() {
-                    continue;
-                }
+        for (handle, input) in node.inputs() {
+            if input.from.as_ref().is_none_or(|f| f.is_empty()) && input.value.is_some() {
+                continue;
+            }
 
-                let no_handle_value = self
-                    .store
-                    .get(node.node_id())
-                    .and_then(|m| m.get(handle))
-                    .is_none_or(|v| v.is_empty());
-                let no_memory_value = self
-                    .memory_store
-                    .get(node.node_id())
-                    .and_then(|m| m.get(handle))
-                    .is_none_or(|v| v.is_empty());
-                if no_handle_value && no_memory_value {
-                    return false;
-                }
+            let no_handle_value = self
+                .store
+                .get(node.node_id())
+                .and_then(|m| m.get(handle))
+                .is_none_or(|v| v.is_empty());
+            let no_memory_value = self
+                .memory_store
+                .get(node.node_id())
+                .and_then(|m| m.get(handle))
+                .is_none_or(|v| v.is_empty());
+            if no_handle_value && no_memory_value {
+                return false;
             }
         }
+
         true
     }
 
     pub fn node_has_input(&self, node: &Node, handle_name: &HandleName) -> bool {
-        if let Some(inputs) = node.inputs() {
-            if let Some(input) = inputs.get(handle_name) {
-                if input.from.as_ref().is_none_or(|f| f.is_empty()) && input.value.is_some() {
-                    return true;
-                }
+        if let Some(input) = node.inputs().get(handle_name) {
+            if input.from.as_ref().is_none_or(|f| f.is_empty()) && input.value.is_some() {
+                return true;
             }
         }
 
@@ -188,13 +185,11 @@ impl NodeInputValues {
 
     pub fn remove_input_values(&mut self, node: &Node, from_nodes: &HashSet<NodeId>) {
         if let Some(inputs_map) = self.store.get_mut(node.node_id()) {
-            if let Some(inputs) = node.inputs() {
-                for (handle, node_input) in inputs {
-                    for from in node_input.from.iter().flatten() {
-                        if let manifest_meta::HandleSource::NodeOutput { node_id, .. } = from {
-                            if from_nodes.contains(node_id) {
-                                inputs_map.remove(handle);
-                            }
+            for (handle, node_input) in node.inputs() {
+                for from in node_input.from.iter().flatten() {
+                    if let manifest_meta::HandleSource::NodeOutput { node_id, .. } = from {
+                        if from_nodes.contains(node_id) {
+                            inputs_map.remove(handle);
                         }
                     }
                 }
@@ -247,24 +242,22 @@ impl NodeInputValues {
             self.remember_value(node_id, &handle, value);
         }
 
-        if let Some(inputs) = node.inputs() {
-            for (handle, input) in inputs {
-                if value_map.contains_key(handle) {
-                    continue;
-                }
+        for (handle, input) in node.inputs() {
+            if value_map.contains_key(handle) {
+                continue;
+            }
 
-                if input.from.as_ref().is_none_or(|f| f.is_empty()) {
-                    if let Some(value) = input.value.as_ref() {
-                        value_map.insert(
-                            handle.to_owned(),
-                            Arc::new(OutputValue {
-                                value: value.clone().unwrap_or(serde_json::Value::Null),
-                                cacheable: true,
-                            }),
-                        );
-                    }
-                    continue;
+            if input.from.as_ref().is_none_or(|f| f.is_empty()) {
+                if let Some(value) = input.value.as_ref() {
+                    value_map.insert(
+                        handle.to_owned(),
+                        Arc::new(OutputValue {
+                            value: value.clone().unwrap_or(serde_json::Value::Null),
+                            cacheable: true,
+                        }),
+                    );
                 }
+                continue;
             }
         }
 

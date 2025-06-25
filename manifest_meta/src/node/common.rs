@@ -22,7 +22,7 @@ macro_rules! extend_node_common_field {
             pub node_id: NodeId,
             pub timeout: Option<u64>,
             pub to: Option<HandlesTos>,
-            pub inputs: Option<HashMap<HandleName, NodeInput>>,
+            pub inputs: HashMap<HandleName, NodeInput>,
             pub concurrency: i32,
         }
     };
