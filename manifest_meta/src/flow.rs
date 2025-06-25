@@ -153,6 +153,10 @@ pub fn generate_node_inputs(
                     .collect::<Vec<_>>()
             });
 
+            if value.is_none() && connection_from.as_ref().is_some_and(|f| !f.is_empty()) {
+                warn!("input: ({}) has no connection and has no value", handle);
+            }
+
             inputs.insert(
                 handle.to_owned(),
                 NodeInput {
@@ -164,7 +168,6 @@ pub fn generate_node_inputs(
             );
         }
     }
-    tracing::debug!("node inputs: {:?}", inputs);
     inputs
 }
 
