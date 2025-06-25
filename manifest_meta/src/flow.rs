@@ -449,7 +449,10 @@ impl SubflowBlock {
                                                 new_slot_node_inputs.insert(
                                                     input.handle.clone(),
                                                     NodeInput {
-                                                        def: input.clone(),
+                                                        def: InputHandle {
+                                                            remember: true,
+                                                            ..input.clone()
+                                                        },
                                                         patch: None,
                                                         value: None,
                                                         from: None, // from will be added later
@@ -601,7 +604,6 @@ impl SubflowBlock {
                                     handle.to_owned(),
                                     InputHandle {
                                         handle: handle.to_owned(),
-                                        remember: true,
                                         ..input.clone()
                                     },
                                 );
