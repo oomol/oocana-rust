@@ -38,15 +38,15 @@ fn it_should_read_flow_block() -> Result<()> {
 
         assert!(matches!(
             from_node1.from.as_ref().unwrap().first().unwrap(),
-            manifest_meta::HandleSource::FromNodeOutput { .. }
+            manifest_meta::HandleSource::NodeOutput { .. }
         ));
-        if let manifest_meta::HandleSource::FromNodeOutput {
+        if let manifest_meta::HandleSource::NodeOutput {
             node_id,
-            node_output_handle,
+            output_handle,
         } = from_node1.from.as_ref().unwrap().first().unwrap()
         {
             assert_eq!(node_id, &node1_id);
-            assert_eq!(node_output_handle, &handle_out2);
+            assert_eq!(output_handle, &handle_out2);
         }
 
         let to_node3 = task_node
