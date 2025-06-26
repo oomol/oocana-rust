@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.28.19 (2025-06-26)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* fix: print to stdout if no output by @leavesster in https://github.com/oomol/oocana-rust/pull/191
+* chore: add warning log by @leavesster in https://github.com/oomol/oocana-rust/pull/193
+* refactor: use node input instead of input def and from  by @leavesster in https://github.com/oomol/oocana-rust/pull/184
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.28.18...v0.28.19
+
 ## 0.28.18 (2025-06-25)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
