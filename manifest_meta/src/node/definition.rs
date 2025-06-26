@@ -1,15 +1,13 @@
 use std::{collections::HashMap, path::PathBuf, sync::Arc};
 
-use manifest_reader::manifest::{InputDefPatch, InputHandles, OutputHandles};
-use manifest_reader::JsonValue;
+use manifest_reader::manifest::{InputHandles, OutputHandles};
 
 use crate::{scope::RunningScope, Block, HandleName, NodeId, ServiceBlock, SlotBlock, TaskBlock};
 
 use crate::extend_node_common_field;
 
-use super::common::{HandlesFroms, HandlesTos, InputDefPatchMap};
+use super::common::{HandlesTos, InputDefPatchMap, NodeInput};
 use super::subflow::SubflowNode;
-use super::HandleFrom;
 
 extend_node_common_field!(TaskNode {
     task: Arc<TaskBlock>,
@@ -60,15 +58,6 @@ impl Node {
         }
     }
 
-    pub fn from(&self) -> Option<&HandlesFroms> {
-        match self {
-            Self::Task(task) => task.from.as_ref(),
-            Self::Flow(flow) => flow.from.as_ref(),
-            Self::Slot(slot) => slot.from.as_ref(),
-            Self::Service(service) => service.from.as_ref(),
-        }
-    }
-
     pub fn to(&self) -> Option<&HandlesTos> {
         match self {
             Self::Task(task) => task.to.as_ref(),
@@ -78,12 +67,16 @@ impl Node {
         }
     }
 
-    pub fn inputs_def(&self) -> Option<&InputHandles> {
-        match self {
-            Self::Task(task) => task.inputs_def.as_ref(),
-            Self::Flow(flow) => flow.inputs_def.as_ref(),
-            Self::Slot(slot) => slot.inputs_def.as_ref(),
-            Self::Service(service) => service.inputs_def.as_ref(),
+    pub fn inputs_def(&self) -> Option<InputHandles> {
+        let inputs = self.inputs();
+        let mut inputs_def = HashMap::new();
+        for (handle, input) in inputs {
+            inputs_def.insert(handle.clone(), input.def.clone());
+        }
+        if inputs_def.is_empty() {
+            None
+        } else {
+            Some(inputs_def)
         }
     }
 
@@ -96,60 +89,35 @@ impl Node {
         }
     }
 
-    pub fn inputs_def_patch(&self) -> Option<&InputDefPatchMap> {
+    pub fn inputs(&self) -> &HashMap<HandleName, NodeInput> {
         match self {
-            Self::Task(task) => task.inputs_def_patch.as_ref(),
-            Self::Flow(flow) => flow.inputs_def_patch.as_ref(),
-            Self::Slot(slot) => slot.inputs_def_patch.as_ref(),
-            Self::Service(service) => service.inputs_def_patch.as_ref(),
+            Self::Task(task) => &task.inputs,
+            Self::Flow(flow) => &flow.inputs,
+            Self::Slot(slot) => &slot.inputs,
+            Self::Service(service) => &service.inputs,
         }
     }
 
-    pub fn has_only_one_value_from(&self, handle: &HandleName) -> bool {
-        if let Some(from) = self.from() {
-            if let Some(handle_froms) = from.get(handle) {
-                if handle_froms.len() == 1 {
-                    if let Some(from) = handle_froms.first() {
-                        if let HandleFrom::FromValue { .. } = from {
-                            return true;
-                        }
-                    }
-                }
-            }
-        }
-        false
-    }
+    pub fn inputs_def_patch(&self) -> Option<InputDefPatchMap> {
+        let inputs = self.inputs();
+        let mut patches = HashMap::new();
 
-    pub fn get_value_from(&self, handle: &HandleName) -> Option<Option<JsonValue>> {
-        if let Some(from) = self.from() {
-            if let Some(handle_froms) = from.get(handle) {
-                if handle_froms.len() == 1 {
-                    if let Some(from) = handle_froms.first() {
-                        if let HandleFrom::FromValue { value } = from {
-                            return value.clone();
-                        }
-                    }
-                }
+        for (handle, input) in inputs.iter() {
+            if let Some(patch) = &input.patch {
+                patches.insert(handle.clone(), patch.clone());
             }
         }
-        None
+        if patches.is_empty() {
+            None
+        } else {
+            Some(patches)
+        }
     }
 
     pub fn has_connection(&self, handle: &HandleName) -> bool {
-        if let Some(from) = self.from() {
-            if let Some(handle_froms) = from.get(handle) {
-                if handle_froms.len() == 1
-                    && handle_froms
-                        .first()
-                        .is_some_and(|f| matches!(f, HandleFrom::FromValue { .. }))
-                {
-                    return false;
-                } else {
-                    return !handle_froms.is_empty();
-                }
-            }
-        }
-        false
+        self.inputs()
+            .get(handle)
+            .is_some_and(|input| input.from.as_ref().is_some_and(|f| !f.is_empty()))
     }
 
     pub fn package_path(&self) -> Option<PathBuf> {

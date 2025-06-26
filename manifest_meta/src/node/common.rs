@@ -1,9 +1,17 @@
 use std::collections::HashMap;
 
 use manifest_reader::{
-    manifest::{HandleName, InputDefPatch, NodeId},
+    manifest::{HandleName, InputDefPatch, InputHandle, NodeId},
     JsonValue,
 };
+
+#[derive(Debug, Clone)]
+pub struct NodeInput {
+    pub def: InputHandle,
+    pub patch: Option<Vec<InputDefPatch>>,
+    pub value: Option<Option<JsonValue>>,
+    pub from: Option<Vec<HandleSource>>,
+}
 
 #[macro_export(local_inner_macros)]
 macro_rules! extend_node_common_field {
@@ -13,11 +21,9 @@ macro_rules! extend_node_common_field {
             $(pub $field: $type,)*
             pub node_id: NodeId,
             pub timeout: Option<u64>,
-            pub from: Option<HandlesFroms>,
             pub to: Option<HandlesTos>,
-            pub inputs_def: Option<InputHandles>,
+            pub inputs: HashMap<HandleName, NodeInput>,
             pub concurrency: i32,
-            pub inputs_def_patch: Option<HashMap<HandleName, Vec<InputDefPatch>>>,
         }
     };
 }
@@ -26,11 +32,20 @@ pub type HandlesFroms = HashMap<HandleName, Vec<HandleFrom>>;
 
 pub type HandlesTos = HashMap<HandleName, Vec<HandleTo>>;
 
-pub type NodesHandlesFroms = HashMap<NodeId, HandlesFroms>;
-
 pub type NodesHandlesTos = HashMap<NodeId, HandlesTos>;
 
 pub type InputDefPatchMap = HashMap<HandleName, Vec<InputDefPatch>>;
+
+#[derive(Debug, Clone)]
+pub enum HandleSource {
+    FlowInput {
+        input_handle: HandleName,
+    },
+    NodeOutput {
+        node_id: NodeId,
+        output_handle: HandleName,
+    },
+}
 
 #[derive(Debug, Clone)]
 pub enum HandleFrom {

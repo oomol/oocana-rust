@@ -648,7 +648,7 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
                 Node::Flow(n) => n.slots.clone(),
                 _ => None,
             },
-            inputs_def_patch: node.inputs_def_patch().cloned(),
+            inputs_def_patch: node.inputs_def_patch(),
         }
     });
 

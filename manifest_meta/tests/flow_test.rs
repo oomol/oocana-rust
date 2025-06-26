@@ -34,25 +34,19 @@ fn it_should_read_flow_block() -> Result<()> {
     let node2 = flow_block.nodes.get(&node2_id).unwrap();
     assert!(matches!(node2, manifest_meta::Node::Task(_)));
     if let manifest_meta::Node::Task(task_node) = node2 {
-        let from_node1 = task_node
-            .from
-            .as_ref()
-            .unwrap()
-            .get(&handle_in1)
-            .unwrap().first()
-            .unwrap();
+        let from_node1 = task_node.inputs.get(&handle_in1).unwrap();
 
         assert!(matches!(
-            from_node1,
-            manifest_meta::HandleFrom::FromNodeOutput { .. }
+            from_node1.from.as_ref().unwrap().first().unwrap(),
+            manifest_meta::HandleSource::NodeOutput { .. }
         ));
-        if let manifest_meta::HandleFrom::FromNodeOutput {
+        if let manifest_meta::HandleSource::NodeOutput {
             node_id,
-            node_output_handle,
-        } = from_node1
+            output_handle,
+        } = from_node1.from.as_ref().unwrap().first().unwrap()
         {
             assert_eq!(node_id, &node1_id);
-            assert_eq!(node_output_handle, &handle_out2);
+            assert_eq!(output_handle, &handle_out2);
         }
 
         let to_node3 = task_node
@@ -60,7 +54,8 @@ fn it_should_read_flow_block() -> Result<()> {
             .as_ref()
             .unwrap()
             .get(&handle_out1)
-            .unwrap().first()
+            .unwrap()
+            .first()
             .unwrap();
 
         assert!(matches!(
@@ -112,7 +107,8 @@ fn it_should_read_subflow_block_with_inputs_def() -> Result<()> {
     let to_node1 = flow_block
         .flow_inputs_tos
         .get(&handle_flow_in1)
-        .unwrap().first()
+        .unwrap()
+        .first()
         .unwrap();
     assert!(matches!(
         to_node1,
@@ -131,19 +127,21 @@ fn it_should_read_subflow_block_with_inputs_def() -> Result<()> {
     assert_eq!(node1.node_id(), &node1_id);
     assert!(matches!(node1, manifest_meta::Node::Task(_)));
     if let manifest_meta::Node::Task(task_node) = node1 {
-        let from_subflow = task_node
+        let from_subflow = &task_node
+            .inputs
+            .get(&handle_in1)
+            .unwrap()
             .from
             .as_ref()
             .unwrap()
-            .get(&handle_in1)
-            .unwrap().first()
+            .first()
             .unwrap();
 
         assert!(matches!(
             from_subflow,
-            manifest_meta::HandleFrom::FromFlowInput { .. }
+            manifest_meta::HandleSource::FlowInput { .. }
         ));
-        if let manifest_meta::HandleFrom::FromFlowInput { input_handle } = from_subflow {
+        if let manifest_meta::HandleSource::FlowInput { input_handle } = from_subflow {
             assert_eq!(input_handle, &handle_flow_in1);
         }
     }
