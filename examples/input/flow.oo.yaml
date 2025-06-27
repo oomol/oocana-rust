@@ -1,0 +1,6 @@
+name: flow-1
+nodes:
+  - node_id: block-1
+    task: blk_a
+  - node_id: block-2
+    task: ./blk_a

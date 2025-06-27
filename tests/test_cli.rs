@@ -91,6 +91,20 @@ fn query_upstream() {
 }
 
 #[test]
+fn query_input() {
+    use predicates::prelude::*;
+    let mut cmd = Command::cargo_bin("oocana").unwrap();
+    cmd.args(["query", "input", "examples/input"])
+        .stdin(Stdio::null())
+        .stderr(Stdio::inherit())
+        .assert()
+        // linux/macos's key order is not same order.
+        .stdout(predicate::str::contains(r#"block-1":["my_count"]"#))
+        .stdout(predicate::str::contains(r#"block-2":["my_count"]"#))
+        .success();
+}
+
+#[test]
 fn cache_clear() {
     Command::cargo_bin("oocana")
         .unwrap()
