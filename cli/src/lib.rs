@@ -1,13 +1,11 @@
 mod layer;
 mod cache;
 mod query;
-mod parser;
 mod fun;
-
 
 use std::collections::HashSet;
 use cache::CacheAction;
-use fun::find_env_file;
+use fun::arg::{find_env_file, load_bind_paths, parse_search_paths, temp_root, config};
 use one_shot::one_shot::{run_block, BlockArgs};
 
 use clap::{Parser, Subcommand};
@@ -25,7 +23,7 @@ use uuid::Uuid;
     subcommand_required = true,
 )]
 pub struct Cli {
-    #[arg(help = "oocana configuration file path, if not provided, will search OOCANA_CONFIG, if still not found, defaults to '~/.oocana/config'", long, default_value_t = fun::config())]
+    #[arg(help = "oocana configuration file path, if not provided, will search OOCANA_CONFIG, if still not found, defaults to '~/.oocana/config'", long, default_value_t = config())]
     config: String,
     #[command(subcommand)]
     command: Commands,
@@ -70,7 +68,7 @@ enum Commands {
         exclude_packages: Option<String>,
         #[arg(help = "a directory which will pass to every block, oocana just check the if the path is exit, if not oocana will create one. Oocana won't do anything about this path, won't delete it. It will be the return value of context.sessionDir or context.session_dir function.", long)]
         session_dir: Option<String>,
-        #[arg(help = "a temporary root directory. oocana will create a sub directory (calculate with the block path hash) in the root directory. The sub directory path will be context.tempDir or context.temp_dir function's return value. This sub directory will be deleted if this session success and will retain if session failed. If not provided, oocana will search OOCANA_TEMP_ROOT. If still no value the temp_root will be use os's temp dir.", long, default_value_t = fun::temp_root())]
+        #[arg(help = "a temporary root directory. oocana will create a sub directory (calculate with the block path hash) in the root directory. The sub directory path will be context.tempDir or context.temp_dir function's return value. This sub directory will be deleted if this session success and will retain if session failed. If not provided, oocana will search OOCANA_TEMP_ROOT. If still no value the temp_root will be use os's temp dir.", long, default_value_t = temp_root())]
         temp_root: String,
         #[arg(help = "when spawn a new process, retain the environment variables(only accept variable name), accept multiple input. example: --retain-env-keys <env> --retain-env-keys <env>", long)]
         retain_env_keys: Option<Vec<String>>,
@@ -159,8 +157,8 @@ pub fn cli_match() -> Result<()> {
     match command {
         Commands::Run { block, broker, search_paths, session, reporter, debug, wait_for_client, use_cache, nodes, input_values, exclude_packages, default_package, bind_paths, session_dir: session_path, retain_env_keys, env_file, bind_path_file, verbose: _verbose, temp_root, dry_run } => {
 
-            let bind_paths = fun::load_bind_paths(bind_paths, bind_path_file);
-            let search_paths = fun::parse_search_paths(search_paths);
+            let bind_paths = load_bind_paths(bind_paths, bind_path_file);
+            let search_paths = parse_search_paths(search_paths);
             let env_file = find_env_file(env_file);
 
             if *dry_run {
