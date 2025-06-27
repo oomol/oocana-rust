@@ -1,5 +1,4 @@
-use crate::fun;
-
+use crate::fun::arg::parse_search_paths;
 use clap::Subcommand;
 use manifest_meta::{read_flow_or_block, BlockResolver};
 use manifest_reader::path_finder::BlockPathFinder;
@@ -87,7 +86,7 @@ pub fn query(action: &QueryAction) -> Result<()> {
         } => {
             let (r, w, whole) = find_upstream(UpstreamArgs {
                 block_path: block,
-                search_paths: fun::parse_search_paths(search_paths),
+                search_paths: parse_search_paths(search_paths),
                 use_cache: use_cache.to_owned(),
                 nodes: Some(
                     nodes
@@ -108,7 +107,7 @@ pub fn query(action: &QueryAction) -> Result<()> {
             search_paths,
             use_cache: _,
         } => {
-            let search_paths = fun::parse_search_paths(search_paths);
+            let search_paths = parse_search_paths(search_paths);
 
             let block_reader = BlockResolver::new();
             let path_finder = BlockPathFinder::new(env::current_dir().unwrap(), search_paths);
@@ -130,7 +129,7 @@ pub fn query(action: &QueryAction) -> Result<()> {
             let block_reader = BlockResolver::new();
             let block_path_finder = BlockPathFinder::new(
                 env::current_dir().unwrap(),
-                fun::parse_search_paths(search_paths),
+                parse_search_paths(search_paths),
             );
             let block_or_flow = read_flow_or_block(block, block_reader, block_path_finder)?;
             match block_or_flow {
@@ -161,7 +160,7 @@ pub fn query(action: &QueryAction) -> Result<()> {
             let block_reader = BlockResolver::new();
             let block_path_finder = BlockPathFinder::new(
                 env::current_dir().unwrap(),
-                fun::parse_search_paths(search_paths),
+                parse_search_paths(search_paths),
             );
 
             let block_or_flow = read_flow_or_block(block, block_reader, block_path_finder)?;
