@@ -192,10 +192,10 @@ impl SubflowBlock {
             .any(|node| matches!(node, Node::Slot(_)))
     }
 
-    pub fn get_absence_input(&self) -> HashMap<NodeId, Vec<HandleName>> {
-        let mut inputs: HashMap<NodeId, Vec<HandleName>> = HashMap::new();
+    pub fn get_absence_input(&self) -> HashMap<NodeId, Vec<InputHandle>> {
+        let mut inputs: HashMap<NodeId, Vec<InputHandle>> = HashMap::new();
         for (node_id, node) in &self.nodes {
-            for (handle, input) in node.inputs() {
+            for (_, input) in node.inputs() {
                 if input.value.is_some() {
                     continue; // skip if input has value
                 }
@@ -207,7 +207,7 @@ impl SubflowBlock {
                 inputs
                     .entry(node_id.clone())
                     .or_default()
-                    .push(handle.to_owned());
+                    .push(input.def.clone());
             }
         }
         inputs
