@@ -1,0 +1,7 @@
+type: task_block
+executor:
+  name: rust
+inputs_def:
+  - handle: my_count
+outputs_def:
+  - handle: my_output
