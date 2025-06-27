@@ -98,9 +98,9 @@ fn query_input() {
         .stdin(Stdio::null())
         .stderr(Stdio::inherit())
         .assert()
-        .stdout(predicate::str::contains(
-            r#"{"block-1":["my_count"],"block-2":["my_count"]}"#,
-        ))
+        // linux/macos's key order is not same order.
+        .stdout(predicate::str::contains(r#"block-1":["my_count"]"#))
+        .stdout(predicate::str::contains(r#"block-2":["my_count"]"#))
         .success();
 }
 
