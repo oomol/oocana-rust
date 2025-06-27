@@ -135,6 +135,7 @@ pub fn cli_match() -> Result<()> {
                         query::QueryAction::Upstream {  .. } => "upstream",
                         query::QueryAction::Service { .. } => "service",
                         query::QueryAction::Package { .. } => "package",
+                        query::QueryAction::Input { .. } => "input",
                     },
                     output_to_console: false,
                     capture_stdout_stderr_target: false,

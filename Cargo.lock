@@ -376,6 +376,7 @@ dependencies = [
  "manifest_reader",
  "one_shot",
  "runtime",
+ "serde_json",
  "tracing",
  "utils",
  "uuid",

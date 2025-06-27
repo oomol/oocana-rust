@@ -49,7 +49,7 @@ pub enum LayerAction {
         #[arg(help = "package search path dir which sub directory has package", long)]
         search_paths: Vec<String>,
         #[arg(
-            help = "output file path, if not provided, it will print to stdout",
+            help = "output file path (JSON format), if not provided, it will print to stdout",
             long
         )]
         output: Option<String>,
