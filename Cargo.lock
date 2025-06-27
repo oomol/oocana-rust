@@ -1279,6 +1279,7 @@ dependencies = [
  "human-panic",
  "one_shot",
  "predicates 2.1.5",
+ "serde_json",
  "tracing",
  "utils",
 ]

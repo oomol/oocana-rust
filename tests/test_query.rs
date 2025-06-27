@@ -4,7 +4,10 @@ extern crate predicates;
 
 use assert_cmd::prelude::*;
 
-use std::process::{Command, Stdio};
+use std::{
+    env::temp_dir,
+    process::{Command, Stdio},
+};
 
 #[test]
 fn query_services() {
@@ -32,14 +35,60 @@ fn query_upstream() {
 
 #[test]
 fn query_input() {
-    use predicates::prelude::*;
     let mut cmd = Command::cargo_bin("oocana").unwrap();
-    cmd.args(["query", "input", "examples/input"])
-        .stdin(Stdio::null())
-        .stderr(Stdio::inherit())
-        .assert()
-        // linux/macos's key order is not same order.
-        .stdout(predicate::str::contains(r#"block-1":["my_count"]"#))
-        .stdout(predicate::str::contains(r#"block-2":["my_count"]"#))
-        .success();
+    let tmp_file = temp_dir().join("oocana_test_query_input.json");
+
+    cmd.args([
+        "query",
+        "input",
+        "examples/input",
+        "--output",
+        tmp_file.to_str().unwrap(),
+    ])
+    .stdin(Stdio::null())
+    .stderr(Stdio::inherit())
+    .assert()
+    .success();
+
+    let result_str = std::fs::read_to_string(&tmp_file).expect("Failed to read output file");
+
+    let map = serde_json::from_str::<serde_json::Value>(&result_str)
+        .expect(format!("Failed to parse JSON output {}", result_str).as_str());
+    println!("result: {}", result_str);
+
+    assert!(map.is_object());
+    assert!(
+        map.get("block-1").is_some(),
+        "Expected 'inputs' key in output"
+    );
+
+    for (key, value) in map.as_object().unwrap() {
+        println!("{}: {}", key, value);
+        assert!(
+            value.is_array(),
+            "Expected key({}) to have an array value, got {}",
+            key,
+            value
+        );
+        assert!(
+            value.as_array().is_some_and(|v| v.len() == 1),
+            "Expected key({}) to have only one element, got {}",
+            key,
+            value,
+        );
+
+        assert!(
+            value.as_array().is_some_and(|v| v[0].is_object()),
+            "Expected first element of array for {} to be an object",
+            value
+        );
+
+        assert!(
+            value.as_array().is_some_and(|v| v[0]
+                .get("handle")
+                .is_some_and(|v| v.is_string() && v.as_str().unwrap() == "my_count")),
+            "Expected 'handle' key in first element of array for {}",
+            key
+        );
+    }
 }
