@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.28.20 (2025-06-27)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* feat: support query flow's absence input handle by @leavesster in https://github.com/oomol/oocana-rust/pull/194
+* feat: expose more absence input info and refactor by @leavesster in https://github.com/oomol/oocana-rust/pull/196
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.28.19...v0.28.20
+
 ## 0.28.19 (2025-06-26)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
