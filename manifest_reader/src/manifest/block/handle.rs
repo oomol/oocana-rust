@@ -117,6 +117,8 @@ pub struct OutputHandle {
     pub json_schema: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub kind: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub nullable: Option<bool>,
 }
 
 pub const OOMOL_VAR_DATA: &str = "oomol/var";
@@ -158,6 +160,7 @@ mod tests {
             })),
             kind: Some("var1".to_string()),
             description: None,
+            nullable: None,
         };
         let serialized = serde_json::to_string(&output_handle).unwrap();
         assert_eq!(
