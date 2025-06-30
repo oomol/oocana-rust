@@ -117,6 +117,8 @@ pub struct OutputHandle {
     pub json_schema: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub kind: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub nullable: Option<bool>,
 }
 
 pub const OOMOL_VAR_DATA: &str = "oomol/var";
