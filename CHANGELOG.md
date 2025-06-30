@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.28.21 (2025-06-30)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* feat: output handle support nullable field by @leavesster in https://github.com/oomol/oocana-rust/pull/197
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.28.20...v0.28.21
+
 ## 0.28.20 (2025-06-27)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
