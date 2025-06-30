@@ -160,6 +160,7 @@ mod tests {
             })),
             kind: Some("var1".to_string()),
             description: None,
+            nullable: None,
         };
         let serialized = serde_json::to_string(&output_handle).unwrap();
         assert_eq!(
