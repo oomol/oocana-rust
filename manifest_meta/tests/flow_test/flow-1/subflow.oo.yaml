@@ -1,15 +1,15 @@
 nodes:
   - node_id: node1
-    task: "./block1.oo.yaml"
+    task: "./block.oo.yaml"
   - node_id: node2
-    task: "./block1.oo.yaml"
+    task: "./block.oo.yaml"
     inputs_from:
       - handle: in1
         from_node:
           - node_id: node1
             output_handle: out2
   - node_id: node3
-    task: "./block1.oo.yaml"
+    task: "./block.oo.yaml"
     inputs_from:
       - handle: in1
         from_node:
