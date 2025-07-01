@@ -1,7 +1,0 @@
-executor:
-  name: rust
-concurrency: 3
-inputs_def:
-  - handle: in1
-outputs_def:
-  - handle: out2

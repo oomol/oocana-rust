@@ -2,13 +2,13 @@ use manifest_reader::{path_finder::find_flow, reader::read_flow_block};
 use std::path::PathBuf;
 use utils::error::Result;
 
-fn dirname() -> PathBuf {
+fn test_directory() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests")
 }
 
 #[test]
-fn it_should_read_task_block() -> Result<()> {
-    let base_dir = dirname();
+fn reload_flow() -> Result<()> {
+    let base_dir = test_directory();
 
     let flow_path = find_flow(base_dir.to_str().unwrap())?;
 
