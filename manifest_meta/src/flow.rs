@@ -485,6 +485,7 @@ impl SubflowBlock {
                                                     NodeInput {
                                                         def: InputHandle {
                                                             remember: true,
+                                                            is_additional: true,
                                                             ..input.clone()
                                                         },
                                                         patch: None,
@@ -497,6 +498,7 @@ impl SubflowBlock {
                                                     runtime_handle_name.clone(),
                                                     InputHandle {
                                                         handle: runtime_handle_name.clone(),
+                                                        is_additional: true,
                                                         ..input.clone()
                                                     },
                                                 );
@@ -798,7 +800,13 @@ impl SubflowBlock {
                             if let Some(node_addition_inputs) = task_node.inputs_def.as_ref() {
                                 for input in node_addition_inputs.iter() {
                                     if !inputs_def.contains_key(&input.handle) {
-                                        inputs_def.insert(input.handle.to_owned(), input.clone());
+                                        inputs_def.insert(
+                                            input.handle.to_owned(),
+                                            InputHandle {
+                                                is_additional: true,
+                                                ..input.clone()
+                                            },
+                                        );
                                     }
                                 }
                             }
