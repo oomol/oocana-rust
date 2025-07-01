@@ -799,15 +799,12 @@ impl SubflowBlock {
                             let mut inputs_def = task.inputs_def.clone().unwrap_or_default();
                             if let Some(node_addition_inputs) = task_node.inputs_def.as_ref() {
                                 for input in node_addition_inputs.iter() {
-                                    if !inputs_def.contains_key(&input.handle) {
-                                        inputs_def.insert(
-                                            input.handle.to_owned(),
-                                            InputHandle {
-                                                is_additional: true,
-                                                ..input.clone()
-                                            },
-                                        );
-                                    }
+                                    inputs_def.entry(input.handle.to_owned()).or_insert_with(
+                                        || InputHandle {
+                                            is_additional: true,
+                                            ..input.clone()
+                                        },
+                                    );
                                 }
                             }
                             Some(inputs_def)
