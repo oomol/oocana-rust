@@ -1,6 +1,6 @@
 [package]
 name = "blk-b"
-version = "0.28.21"
+version = "0.28.22"
 authors = ["CRIMX <straybugs@gmail.com>"]
 description = "Add one"
 edition = "2021"
