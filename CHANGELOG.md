@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.28.23 (2025-07-01)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* fix: missing output def additional by @leavesster in https://github.com/oomol/oocana-rust/pull/201
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.28.22...v0.28.23
+
 ## 0.28.22 (2025-07-01)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
