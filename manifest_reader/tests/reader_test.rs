@@ -16,4 +16,16 @@ mod tests {
 
         Ok(())
     }
+
+    #[test]
+    fn load_block() -> Result<()> {
+        let base_dir = test_directory();
+
+        let flow_block = read_task_block(&base_dir.join("block.oo.yaml"))?;
+
+        assert_eq!(flow_block.additional_inputs, true);
+        assert_eq!(flow_block.additional_outputs, true);
+
+        Ok(())
+    }
 }
