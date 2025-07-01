@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.28.22 (2025-07-01)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* feat: add is_additional field for input and output handle to indicate whether is additional handle by @leavesster in https://github.com/oomol/oocana-rust/pull/199
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.28.21...v0.28.22
+
 ## 0.28.21 (2025-06-30)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
