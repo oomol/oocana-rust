@@ -10,8 +10,7 @@ mod tests {
     #[test]
     fn test_flow_block() -> Result<()> {
         let base_dir = test_directory();
-        let block_search_paths = Some(vec![test_directory()]);
-        let mut finder = BlockPathFinder::new(base_dir, block_search_paths);
+        let mut finder = BlockPathFinder::new(base_dir, None);
         let mut block_reader = BlockResolver::new();
         let flow_block = block_reader.resolve_flow_block("flow-1", &mut finder)?;
 
@@ -81,8 +80,7 @@ mod tests {
     #[test]
     fn test_subflow_with_inputs_def() -> Result<()> {
         let base_dir = test_directory();
-        let block_search_paths = Some(vec![test_directory()]);
-        let mut finder = BlockPathFinder::new(base_dir, block_search_paths);
+        let mut finder = BlockPathFinder::new(base_dir, None);
         let mut block_reader = BlockResolver::new();
         let flow_block = block_reader.resolve_flow_block("flow-2", &mut finder)?;
 
