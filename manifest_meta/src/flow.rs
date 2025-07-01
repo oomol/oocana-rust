@@ -6,7 +6,9 @@ use std::{
 };
 
 use manifest_reader::{
-    manifest::{self, HandleName, InputDefPatch, InputHandle, InputHandles, OutputHandles},
+    manifest::{
+        self, HandleName, InputDefPatch, InputHandle, InputHandles, OutputHandle, OutputHandles,
+    },
     path_finder::{calculate_block_value_type, find_package_file, BlockPathFinder, BlockValueType},
     reader::read_package,
 };
@@ -818,21 +820,23 @@ impl SubflowBlock {
 
                     let from = connections.node_inputs_froms.remove(&task_node.node_id);
 
-                    let merged_outputs_def = if task.additional_outputs
-                        && task.outputs_def.is_some()
-                    {
-                        let mut outputs_def = task.outputs_def.clone().unwrap_or_default();
-                        if let Some(node_addition_outputs) = task_node.outputs_def.as_ref() {
-                            for output in node_addition_outputs.iter() {
-                                if !outputs_def.contains_key(&output.handle) {
-                                    outputs_def.insert(output.handle.to_owned(), output.clone());
+                    let merged_outputs_def =
+                        if task.additional_outputs && task.outputs_def.is_some() {
+                            let mut outputs_def = task.outputs_def.clone().unwrap_or_default();
+                            if let Some(node_addition_outputs) = task_node.outputs_def.as_ref() {
+                                for output in node_addition_outputs.iter() {
+                                    outputs_def.entry(output.handle.to_owned()).or_insert_with(
+                                        || OutputHandle {
+                                            is_additional: true,
+                                            ..output.clone()
+                                        },
+                                    );
                                 }
                             }
-                        }
-                        Some(outputs_def)
-                    } else {
-                        task.outputs_def.clone()
-                    };
+                            Some(outputs_def)
+                        } else {
+                            task.outputs_def.clone()
+                        };
 
                     let mut task_inner = (*task).clone();
                     task_inner.outputs_def = merged_outputs_def;
