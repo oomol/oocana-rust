@@ -15,6 +15,14 @@ nodes:
         from_node:
           - node_id: node2
             output_handle: out1
+    inputs_def:
+      - handle: additional_in
+        json_schema:
+          type: string
+    outputs_def:
+      - handle: additional_out
+        json_schema:
+          type: string
   - node_id: slot
     slot:
       inputs_def:
