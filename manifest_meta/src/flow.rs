@@ -204,7 +204,7 @@ impl SubflowBlock {
                 for (handle, value) in merge_inputs {
                     if !inputs.contains_key(&handle) {
                         warn!(
-                            "won't merge {} to {} because () not exist in node",
+                            "won't merge handle `{}` to node `{}` because the handle does not exist in the node",
                             handle, node_id
                         );
                         continue;
