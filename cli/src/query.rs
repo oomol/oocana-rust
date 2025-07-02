@@ -130,7 +130,7 @@ pub fn query(action: &QueryAction) -> Result<()> {
         QueryAction::Input {
             block,
             search_paths,
-            input_types,
+            input_types: _, // todo: support input types filter
             output,
         } => {
             let block_reader = BlockResolver::new();
