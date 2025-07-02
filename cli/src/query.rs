@@ -41,12 +41,18 @@ pub enum QueryAction {
         #[arg(help = "Use previous result cache if exist.", long)]
         use_cache: bool,
     },
-    #[command(about = "query a flow block's absence input")]
+    #[command(about = "query flow's all start inputs(no connection)")]
     Input {
         #[arg(
             help = "Absolute Path to the Oocana Block Manifest file or a directory with flow.oo.yaml."
         )]
         block: String,
+        #[arg(
+            help = "filter input types, e.g. 'all', 'absence', 'nullable', if not provided, it will return all inputs.",
+            long,
+            alias = "input-types"
+        )]
+        input_types: Vec<String>,
         #[arg(
             help = "Paths to search for blocks. Fallback to the directory of current flow block.",
             long,
@@ -124,6 +130,7 @@ pub fn query(action: &QueryAction) -> Result<()> {
         QueryAction::Input {
             block,
             search_paths,
+            input_types,
             output,
         } => {
             let block_reader = BlockResolver::new();
@@ -134,7 +141,7 @@ pub fn query(action: &QueryAction) -> Result<()> {
             let block_or_flow = read_flow_or_block(block, block_reader, block_path_finder)?;
             match block_or_flow {
                 manifest_meta::Block::Flow(flow) => {
-                    let input = flow.get_absence_input();
+                    let input = flow.query_inputs();
                     let json_result = serde_json::to_string(&input)?;
                     if let Some(output) = output {
                         let mut file = std::fs::File::create(output)?;
