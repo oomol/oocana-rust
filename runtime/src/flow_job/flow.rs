@@ -126,6 +126,25 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
         stacks.clone(),
     ));
     reporter.started(&inputs);
+    let absence_inputs = flow_block.get_absence_input();
+    if !absence_inputs.is_empty() {
+        let node_and_handles = absence_inputs
+            .iter()
+            .map(|(node_id, handles)| {
+                let handles_name = handles
+                    .iter()
+                    .map(|input| input.handle.to_string())
+                    .collect::<Vec<String>>()
+                    .join(", ");
+                format!("node({}) handles: {}", node_id, handles_name)
+            })
+            .collect::<Vec<String>>()
+            .join(", ");
+        warn!(
+            "these node won't run because some inputs are not provided: {}",
+            node_and_handles,
+        );
+    }
 
     let (block_status_tx, block_status_rx) = block_status::create();
 
