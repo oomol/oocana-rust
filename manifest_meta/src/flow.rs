@@ -11,6 +11,7 @@ use manifest_reader::{
     },
     path_finder::{calculate_block_value_type, find_package_file, BlockPathFinder, BlockValueType},
     reader::read_package,
+    JsonValue,
 };
 
 use crate::{
@@ -187,11 +188,34 @@ pub fn generate_node_inputs(
     inputs
 }
 
+pub type MergeInputsValue = HashMap<NodeId, HashMap<HandleName, JsonValue>>;
+
 impl SubflowBlock {
     pub fn has_slot(&self) -> bool {
         self.nodes
             .values()
             .any(|node| matches!(node, Node::Slot(_)))
+    }
+
+    pub fn merge_input_values(&mut self, inputs_value: MergeInputsValue) {
+        for (node_id, merge_inputs) in inputs_value {
+            if let Some(node) = self.nodes.get_mut(&node_id) {
+                let mut inputs = node.inputs().clone();
+                for (handle, value) in merge_inputs {
+                    if !inputs.contains_key(&handle) {
+                        warn!(
+                            "won't merge {} to {} because () not exist in node",
+                            handle, node_id
+                        );
+                        continue;
+                    }
+                    inputs
+                        .entry(handle)
+                        .and_modify(|i| i.value = Some(Some(value)));
+                }
+                node.update_inputs(inputs);
+            }
+        }
     }
 
     pub fn query_inputs(&self) -> HashMap<NodeId, Vec<InputHandle>> {

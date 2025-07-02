@@ -40,19 +40,6 @@ impl NodeInputValues {
         }
     }
 
-    pub fn merge_input_values(&mut self, input_values: String) {
-        match serde_json::from_str::<NodeInputStore>(&input_values) {
-            Ok(merge_values) => {
-                for (node_id, input_map_queue) in merge_values {
-                    self.store.insert(node_id, input_map_queue);
-                }
-            }
-            Err(e) => {
-                warn!("Failed to deserialize: {:?}", e);
-            }
-        }
-    }
-
     pub fn recover_from(path: PathBuf, save_cache: bool) -> Self {
         let last_values = if save_cache {
             Some(HashMap::new())

@@ -98,6 +98,15 @@ impl Node {
         }
     }
 
+    pub fn update_inputs(&mut self, inputs: HashMap<HandleName, NodeInput>) {
+        match self {
+            Self::Task(task) => task.inputs = inputs,
+            Self::Flow(flow) => flow.inputs = inputs,
+            Self::Slot(slot) => slot.inputs = inputs,
+            Self::Service(service) => service.inputs = inputs,
+        }
+    }
+
     pub fn inputs_def_patch(&self) -> Option<InputDefPatchMap> {
         let inputs = self.inputs();
         let mut patches = HashMap::new();
