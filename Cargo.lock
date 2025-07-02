@@ -227,6 +227,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "blk_i"
+version = "0.28.23"
+dependencies = [
+ "oocana_sdk",
+ "tokio",
+]
+
+[[package]]
 name = "block-buffer"
 version = "0.10.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"

@@ -3,6 +3,5 @@ executor:
   name: rust
 inputs_def:
   - handle: my_count
-    optional: true
 outputs_def:
   - handle: my_result

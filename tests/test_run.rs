@@ -43,6 +43,23 @@ fn run_shell_flow() {
 }
 
 #[test]
+fn run_flow_with_input() {
+    Command::cargo_bin("oocana")
+        .unwrap()
+        .args([
+            "run",
+            "examples/input",
+            "--input-values",
+            "{\"block-1\": {\"my_count\": 1}, \"block-2\": {\"my_count\": 2}}",
+        ])
+        .stdin(Stdio::null())
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .assert()
+        .success();
+}
+
+#[test]
 fn version_pkg_test() {
     Command::cargo_bin("oocana")
         .unwrap()

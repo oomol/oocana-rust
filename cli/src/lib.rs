@@ -60,7 +60,7 @@ enum Commands {
         use_cache: bool,
         #[arg(help = "Stop the flow after the node is finished.", long)]
         nodes: Option<String>,
-        #[arg(help = "Values for the input handles value. format is {\"node_id\": \"inputHandleName\": [1]}}. first key is node id, the first level value is a key-value pair, the next level's value is a list of input values", long)]
+        #[arg(help = "Values for the input handles value. format is {\"node_id\": \"inputHandleName\": <VALUE>}}. first key is node id, the first level value is a key-value pair, the next level's value is a list of input values", long)]
         input_values: Option<String>,
         #[arg(help = "default package environment, any block has no package will use this package environment", long)]
         default_package: Option<String>,

@@ -26,14 +26,14 @@ mod task;
 pub use task::TaskBlock;
 
 mod flow;
-pub use flow::{InjectionStore, InjectionTarget, SubflowBlock};
+pub use flow::{InjectionStore, InjectionTarget, MergeInputsValue, SubflowBlock};
 
 mod slot;
 pub use slot::SlotBlock;
 
 mod node;
 pub use node::{
-    HandleFrom, HandleTo, HandlesFroms, HandlesTos, InputDefPatchMap, Node, HandleSource,
+    HandleFrom, HandleSource, HandleTo, HandlesFroms, HandlesTos, InputDefPatchMap, Node,
     NodesHandlesTos, ServiceNode, Slot, SlotNode, SubflowNode,
 };
 

@@ -15,7 +15,7 @@ use tokio::signal::unix::{signal, SignalKind};
 use tracing::{error as log_error, info};
 
 use job::{BlockJobStacks, JobId, RunningPackageScope};
-use manifest_meta::{read_flow_or_block, Block, BlockResolver, NodeId};
+use manifest_meta::{read_flow_or_block, Block, BlockResolver, MergeInputsValue, NodeId};
 use utils::error::Result;
 
 use crate::flow_job::{flow::get_flow_cache_path, NodeInputValues};
@@ -50,7 +50,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
     let partial = nodes.is_some();
     let cache = shared.use_cache;
 
-    let block = match read_flow_or_block(block_name, block_reader, path_finder) {
+    let mut block = match read_flow_or_block(block_name, block_reader, path_finder) {
         Ok(block) => block,
         Err(err) => {
             log_error!("Failed to read block: {}", err);
@@ -88,13 +88,22 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
         None
     };
 
-    let mut node_value_store = match (shared.use_cache, flow_cache_path) {
+    let node_value_store = match (shared.use_cache, flow_cache_path) {
         (true, Some(cache_path)) => NodeInputValues::recover_from(cache_path, true),
         _ => NodeInputValues::new(true),
     };
 
     if let Some(patch_value_str) = input_values {
-        node_value_store.merge_input_values(patch_value_str);
+        let merge_inputs_value = serde_json::from_str::<MergeInputsValue>(&patch_value_str)
+            .map_err(|e| {
+                log_error!("Failed to parse input values: {}", e);
+                format!("Invalid input values: {}", e)
+            })?;
+        if let Block::Flow(flow_block) = block {
+            let mut inner_flow_block = (*flow_block).clone();
+            inner_flow_block.merge_input_values(merge_inputs_value);
+            block = Block::Flow(Arc::new(inner_flow_block));
+        }
     }
 
     let handle = block_job::run_block({
