@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.28.24 (2025-07-02)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* test: improve flow test by @leavesster in https://github.com/oomol/oocana-rust/pull/203
+* feat: query input return all no connection input with runtime value by @leavesster in https://github.com/oomol/oocana-rust/pull/205
+* fix: input value parameter should override input from value not insert value to node value store by @leavesster in https://github.com/oomol/oocana-rust/pull/206
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.28.23...v0.28.24
+
 ## 0.28.23 (2025-07-01)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
