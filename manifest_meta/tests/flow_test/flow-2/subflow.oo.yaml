@@ -2,7 +2,7 @@ inputs_def:
   - handle: flow_in1
 nodes:
   - node_id: node1
-    task: "./block1.oo.yaml"
+    task: "./block.oo.yaml"
     inputs_from:
       - handle: in1
         from_flow:

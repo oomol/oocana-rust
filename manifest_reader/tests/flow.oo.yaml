@@ -1,5 +1,5 @@
 name: flow-1
 nodes:
   - node_id: block-1
-    task: ./block_manifest_reader_test/blocks1/task-blk1/block.oo.yaml
+    task: ./not-exist/block.oo.yaml # this filed is not used in this test case. so the value is not important
     concurrency: 3
