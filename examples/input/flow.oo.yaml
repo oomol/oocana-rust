@@ -2,5 +2,11 @@ name: flow-1
 nodes:
   - node_id: block-1
     task: blk_i
+    inputs_from:
+      - handle: in
+        value: 10
   - node_id: block-2
     task: ./blk_i
+    inputs_from:
+      - handle: in
+        value: 10
