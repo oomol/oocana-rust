@@ -63,6 +63,12 @@ pub enum ReceiveMessage {
         package: Option<String>,
         identifier: Option<String>,
     },
+    RunBlock {
+        session_id: SessionId,
+        job_id: JobId,
+        block: String,
+        identifier: String,
+    },
     // --- 以下消息，是通过 scheduler 发送给 subscriber 的消息，而不是 mqtt 消息 --- //
     ExecutorTimeout {
         session_id: SessionId,
@@ -91,6 +97,7 @@ impl ReceiveMessage {
             ReceiveMessage::BlockOutputs { session_id, .. } => session_id,
             ReceiveMessage::BlockError { session_id, .. } => session_id,
             ReceiveMessage::BlockFinished { session_id, .. } => session_id,
+            ReceiveMessage::RunBlock { session_id, .. } => session_id,
             ReceiveMessage::ExecutorReady { session_id, .. } => session_id,
             ReceiveMessage::ExecutorExit { session_id, .. } => session_id,
             ReceiveMessage::ExecutorTimeout { session_id, .. } => session_id,
@@ -105,6 +112,7 @@ impl ReceiveMessage {
             ReceiveMessage::BlockOutputs { job_id, .. } => Some(job_id),
             ReceiveMessage::BlockError { job_id, .. } => Some(job_id),
             ReceiveMessage::BlockFinished { job_id, .. } => Some(job_id),
+            ReceiveMessage::RunBlock { job_id, .. } => Some(job_id),
             ReceiveMessage::ExecutorReady { .. } => None,
             ReceiveMessage::ExecutorExit { .. } => None,
             ReceiveMessage::ExecutorTimeout { .. } => None,
@@ -1251,6 +1259,12 @@ where
                                             .unwrap();
                                     }
                                 }
+                                ReceiveMessage::RunBlock {
+                                    job_id,
+                                    session_id,
+                                    block,
+                                    ..
+                                } => {}
                                 _ => {
                                     if let Some(sender) =
                                         msg.job_id().and_then(|f| subscribers.get(f))
