@@ -16,7 +16,7 @@ use tracing::warn;
 use utils::output::OutputValue;
 
 use job::{BlockInputs, BlockJobStacks, JobId, RunningPackageScope};
-use manifest_meta::{HandleTo, Node, NodeId, RunningScope, Slot, SubflowBlock};
+use manifest_meta::{HandleTo, InputHandle, Node, NodeId, RunningScope, Slot, SubflowBlock};
 
 use super::node_input_values;
 use node_input_values::{CacheMetaMap, CacheMetaMapExt, NodeInputValues};
@@ -126,7 +126,29 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
         stacks.clone(),
     ));
     reporter.started(&inputs);
-    let absence_inputs = flow_block.get_absence_input();
+    let absence_inputs = flow_block
+        .query_inputs()
+        .into_iter()
+        .filter_map(|(node_id, handles)| {
+            if flow_block
+                .nodes
+                .get(&node_id)
+                .is_none_or(|n| node_value_store.is_node_fulfill(&n))
+            {
+                None
+            } else {
+                Some((
+                    node_id,
+                    handles
+                        .iter()
+                        .filter(|h| h.value.is_none())
+                        .cloned()
+                        .collect::<Vec<InputHandle>>(),
+                ))
+            }
+        })
+        .collect::<HashMap<NodeId, Vec<InputHandle>>>();
+
     if !absence_inputs.is_empty() {
         let node_and_handles = absence_inputs
             .iter()
@@ -136,10 +158,11 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                     .map(|input| input.handle.to_string())
                     .collect::<Vec<String>>()
                     .join(", ");
-                format!("node({}) handles: {}", node_id, handles_name)
+                format!("node({}) handles: [{}]", node_id, handles_name)
             })
             .collect::<Vec<String>>()
             .join(", ");
+        // these message is tested in tests/test_run.rs
         warn!(
             "these node won't run because some inputs are not provided: {}",
             node_and_handles,
