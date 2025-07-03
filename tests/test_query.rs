@@ -71,7 +71,7 @@ fn query_input() {
             value
         );
         assert!(
-            value.as_array().is_some_and(|v| v.len() == 1),
+            value.as_array().is_some_and(|v| v.len() == 2),
             "Expected key({}) to have only one element, got {}",
             key,
             value,
@@ -84,11 +84,37 @@ fn query_input() {
         );
 
         assert!(
-            value.as_array().is_some_and(|v| v[0]
-                .get("handle")
-                .is_some_and(|v| v.is_string() && v.as_str().unwrap() == "my_count")),
+            value
+                .as_array()
+                .is_some_and(|v| v[0].get("handle").is_some()),
             "Expected 'handle' key in first element of array for {}",
             key
         );
+
+        for item in value.as_array().unwrap() {
+            assert!(
+                item.is_object(),
+                "Expected each item in array for {} to be an object",
+                key
+            );
+            println!("item: {}", item);
+            if let Some(handle) = item.get("handle") {
+                if handle.as_str().unwrap() == "in" {
+                    assert!(
+                        item.get("value").is_some_and(|v| v.is_number()),
+                        "Expected handle [in] has number value, got: {}",
+                        item
+                    );
+                } else if handle.as_str().unwrap() == "my_count" {
+                    assert!(
+                        item.get("value").is_none(),
+                        "Expected handle [my_count] has no value, got: {}",
+                        item
+                    );
+                } else {
+                    panic!("Unexpected handle: {}", handle);
+                }
+            }
+        }
     }
 }

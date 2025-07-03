@@ -4,6 +4,8 @@ extern crate predicates;
 
 use assert_cmd::prelude::*;
 
+use predicates::prelude::PredicateBooleanExt;
+use predicates::str::contains;
 use std::process::{Command, Stdio};
 
 #[test]
@@ -56,6 +58,21 @@ fn run_flow_with_input() {
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .assert()
+        .success();
+}
+
+#[test]
+fn run_flow_with_absence_input() {
+    Command::cargo_bin("oocana")
+        .unwrap()
+        .args(["run", "examples/input"])
+        .stdin(Stdio::null())
+        .assert()
+        // linux macos's key order is not guaranteed to be the same, so we use contains to match the output
+        .stdout(
+            contains("these node won't run because some inputs are not provided: node(block-2) handles: [my_count], node(block-1) handles: [my_count]")
+                .or(contains("these node won't run because some inputs are not provided: node(block-1) handles: [my_count], node(block-2) handles: [my_count]"))
+        )
         .success();
 }
 
