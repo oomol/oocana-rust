@@ -1260,12 +1260,9 @@ where
                                             .unwrap();
                                     }
                                 }
-                                ReceiveMessage::RunBlock {
-                                    job_id,
-                                    session_id,
-                                    block,
-                                    ..
-                                } => {}
+                                ReceiveMessage::RunBlock { .. } => {
+                                    // TODO: find block and run it
+                                }
                                 _ => {
                                     if let Some(sender) =
                                         msg.job_id().and_then(|f| subscribers.get(f))
