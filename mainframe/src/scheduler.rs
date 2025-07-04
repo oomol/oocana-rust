@@ -67,6 +67,7 @@ pub enum ReceiveMessage {
         session_id: SessionId,
         job_id: JobId,
         block: String,
+        stacks: Vec<BlockJobStackLevel>,
         identifier: String,
     },
     // --- 以下消息，是通过 scheduler 发送给 subscriber 的消息，而不是 mqtt 消息 --- //
