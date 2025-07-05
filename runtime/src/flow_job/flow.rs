@@ -336,7 +336,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                 );
                             }
 
-                            tracing::info!("running task block: {}", block);
+                            tracing::info!("running task block: {} as {}", block, new_job_id);
                             if let Some(handle) = run_task_block(RunTaskBlockArgs {
                                 task_block,
                                 shared: Arc::clone(&flow_shared.shared),
