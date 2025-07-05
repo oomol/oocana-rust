@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.28.25 (2025-07-05)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* feat: log warning for missing inputs nodes by @leavesster in https://github.com/oomol/oocana-rust/pull/207
+* chore: improve warning log and condition by @leavesster in https://github.com/oomol/oocana-rust/pull/209
+* chore: improve log by @leavesster in https://github.com/oomol/oocana-rust/pull/210
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.28.24...v0.28.25
+
 ## 0.28.24 (2025-07-02)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
