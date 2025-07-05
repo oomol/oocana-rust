@@ -169,7 +169,7 @@ pub fn generate_node_inputs(
                     .collect::<Vec<_>>()
             });
 
-            if value.is_none() && connection_from.as_ref().is_some_and(|f| !f.is_empty()) {
+            if value.is_none() && connection_from.as_ref().is_some_and(|f| f.is_empty()) {
                 warn!("node id ({}) handle: ({}) has no connection and has no value. This node won't run.",  node_id, handle);
                 if input_def.value.is_some() {
                     warn!(
