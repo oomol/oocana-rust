@@ -482,8 +482,8 @@ fn run_pending_node(job_id: JobId, flow_shared: &FlowShared, run_flow_ctx: &mut 
 
         let node_queue = run_flow_ctx
             .node_queue_pool
-            .get_mut(&node_id)
-            .expect("Node queue not found");
+            .entry(node_id.to_owned())
+            .or_default();
 
         node_queue.jobs.remove(&job_id);
 
