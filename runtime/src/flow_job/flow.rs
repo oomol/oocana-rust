@@ -48,6 +48,7 @@ struct FlowShared {
     parent_scope: RunningPackageScope,
     scope: RunningPackageScope,
     slot_blocks: HashMap<NodeId, Slot>,
+    path_finder: manifest_reader::path_finder::BlockPathFinder,
 }
 
 struct RunFlowContext {
@@ -76,6 +77,7 @@ pub struct RunFlowArgs {
     pub parent_scope: RunningPackageScope,
     pub scope: RunningPackageScope,
     pub slot_blocks: HashMap<NodeId, Slot>,
+    pub path_finder: manifest_reader::path_finder::BlockPathFinder,
 }
 
 pub struct UpstreamArgs {
@@ -118,6 +120,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
         slot_blocks,
         scope,
         parent_scope,
+        path_finder,
     } = flow_args;
 
     let reporter = Arc::new(shared.reporter.flow(
@@ -188,6 +191,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
         scope,
         slot_blocks,
         parent_scope,
+        path_finder,
     };
 
     if let Some(ref origin_nodes) = nodes {
@@ -691,6 +695,7 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
                 _ => None,
             },
             inputs_def_patch: node.inputs_def_patch(),
+            path_finder: shared.path_finder.clone(),
         }
     });
 

@@ -53,6 +53,7 @@ pub struct RunBlockArgs {
     pub timeout: Option<u64>,
     pub inputs_def_patch: Option<InputDefPatchMap>,
     pub slot_blocks: Option<HashMap<NodeId, Slot>>,
+    pub path_finder: manifest_reader::path_finder::BlockPathFinder,
 }
 
 pub struct FindUpstreamArgs {
@@ -91,6 +92,7 @@ pub fn run_block(block_args: RunBlockArgs) -> Option<BlockJobHandle> {
         scope,
         inputs_def_patch,
         slot_blocks,
+        path_finder,
     } = block_args;
 
     match block {
@@ -108,6 +110,7 @@ pub fn run_block(block_args: RunBlockArgs) -> Option<BlockJobHandle> {
                 node_value_store: node_value_store.unwrap_or(NodeInputValues::new(false)),
                 scope,
                 slot_blocks: slot_blocks.unwrap_or_default(),
+                path_finder,
             }
         }),
         // block.oo.yaml type task_block

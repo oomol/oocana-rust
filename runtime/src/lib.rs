@@ -50,7 +50,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
     let partial = nodes.is_some();
     let cache = shared.use_cache;
 
-    let mut block = match read_flow_or_block(block_name, block_reader, path_finder) {
+    let mut block = match read_flow_or_block(block_name, block_reader, path_finder.clone()) {
         Ok(block) => block,
         Err(err) => {
             log_error!("Failed to read block: {}", err);
@@ -132,6 +132,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
                 is_inject: false,
             },
             slot_blocks: None,
+            path_finder: path_finder,
         }
     });
 
