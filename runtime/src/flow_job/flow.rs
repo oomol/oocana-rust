@@ -3,11 +3,10 @@ use std::{
     path::PathBuf,
     sync::Arc,
 };
-
 use uuid::Uuid;
 
 use crate::{
-    block_job::{run_block, BlockJobHandle, RunBlockArgs},
+    block_job::{run_block, run_task_block, BlockJobHandle, RunBlockArgs, RunTaskBlockArgs},
     block_status::{self, BlockStatusTx},
     shared::Shared,
 };
@@ -16,7 +15,9 @@ use tracing::warn;
 use utils::output::OutputValue;
 
 use job::{BlockInputs, BlockJobStacks, JobId, RunningPackageScope};
-use manifest_meta::{HandleTo, InputHandle, Node, NodeId, RunningScope, Slot, SubflowBlock};
+use manifest_meta::{
+    BlockResolver, HandleTo, InputHandle, Node, NodeId, RunningScope, Slot, SubflowBlock,
+};
 
 use super::node_input_values;
 use node_input_values::{CacheMetaMap, CacheMetaMapExt, NodeInputValues};
@@ -183,7 +184,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
         node_queue_pool: HashMap::new(),
     };
 
-    let flow_shared = FlowShared {
+    let mut flow_shared = FlowShared {
         flow_block,
         job_id: flow_job_id.to_owned(),
         shared,
@@ -313,6 +314,42 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                 }
                             }
                         }
+                    }
+                }
+                block_status::Status::RunBlock { block, inputs } => {
+                    let block_path = flow_shared.path_finder.find_task_block_path(&block);
+                    if let Ok(block_path) = block_path {
+                        let mut block_resolver = BlockResolver::new();
+                        let task_block = block_resolver.read_task_block(&block_path);
+                        if let Ok(task_block) = task_block {
+                            let new_job_id = JobId::random();
+                            if let Some(handle) = run_task_block(RunTaskBlockArgs {
+                                task_block,
+                                shared: Arc::clone(&flow_shared.shared),
+                                parent_flow: Some(flow_shared.flow_block.clone()),
+                                stacks: flow_shared.stacks.clone(),
+                                job_id: new_job_id.clone(),
+                                inputs: Some(inputs),
+                                block_status: run_flow_ctx.block_status.clone(),
+                                scope: flow_shared.scope.clone(),
+                                timeout: None,
+                                inputs_def_patch: None,
+                            }) {
+                                run_flow_ctx.jobs.insert(
+                                    new_job_id,
+                                    BlockInFlowJobHandle {
+                                        node_id: NodeId::from(format!("run_block::{}", block)),
+                                        _job: handle,
+                                    },
+                                );
+                            }
+                        } else {
+                            // todo: return error
+                            warn!("Failed to read block: {:?}", task_block);
+                        }
+                    } else {
+                        // todo: return error
+                        warn!("Failed to find block path for block: {}", block);
                     }
                 }
                 block_status::Status::Done {

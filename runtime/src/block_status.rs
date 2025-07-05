@@ -16,6 +16,10 @@ pub enum Status {
         job_id: JobId,
         outputs: HashMap<HandleName, Arc<OutputValue>>,
     },
+    RunBlock {
+        block: String,
+        inputs: HashMap<HandleName, Arc<OutputValue>>,
+    },
     Done {
         job_id: JobId,
         result: Option<HashMap<HandleName, Arc<OutputValue>>>,

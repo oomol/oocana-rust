@@ -155,7 +155,7 @@ impl BlockResolver {
         )))
     }
 
-    fn read_task_block(&mut self, task_path: &Path) -> Result<Arc<TaskBlock>> {
+    pub fn read_task_block(&mut self, task_path: &Path) -> Result<Arc<TaskBlock>> {
         if let Some(task_cache) = &self.task_cache {
             if let Some(task) = task_cache.get(task_path) {
                 return Ok(Arc::clone(task));
