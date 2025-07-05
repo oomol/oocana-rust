@@ -109,6 +109,7 @@ pub fn generate_node_inputs(
     node_inputs_from: &Option<Vec<manifest::NodeInputFrom>>,
     // TODO: patch can be get from node_inputs_from. get patches from node_inputs_from
     patches: &Option<HashMap<HandleName, Vec<InputDefPatch>>>,
+    node_id: &NodeId,
 ) -> HashMap<HandleName, NodeInput> {
     let mut inputs = HashMap::new();
     // inputs_def should contain all input handles. in the future, maybe has input from not in inputs_def.
@@ -144,10 +145,8 @@ pub fn generate_node_inputs(
                     })
                 })
             };
-            if value.is_none() && input_def.value.is_some() {
-                tracing::warn!("input: ({}) has value in block's inputs_def, but inputs_from has no value. For now the block's inputs_dev's value will be ignored", handle);
-            }
 
+            // remove from value node connection
             let connection_from = from.map(|f| {
                 f.iter()
                     .filter_map(|ff| match ff {
@@ -171,7 +170,14 @@ pub fn generate_node_inputs(
             });
 
             if value.is_none() && connection_from.as_ref().is_some_and(|f| !f.is_empty()) {
-                warn!("input: ({}) has no connection and has no value", handle);
+                warn!("node id ({}) handle: ({}) has no connection and has no value. This node won't run.",  node_id, handle);
+                if input_def.value.is_some() {
+                    warn!(
+                        "node id ({}) handle: ({}) has value in inputs_def but is not used. For now the inputs_def's value will be ignored.",
+                        node_id,
+                        handle
+                    );
+                }
             }
 
             inputs.insert(
@@ -681,6 +687,7 @@ impl SubflowBlock {
                         &from,
                         &subflow_node.inputs_from,
                         &subflow_inputs_def_patch,
+                        &subflow_node.node_id,
                     );
 
                     new_nodes.insert(
@@ -715,6 +722,7 @@ impl SubflowBlock {
                         &from,
                         &service_node.inputs_from,
                         &inputs_def_patch,
+                        &service_node.node_id,
                     );
 
                     new_nodes.insert(
@@ -873,6 +881,7 @@ impl SubflowBlock {
                         &from,
                         &task_node.inputs_from,
                         &inputs_def_patch,
+                        &task_node.node_id,
                     );
 
                     new_nodes.insert(
@@ -899,6 +908,7 @@ impl SubflowBlock {
                         &from,
                         &slot_node.inputs_from,
                         &inputs_def_patch,
+                        &slot_node.node_id,
                     );
                     new_nodes.insert(
                         slot_node.node_id.to_owned(),
