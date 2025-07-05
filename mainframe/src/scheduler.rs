@@ -725,7 +725,7 @@ fn spawn_executor(
 
                 tokio::spawn(async move {
                     while let Ok(Some(line)) = reader.next_line().await {
-                        error!("{} ({}) stderr: {}", executor_bin_clone, identifier, line);
+                        debug!("{} ({}) stderr: {}", executor_bin_clone, identifier, line);
                     }
                 });
             }
