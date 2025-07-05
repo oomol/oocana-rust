@@ -323,6 +323,19 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                         let task_block = block_resolver.read_task_block(&block_path);
                         if let Ok(task_block) = task_block {
                             let new_job_id = JobId::random();
+
+                            let mut inputs_map = HashMap::new();
+                            for (handle, value) in inputs {
+                                inputs_map.insert(
+                                    handle,
+                                    // consider variable inputs
+                                    Arc::new(OutputValue {
+                                        value: value.clone(),
+                                        cacheable: true,
+                                    }),
+                                );
+                            }
+
                             tracing::info!("running task block: {}", block);
                             if let Some(handle) = run_task_block(RunTaskBlockArgs {
                                 task_block,
@@ -330,7 +343,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                 parent_flow: Some(flow_shared.flow_block.clone()),
                                 stacks: flow_shared.stacks.clone(),
                                 job_id: new_job_id.clone(),
-                                inputs: Some(inputs),
+                                inputs: Some(inputs_map),
                                 block_status: run_flow_ctx.block_status.clone(),
                                 scope: flow_shared.scope.clone(),
                                 timeout: None,

@@ -67,6 +67,7 @@ pub enum ReceiveMessage {
         session_id: SessionId,
         job_id: JobId,
         block: String,
+        inputs: HashMap<HandleName, JsonValue>,
         stacks: Vec<BlockJobStackLevel>,
         identifier: String,
     },
@@ -1260,8 +1261,28 @@ where
                                             .unwrap();
                                     }
                                 }
-                                ReceiveMessage::RunBlock { .. } => {
-                                    // TODO: find block and run it
+                                ReceiveMessage::RunBlock {
+                                    job_id,
+                                    block,
+                                    inputs,
+                                    identifier,
+                                    session_id,
+                                    stacks,
+                                } => {
+                                    if let Some(sender) = subscribers.get(&job_id) {
+                                        sender
+                                            .send(ReceiveMessage::RunBlock {
+                                                job_id: job_id,
+                                                block,
+                                                inputs,
+                                                session_id: session_id,
+                                                stacks,
+                                                identifier: identifier,
+                                            })
+                                            .unwrap();
+                                    } else {
+                                        warn!("No subscriber for job_id: {:?}", job_id);
+                                    }
                                 }
                                 _ => {
                                     if let Some(sender) =

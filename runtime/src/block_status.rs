@@ -18,7 +18,7 @@ pub enum Status {
     },
     RunBlock {
         block: String,
-        inputs: HashMap<HandleName, Arc<OutputValue>>,
+        inputs: HashMap<HandleName, serde_json::Value>,
     },
     Done {
         job_id: JobId,
@@ -47,6 +47,9 @@ impl BlockStatusTx {
     }
     pub fn outputs(&self, job_id: JobId, outputs: HashMap<HandleName, Arc<OutputValue>>) {
         self.tx.send(Status::Outputs { job_id, outputs }).unwrap();
+    }
+    pub fn run_block(&self, block: String, inputs: HashMap<HandleName, serde_json::Value>) {
+        self.tx.send(Status::RunBlock { block, inputs }).unwrap();
     }
     pub fn finish(
         &self,
