@@ -69,7 +69,7 @@ pub enum ReceiveMessage {
         block: String,
         inputs: HashMap<HandleName, JsonValue>,
         stacks: Vec<BlockJobStackLevel>,
-        identifier: String,
+        // identifier: String,
     },
     // --- 以下消息，是通过 scheduler 发送给 subscriber 的消息，而不是 mqtt 消息 --- //
     ExecutorTimeout {
@@ -1265,7 +1265,7 @@ where
                                     job_id,
                                     block,
                                     inputs,
-                                    identifier,
+                                    // identifier,
                                     session_id,
                                     stacks,
                                 } => {
@@ -1277,7 +1277,7 @@ where
                                                 inputs,
                                                 session_id: session_id,
                                                 stacks,
-                                                identifier: identifier,
+                                                // identifier: identifier,
                                             })
                                             .unwrap();
                                     } else {
