@@ -67,9 +67,9 @@ pub enum ReceiveMessage {
         session_id: SessionId,
         job_id: JobId,
         block: String,
+        block_job_id: String,
         inputs: HashMap<HandleName, JsonValue>,
         stacks: Vec<BlockJobStackLevel>,
-        // identifier: String,
     },
     // --- 以下消息，是通过 scheduler 发送给 subscriber 的消息，而不是 mqtt 消息 --- //
     ExecutorTimeout {
@@ -1264,8 +1264,8 @@ where
                                 ReceiveMessage::RunBlock {
                                     job_id,
                                     block,
+                                    block_job_id,
                                     inputs,
-                                    // identifier,
                                     session_id,
                                     stacks,
                                 } => {
@@ -1274,10 +1274,10 @@ where
                                             .send(ReceiveMessage::RunBlock {
                                                 job_id: job_id,
                                                 block,
+                                                block_job_id,
                                                 inputs,
                                                 session_id: session_id,
                                                 stacks,
-                                                // identifier: identifier,
                                             })
                                             .unwrap();
                                     } else {

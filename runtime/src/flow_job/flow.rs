@@ -316,19 +316,20 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                         }
                     }
                 }
-                block_status::Status::RunBlock { block, inputs } => {
+                block_status::Status::RunBlock {
+                    block,
+                    block_job_id,
+                    inputs,
+                } => {
                     let block_path = flow_shared.path_finder.find_task_block_path(&block);
                     if let Ok(block_path) = block_path {
                         let mut block_resolver = BlockResolver::new();
                         let task_block = block_resolver.read_task_block(&block_path);
                         if let Ok(task_block) = task_block {
-                            let new_job_id = JobId::random();
-
                             let mut inputs_map = HashMap::new();
                             for (handle, value) in inputs {
                                 inputs_map.insert(
                                     handle,
-                                    // consider variable inputs
                                     Arc::new(OutputValue {
                                         value: value.clone(),
                                         cacheable: true,
@@ -336,13 +337,13 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                 );
                             }
 
-                            tracing::info!("running task block: {} as {}", block, new_job_id);
+                            tracing::info!("running task block: {} as {}", block, block_job_id);
                             if let Some(handle) = run_task_block(RunTaskBlockArgs {
                                 task_block,
                                 shared: Arc::clone(&flow_shared.shared),
                                 parent_flow: Some(flow_shared.flow_block.clone()),
                                 stacks: flow_shared.stacks.clone(),
-                                job_id: new_job_id.clone(),
+                                job_id: block_job_id.clone().into(),
                                 inputs: Some(inputs_map),
                                 block_status: run_flow_ctx.block_status.clone(),
                                 scope: flow_shared.scope.clone(),
@@ -350,7 +351,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                 inputs_def_patch: None,
                             }) {
                                 run_flow_ctx.jobs.insert(
-                                    new_job_id,
+                                    block_job_id.into(),
                                     BlockInFlowJobHandle {
                                         node_id: NodeId::from(format!("run_block::{}", block)),
                                         _job: handle,

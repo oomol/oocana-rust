@@ -295,8 +295,13 @@ pub fn listen_to_worker(args: ListenerArgs) -> tokio::task::JoinHandle<()> {
                 scheduler::ReceiveMessage::BlockError { error, .. } => {
                     reporter.error(&error);
                 }
-                scheduler::ReceiveMessage::RunBlock { block, inputs, .. } => {
-                    block_status.run_block(block, inputs);
+                scheduler::ReceiveMessage::RunBlock {
+                    block,
+                    block_job_id,
+                    inputs,
+                    ..
+                } => {
+                    block_status.run_block(block, block_job_id, inputs);
                 }
             }
         }
