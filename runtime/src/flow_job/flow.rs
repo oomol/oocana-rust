@@ -405,6 +405,17 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                             .get(&job_id)
                             .map(|job| job.node_id.to_owned());
 
+                        let is_context_run_block = node_id
+                            .as_ref()
+                            // TODO: use constants for run_block prefix
+                            .map(|id| id.starts_with("run_block::"))
+                            .unwrap_or(true);
+
+                        if is_context_run_block {
+                            // if the error is from a run_block, we just log the error and continue run flow. It's user's responsibility to handle the error and consider whether to continue the flow.
+                            continue;
+                        }
+
                         run_flow_ctx.jobs.clear();
 
                         if flow_shared.stacks.is_root() {
