@@ -10,7 +10,7 @@ use crate::{
     block_status::{self, BlockStatusTx},
     shared::Shared,
 };
-use mainframe::reporter::FlowReporterTx;
+use mainframe::{reporter::FlowReporterTx, scheduler};
 use tracing::warn;
 use utils::output::OutputValue;
 
@@ -266,6 +266,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
         return None;
     }
 
+    let scheduler_tx = flow_shared.shared.scheduler_tx.clone();
     let spawn_handle = tokio::spawn(async move {
         while let Some(status) = block_status_rx.recv().await {
             match status {
@@ -359,12 +360,32 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                 );
                             }
                         } else {
-                            // todo: return error
-                            warn!("Failed to read block: {:?}", task_block);
+                            scheduler_tx.run_block_error(
+                                &flow_shared.shared.session_id,
+                                scheduler::RunBlockErrorParams {
+                                    session_id: flow_shared.shared.session_id.clone(),
+                                    job_id: block_job_id.clone().into(),
+                                    error: format!(
+                                        "Failed to read task block from path: {}. Error: {}",
+                                        block_path.display(),
+                                        task_block.unwrap_err().to_string(),
+                                    ),
+                                },
+                            );
                         }
                     } else {
-                        // todo: return error
-                        warn!("Failed to find block path for block: {}", block);
+                        scheduler_tx.run_block_error(
+                            &flow_shared.shared.session_id,
+                            scheduler::RunBlockErrorParams {
+                                session_id: flow_shared.shared.session_id.clone(),
+                                job_id: block_job_id.clone().into(),
+                                error: format!(
+                                    "Failed to find task block path for block: {}. Error: {}",
+                                    block,
+                                    block_path.unwrap_err()
+                                ),
+                            },
+                        );
                     }
                 }
                 block_status::Status::Done {

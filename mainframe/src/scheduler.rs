@@ -185,6 +185,7 @@ impl ExecutePayload<'_> {
 pub trait SchedulerTxImpl {
     async fn send_inputs(&self, job_id: &JobId, data: MessageData);
     async fn run_block(&self, executor_name: &str, data: MessageData);
+    async fn run_block_error(&self, session_id: &SessionId, data: MessageData);
     async fn run_service_block(&self, executor_name: &str, data: MessageData);
     async fn disconnect(&self);
 }
@@ -206,6 +207,11 @@ enum SchedulerCommand {
         inputs: Option<BlockInputs>,
         inputs_def: Option<InputHandles>,
         inputs_def_patch: Option<InputDefPatchMap>,
+    },
+    RunBlockError {
+        session_id: SessionId,
+        job_id: JobId,
+        error: String,
     },
     ExecuteBlock {
         job_id: JobId,
@@ -264,6 +270,12 @@ pub struct SchedulerTx {
     tx: Sender<SchedulerCommand>,
     default_package: Option<String>,
     exclude_packages: Option<Vec<String>>,
+}
+
+pub struct RunBlockErrorParams {
+    pub session_id: SessionId,
+    pub job_id: JobId,
+    pub error: String,
 }
 
 pub struct InputParams {
@@ -336,6 +348,16 @@ impl SchedulerTx {
                 inputs,
                 inputs_def,
                 inputs_def_patch,
+            })
+            .unwrap();
+    }
+
+    pub fn run_block_error(&self, session_id: &SessionId, params: RunBlockErrorParams) {
+        self.tx
+            .send(SchedulerCommand::RunBlockError {
+                session_id: session_id.clone(),
+                job_id: params.job_id,
+                error: params.error,
             })
             .unwrap();
     }
@@ -1001,6 +1023,19 @@ where
                         })
                         .unwrap();
                         impl_tx.send_inputs(&job_id, data).await;
+                    }
+                    Ok(SchedulerCommand::RunBlockError {
+                        session_id,
+                        job_id,
+                        error,
+                    }) => {
+                        let data = serde_json::to_vec(&ReceiveMessage::BlockError {
+                            session_id: session_id.clone(),
+                            job_id,
+                            error,
+                        })
+                        .unwrap();
+                        impl_tx.run_block_error(&session_id, data).await;
                     }
                     Ok(SchedulerCommand::ExecuteServiceBlock {
                         job_id,
