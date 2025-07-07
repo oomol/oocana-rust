@@ -343,7 +343,11 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                 task_block,
                                 shared: Arc::clone(&flow_shared.shared),
                                 parent_flow: Some(flow_shared.flow_block.clone()),
-                                stacks: flow_shared.stacks.clone(),
+                                stacks: flow_shared.stacks.stack(
+                                    flow_shared.job_id.to_owned(),
+                                    flow_shared.flow_block.path_str.to_owned(),
+                                    NodeId::from(format!("run_block::{}", block)),
+                                ),
                                 job_id: block_job_id.clone().into(),
                                 inputs: Some(inputs_map),
                                 block_status: run_flow_ctx.block_status.clone(),
