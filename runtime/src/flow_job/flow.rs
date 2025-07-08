@@ -3,20 +3,21 @@ use std::{
     path::PathBuf,
     sync::Arc,
 };
-
 use uuid::Uuid;
 
 use crate::{
-    block_job::{run_block, BlockJobHandle, RunBlockArgs},
+    block_job::{run_block, run_task_block, BlockJobHandle, RunBlockArgs, RunTaskBlockArgs},
     block_status::{self, BlockStatusTx},
     shared::Shared,
 };
-use mainframe::reporter::FlowReporterTx;
+use mainframe::{reporter::FlowReporterTx, scheduler};
 use tracing::warn;
 use utils::output::OutputValue;
 
 use job::{BlockInputs, BlockJobStacks, JobId, RunningPackageScope};
-use manifest_meta::{HandleTo, InputHandle, Node, NodeId, RunningScope, Slot, SubflowBlock};
+use manifest_meta::{
+    BlockResolver, HandleTo, InputHandle, Node, NodeId, RunningScope, Slot, SubflowBlock,
+};
 
 use super::node_input_values;
 use node_input_values::{CacheMetaMap, CacheMetaMapExt, NodeInputValues};
@@ -48,6 +49,7 @@ struct FlowShared {
     parent_scope: RunningPackageScope,
     scope: RunningPackageScope,
     slot_blocks: HashMap<NodeId, Slot>,
+    path_finder: manifest_reader::path_finder::BlockPathFinder,
 }
 
 struct RunFlowContext {
@@ -76,6 +78,7 @@ pub struct RunFlowArgs {
     pub parent_scope: RunningPackageScope,
     pub scope: RunningPackageScope,
     pub slot_blocks: HashMap<NodeId, Slot>,
+    pub path_finder: manifest_reader::path_finder::BlockPathFinder,
 }
 
 pub struct UpstreamArgs {
@@ -118,6 +121,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
         slot_blocks,
         scope,
         parent_scope,
+        path_finder,
     } = flow_args;
 
     let reporter = Arc::new(shared.reporter.flow(
@@ -180,7 +184,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
         node_queue_pool: HashMap::new(),
     };
 
-    let flow_shared = FlowShared {
+    let mut flow_shared = FlowShared {
         flow_block,
         job_id: flow_job_id.to_owned(),
         shared,
@@ -188,6 +192,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
         scope,
         slot_blocks,
         parent_scope,
+        path_finder,
     };
 
     if let Some(ref origin_nodes) = nodes {
@@ -261,6 +266,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
         return None;
     }
 
+    let scheduler_tx = flow_shared.shared.scheduler_tx.clone();
     let spawn_handle = tokio::spawn(async move {
         while let Some(status) = block_status_rx.recv().await {
             match status {
@@ -311,6 +317,81 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                         }
                     }
                 }
+                block_status::Status::RunBlock {
+                    block,
+                    block_job_id,
+                    inputs,
+                } => {
+                    let block_path = flow_shared.path_finder.find_task_block_path(&block);
+                    if let Ok(block_path) = block_path {
+                        let mut block_resolver = BlockResolver::new();
+                        let task_block = block_resolver.read_task_block(&block_path);
+                        if let Ok(task_block) = task_block {
+                            let mut inputs_map = HashMap::new();
+                            for (handle, value) in inputs {
+                                inputs_map.insert(
+                                    handle,
+                                    Arc::new(OutputValue {
+                                        value: value.clone(),
+                                        cacheable: true,
+                                    }),
+                                );
+                            }
+
+                            tracing::info!("running task block: {} as {}", block, block_job_id);
+                            if let Some(handle) = run_task_block(RunTaskBlockArgs {
+                                task_block,
+                                shared: Arc::clone(&flow_shared.shared),
+                                parent_flow: Some(flow_shared.flow_block.clone()),
+                                stacks: flow_shared.stacks.stack(
+                                    flow_shared.job_id.to_owned(),
+                                    flow_shared.flow_block.path_str.to_owned(),
+                                    NodeId::from(format!("run_block::{}", block)),
+                                ),
+                                job_id: block_job_id.clone().into(),
+                                inputs: Some(inputs_map),
+                                block_status: run_flow_ctx.block_status.clone(),
+                                scope: flow_shared.scope.clone(),
+                                timeout: None,
+                                inputs_def_patch: None,
+                            }) {
+                                run_flow_ctx.jobs.insert(
+                                    block_job_id.into(),
+                                    BlockInFlowJobHandle {
+                                        node_id: NodeId::from(format!("run_block::{}", block)),
+                                        _job: handle,
+                                    },
+                                );
+                            }
+                        } else {
+                            scheduler_tx.run_block_error(
+                                &flow_shared.shared.session_id,
+                                scheduler::RunBlockErrorParams {
+                                    session_id: flow_shared.shared.session_id.clone(),
+                                    job_id: block_job_id.clone().into(),
+                                    error: format!(
+                                        "Failed to read task block from path: {}. Error: {}",
+                                        block_path.display(),
+                                        task_block.unwrap_err().to_string(),
+                                    ),
+                                },
+                            );
+                        }
+                    } else {
+                        scheduler_tx.run_block_error(
+                            &flow_shared.shared.session_id,
+                            scheduler::RunBlockErrorParams {
+                                session_id: flow_shared.shared.session_id.clone(),
+                                job_id: block_job_id.clone().into(),
+                                error: format!(
+                                    "Failed to find task block path for block: {}. Error: {}",
+                                    block,
+                                    block_path.unwrap_err()
+                                ),
+                            },
+                        );
+                    }
+                }
                 block_status::Status::Done {
                     job_id,
                     result,
@@ -348,6 +429,17 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                             .jobs
                             .get(&job_id)
                             .map(|job| job.node_id.to_owned());
+
+                        let is_context_run_block = node_id
+                            .as_ref()
+                            // TODO: use constants for run_block prefix
+                            .map(|id| id.starts_with("run_block::"))
+                            .unwrap_or(true);
+
+                        if is_context_run_block {
+                            // if the error is from a run_block, we just log the error and continue run flow. It's user's responsibility to handle the error and consider whether to continue the flow.
+                            continue;
+                        }
 
                         run_flow_ctx.jobs.clear();
 
@@ -427,8 +519,8 @@ fn run_pending_node(job_id: JobId, flow_shared: &FlowShared, run_flow_ctx: &mut 
 
         let node_queue = run_flow_ctx
             .node_queue_pool
-            .get_mut(&node_id)
-            .expect("Node queue not found");
+            .entry(node_id.to_owned())
+            .or_default();
 
         node_queue.jobs.remove(&job_id);
 
@@ -691,6 +783,7 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
                 _ => None,
             },
             inputs_def_patch: node.inputs_def_patch(),
+            path_finder: shared.path_finder.clone(),
         }
     });
 

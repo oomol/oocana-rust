@@ -34,11 +34,11 @@ pub fn find_oo_yaml_without_suffix(basename_path: &Path) -> Option<PathBuf> {
     None
 }
 
-pub fn find_oo_yaml(file_or_dir_path: &Path, basename: &str) -> Option<PathBuf> {
-    if file_or_dir_path.is_file() {
-        Some(file_or_dir_path.to_path_buf())
+pub fn find_oo_yaml<P: AsRef<Path>>(file_or_dir_path: P, basename: &str) -> Option<PathBuf> {
+    if file_or_dir_path.as_ref().is_file() {
+        Some(file_or_dir_path.as_ref().to_path_buf())
     } else {
-        find_oo_yaml_in_dir(file_or_dir_path, basename)
+        find_oo_yaml_in_dir(file_or_dir_path.as_ref(), basename)
     }
 }
 
