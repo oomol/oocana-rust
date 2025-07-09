@@ -378,8 +378,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                             })
                             .collect();
 
-                        // 检查缺失输入
-                        let absence_input = task_block
+                        let missing_inputs = task_block
                             .inputs_def
                             .as_ref()
                             .map(|inputs_def| {
@@ -392,10 +391,10 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                             })
                             .unwrap_or_default();
 
-                        if !absence_input.is_empty() {
+                        if !missing_inputs.is_empty() {
                             let msg = format!(
-                                "Task block {} inputs are not fulfilled: {:?}",
-                                block, absence_input
+                                "Task block {} inputs missing these input handles: {:?}",
+                                block, missing_inputs
                             );
                             scheduler_tx.run_block_error(
                                 &flow_shared.shared.session_id,
