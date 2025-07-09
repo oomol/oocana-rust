@@ -7,7 +7,7 @@ use uuid::Uuid;
 
 use crate::{
     block_job::{run_block, run_task_block, BlockJobHandle, RunBlockArgs, RunTaskBlockArgs},
-    block_status::{self, BlockStatusTx},
+    block_status::{self, BlockRequest, BlockStatusTx},
     shared::Shared,
 };
 use mainframe::{reporter::FlowReporterTx, scheduler};
@@ -317,44 +317,111 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                         }
                     }
                 }
-                block_status::Status::RunBlock {
-                    block,
-                    block_job_id,
-                    inputs,
-                } => {
-                    let block_path = flow_shared.path_finder.find_task_block_path(&block);
-                    if let Ok(block_path) = block_path {
-                        let mut block_resolver = BlockResolver::new();
-                        let task_block = block_resolver.read_task_block(&block_path);
-                        if let Ok(task_block) = task_block {
-                            let mut inputs_map = HashMap::new();
-                            for (handle, value) in inputs {
-                                inputs_map.insert(
-                                    handle,
-                                    Arc::new(OutputValue {
-                                        value: value.clone(),
-                                        cacheable: true,
-                                    }),
-                                );
-                            }
-
-                            // check task_block's inputs is fulfilled
-                            let absence_input =
-                                if let Some(inputs_def) = task_block.inputs_def.as_ref() {
-                                    let mut absence_input = vec![];
-                                    for (handle, _) in inputs_def.iter() {
-                                        if !inputs_map.contains_key(handle) {
-                                            absence_input.push(handle.clone());
-                                        }
+                block_status::Status::Request(request) => {
+                    match request {
+                        BlockRequest::RunBlock {
+                            block,
+                            block_job_id,
+                            inputs,
+                        } => {
+                            let block_path = flow_shared.path_finder.find_task_block_path(&block);
+                            if let Ok(block_path) = block_path {
+                                let mut block_resolver = BlockResolver::new();
+                                let task_block = block_resolver.read_task_block(&block_path);
+                                if let Ok(task_block) = task_block {
+                                    let mut inputs_map = HashMap::new();
+                                    for (handle, value) in inputs {
+                                        inputs_map.insert(
+                                            handle,
+                                            Arc::new(OutputValue {
+                                                value: value.clone(),
+                                                cacheable: true,
+                                            }),
+                                        );
                                     }
-                                    absence_input
+
+                                    // check task_block's inputs is fulfilled
+                                    let absence_input =
+                                        if let Some(inputs_def) = task_block.inputs_def.as_ref() {
+                                            let mut absence_input = vec![];
+                                            for (handle, _) in inputs_def.iter() {
+                                                if !inputs_map.contains_key(handle) {
+                                                    absence_input.push(handle.clone());
+                                                }
+                                            }
+                                            absence_input
+                                        } else {
+                                            vec![]
+                                        };
+                                    if !absence_input.is_empty() {
+                                        let msg = format!(
+                                            "Task block {} inputs are not fulfilled: {:?}",
+                                            block, absence_input
+                                        );
+                                        scheduler_tx.run_block_error(
+                                            &flow_shared.shared.session_id,
+                                            scheduler::RunBlockErrorParams {
+                                                session_id: flow_shared.shared.session_id.clone(),
+                                                job_id: block_job_id.clone().into(),
+                                                error: msg,
+                                            },
+                                        );
+                                        continue;
+                                    }
+
+                                    tracing::info!(
+                                        "running task block: {} as {}",
+                                        block,
+                                        block_job_id
+                                    );
+                                    if let Some(handle) = run_task_block(RunTaskBlockArgs {
+                                        task_block,
+                                        shared: Arc::clone(&flow_shared.shared),
+                                        parent_flow: Some(flow_shared.flow_block.clone()),
+                                        stacks: flow_shared.stacks.stack(
+                                            flow_shared.job_id.to_owned(),
+                                            flow_shared.flow_block.path_str.to_owned(),
+                                            NodeId::from(format!("run_block::{}", block)),
+                                        ),
+                                        job_id: block_job_id.clone().into(),
+                                        inputs: Some(inputs_map),
+                                        block_status: run_flow_ctx.block_status.clone(),
+                                        scope: flow_shared.scope.clone(),
+                                        timeout: None,
+                                        inputs_def_patch: None,
+                                    }) {
+                                        run_flow_ctx.jobs.insert(
+                                            block_job_id.into(),
+                                            BlockInFlowJobHandle {
+                                                node_id: NodeId::from(format!(
+                                                    "run_block::{}",
+                                                    block
+                                                )),
+                                                _job: handle,
+                                            },
+                                        );
+                                    }
                                 } else {
-                                    vec![]
-                                };
-                            if !absence_input.is_empty() {
+                                    let msg = format!(
+                                        "Failed to read task block from path: {}. Error: {}",
+                                        block_path.display(),
+                                        task_block.unwrap_err().to_string(),
+                                    );
+                                    tracing::warn!("{}", msg);
+                                    scheduler_tx.run_block_error(
+                                        &flow_shared.shared.session_id,
+                                        scheduler::RunBlockErrorParams {
+                                            session_id: flow_shared.shared.session_id.clone(),
+                                            job_id: block_job_id.clone().into(),
+                                            error: msg,
+                                        },
+                                    );
+                                }
+                            } else {
                                 let msg = format!(
-                                    "Task block {} inputs are not fulfilled: {:?}",
-                                    block, absence_input
+                                    "Failed to find task block path for block: {}. Error: {}",
+                                    block,
+                                    block_path.unwrap_err().to_string(),
                                 );
                                 scheduler_tx.run_block_error(
                                     &flow_shared.shared.session_id,
@@ -364,64 +431,8 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                         error: msg,
                                     },
                                 );
-                                continue;
                             }
-
-                            tracing::info!("running task block: {} as {}", block, block_job_id);
-                            if let Some(handle) = run_task_block(RunTaskBlockArgs {
-                                task_block,
-                                shared: Arc::clone(&flow_shared.shared),
-                                parent_flow: Some(flow_shared.flow_block.clone()),
-                                stacks: flow_shared.stacks.stack(
-                                    flow_shared.job_id.to_owned(),
-                                    flow_shared.flow_block.path_str.to_owned(),
-                                    NodeId::from(format!("run_block::{}", block)),
-                                ),
-                                job_id: block_job_id.clone().into(),
-                                inputs: Some(inputs_map),
-                                block_status: run_flow_ctx.block_status.clone(),
-                                scope: flow_shared.scope.clone(),
-                                timeout: None,
-                                inputs_def_patch: None,
-                            }) {
-                                run_flow_ctx.jobs.insert(
-                                    block_job_id.into(),
-                                    BlockInFlowJobHandle {
-                                        node_id: NodeId::from(format!("run_block::{}", block)),
-                                        _job: handle,
-                                    },
-                                );
-                            }
-                        } else {
-                            let msg = format!(
-                                "Failed to read task block from path: {}. Error: {}",
-                                block_path.display(),
-                                task_block.unwrap_err().to_string(),
-                            );
-                            tracing::warn!("{}", msg);
-                            scheduler_tx.run_block_error(
-                                &flow_shared.shared.session_id,
-                                scheduler::RunBlockErrorParams {
-                                    session_id: flow_shared.shared.session_id.clone(),
-                                    job_id: block_job_id.clone().into(),
-                                    error: msg,
-                                },
-                            );
                         }
-                    } else {
-                        let msg = format!(
-                            "Failed to find task block path for block: {}. Error: {}",
-                            block,
-                            block_path.unwrap_err().to_string(),
-                        );
-                        scheduler_tx.run_block_error(
-                            &flow_shared.shared.session_id,
-                            scheduler::RunBlockErrorParams {
-                                session_id: flow_shared.shared.session_id.clone(),
-                                job_id: block_job_id.clone().into(),
-                                error: msg,
-                            },
-                        );
                     }
                 }
                 block_status::Status::Done {
