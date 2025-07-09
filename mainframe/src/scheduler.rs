@@ -233,10 +233,11 @@ enum SchedulerCommand {
         inputs_def: Option<InputHandles>,
         inputs_def_patch: Option<InputDefPatchMap>,
     },
-    RunBlockError {
+    RespondRequestError {
         session_id: SessionId,
         job_id: JobId,
         error: String,
+        request_id: String,
     },
     ExecuteBlock {
         job_id: JobId,
@@ -301,6 +302,7 @@ pub struct RunBlockErrorParams {
     pub session_id: SessionId,
     pub job_id: JobId,
     pub error: String,
+    pub request_id: String,
 }
 
 pub struct InputParams {
@@ -379,10 +381,11 @@ impl SchedulerTx {
 
     pub fn run_block_error(&self, session_id: &SessionId, params: RunBlockErrorParams) {
         self.tx
-            .send(SchedulerCommand::RunBlockError {
+            .send(SchedulerCommand::RespondRequestError {
                 session_id: session_id.clone(),
                 job_id: params.job_id,
                 error: params.error,
+                request_id: params.request_id,
             })
             .unwrap();
     }
@@ -1049,15 +1052,25 @@ where
                         .unwrap();
                         impl_tx.send_inputs(&job_id, data).await;
                     }
-                    Ok(SchedulerCommand::RunBlockError {
+                    Ok(SchedulerCommand::RespondRequestError {
                         session_id,
                         job_id,
                         error,
+                        request_id,
                     }) => {
-                        let data = serde_json::to_vec(&ReceiveMessage::BlockError {
+                        #[derive(serde::Serialize)]
+                        struct BlockResponse {
+                            session_id: SessionId,
+                            job_id: JobId,
+                            error: String,
+                            request_id: String,
+                        }
+
+                        let data = serde_json::to_vec(&BlockResponse {
                             session_id: session_id.clone(),
                             job_id: job_id.to_owned(),
                             error,
+                            request_id,
                         })
                         .unwrap();
                         impl_tx

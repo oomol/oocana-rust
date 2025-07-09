@@ -331,6 +331,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                         block,
                         block_job_id,
                         inputs,
+                        request_id,
                         ..
                     } => {
                         let block_path = match flow_shared.path_finder.find_task_block_path(&block)
@@ -347,6 +348,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                         session_id: flow_shared.shared.session_id.clone(),
                                         job_id: block_job_id.clone().into(),
                                         error: msg,
+                                        request_id,
                                     },
                                 );
                                 continue;
@@ -368,6 +370,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                         session_id: flow_shared.shared.session_id.clone(),
                                         job_id: block_job_id.clone().into(),
                                         error: msg,
+                                        request_id,
                                     },
                                 );
                                 continue;
@@ -412,6 +415,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                     session_id: flow_shared.shared.session_id.clone(),
                                     job_id: block_job_id.clone().into(),
                                     error: msg,
+                                    request_id,
                                 },
                             );
                             continue;
