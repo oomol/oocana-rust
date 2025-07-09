@@ -338,6 +338,35 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                 );
                             }
 
+                            // check task_block's inputs is fulfilled
+                            let absence_input =
+                                if let Some(inputs_def) = task_block.inputs_def.as_ref() {
+                                    let mut absence_input = vec![];
+                                    for (handle, _) in inputs_def.iter() {
+                                        if !inputs_map.contains_key(handle) {
+                                            absence_input.push(handle.clone());
+                                        }
+                                    }
+                                    absence_input
+                                } else {
+                                    vec![]
+                                };
+                            if !absence_input.is_empty() {
+                                let msg = format!(
+                                    "Task block {} inputs are not fulfilled: {:?}",
+                                    block, absence_input
+                                );
+                                scheduler_tx.run_block_error(
+                                    &flow_shared.shared.session_id,
+                                    scheduler::RunBlockErrorParams {
+                                        session_id: flow_shared.shared.session_id.clone(),
+                                        job_id: block_job_id.clone().into(),
+                                        error: msg,
+                                    },
+                                );
+                                continue;
+                            }
+
                             tracing::info!("running task block: {} as {}", block, block_job_id);
                             if let Some(handle) = run_task_block(RunTaskBlockArgs {
                                 task_block,
