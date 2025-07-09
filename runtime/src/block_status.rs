@@ -6,6 +6,14 @@ use utils::output::OutputValue;
 
 use manifest_meta::HandleName;
 
+pub enum BlockRequest {
+    RunBlock {
+        block: String,
+        block_job_id: String,
+        inputs: HashMap<HandleName, serde_json::Value>,
+    },
+}
+
 pub enum Status {
     Output {
         job_id: JobId,
@@ -16,11 +24,7 @@ pub enum Status {
         job_id: JobId,
         outputs: HashMap<HandleName, Arc<OutputValue>>,
     },
-    RunBlock {
-        block: String,
-        block_job_id: String,
-        inputs: HashMap<HandleName, serde_json::Value>,
-    },
+    Request(BlockRequest),
     Done {
         job_id: JobId,
         result: Option<HashMap<HandleName, Arc<OutputValue>>>,
@@ -56,11 +60,11 @@ impl BlockStatusTx {
         inputs: HashMap<HandleName, serde_json::Value>,
     ) {
         self.tx
-            .send(Status::RunBlock {
+            .send(Status::Request(BlockRequest::RunBlock {
                 block,
                 block_job_id,
                 inputs,
-            })
+            }))
             .unwrap();
     }
     pub fn finish(

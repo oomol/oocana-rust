@@ -156,7 +156,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
         match status {
             block_status::Status::Outputs { .. } => {}
             block_status::Status::Output { .. } => {}
-            block_status::Status::RunBlock { .. } => {}
+            block_status::Status::Request { .. } => {}
             block_status::Status::Done { error, .. } => {
                 if let Some(err) = error {
                     result_error = Some(err);
