@@ -205,7 +205,12 @@ impl ExecutePayload<'_> {
 pub trait SchedulerTxImpl {
     async fn send_inputs(&self, job_id: &JobId, data: MessageData);
     async fn run_block(&self, executor_name: &str, data: MessageData);
-    async fn run_block_error(&self, session_id: &SessionId, data: MessageData);
+    async fn respond_block_request(
+        &self,
+        session_id: &SessionId,
+        job_id: &JobId,
+        data: MessageData,
+    );
     async fn run_service_block(&self, executor_name: &str, data: MessageData);
     async fn disconnect(&self);
 }
@@ -1051,11 +1056,13 @@ where
                     }) => {
                         let data = serde_json::to_vec(&ReceiveMessage::BlockError {
                             session_id: session_id.clone(),
-                            job_id,
+                            job_id: job_id.to_owned(),
                             error,
                         })
                         .unwrap();
-                        impl_tx.run_block_error(&session_id, data).await;
+                        impl_tx
+                            .respond_block_request(&session_id, &job_id, data)
+                            .await;
                     }
                     Ok(SchedulerCommand::ExecuteServiceBlock {
                         job_id,
