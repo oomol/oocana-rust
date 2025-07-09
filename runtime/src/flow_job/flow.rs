@@ -364,30 +364,33 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                 );
                             }
                         } else {
+                            let msg = format!(
+                                "Failed to read task block from path: {}. Error: {}",
+                                block_path.display(),
+                                task_block.unwrap_err().to_string(),
+                            );
+                            tracing::warn!("{}", msg);
                             scheduler_tx.run_block_error(
                                 &flow_shared.shared.session_id,
                                 scheduler::RunBlockErrorParams {
                                     session_id: flow_shared.shared.session_id.clone(),
                                     job_id: block_job_id.clone().into(),
-                                    error: format!(
-                                        "Failed to read task block from path: {}. Error: {}",
-                                        block_path.display(),
-                                        task_block.unwrap_err().to_string(),
-                                    ),
+                                    error: msg,
                                 },
                             );
                         }
                     } else {
+                        let msg = format!(
+                            "Failed to find task block path for block: {}. Error: {}",
+                            block,
+                            block_path.unwrap_err().to_string(),
+                        );
                         scheduler_tx.run_block_error(
                             &flow_shared.shared.session_id,
                             scheduler::RunBlockErrorParams {
                                 session_id: flow_shared.shared.session_id.clone(),
                                 job_id: block_job_id.clone().into(),
-                                error: format!(
-                                    "Failed to find task block path for block: {}. Error: {}",
-                                    block,
-                                    block_path.unwrap_err()
-                                ),
+                                error: msg,
                             },
                         );
                     }
