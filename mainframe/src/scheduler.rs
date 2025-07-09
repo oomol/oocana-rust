@@ -29,6 +29,33 @@ use utils::error::{Error, Result};
 use crate::MessageData;
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
+#[serde(tag = "action")]
+pub enum BlockRequest {
+    RunBlock {
+        session_id: SessionId,
+        job_id: JobId,
+        block: String,
+        block_job_id: String,
+        inputs: HashMap<HandleName, JsonValue>,
+        request_id: String, // this is used to match the response with the request
+    },
+}
+
+impl BlockRequest {
+    pub fn session_id(&self) -> &SessionId {
+        match self {
+            BlockRequest::RunBlock { session_id, .. } => session_id,
+        }
+    }
+
+    pub fn job_id(&self) -> &JobId {
+        match self {
+            BlockRequest::RunBlock { job_id, .. } => job_id,
+        }
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(tag = "type")]
 pub enum ReceiveMessage {
     BlockReady {
@@ -63,14 +90,7 @@ pub enum ReceiveMessage {
         package: Option<String>,
         identifier: Option<String>,
     },
-    RunBlock {
-        session_id: SessionId,
-        job_id: JobId,
-        block: String,
-        block_job_id: String,
-        inputs: HashMap<HandleName, JsonValue>,
-        stacks: Vec<BlockJobStackLevel>,
-    },
+    BlockRequest(BlockRequest),
     // --- 以下消息，是通过 scheduler 发送给 subscriber 的消息，而不是 mqtt 消息 --- //
     ExecutorTimeout {
         session_id: SessionId,
@@ -99,7 +119,7 @@ impl ReceiveMessage {
             ReceiveMessage::BlockOutputs { session_id, .. } => session_id,
             ReceiveMessage::BlockError { session_id, .. } => session_id,
             ReceiveMessage::BlockFinished { session_id, .. } => session_id,
-            ReceiveMessage::RunBlock { session_id, .. } => session_id,
+            ReceiveMessage::BlockRequest(BlockRequest::RunBlock { session_id, .. }) => session_id,
             ReceiveMessage::ExecutorReady { session_id, .. } => session_id,
             ReceiveMessage::ExecutorExit { session_id, .. } => session_id,
             ReceiveMessage::ExecutorTimeout { session_id, .. } => session_id,
@@ -114,7 +134,7 @@ impl ReceiveMessage {
             ReceiveMessage::BlockOutputs { job_id, .. } => Some(job_id),
             ReceiveMessage::BlockError { job_id, .. } => Some(job_id),
             ReceiveMessage::BlockFinished { job_id, .. } => Some(job_id),
-            ReceiveMessage::RunBlock { job_id, .. } => Some(job_id),
+            ReceiveMessage::BlockRequest(BlockRequest::RunBlock { job_id, .. }) => Some(job_id),
             ReceiveMessage::ExecutorReady { .. } => None,
             ReceiveMessage::ExecutorExit { .. } => None,
             ReceiveMessage::ExecutorTimeout { .. } => None,
@@ -1296,27 +1316,12 @@ where
                                             .unwrap();
                                     }
                                 }
-                                ReceiveMessage::RunBlock {
-                                    job_id,
-                                    block,
-                                    block_job_id,
-                                    inputs,
-                                    session_id,
-                                    stacks,
-                                } => {
-                                    if let Some(sender) = subscribers.get(&job_id) {
-                                        sender
-                                            .send(ReceiveMessage::RunBlock {
-                                                job_id: job_id,
-                                                block,
-                                                block_job_id,
-                                                inputs,
-                                                session_id: session_id,
-                                                stacks,
-                                            })
-                                            .unwrap();
+                                ReceiveMessage::BlockRequest(request) => {
+                                    // Handle block request
+                                    if let Some(sender) = subscribers.get(&request.job_id()) {
+                                        sender.send(ReceiveMessage::BlockRequest(request)).unwrap();
                                     } else {
-                                        warn!("No subscriber for job_id: {:?}", job_id);
+                                        warn!("No subscriber for job_id: {:?}", request.job_id());
                                     }
                                 }
                                 _ => {
