@@ -2,17 +2,10 @@ use std::{collections::HashMap, sync::Arc};
 
 use flume::{Receiver, Sender};
 use job::JobId;
+use mainframe::scheduler::BlockRequest;
 use utils::output::OutputValue;
 
 use manifest_meta::HandleName;
-
-pub enum BlockRequest {
-    RunBlock {
-        block: String,
-        block_job_id: String,
-        inputs: HashMap<HandleName, serde_json::Value>,
-    },
-}
 
 pub enum Status {
     Output {
@@ -53,19 +46,8 @@ impl BlockStatusTx {
     pub fn outputs(&self, job_id: JobId, outputs: HashMap<HandleName, Arc<OutputValue>>) {
         self.tx.send(Status::Outputs { job_id, outputs }).unwrap();
     }
-    pub fn run_block(
-        &self,
-        block: String,
-        block_job_id: String,
-        inputs: HashMap<HandleName, serde_json::Value>,
-    ) {
-        self.tx
-            .send(Status::Request(BlockRequest::RunBlock {
-                block,
-                block_job_id,
-                inputs,
-            }))
-            .unwrap();
+    pub fn run_request(&self, request: BlockRequest) {
+        self.tx.send(Status::Request(request)).unwrap();
     }
     pub fn finish(
         &self,

@@ -8,10 +8,13 @@ use uuid::Uuid;
 
 use crate::{
     block_job::{run_block, run_task_block, BlockJobHandle, RunBlockArgs, RunTaskBlockArgs},
-    block_status::{self, BlockRequest, BlockStatusTx},
+    block_status::{self, BlockStatusTx},
     shared::Shared,
 };
-use mainframe::{reporter::FlowReporterTx, scheduler};
+use mainframe::{
+    reporter::FlowReporterTx,
+    scheduler::{self, BlockRequest},
+};
 use tracing::warn;
 use utils::output::OutputValue;
 
@@ -328,6 +331,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                         block,
                         block_job_id,
                         inputs,
+                        ..
                     } => {
                         let block_path = match flow_shared.path_finder.find_task_block_path(&block)
                         {
