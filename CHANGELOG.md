@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.28.26 (2025-07-10)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* refactor: check input value and simplify logic code by @leavesster in https://github.com/oomol/oocana-rust/pull/212
+* fix: path finder need flow parent as base by @leavesster in https://github.com/oomol/oocana-rust/pull/215
+* refactor: make block request and response more flexible to support more request in the future by @leavesster in https://github.com/oomol/oocana-rust/pull/214
+* chore: add branch comment by @leavesster in https://github.com/oomol/oocana-rust/pull/216
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.28.25...v0.28.26
+
 ## 0.28.25 (2025-07-08)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
