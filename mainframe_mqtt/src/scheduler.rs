@@ -39,10 +39,10 @@ impl SchedulerTxImpl for SchedulerTx {
     async fn respond_block_request(
         &self,
         session_id: &SessionId,
-        job_id: &JobId,
+        request_id: &str,
         data: MessageData,
     ) {
-        let topic = format!("session/{}/job/{}/response", session_id, job_id);
+        let topic = format!("session/{}/request/{}/response", session_id, request_id);
 
         self.tx
             .publish(topic, QoS::AtLeastOnce, false, data)
