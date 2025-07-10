@@ -174,7 +174,10 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
     shared
         .reporter
         .session_finished(&block_path, &result_error, partial, cache);
-    info!("session finished: {}", block_path);
+    info!(
+        "session finished: {}. error: {:?}",
+        block_path, result_error
+    );
 
     drop(handle);
 
