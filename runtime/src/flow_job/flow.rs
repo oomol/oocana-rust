@@ -342,6 +342,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                     "Failed to find task block path for block: {}. Error: {}",
                                     block, e
                                 );
+                                tracing::warn!("{}", msg);
                                 scheduler_tx.run_block_error(
                                     &flow_shared.shared.session_id,
                                     scheduler::RunBlockErrorParams {
@@ -409,6 +410,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                 "Task block {} inputs missing these input handles: {:?}",
                                 block, missing_inputs
                             );
+                            tracing::warn!("{}", msg);
                             scheduler_tx.run_block_error(
                                 &flow_shared.shared.session_id,
                                 scheduler::RunBlockErrorParams {
