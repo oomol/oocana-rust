@@ -233,10 +233,10 @@ enum SchedulerCommand {
         inputs_def: Option<InputHandles>,
         inputs_def_patch: Option<InputDefPatchMap>,
     },
-    RespondRequestError {
+    BlockRequestResponse {
         session_id: SessionId,
         job_id: JobId,
-        error: String,
+        error: Option<String>,
         request_id: String,
     },
     ExecuteBlock {
@@ -381,10 +381,10 @@ impl SchedulerTx {
 
     pub fn run_block_error(&self, session_id: &SessionId, params: RunBlockErrorParams) {
         self.tx
-            .send(SchedulerCommand::RespondRequestError {
+            .send(SchedulerCommand::BlockRequestResponse {
                 session_id: session_id.clone(),
                 job_id: params.job_id,
-                error: params.error,
+                error: Some(params.error),
                 request_id: params.request_id,
             })
             .unwrap();
@@ -1052,7 +1052,7 @@ where
                         .unwrap();
                         impl_tx.send_inputs(&job_id, data).await;
                     }
-                    Ok(SchedulerCommand::RespondRequestError {
+                    Ok(SchedulerCommand::BlockRequestResponse {
                         session_id,
                         job_id,
                         error,
@@ -1062,7 +1062,8 @@ where
                         struct BlockResponse {
                             session_id: SessionId,
                             job_id: JobId,
-                            error: String,
+                            #[serde(skip_serializing_if = "Option::is_none")]
+                            error: Option<String>,
                             request_id: String,
                         }
 
