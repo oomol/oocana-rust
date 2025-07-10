@@ -8,10 +8,13 @@ use uuid::Uuid;
 
 use crate::{
     block_job::{run_block, run_task_block, BlockJobHandle, RunBlockArgs, RunTaskBlockArgs},
-    block_status::{self, BlockRequest, BlockStatusTx},
+    block_status::{self, BlockStatusTx},
     shared::Shared,
 };
-use mainframe::{reporter::FlowReporterTx, scheduler};
+use mainframe::{
+    reporter::FlowReporterTx,
+    scheduler::{self, BlockRequest},
+};
 use tracing::warn;
 use utils::output::OutputValue;
 
@@ -326,8 +329,11 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                 block_status::Status::Request(request) => match request {
                     BlockRequest::RunBlock {
                         block,
-                        block_job_id,
+                        job_id,
+                        block_job_id: new_job_id,
                         inputs,
+                        request_id,
+                        ..
                     } => {
                         let block_path = match flow_shared.path_finder.find_task_block_path(&block)
                         {
@@ -337,12 +343,14 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                     "Failed to find task block path for block: {}. Error: {}",
                                     block, e
                                 );
-                                scheduler_tx.run_block_error(
+                                tracing::warn!("{}", msg);
+                                scheduler_tx.respond_block_request(
                                     &flow_shared.shared.session_id,
                                     scheduler::RunBlockErrorParams {
                                         session_id: flow_shared.shared.session_id.clone(),
-                                        job_id: block_job_id.clone().into(),
+                                        job_id: job_id.clone().into(),
                                         error: msg,
+                                        request_id,
                                     },
                                 );
                                 continue;
@@ -358,12 +366,13 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                     e
                                 );
                                 tracing::warn!("{}", msg);
-                                scheduler_tx.run_block_error(
+                                scheduler_tx.respond_block_request(
                                     &flow_shared.shared.session_id,
                                     scheduler::RunBlockErrorParams {
                                         session_id: flow_shared.shared.session_id.clone(),
-                                        job_id: block_job_id.clone().into(),
+                                        job_id: job_id.clone().into(),
                                         error: msg,
+                                        request_id,
                                     },
                                 );
                                 continue;
@@ -402,18 +411,20 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                 "Task block {} inputs missing these input handles: {:?}",
                                 block, missing_inputs
                             );
-                            scheduler_tx.run_block_error(
+                            tracing::warn!("{}", msg);
+                            scheduler_tx.respond_block_request(
                                 &flow_shared.shared.session_id,
                                 scheduler::RunBlockErrorParams {
                                     session_id: flow_shared.shared.session_id.clone(),
-                                    job_id: block_job_id.clone().into(),
+                                    job_id: job_id.clone().into(),
                                     error: msg,
+                                    request_id,
                                 },
                             );
                             continue;
                         }
 
-                        tracing::info!("running task block: {} as {}", block, block_job_id);
+                        tracing::info!("running task block: {} as {}", block, new_job_id);
 
                         if let Some(handle) = run_task_block(RunTaskBlockArgs {
                             task_block,
@@ -424,7 +435,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                 flow_shared.flow_block.path_str.to_owned(),
                                 NodeId::from(format!("run_block::{}", block)),
                             ),
-                            job_id: block_job_id.clone().into(),
+                            job_id: new_job_id.clone().into(),
                             inputs: Some(inputs_map),
                             block_status: run_flow_ctx.block_status.clone(),
                             scope: flow_shared.scope.clone(),
@@ -432,7 +443,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                             inputs_def_patch: None,
                         }) {
                             run_flow_ctx.jobs.insert(
-                                block_job_id.into(),
+                                new_job_id.into(),
                                 BlockInFlowJobHandle {
                                     node_id: NodeId::from(format!("run_block::{}", block)),
                                     _job: handle,

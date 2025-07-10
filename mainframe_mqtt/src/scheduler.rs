@@ -36,9 +36,13 @@ impl SchedulerTxImpl for SchedulerTx {
             .unwrap();
     }
 
-    // todo: this is a temporary solution, need to refactor
-    async fn run_block_error(&self, session_id: &SessionId, data: MessageData) {
-        let topic = format!("session/{}/run_block/error", session_id);
+    async fn respond_block_request(
+        &self,
+        session_id: &SessionId,
+        request_id: &str,
+        data: MessageData,
+    ) {
+        let topic = format!("session/{}/request/{}/response", session_id, request_id);
 
         self.tx
             .publish(topic, QoS::AtLeastOnce, false, data)
