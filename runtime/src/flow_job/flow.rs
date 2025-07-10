@@ -1,4 +1,3 @@
-use manifest_reader::path_finder::BlockPathFinder;
 use std::{
     collections::{HashMap, HashSet},
     path::PathBuf,
@@ -188,11 +187,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
         node_queue_pool: HashMap::new(),
     };
 
-    let flow_dir = flow_block
-        .path
-        .parent()
-        .unwrap_or(&PathBuf::from("."))
-        .to_owned();
+    let flow_path = flow_block.path.clone();
     let mut flow_shared = FlowShared {
         flow_block,
         job_id: flow_job_id.to_owned(),
@@ -201,7 +196,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
         scope,
         slot_blocks,
         parent_scope,
-        path_finder: BlockPathFinder::new(flow_dir, Some((*path_finder.search_paths).clone())),
+        path_finder: path_finder.subflow(flow_path),
     };
 
     if let Some(ref origin_nodes) = nodes {
