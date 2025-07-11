@@ -245,6 +245,7 @@ enum SchedulerCommand {
         session_id: SessionId,
         job_id: JobId,
         error: Option<String>,
+        result: Option<serde_json::Value>,
         request_id: String,
     },
     ExecuteBlock {
@@ -309,7 +310,8 @@ pub struct SchedulerTx {
 pub struct BlockResponseParams {
     pub session_id: SessionId,
     pub job_id: JobId,
-    pub error: String,
+    pub error: Option<String>,
+    pub result: Option<serde_json::Value>,
     pub request_id: String,
 }
 
@@ -392,7 +394,8 @@ impl SchedulerTx {
             .send(SchedulerCommand::BlockRequestResponse {
                 session_id: session_id.clone(),
                 job_id: params.job_id,
-                error: Some(params.error),
+                error: params.error,
+                result: params.result,
                 request_id: params.request_id,
             })
             .unwrap();
@@ -1064,6 +1067,7 @@ where
                         session_id,
                         job_id,
                         error,
+                        result,
                         request_id,
                     }) => {
                         #[derive(serde::Serialize)]
@@ -1072,6 +1076,8 @@ where
                             job_id: JobId,
                             #[serde(skip_serializing_if = "Option::is_none")]
                             error: Option<String>,
+                            #[serde(skip_serializing_if = "Option::is_none")]
+                            result: Option<serde_json::Value>,
                             request_id: String,
                         }
 
@@ -1079,6 +1085,7 @@ where
                             session_id: session_id.clone(),
                             job_id: job_id,
                             error,
+                            result,
                             request_id: request_id.clone(),
                         })
                         .unwrap();
