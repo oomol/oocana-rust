@@ -45,7 +45,7 @@ mod tests {
             assert_eq!(definition.nullable, Some(true));
             assert!(definition
                 .json_schema
-                .is_some_and(|schema| { schema.get("type").map_or(false, |t| t == "string") }));
+                .is_some_and(|schema| { schema.get("type").is_some_and(|t| t == "string") }));
 
             assert!(matches!(
                 input_in1.from.as_ref().unwrap().first().unwrap(),
@@ -94,7 +94,7 @@ mod tests {
                 .get(&HandleName::new("additional_in".to_owned()));
             assert!(node_additional_in.is_some());
             let additional_inputs = node_additional_in.unwrap();
-            assert_eq!(additional_inputs.def.is_additional, true);
+            assert!(additional_inputs.def.is_additional);
 
             let block_additional_in = task_node
                 .task
@@ -103,7 +103,7 @@ mod tests {
                 .unwrap()
                 .get(&HandleName::new("additional_in".to_owned()));
             assert!(block_additional_in.is_some());
-            assert_eq!(block_additional_in.unwrap().is_additional, true);
+            assert!(block_additional_in.unwrap().is_additional);
 
             let block_additional_out = task_node
                 .task
@@ -112,7 +112,7 @@ mod tests {
                 .unwrap()
                 .get(&HandleName::new("additional_out".to_owned()));
             assert!(block_additional_out.is_some());
-            assert_eq!(block_additional_out.unwrap().is_additional, true);
+            assert!(block_additional_out.unwrap().is_additional);
         }
     }
 

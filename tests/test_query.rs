@@ -53,7 +53,7 @@ fn query_input() {
     let result_str = std::fs::read_to_string(&tmp_file).expect("Failed to read output file");
 
     let map = serde_json::from_str::<serde_json::Value>(&result_str)
-        .expect(format!("Failed to parse JSON output {}", result_str).as_str());
+        .unwrap_or_else(|_| panic!("Failed to parse JSON output {}", result_str));
     println!("result: {}", result_str);
 
     assert!(map.is_object());

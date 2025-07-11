@@ -141,7 +141,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
             if flow_block
                 .nodes
                 .get(&node_id)
-                .is_none_or(|n| node_value_store.is_node_fulfill(&n))
+                .is_none_or(|n| node_value_store.is_node_fulfill(n))
             {
                 None
             } else {
@@ -344,7 +344,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                     &flow_shared.shared.session_id,
                                     scheduler::BlockResponseParams {
                                         session_id: flow_shared.shared.session_id.clone(),
-                                        job_id: job_id.clone().into(),
+                                        job_id: job_id.clone(),
                                         error: Some(msg),
                                         result: None,
                                         request_id,
@@ -367,7 +367,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                     &flow_shared.shared.session_id,
                                     scheduler::BlockResponseParams {
                                         session_id: flow_shared.shared.session_id.clone(),
-                                        job_id: job_id.clone().into(),
+                                        job_id: job_id.clone(),
                                         error: Some(msg),
                                         result: None,
                                         request_id,
@@ -414,7 +414,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                 &flow_shared.shared.session_id,
                                 scheduler::BlockResponseParams {
                                     session_id: flow_shared.shared.session_id.clone(),
-                                    job_id: job_id.clone().into(),
+                                    job_id: job_id.clone(),
                                     error: Some(msg),
                                     result: None,
                                     request_id,
@@ -469,7 +469,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                     &session_id,
                                     scheduler::BlockResponseParams {
                                         session_id: session_id.clone(),
-                                        job_id: job_id.clone().into(),
+                                        job_id: job_id.clone(),
                                         error: Some(msg),
                                         result: None,
                                         request_id,
@@ -492,7 +492,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                     &session_id,
                                     scheduler::BlockResponseParams {
                                         session_id: session_id.clone(),
-                                        job_id: job_id.clone().into(),
+                                        job_id: job_id.clone(),
                                         error: Some(msg),
                                         result: None,
                                         request_id,
@@ -525,7 +525,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                 &session_id,
                                 BlockResponseParams {
                                     session_id: session_id.clone(),
-                                    job_id: job_id.clone().into(),
+                                    job_id: job_id.clone(),
                                     error: None,
                                     result: Some(json),
                                     request_id,
@@ -537,7 +537,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                 &session_id,
                                 BlockResponseParams {
                                     session_id: session_id.clone(),
-                                    job_id: job_id.clone().into(),
+                                    job_id: job_id.clone(),
                                     result: None,
                                     error: Some(
                                         "Failed to serialize task block metadata to JSON".into(),

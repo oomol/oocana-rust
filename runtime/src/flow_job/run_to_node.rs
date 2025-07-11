@@ -61,7 +61,7 @@ fn calc_node_deps(
     for (handle_name, input) in node.inputs() {
         if node_input_values
             .as_ref()
-            .map_or(false, |values| values.node_has_input(node, handle_name))
+            .is_some_and(|values| values.node_has_input(node, handle_name))
         {
             continue;
         }
