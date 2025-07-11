@@ -96,7 +96,7 @@ impl BlockPathFinder {
             base_dir,
             cache: HashMap::new(),
             search_paths: Arc::new(search_paths.unwrap_or_default()),
-            pkg_version: specified_version_package,
+            pkg_version: pkg_versions,
         }
     }
 
@@ -107,7 +107,7 @@ impl BlockPathFinder {
             .map(|p| p.to_path_buf())
             .unwrap_or_else(|| PathBuf::from("."));
 
-        let mut pkg_version = collect_latest_pkg_version(
+        let mut pkg_versions = collect_latest_pkg_version(
             &working_dir,
             &Some(self.search_paths.iter().cloned().collect()),
         );
@@ -123,14 +123,14 @@ impl BlockPathFinder {
             .unwrap_or_default();
 
         for (name, version) in specified_version_package.iter() {
-            pkg_version.insert(name.clone(), version.clone());
+            pkg_versions.insert(name.clone(), version.clone());
         }
 
         Self {
             base_dir: working_dir,
             cache: HashMap::new(),
             search_paths: Arc::clone(&self.search_paths),
-            pkg_version,
+            pkg_version: pkg_versions,
         }
     }
 
