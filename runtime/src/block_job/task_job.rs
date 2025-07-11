@@ -1,5 +1,5 @@
 use mainframe::reporter::BlockReporterTx;
-use mainframe::scheduler::{ExecutorParams, SchedulerTx};
+use mainframe::scheduler::{self, ExecutorParams, SchedulerTx};
 use manifest_meta::{HandleName, InputDefPatchMap, SubflowBlock, TaskBlock, TaskBlockExecutor};
 use manifest_reader::manifest::SpawnOptions;
 
@@ -160,34 +160,45 @@ pub fn run_task_block(args: RunTaskBlockArgs) -> Option<BlockJobHandle> {
 
                 match execute_result {
                     Ok(mut child) => {
-                        // TODO: shell executor 不需要 listen worker
-                        let block_status_clone = block_status.clone();
                         spawn_handles.push(worker_listener_handle);
                         bind_shell_stdio(
                             &mut child,
                             &reporter,
                             &mut spawn_handles,
-                            block_status,
+                            shared.scheduler_tx.clone(),
+                            &shared.session_id,
                             job_id.clone(),
                         );
 
                         let job_id_clone = job_id.clone();
+                        let shared_clone = Arc::clone(&shared);
 
                         // TODO: consider to use tokio::process::Command
                         let exit_handler = tokio::task::spawn_blocking(move || {
                             let status = child.wait().unwrap();
                             let status_code = status.code().unwrap_or(-1);
                             if status_code != 0 {
-                                block_status_clone.finish(
-                                    job_id_clone.clone(),
-                                    None,
-                                    Some(format!("Exit code: {}", status_code)),
+                                let msg = format!(
+                                    "Task block '{:?}' exited with code {}",
+                                    task_block.path_str, status_code
                                 );
-                                reporter
-                                    .finished(None, Some(format!("Exit code: {}", status_code)));
+                                shared_clone.scheduler_tx.send_block_event(
+                                    scheduler::ReceiveMessage::BlockFinished {
+                                        session_id: shared_clone.session_id.clone(),
+                                        job_id: job_id_clone.clone(),
+                                        result: None,
+                                        error: Some(msg),
+                                    },
+                                );
                             } else {
-                                block_status_clone.finish(job_id_clone.clone(), None, None);
-                                reporter.finished(None, None);
+                                shared_clone.scheduler_tx.send_block_event(
+                                    scheduler::ReceiveMessage::BlockFinished {
+                                        session_id: shared_clone.session_id.clone(),
+                                        job_id: job_id_clone.clone(),
+                                        result: None,
+                                        error: None,
+                                    },
+                                );
                             }
                         });
 
@@ -203,10 +214,15 @@ pub fn run_task_block(args: RunTaskBlockArgs) -> Option<BlockJobHandle> {
                             },
                         ))
                     }
-                    Err(e) => {
-                        reporter.finished(None, Some(e.to_string()));
-                        block_status.finish(job_id.clone(), None, Some(e.to_string()));
-                        worker_listener_handle.abort();
+                    Err(_) => {
+                        shared.scheduler_tx.send_block_event(
+                            scheduler::ReceiveMessage::BlockFinished {
+                                session_id: shared.session_id.clone(),
+                                job_id: job_id.clone(),
+                                result: None,
+                                error: Some("Failed to spawn shell".to_owned()),
+                            },
+                        );
                         Some(BlockJobHandle::new(
                             job_id.to_owned(),
                             TaskJobHandle {
@@ -470,14 +486,17 @@ fn bind_shell_stdio(
     child: &mut process::Child,
     reporter: &Arc<BlockReporterTx>,
     spawn_handles: &mut Vec<tokio::task::JoinHandle<()>>,
-    block_status: BlockStatusTx,
+    scheduler_tx: SchedulerTx,
+    session_id: &SessionId,
     job_id: JobId,
 ) {
     if let Some(stdout) = child.stdout.take() {
         if let Ok(async_stdout) = tokio::process::ChildStdout::from_std(stdout) {
             let reporter = Arc::clone(reporter);
             let job_id_clone = job_id.clone();
-            let block_status_clone = block_status.clone();
+            let scheduler_tx_clone = scheduler_tx.clone();
+            let session_id_clone = session_id.clone();
+
             spawn_handles.push(tokio::spawn(async move {
                 let mut stdout_reader = BufReader::new(async_stdout).lines();
                 let mut output = String::new();
@@ -490,15 +509,12 @@ fn bind_shell_stdio(
                 if output.ends_with('\n') {
                     output.pop();
                 }
-                block_status_clone.output(
-                    job_id_clone.clone(),
-                    Arc::new(OutputValue {
-                        value: serde_json::json!(output),
-                        cacheable: true,
-                    }),
-                    "stdout".to_string().into(),
-                );
-                block_status_clone.finish(job_id_clone.clone(), None, None);
+                scheduler_tx_clone.send_block_event(scheduler::ReceiveMessage::BlockOutput {
+                    session_id: session_id_clone,
+                    job_id: job_id_clone.clone(),
+                    output: serde_json::json!(output),
+                    handle: "stdout".to_string().into(),
+                });
             }));
         }
     }
@@ -507,6 +523,9 @@ fn bind_shell_stdio(
         if let Ok(async_stderr) = tokio::process::ChildStderr::from_std(stderr) {
             let reporter = Arc::clone(reporter);
             let job_id_clone = job_id;
+            let scheduler_tx_clone = scheduler_tx.clone();
+            let session_id_clone = session_id.clone();
+
             spawn_handles.push(tokio::spawn(async move {
                 let mut stderr_reader = BufReader::new(async_stderr).lines();
                 let mut stderr_output = String::new();
@@ -518,16 +537,12 @@ fn bind_shell_stdio(
                 if stderr_output.ends_with('\n') {
                     stderr_output.pop();
                 }
-
-                block_status.output(
-                    job_id_clone.clone(),
-                    Arc::new(OutputValue {
-                        value: serde_json::json!(stderr_output),
-                        cacheable: true,
-                    }),
-                    "stderr".to_string().into(),
-                );
-                block_status.finish(job_id_clone.clone(), None, None);
+                scheduler_tx_clone.send_block_event(scheduler::ReceiveMessage::BlockOutput {
+                    session_id: session_id_clone.clone(),
+                    job_id: job_id_clone,
+                    output: serde_json::json!(stderr_output),
+                    handle: "stderr".to_string().into(),
+                });
             }));
         }
     }

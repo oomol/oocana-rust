@@ -211,6 +211,8 @@ impl ExecutePayload<'_> {
 
 #[async_trait]
 pub trait SchedulerTxImpl {
+    // for builtin block, send these block events to broker. make these event is send to broker.
+    async fn send_block_event(&self, session_id: &SessionId, data: MessageData);
     async fn send_inputs(&self, job_id: &JobId, data: MessageData);
     async fn run_block(&self, executor_name: &str, data: MessageData);
     async fn respond_block_request(
@@ -233,6 +235,9 @@ const PKG_DIR: &str = ".oomol/pkg-dir";
 enum SchedulerCommand {
     RegisterSubscriber(JobId, Sender<ReceiveMessage>),
     UnregisterSubscriber(JobId),
+    BlockEvent {
+        event: ReceiveMessage,
+    },
     SendInputs {
         job_id: JobId,
         stacks: Vec<BlockJobStackLevel>,
@@ -398,6 +403,12 @@ impl SchedulerTx {
                 result: params.result,
                 request_id: params.request_id,
             })
+            .unwrap();
+    }
+
+    pub fn send_block_event(&self, event: ReceiveMessage) {
+        self.tx
+            .send(SchedulerCommand::BlockEvent { event })
             .unwrap();
     }
 
@@ -1042,6 +1053,21 @@ where
                     }
                     Ok(SchedulerCommand::UnregisterSubscriber(job_id)) => {
                         subscribers.remove(&job_id);
+                    }
+                    Ok(SchedulerCommand::BlockEvent { event }) => {
+                        if matches!(
+                            event,
+                            ReceiveMessage::BlockReady { .. }
+                                | ReceiveMessage::BlockFinished { .. }
+                                | ReceiveMessage::BlockOutput { .. }
+                                | ReceiveMessage::BlockOutputs { .. }
+                                | ReceiveMessage::BlockError { .. }
+                        ) {
+                            let data = serde_json::to_vec(&event).unwrap();
+                            impl_tx.send_block_event(&session_id, data).await;
+                        } else {
+                            warn!("Received unexpected block event: {:?}", event);
+                        }
                     }
                     Ok(SchedulerCommand::SendInputs {
                         job_id,

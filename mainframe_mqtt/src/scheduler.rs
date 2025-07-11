@@ -18,6 +18,15 @@ pub struct SchedulerTx {
 
 #[async_trait]
 impl SchedulerTxImpl for SchedulerTx {
+    async fn send_block_event(&self, session_id: &SessionId, data: MessageData) {
+        let topic = format!("session/{}", session_id);
+
+        self.tx
+            .publish(topic, QoS::AtLeastOnce, false, data)
+            .await
+            .unwrap();
+    }
+
     async fn send_inputs(&self, job_id: &JobId, data: MessageData) {
         let topic = format!("inputs/{}/{}", &self.session_id, job_id);
 
