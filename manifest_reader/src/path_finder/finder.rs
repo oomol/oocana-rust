@@ -5,7 +5,6 @@ use version_compare::{compare, Cmp};
 
 use utils::error::Result;
 
-use crate::path_finder::search_paths;
 use crate::reader::read_package;
 
 use super::block::{
