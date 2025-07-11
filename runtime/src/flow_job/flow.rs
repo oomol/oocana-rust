@@ -341,7 +341,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                 tracing::warn!("{}", msg);
                                 scheduler_tx.respond_block_request(
                                     &flow_shared.shared.session_id,
-                                    scheduler::RunBlockErrorParams {
+                                    scheduler::BlockResponseParams {
                                         session_id: flow_shared.shared.session_id.clone(),
                                         job_id: job_id.clone().into(),
                                         error: msg,
@@ -363,7 +363,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                 tracing::warn!("{}", msg);
                                 scheduler_tx.respond_block_request(
                                     &flow_shared.shared.session_id,
-                                    scheduler::RunBlockErrorParams {
+                                    scheduler::BlockResponseParams {
                                         session_id: flow_shared.shared.session_id.clone(),
                                         job_id: job_id.clone().into(),
                                         error: msg,
@@ -409,7 +409,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                             tracing::warn!("{}", msg);
                             scheduler_tx.respond_block_request(
                                 &flow_shared.shared.session_id,
-                                scheduler::RunBlockErrorParams {
+                                scheduler::BlockResponseParams {
                                     session_id: flow_shared.shared.session_id.clone(),
                                     job_id: job_id.clone().into(),
                                     error: msg,
@@ -445,6 +445,58 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                 },
                             );
                         }
+                    }
+                    BlockRequest::QueryBlock {
+                        session_id,
+                        job_id,
+                        block,
+                        request_id,
+                    } => {
+                        let block_path = match flow_shared.path_finder.find_task_block_path(&block)
+                        {
+                            Ok(path) => path,
+                            Err(e) => {
+                                let msg = format!(
+                                    "Failed to find task block path for block: {}. Error: {}",
+                                    block, e
+                                );
+                                tracing::warn!("{}", msg);
+                                scheduler_tx.respond_block_request(
+                                    &flow_shared.shared.session_id,
+                                    scheduler::BlockResponseParams {
+                                        session_id: flow_shared.shared.session_id.clone(),
+                                        job_id: job_id.clone().into(),
+                                        error: msg,
+                                        request_id,
+                                    },
+                                );
+                                continue;
+                            }
+                        };
+
+                        let task_block = match BlockResolver::new().read_task_block(&block_path) {
+                            Ok(tb) => tb,
+                            Err(e) => {
+                                let msg = format!(
+                                    "Failed to read task block from path: {}. Error: {}",
+                                    block_path.display(),
+                                    e
+                                );
+                                tracing::warn!("{}", msg);
+                                scheduler_tx.respond_block_request(
+                                    &flow_shared.shared.session_id,
+                                    scheduler::BlockResponseParams {
+                                        session_id: flow_shared.shared.session_id.clone(),
+                                        job_id: job_id.clone().into(),
+                                        error: msg,
+                                        request_id,
+                                    },
+                                );
+                                continue;
+                            }
+                        };
+
+                        // TODO: return task block metadata
                     }
                 },
                 block_status::Status::Done {
