@@ -214,15 +214,25 @@ pub fn run_task_block(args: RunTaskBlockArgs) -> Option<BlockJobHandle> {
                             },
                         ))
                     }
-                    Err(_) => Some(BlockJobHandle::new(
-                        job_id.to_owned(),
-                        TaskJobHandle {
-                            job_id,
-                            shared,
-                            child: None,
-                            spawn_handles,
-                        },
-                    )),
+                    Err(_) => {
+                        shared.scheduler_tx.send_block_event(
+                            scheduler::ReceiveMessage::BlockFinished {
+                                session_id: shared.session_id.clone(),
+                                job_id: job_id.clone(),
+                                result: None,
+                                error: Some("Failed to spawn shell".to_owned()),
+                            },
+                        );
+                        Some(BlockJobHandle::new(
+                            job_id.to_owned(),
+                            TaskJobHandle {
+                                job_id,
+                                shared,
+                                child: None,
+                                spawn_handles,
+                            },
+                        ))
+                    }
                 }
             }
             _ => {
