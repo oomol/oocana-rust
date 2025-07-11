@@ -132,7 +132,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
                 is_inject: false,
             },
             slot_blocks: None,
-            path_finder: path_finder,
+            path_finder,
         }
     });
 

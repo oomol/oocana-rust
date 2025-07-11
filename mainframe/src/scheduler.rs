@@ -1109,7 +1109,7 @@ where
 
                         let data = serde_json::to_vec(&BlockResponse {
                             session_id: session_id.clone(),
-                            job_id: job_id,
+                            job_id,
                             error,
                             result,
                             request_id: request_id.clone(),
@@ -1380,7 +1380,7 @@ where
                                 }
                                 ReceiveMessage::BlockRequest(request) => {
                                     // Handle block request
-                                    if let Some(sender) = subscribers.get(&request.job_id()) {
+                                    if let Some(sender) = subscribers.get(request.job_id()) {
                                         sender.send(ReceiveMessage::BlockRequest(request)).unwrap();
                                     } else {
                                         warn!("No subscriber for job_id: {:?}", request.job_id());

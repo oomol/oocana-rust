@@ -163,7 +163,7 @@ pub fn generate_node_inputs(
                             output_handle: output_handle.clone(),
                         }),
                         _ => {
-                            return None;
+                            None
                         }
                     })
                     .collect::<Vec<_>>()
@@ -227,7 +227,7 @@ impl SubflowBlock {
     pub fn query_inputs(&self) -> HashMap<NodeId, Vec<InputHandle>> {
         let mut inputs: HashMap<NodeId, Vec<InputHandle>> = HashMap::new();
         for (node_id, node) in &self.nodes {
-            for (_, input) in node.inputs() {
+            for input in node.inputs().values() {
                 if input.from.as_ref().is_some_and(|f| !f.is_empty()) {
                     continue; // skip if input has connection
                 }
@@ -593,7 +593,7 @@ impl SubflowBlock {
 
                                             let mut new_slot_node = slot_node.clone();
                                             {
-                                                new_slot_node.inputs = new_slot_node_inputs.into();
+                                                new_slot_node.inputs = new_slot_node_inputs;
                                             }
 
                                             // Cannot mutate inside Arc, so clone, update, and re-wrap if needed

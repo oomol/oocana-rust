@@ -23,8 +23,8 @@ mod tests {
 
         let flow_block = read_task_block(&base_dir.join("block.oo.yaml"))?;
 
-        assert_eq!(flow_block.additional_inputs, true);
-        assert_eq!(flow_block.additional_outputs, true);
+        assert!(flow_block.additional_inputs);
+        assert!(flow_block.additional_outputs);
 
         Ok(())
     }

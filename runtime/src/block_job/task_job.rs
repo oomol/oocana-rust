@@ -10,7 +10,6 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 
 use crate::block_status::BlockStatusTx;
 use crate::shared::Shared;
-use utils::output::OutputValue;
 
 use job::{BlockInputs, BlockJobStacks, JobId, RunningPackageScope, SessionId};
 use utils::error::Result;
