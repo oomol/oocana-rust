@@ -1,9 +1,11 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
+use version_compare::{compare, Cmp};
 
 use utils::error::Result;
 
+use crate::path_finder::search_paths;
 use crate::reader::read_package;
 
 use super::block::{
@@ -21,28 +23,98 @@ pub struct BlockPathFinder {
     pub pkg_version: HashMap<String, String>,
 }
 
+// TODO: cache pkg store paths result, only update working_dir
+fn collect_latest_pkg_version(
+    working_dir: &PathBuf,
+    pkg_store_paths: &Option<Vec<PathBuf>>,
+) -> HashMap<String, String> {
+    let mut pkg_version = HashMap::new();
+
+    let search_paths = vec![working_dir.clone()]
+        .into_iter()
+        .chain(
+            pkg_store_paths
+                .iter()
+                .flat_map(|paths| paths.iter().cloned()),
+        )
+        .collect::<Vec<_>>();
+
+    for path in search_paths {
+        if let Some(ref pkg_path) = find_package_file(path) {
+            if let Ok(pkg) = read_package(pkg_path) {
+                // maybe the version is not set, but the pkg path contains the version
+                // currently we only support the version in the package file
+                let pkg_name_without_version = if let Some(name) = pkg.name {
+                    name
+                } else {
+                    // remove the version from the package path
+                    // e.g. /path/to/pkg-1.0.0/package.oo.yaml -> pkg-1.0.0 then strip suffix version in package.oo.yaml -> pkg
+                    pkg_path
+                        .parent()
+                        .and_then(|n| n.file_name())
+                        .and_then(|n| n.to_str())
+                        .map(|s| s.to_string())
+                        .unwrap_or_else(|| "".to_string())
+                        .strip_suffix(pkg.version.as_deref().unwrap_or(""))
+                        .unwrap_or("")
+                        .to_string()
+                };
+
+                pkg_version
+                    .entry(pkg_name_without_version)
+                    .and_modify(|v: &mut String| {
+                        if let Some(version) = &pkg.version {
+                            if matches!(compare(version, v.as_str()), Ok(Cmp::Gt)) {
+                                *v = version.clone();
+                            }
+                        }
+                    })
+                    .or_insert_with(|| pkg.version.unwrap_or_default());
+            }
+        }
+    }
+
+    pkg_version
+}
+
 impl BlockPathFinder {
     pub fn new<P: Into<PathBuf>>(base_dir: P, search_paths: Option<Vec<PathBuf>>) -> Self {
         let base_dir = base_dir.into();
 
-        let pkg_version = find_package_file(&base_dir)
+        let mut pkg_versions = collect_latest_pkg_version(&base_dir, &search_paths);
+
+        let specified_version_package = find_package_file(&base_dir)
             .and_then(|pkg_path| read_package(pkg_path).ok())
             .and_then(|pkg| pkg.dependencies)
             .unwrap_or_default();
+
+        // use the specified version package if it exists
+        for (name, version) in specified_version_package.iter() {
+            pkg_versions.insert(name.clone(), version.clone());
+        }
 
         Self {
             base_dir,
             cache: HashMap::new(),
             search_paths: Arc::new(search_paths.unwrap_or_default()),
-            pkg_version,
+            pkg_version: specified_version_package,
         }
     }
 
     pub fn subflow<P: Into<PathBuf>>(&self, flow_path: P) -> Self {
         let flow_path: PathBuf = flow_path.into();
+        let working_dir = flow_path
+            .parent()
+            .map(|p| p.to_path_buf())
+            .unwrap_or_else(|| PathBuf::from("."));
+
+        let mut pkg_version = collect_latest_pkg_version(
+            &working_dir,
+            &Some(self.search_paths.iter().cloned().collect()),
+        );
 
         // subflow should be in a/b/c/flows/flow1/flow.oo.yaml. package.oo.yaml is in a/b/c.
-        let pkg_version = flow_path
+        let specified_version_package = flow_path
             .parent()
             .and_then(|f| f.parent())
             .and_then(|f| f.parent())
@@ -51,8 +123,12 @@ impl BlockPathFinder {
             .and_then(|pkg| pkg.dependencies)
             .unwrap_or_default();
 
+        for (name, version) in specified_version_package.iter() {
+            pkg_version.insert(name.clone(), version.clone());
+        }
+
         Self {
-            base_dir: flow_path.parent().unwrap().to_path_buf(),
+            base_dir: working_dir,
             cache: HashMap::new(),
             search_paths: Arc::clone(&self.search_paths),
             pkg_version,

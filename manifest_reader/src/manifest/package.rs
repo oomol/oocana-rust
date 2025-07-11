@@ -8,6 +8,7 @@ pub struct Scripts {
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct PackageMeta {
+    pub name: Option<String>,
     pub version: Option<String>,
     pub exports: Option<HashMap<String, String>>,
     pub scripts: Option<Scripts>,
