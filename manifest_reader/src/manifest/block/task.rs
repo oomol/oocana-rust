@@ -6,6 +6,7 @@ use super::{
 };
 #[derive(Deserialize, Debug, Clone)]
 struct TmpTaskBlock {
+    pub description: Option<String>,
     pub executor: Option<TaskBlockExecutor>,
     pub inputs_def: Option<Vec<InputHandle>>,
     pub outputs_def: Option<Vec<OutputHandle>>,
@@ -18,6 +19,7 @@ struct TmpTaskBlock {
 impl From<TmpTaskBlock> for TaskBlock {
     fn from(tmp: TmpTaskBlock) -> Self {
         Self {
+            description: tmp.description,
             executor: tmp.executor,
             inputs_def: to_input_handles(tmp.inputs_def),
             outputs_def: to_output_handles(tmp.outputs_def),
@@ -30,6 +32,7 @@ impl From<TmpTaskBlock> for TaskBlock {
 #[derive(Deserialize, Debug, Clone)]
 #[serde(from = "TmpTaskBlock")]
 pub struct TaskBlock {
+    pub description: Option<String>,
     pub executor: Option<TaskBlockExecutor>,
     pub inputs_def: Option<InputHandles>,
     pub outputs_def: Option<OutputHandles>,
