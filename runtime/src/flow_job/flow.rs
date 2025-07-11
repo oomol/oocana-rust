@@ -467,9 +467,9 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                 );
                                 tracing::warn!("{}", msg);
                                 scheduler_tx.respond_block_request(
-                                    &flow_shared.shared.session_id,
+                                    &session_id,
                                     scheduler::BlockResponseParams {
-                                        session_id: flow_shared.shared.session_id.clone(),
+                                        session_id: session_id.clone(),
                                         job_id: job_id.clone().into(),
                                         error: Some(msg),
                                         result: None,
@@ -490,9 +490,9 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                 );
                                 tracing::warn!("{}", msg);
                                 scheduler_tx.respond_block_request(
-                                    &flow_shared.shared.session_id,
+                                    &session_id,
                                     scheduler::BlockResponseParams {
-                                        session_id: flow_shared.shared.session_id.clone(),
+                                        session_id: session_id.clone(),
                                         job_id: job_id.clone().into(),
                                         error: Some(msg),
                                         result: None,
@@ -523,9 +523,9 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                         if let Ok(json) = json {
                             tracing::debug!("Task block metadata serialized to JSON: {}", json);
                             scheduler_tx.respond_block_request(
-                                &flow_shared.shared.session_id,
+                                &session_id,
                                 BlockResponseParams {
-                                    session_id: flow_shared.shared.session_id.clone(),
+                                    session_id: session_id.clone(),
                                     job_id: job_id.clone().into(),
                                     error: None,
                                     result: Some(json),
@@ -535,9 +535,9 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                         } else {
                             tracing::warn!("Failed to serialize task block metadata to JSON");
                             scheduler_tx.respond_block_request(
-                                &flow_shared.shared.session_id,
+                                &session_id,
                                 BlockResponseParams {
-                                    session_id: flow_shared.shared.session_id.clone(),
+                                    session_id: session_id.clone(),
                                     job_id: job_id.clone().into(),
                                     result: None,
                                     error: Some(
