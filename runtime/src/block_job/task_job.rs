@@ -165,7 +165,8 @@ pub fn run_task_block(args: RunTaskBlockArgs) -> Option<BlockJobHandle> {
                             &mut child,
                             &reporter,
                             &mut spawn_handles,
-                            block_status,
+                            shared.scheduler_tx.clone(),
+                            &shared.session_id,
                             job_id.clone(),
                         );
 
