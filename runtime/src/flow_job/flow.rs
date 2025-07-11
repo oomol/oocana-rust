@@ -1,4 +1,3 @@
-use serde::Deserialize;
 use std::{
     collections::{HashMap, HashSet},
     path::PathBuf,
@@ -521,7 +520,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                         };
                         let json = serde_json::to_value(&metadata);
                         if let Ok(json) = json {
-                            tracing::debug!("Task block metadata serialized to JSON: {}", json);
+                            // tracing::debug!("Task block metadata serialized to JSON: {}", json);
                             scheduler_tx.respond_block_request(
                                 &session_id,
                                 BlockResponseParams {
