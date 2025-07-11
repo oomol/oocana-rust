@@ -39,18 +39,26 @@ pub enum BlockRequest {
         inputs: HashMap<HandleName, JsonValue>,
         request_id: String, // this is used to match the response with the request
     },
+    QueryBlock {
+        session_id: SessionId,
+        job_id: JobId,
+        block: String,      // format: `self::<block>` / `<package>::<block>`
+        request_id: String, // this is used to match the response with the request
+    },
 }
 
 impl BlockRequest {
     pub fn session_id(&self) -> &SessionId {
         match self {
             BlockRequest::RunBlock { session_id, .. } => session_id,
+            BlockRequest::QueryBlock { session_id, .. } => session_id,
         }
     }
 
     pub fn job_id(&self) -> &JobId {
         match self {
             BlockRequest::RunBlock { job_id, .. } => job_id,
+            BlockRequest::QueryBlock { job_id, .. } => job_id,
         }
     }
 }
@@ -119,7 +127,7 @@ impl ReceiveMessage {
             ReceiveMessage::BlockOutputs { session_id, .. } => session_id,
             ReceiveMessage::BlockError { session_id, .. } => session_id,
             ReceiveMessage::BlockFinished { session_id, .. } => session_id,
-            ReceiveMessage::BlockRequest(BlockRequest::RunBlock { session_id, .. }) => session_id,
+            ReceiveMessage::BlockRequest(block) => block.session_id(),
             ReceiveMessage::ExecutorReady { session_id, .. } => session_id,
             ReceiveMessage::ExecutorExit { session_id, .. } => session_id,
             ReceiveMessage::ExecutorTimeout { session_id, .. } => session_id,
@@ -134,7 +142,7 @@ impl ReceiveMessage {
             ReceiveMessage::BlockOutputs { job_id, .. } => Some(job_id),
             ReceiveMessage::BlockError { job_id, .. } => Some(job_id),
             ReceiveMessage::BlockFinished { job_id, .. } => Some(job_id),
-            ReceiveMessage::BlockRequest(BlockRequest::RunBlock { job_id, .. }) => Some(job_id),
+            ReceiveMessage::BlockRequest(block) => Some(block.job_id()),
             ReceiveMessage::ExecutorReady { .. } => None,
             ReceiveMessage::ExecutorExit { .. } => None,
             ReceiveMessage::ExecutorTimeout { .. } => None,
@@ -237,6 +245,7 @@ enum SchedulerCommand {
         session_id: SessionId,
         job_id: JobId,
         error: Option<String>,
+        result: Option<serde_json::Value>,
         request_id: String,
     },
     ExecuteBlock {
@@ -298,10 +307,11 @@ pub struct SchedulerTx {
     exclude_packages: Option<Vec<String>>,
 }
 
-pub struct RunBlockErrorParams {
+pub struct BlockResponseParams {
     pub session_id: SessionId,
     pub job_id: JobId,
-    pub error: String,
+    pub error: Option<String>,
+    pub result: Option<serde_json::Value>,
     pub request_id: String,
 }
 
@@ -379,12 +389,13 @@ impl SchedulerTx {
             .unwrap();
     }
 
-    pub fn respond_block_request(&self, session_id: &SessionId, params: RunBlockErrorParams) {
+    pub fn respond_block_request(&self, session_id: &SessionId, params: BlockResponseParams) {
         self.tx
             .send(SchedulerCommand::BlockRequestResponse {
                 session_id: session_id.clone(),
                 job_id: params.job_id,
-                error: Some(params.error),
+                error: params.error,
+                result: params.result,
                 request_id: params.request_id,
             })
             .unwrap();
@@ -1056,6 +1067,7 @@ where
                         session_id,
                         job_id,
                         error,
+                        result,
                         request_id,
                     }) => {
                         #[derive(serde::Serialize)]
@@ -1064,6 +1076,8 @@ where
                             job_id: JobId,
                             #[serde(skip_serializing_if = "Option::is_none")]
                             error: Option<String>,
+                            #[serde(skip_serializing_if = "Option::is_none")]
+                            result: Option<serde_json::Value>,
                             request_id: String,
                         }
 
@@ -1071,6 +1085,7 @@ where
                             session_id: session_id.clone(),
                             job_id: job_id,
                             error,
+                            result,
                             request_id: request_id.clone(),
                         })
                         .unwrap();

@@ -6,6 +6,7 @@ use crate::TaskBlockExecutor;
 
 #[derive(Debug, Clone)]
 pub struct TaskBlock {
+    pub description: Option<String>,
     pub executor: Option<TaskBlockExecutor>,
     pub inputs_def: Option<InputHandles>,
     pub outputs_def: Option<OutputHandles>,
@@ -56,11 +57,13 @@ impl TaskBlock {
             outputs_def,
             additional_inputs,
             additional_outputs,
+            description,
         } = manifest;
 
         Self {
             executor,
             inputs_def,
+            description,
             outputs_def,
             path_str: path.as_ref().map(|path| path.to_string_lossy().to_string()),
             path,

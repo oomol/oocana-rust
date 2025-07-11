@@ -12,14 +12,15 @@ use crate::{
 };
 use mainframe::{
     reporter::FlowReporterTx,
-    scheduler::{self, BlockRequest},
+    scheduler::{self, BlockRequest, BlockResponseParams},
 };
 use tracing::warn;
 use utils::output::OutputValue;
 
 use job::{BlockInputs, BlockJobStacks, JobId, RunningPackageScope};
 use manifest_meta::{
-    BlockResolver, HandleTo, InputHandle, Node, NodeId, RunningScope, Slot, SubflowBlock,
+    BlockResolver, HandleTo, InputHandle, InputHandles, Node, NodeId, OutputHandles, RunningScope,
+    Slot, SubflowBlock,
 };
 
 use super::node_input_values;
@@ -341,10 +342,11 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                 tracing::warn!("{}", msg);
                                 scheduler_tx.respond_block_request(
                                     &flow_shared.shared.session_id,
-                                    scheduler::RunBlockErrorParams {
+                                    scheduler::BlockResponseParams {
                                         session_id: flow_shared.shared.session_id.clone(),
                                         job_id: job_id.clone().into(),
-                                        error: msg,
+                                        error: Some(msg),
+                                        result: None,
                                         request_id,
                                     },
                                 );
@@ -363,10 +365,11 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                 tracing::warn!("{}", msg);
                                 scheduler_tx.respond_block_request(
                                     &flow_shared.shared.session_id,
-                                    scheduler::RunBlockErrorParams {
+                                    scheduler::BlockResponseParams {
                                         session_id: flow_shared.shared.session_id.clone(),
                                         job_id: job_id.clone().into(),
-                                        error: msg,
+                                        error: Some(msg),
+                                        result: None,
                                         request_id,
                                     },
                                 );
@@ -409,10 +412,11 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                             tracing::warn!("{}", msg);
                             scheduler_tx.respond_block_request(
                                 &flow_shared.shared.session_id,
-                                scheduler::RunBlockErrorParams {
+                                scheduler::BlockResponseParams {
                                     session_id: flow_shared.shared.session_id.clone(),
                                     job_id: job_id.clone().into(),
-                                    error: msg,
+                                    error: Some(msg),
+                                    result: None,
                                     request_id,
                                 },
                             );
@@ -442,6 +446,103 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                 BlockInFlowJobHandle {
                                     node_id: NodeId::from(format!("run_block::{}", block)),
                                     _job: handle,
+                                },
+                            );
+                        }
+                    }
+                    BlockRequest::QueryBlock {
+                        session_id,
+                        job_id,
+                        block,
+                        request_id,
+                    } => {
+                        let block_path = match flow_shared.path_finder.find_task_block_path(&block)
+                        {
+                            Ok(path) => path,
+                            Err(e) => {
+                                let msg = format!(
+                                    "Failed to find task block path for block: {}. Error: {}",
+                                    block, e
+                                );
+                                tracing::warn!("{}", msg);
+                                scheduler_tx.respond_block_request(
+                                    &session_id,
+                                    scheduler::BlockResponseParams {
+                                        session_id: session_id.clone(),
+                                        job_id: job_id.clone().into(),
+                                        error: Some(msg),
+                                        result: None,
+                                        request_id,
+                                    },
+                                );
+                                continue;
+                            }
+                        };
+
+                        let task_block = match BlockResolver::new().read_task_block(&block_path) {
+                            Ok(tb) => tb,
+                            Err(e) => {
+                                let msg = format!(
+                                    "Failed to read task block from path: {}. Error: {}",
+                                    block_path.display(),
+                                    e
+                                );
+                                tracing::warn!("{}", msg);
+                                scheduler_tx.respond_block_request(
+                                    &session_id,
+                                    scheduler::BlockResponseParams {
+                                        session_id: session_id.clone(),
+                                        job_id: job_id.clone().into(),
+                                        error: Some(msg),
+                                        result: None,
+                                        request_id,
+                                    },
+                                );
+                                continue;
+                            }
+                        };
+
+                        #[derive(serde::Serialize)]
+                        struct TaskBlockMetadata {
+                            pub description: Option<String>,
+                            pub inputs_def: Option<InputHandles>,
+                            pub outputs_def: Option<OutputHandles>,
+                            pub additional_inputs: bool,
+                            pub additional_outputs: bool,
+                        }
+
+                        let metadata = TaskBlockMetadata {
+                            description: task_block.description.clone(),
+                            inputs_def: task_block.inputs_def.clone(),
+                            outputs_def: task_block.outputs_def.clone(),
+                            additional_inputs: task_block.additional_inputs,
+                            additional_outputs: task_block.additional_outputs,
+                        };
+                        let json = serde_json::to_value(&metadata);
+                        if let Ok(json) = json {
+                            // tracing::debug!("Task block metadata serialized to JSON: {}", json);
+                            scheduler_tx.respond_block_request(
+                                &session_id,
+                                BlockResponseParams {
+                                    session_id: session_id.clone(),
+                                    job_id: job_id.clone().into(),
+                                    error: None,
+                                    result: Some(json),
+                                    request_id,
+                                },
+                            );
+                        } else {
+                            tracing::warn!("Failed to serialize task block metadata to JSON");
+                            scheduler_tx.respond_block_request(
+                                &session_id,
+                                BlockResponseParams {
+                                    session_id: session_id.clone(),
+                                    job_id: job_id.clone().into(),
+                                    result: None,
+                                    error: Some(
+                                        "Failed to serialize task block metadata to JSON".into(),
+                                    ),
+                                    request_id,
                                 },
                             );
                         }
