@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.28.27 (2025-07-11)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* feat: add query block api by @leavesster in https://github.com/oomol/oocana-rust/pull/222
+* fix: send block event instead of send report by @leavesster in https://github.com/oomol/oocana-rust/pull/223
+* refactor: clip fix by @leavesster in https://github.com/oomol/oocana-rust/pull/224
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.28.26...v0.28.27
+
 ## 0.28.26 (2025-07-10)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
