@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.29.0 (2025-07-14)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* refactor!: refactor run block api by @leavesster in https://github.com/oomol/oocana-rust/pull/225
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.28.27...v0.29.0
+
 ## 0.28.27 (2025-07-11)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
