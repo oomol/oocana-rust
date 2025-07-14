@@ -668,6 +668,8 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                 }
                             };
 
+                            // TODO: check slot
+
                             #[derive(serde::Serialize)]
                             struct SubflowMetadata {
                                 name: String,
