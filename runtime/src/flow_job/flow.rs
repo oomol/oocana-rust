@@ -22,8 +22,8 @@ use utils::output::OutputValue;
 
 use job::{BlockInputs, BlockJobStacks, JobId, RunningPackageScope};
 use manifest_meta::{
-    BlockResolver, HandleTo, InputHandle, InputHandles, Node, NodeId, OutputHandles, RunningScope,
-    Slot, SubflowBlock,
+    BlockResolver, HandleName, HandleTo, InputHandle, InputHandles, Node, NodeId, OutputHandles,
+    RunningScope, Slot, SubflowBlock,
 };
 
 use super::node_input_values;
@@ -330,7 +330,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                         block,
                         job_id,
                         block_job_id: new_job_id,
-                        inputs,
+                        payload,
                         request_id,
                         ..
                     } => {
@@ -352,6 +352,17 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                             );
                             continue;
                         }
+
+                        let inputs = payload
+                            .as_object()
+                            .and_then(|obj| obj.get("inputs"))
+                            .and_then(|v| v.as_object())
+                            .map(|obj| {
+                                obj.iter()
+                                    .map(|(k, v)| (k.clone(), v.clone()))
+                                    .collect::<HashMap<String, serde_json::Value>>()
+                            })
+                            .unwrap_or_default();
 
                         if let Ok(block_path) = block_path {
                             let task_block = match BlockResolver::new().read_task_block(&block_path)
@@ -378,11 +389,11 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                 }
                             };
 
-                            let inputs_map: HashMap<_, _> = inputs
+                            let inputs_map: HashMap<HandleName, Arc<OutputValue>> = inputs
                                 .into_iter()
                                 .map(|(handle, value)| {
                                     (
-                                        handle,
+                                        HandleName::new(handle),
                                         Arc::new(OutputValue {
                                             value,
                                             cacheable: true,
@@ -512,11 +523,11 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                             };
 
                             // 构造输入映射
-                            let inputs_map: HashMap<_, _> = inputs
+                            let inputs_map: HashMap<HandleName, Arc<OutputValue>> = inputs
                                 .into_iter()
                                 .map(|(handle, value)| {
                                     (
-                                        handle,
+                                        HandleName::new(handle),
                                         Arc::new(OutputValue {
                                             value,
                                             cacheable: true,
