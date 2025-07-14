@@ -364,29 +364,29 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                             .unwrap_or_default();
 
                         if let Ok(block_path) = block_path {
-                            let task_block = match BlockResolver::new().read_task_block(&block_path)
-                            {
-                                Ok(tb) => tb,
-                                Err(e) => {
-                                    let msg = format!(
-                                        "Failed to read task block from path: {}. Error: {}",
-                                        block_path.display(),
-                                        e
-                                    );
-                                    tracing::warn!("{}", msg);
-                                    scheduler_tx.respond_block_request(
-                                        &flow_shared.shared.session_id,
-                                        scheduler::BlockResponseParams {
-                                            session_id: flow_shared.shared.session_id.clone(),
-                                            job_id: job_id.clone(),
-                                            error: Some(msg),
-                                            result: None,
-                                            request_id,
-                                        },
-                                    );
-                                    continue;
-                                }
-                            };
+                            let mut task_block =
+                                match BlockResolver::new().read_task_block(&block_path) {
+                                    Ok(tb) => tb,
+                                    Err(e) => {
+                                        let msg = format!(
+                                            "Failed to read task block from path: {}. Error: {}",
+                                            block_path.display(),
+                                            e
+                                        );
+                                        tracing::warn!("{}", msg);
+                                        scheduler_tx.respond_block_request(
+                                            &flow_shared.shared.session_id,
+                                            scheduler::BlockResponseParams {
+                                                session_id: flow_shared.shared.session_id.clone(),
+                                                job_id: job_id.clone(),
+                                                error: Some(msg),
+                                                result: None,
+                                                request_id,
+                                            },
+                                        );
+                                        continue;
+                                    }
+                                };
 
                             let inputs_map: HashMap<HandleName, Arc<OutputValue>> = inputs
                                 .into_iter()
@@ -457,6 +457,8 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                     outputs_def.extend(additional_outputs_def);
                                     outputs_def
                                 });
+
+                            task_block = Arc::new(task_inner);
 
                             let missing_inputs = task_block
                                 .inputs_def
