@@ -259,7 +259,10 @@ pub fn run_task_block(args: RunTaskBlockArgs) -> Option<BlockJobHandle> {
             }
         }
     } else {
-        reporter.finished(None, Some("No executor or entry found".to_owned()));
+        reporter.finished(
+            None,
+            Some(format!("{:?} has no executor field exist", task_block)),
+        );
         None
     }
 }
