@@ -23,14 +23,7 @@
                     "kind": "bin"
                 }
             },
-            "args": [
-                "run",
-                "/Users/yleaf/oomol/oocana-node/flow-examples/flows/run-block",
-                "--reporter"
-            ],
-            "env": {
-                "PATH": "/Users/yleaf/oomol/oocana-node/packages/executor/dist:${env:PATH}"
-            },
+            "args": ["run", "${workspaceFolder}/examples", "--reporter"],
             "cwd": "${workspaceFolder}"
         }
     ]

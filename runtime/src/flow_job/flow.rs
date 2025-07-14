@@ -1,5 +1,7 @@
+use manifest_reader::path_finder::{calculate_block_value_type, BlockValueType};
 use std::{
     collections::{HashMap, HashSet},
+    default,
     path::PathBuf,
     sync::Arc,
 };
@@ -19,8 +21,8 @@ use utils::output::OutputValue;
 
 use job::{BlockInputs, BlockJobStacks, JobId, RunningPackageScope};
 use manifest_meta::{
-    BlockResolver, HandleTo, InputHandle, InputHandles, Node, NodeId, OutputHandles, RunningScope,
-    Slot, SubflowBlock,
+    BlockResolver, HandleName, HandleTo, InputHandle, InputHandles, Node, NodeId, OutputHandle,
+    OutputHandles, RunningScope, Slot, SubflowBlock,
 };
 
 use super::node_input_values;
@@ -327,88 +329,15 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                         block,
                         job_id,
                         block_job_id: new_job_id,
-                        inputs,
+                        payload,
                         request_id,
                         ..
                     } => {
-                        let block_path = match flow_shared.path_finder.find_task_block_path(&block)
-                        {
-                            Ok(path) => path,
-                            Err(e) => {
-                                let msg = format!(
-                                    "Failed to find task block path for block: {}. Error: {}",
-                                    block, e
-                                );
-                                tracing::warn!("{}", msg);
-                                scheduler_tx.respond_block_request(
-                                    &flow_shared.shared.session_id,
-                                    scheduler::BlockResponseParams {
-                                        session_id: flow_shared.shared.session_id.clone(),
-                                        job_id: job_id.clone(),
-                                        error: Some(msg),
-                                        result: None,
-                                        request_id,
-                                    },
-                                );
-                                continue;
-                            }
-                        };
+                        let block_path = flow_shared.path_finder.find_task_block_path(&block);
+                        let flow_path = flow_shared.path_finder.find_flow_block_path(&block);
 
-                        let task_block = match BlockResolver::new().read_task_block(&block_path) {
-                            Ok(tb) => tb,
-                            Err(e) => {
-                                let msg = format!(
-                                    "Failed to read task block from path: {}. Error: {}",
-                                    block_path.display(),
-                                    e
-                                );
-                                tracing::warn!("{}", msg);
-                                scheduler_tx.respond_block_request(
-                                    &flow_shared.shared.session_id,
-                                    scheduler::BlockResponseParams {
-                                        session_id: flow_shared.shared.session_id.clone(),
-                                        job_id: job_id.clone(),
-                                        error: Some(msg),
-                                        result: None,
-                                        request_id,
-                                    },
-                                );
-                                continue;
-                            }
-                        };
-
-                        // 构造输入映射
-                        let inputs_map: HashMap<_, _> = inputs
-                            .into_iter()
-                            .map(|(handle, value)| {
-                                (
-                                    handle,
-                                    Arc::new(OutputValue {
-                                        value,
-                                        cacheable: true,
-                                    }),
-                                )
-                            })
-                            .collect();
-
-                        let missing_inputs = task_block
-                            .inputs_def
-                            .as_ref()
-                            .map(|inputs_def| {
-                                inputs_def
-                                    .iter()
-                                    .filter_map(|(handle, _)| {
-                                        (!inputs_map.contains_key(handle)).then_some(handle.clone())
-                                    })
-                                    .collect::<Vec<_>>()
-                            })
-                            .unwrap_or_default();
-
-                        if !missing_inputs.is_empty() {
-                            let msg = format!(
-                                "Task block {} inputs missing these input handles: {:?}",
-                                block, missing_inputs
-                            );
+                        if block_path.is_err() && flow_path.is_err() {
+                            let msg = format!("Failed to find {} for task or subflow", block);
                             tracing::warn!("{}", msg);
                             scheduler_tx.respond_block_request(
                                 &flow_shared.shared.session_id,
@@ -423,31 +352,308 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                             continue;
                         }
 
-                        tracing::info!("running task block: {} as {}", block, new_job_id);
+                        let inputs = payload
+                            .as_object()
+                            .and_then(|obj| obj.get("inputs"))
+                            .and_then(|v| v.as_object())
+                            .map(|obj| {
+                                obj.iter()
+                                    .map(|(k, v)| (k.clone(), v.clone()))
+                                    .collect::<HashMap<String, serde_json::Value>>()
+                            })
+                            .unwrap_or_default();
 
-                        if let Some(handle) = run_task_block(RunTaskBlockArgs {
-                            task_block,
-                            shared: Arc::clone(&flow_shared.shared),
-                            parent_flow: Some(flow_shared.flow_block.clone()),
-                            stacks: flow_shared.stacks.stack(
-                                flow_shared.job_id.to_owned(),
-                                flow_shared.flow_block.path_str.to_owned(),
-                                NodeId::from(format!("run_block::{}", block)),
-                            ),
-                            job_id: new_job_id.clone().into(),
-                            inputs: Some(inputs_map),
-                            block_status: run_flow_ctx.block_status.clone(),
-                            scope: flow_shared.scope.clone(),
-                            timeout: None,
-                            inputs_def_patch: None,
-                        }) {
-                            run_flow_ctx.jobs.insert(
-                                new_job_id.into(),
-                                BlockInFlowJobHandle {
-                                    node_id: NodeId::from(format!("run_block::{}", block)),
-                                    _job: handle,
-                                },
-                            );
+                        if let Ok(block_path) = block_path {
+                            let mut task_block =
+                                match BlockResolver::new().read_task_block(&block_path) {
+                                    Ok(tb) => tb,
+                                    Err(e) => {
+                                        let msg = format!(
+                                            "Failed to read task block from path: {}. Error: {}",
+                                            block_path.display(),
+                                            e
+                                        );
+                                        tracing::warn!("{}", msg);
+                                        scheduler_tx.respond_block_request(
+                                            &flow_shared.shared.session_id,
+                                            scheduler::BlockResponseParams {
+                                                session_id: flow_shared.shared.session_id.clone(),
+                                                job_id: job_id.clone(),
+                                                error: Some(msg),
+                                                result: None,
+                                                request_id,
+                                            },
+                                        );
+                                        continue;
+                                    }
+                                };
+
+                            let inputs_map: HashMap<HandleName, Arc<OutputValue>> = inputs
+                                .into_iter()
+                                .map(|(handle, value)| {
+                                    (
+                                        HandleName::new(handle),
+                                        Arc::new(OutputValue {
+                                            value,
+                                            cacheable: true,
+                                        }),
+                                    )
+                                })
+                                .collect();
+
+                            let additional_inputs_def: HashMap<HandleName, InputHandle> = payload
+                                .as_object()
+                                .and_then(|obj| obj.get("additional_inputs_def"))
+                                .and_then(|v| v.as_array())
+                                .map(|obj| {
+                                    obj.iter()
+                                        .filter_map(|v| {
+                                            serde_json::from_value::<InputHandle>(v.clone()).ok()
+                                        })
+                                        .map(|input| {
+                                            (
+                                                input.handle.to_owned(),
+                                                InputHandle {
+                                                    remember: false,
+                                                    is_additional: true,
+                                                    ..input
+                                                },
+                                            )
+                                        })
+                                        .collect::<HashMap<HandleName, InputHandle>>()
+                                })
+                                .unwrap_or_default();
+
+                            let additional_outputs_def: HashMap<HandleName, OutputHandle> = payload
+                                .as_object()
+                                .and_then(|obj| obj.get("additional_outputs_def"))
+                                .and_then(|v| v.as_array())
+                                .map(|obj| {
+                                    obj.iter()
+                                        .filter_map(|v| {
+                                            serde_json::from_value::<OutputHandle>(v.clone()).ok()
+                                        })
+                                        .map(|output| {
+                                            (
+                                                output.handle.to_owned(),
+                                                OutputHandle {
+                                                    is_additional: true,
+                                                    ..output
+                                                },
+                                            )
+                                        })
+                                        .collect::<HashMap<HandleName, OutputHandle>>()
+                                })
+                                .unwrap_or_default();
+
+                            let mut task_inner = (*task_block).clone();
+                            task_inner.inputs_def = task_inner.inputs_def.map(|mut inputs_def| {
+                                inputs_def.extend(additional_inputs_def);
+                                inputs_def
+                            });
+
+                            task_inner.outputs_def =
+                                task_inner.outputs_def.map(|mut outputs_def| {
+                                    outputs_def.extend(additional_outputs_def);
+                                    outputs_def
+                                });
+
+                            task_block = Arc::new(task_inner);
+
+                            let missing_inputs = task_block
+                                .inputs_def
+                                .as_ref()
+                                .map(|inputs_def| {
+                                    inputs_def
+                                        .iter()
+                                        .filter_map(|(handle, _)| {
+                                            (!inputs_map.contains_key(handle))
+                                                .then_some(handle.clone())
+                                        })
+                                        .collect::<Vec<_>>()
+                                })
+                                .unwrap_or_default();
+
+                            if !missing_inputs.is_empty() {
+                                let msg = format!(
+                                    "Task block {} inputs missing these input handles: {:?}",
+                                    block, missing_inputs
+                                );
+                                tracing::warn!("{}", msg);
+                                scheduler_tx.respond_block_request(
+                                    &flow_shared.shared.session_id,
+                                    scheduler::BlockResponseParams {
+                                        session_id: flow_shared.shared.session_id.clone(),
+                                        job_id: job_id.clone(),
+                                        error: Some(msg),
+                                        result: None,
+                                        request_id,
+                                    },
+                                );
+                                continue;
+                            }
+
+                            let block_scope = match calculate_block_value_type(&block) {
+                                BlockValueType::Pkg { pkg_name, .. } => {
+                                    if let Some(_) = pkg_name {
+                                        RunningPackageScope {
+                                        package_path: task_block
+                                            .package_path
+                                            .clone()
+                                            .unwrap_or_else(|| {
+                                                // if package path is not set, use flow shared scope package path
+                                                warn!("can find block package path, this should never happen");
+                                                flow_shared.scope.package_path.clone()
+                                            }),
+                                        node_id: None,
+                                        is_inject: false,
+                                        enable_layer: layer::feature_enabled(),
+                                    }
+                                    } else {
+                                        flow_shared.scope.clone()
+                                    }
+                                }
+                                _ => flow_shared.scope.clone(),
+                            };
+
+                            tracing::info!("run block request for task block: {}", block);
+
+                            if let Some(handle) = run_task_block(RunTaskBlockArgs {
+                                task_block,
+                                shared: Arc::clone(&flow_shared.shared),
+                                parent_flow: Some(flow_shared.flow_block.clone()),
+                                stacks: flow_shared.stacks.stack(
+                                    flow_shared.job_id.to_owned(),
+                                    flow_shared.flow_block.path_str.to_owned(),
+                                    NodeId::from(format!("run_block::{}", block)),
+                                ),
+                                job_id: new_job_id.clone().into(),
+                                inputs: Some(inputs_map),
+                                block_status: run_flow_ctx.block_status.clone(),
+                                scope: block_scope,
+                                timeout: None,
+                                inputs_def_patch: None,
+                            }) {
+                                run_flow_ctx.jobs.insert(
+                                    new_job_id.into(),
+                                    BlockInFlowJobHandle {
+                                        node_id: NodeId::from(format!("run_block::{}", block)),
+                                        _job: handle,
+                                    },
+                                );
+                            }
+                            continue;
+                        }
+
+                        if let Ok(flow_path) = flow_path {
+                            let subflow_block = match BlockResolver::new()
+                                .read_flow_block(&flow_path, &mut flow_shared.path_finder)
+                            {
+                                Ok(block) => block,
+                                Err(e) => {
+                                    tracing::warn!(
+                                        "Failed to read subflow block from path: {}. Error: {}",
+                                        flow_path.display(),
+                                        e
+                                    );
+                                    continue;
+                                }
+                            };
+
+                            let flow_scope = match calculate_block_value_type(&block) {
+                                BlockValueType::Pkg { pkg_name, .. } => {
+                                    if let Some(_) = pkg_name {
+                                        RunningPackageScope  {
+                                            package_path: subflow_block.package_path.clone().unwrap_or_else(|| {
+                                                warn!("can find subflow package path, this should never happen");
+                                                flow_shared.scope.package_path.clone()
+                                            }),
+                                            node_id: None,
+                                            is_inject: false,
+                                            enable_layer: layer::feature_enabled(),
+                                        }
+                                    } else {
+                                        flow_shared.scope.clone()
+                                    }
+                                }
+                                _ => flow_shared.scope.clone(),
+                            };
+
+                            // 构造输入映射
+                            let inputs_map: HashMap<HandleName, Arc<OutputValue>> = inputs
+                                .into_iter()
+                                .map(|(handle, value)| {
+                                    (
+                                        HandleName::new(handle),
+                                        Arc::new(OutputValue {
+                                            value,
+                                            cacheable: true,
+                                        }),
+                                    )
+                                })
+                                .collect();
+
+                            let missing_inputs = subflow_block
+                                .inputs_def
+                                .as_ref()
+                                .map(|inputs_def| {
+                                    inputs_def
+                                        .iter()
+                                        .filter_map(|(handle, _)| {
+                                            (!inputs_map.contains_key(handle))
+                                                .then_some(handle.clone())
+                                        })
+                                        .collect::<Vec<_>>()
+                                })
+                                .unwrap_or_default();
+
+                            if !missing_inputs.is_empty() {
+                                let msg = format!(
+                                    "subflow block {} inputs missing these input handles: {:?}",
+                                    block, missing_inputs
+                                );
+                                tracing::warn!("{}", msg);
+                                scheduler_tx.respond_block_request(
+                                    &flow_shared.shared.session_id,
+                                    scheduler::BlockResponseParams {
+                                        session_id: flow_shared.shared.session_id.clone(),
+                                        job_id: job_id.clone(),
+                                        error: Some(msg),
+                                        result: None,
+                                        request_id,
+                                    },
+                                );
+                                continue;
+                            }
+
+                            tracing::info!("run block request for subflow block: {}", block);
+                            if let Some(handle) = run_flow(RunFlowArgs {
+                                flow_block: subflow_block,
+                                shared: Arc::clone(&flow_shared.shared),
+                                stacks: flow_shared.stacks.stack(
+                                    flow_shared.job_id.to_owned(),
+                                    flow_shared.flow_block.path_str.to_owned(),
+                                    NodeId::from(format!("run_block::{}", block)),
+                                ),
+                                flow_job_id: new_job_id.clone().into(),
+                                inputs: Some(inputs_map),
+                                node_value_store: NodeInputValues::new(false),
+                                parent_block_status: run_flow_ctx.block_status.clone(),
+                                nodes: None,
+                                parent_scope: flow_shared.scope.clone(),
+                                scope: flow_scope,
+                                slot_blocks: default::Default::default(),
+                                path_finder: flow_shared.path_finder.clone(),
+                            }) {
+                                run_flow_ctx.jobs.insert(
+                                    new_job_id.into(),
+                                    BlockInFlowJobHandle {
+                                        node_id: NodeId::from(format!("run_block::{}", block)),
+                                        _job: handle,
+                                    },
+                                );
+                            }
+                            continue;
                         }
                     }
                     BlockRequest::QueryBlock {
@@ -456,95 +662,158 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                         block,
                         request_id,
                     } => {
-                        let block_path = match flow_shared.path_finder.find_task_block_path(&block)
-                        {
-                            Ok(path) => path,
-                            Err(e) => {
-                                let msg = format!(
-                                    "Failed to find task block path for block: {}. Error: {}",
-                                    block, e
-                                );
-                                tracing::warn!("{}", msg);
+                        let flow_path = flow_shared.path_finder.find_flow_block_path(&block);
+                        let block_path = flow_shared.path_finder.find_task_block_path(&block);
+
+                        if flow_path.is_err() && block_path.is_err() {
+                            let msg = format!("Failed to find {} for block or subflow", block);
+                            tracing::warn!("{}", msg);
+                            scheduler_tx.respond_block_request(
+                                &session_id,
+                                scheduler::BlockResponseParams {
+                                    session_id: session_id.clone(),
+                                    job_id: job_id.clone(),
+                                    error: Some(msg),
+                                    result: None,
+                                    request_id,
+                                },
+                            );
+                            continue;
+                        };
+
+                        if let Ok(block_path) = block_path {
+                            let task_block = match BlockResolver::new().read_task_block(&block_path)
+                            {
+                                Ok(tb) => tb,
+                                Err(e) => {
+                                    let msg = format!(
+                                        "Failed to read task block from path: {}. Error: {}",
+                                        block_path.display(),
+                                        e
+                                    );
+                                    tracing::warn!("{}", msg);
+                                    scheduler_tx.respond_block_request(
+                                        &session_id,
+                                        scheduler::BlockResponseParams {
+                                            session_id: session_id.clone(),
+                                            job_id: job_id.clone(),
+                                            error: Some(msg),
+                                            result: None,
+                                            request_id,
+                                        },
+                                    );
+                                    continue;
+                                }
+                            };
+                            #[derive(serde::Serialize)]
+                            struct TaskBlockMetadata {
+                                pub description: Option<String>,
+                                pub inputs_def: Option<InputHandles>,
+                                pub outputs_def: Option<OutputHandles>,
+                                pub additional_inputs: bool,
+                                pub additional_outputs: bool,
+                            }
+
+                            let metadata = TaskBlockMetadata {
+                                description: task_block.description.clone(),
+                                inputs_def: task_block.inputs_def.clone(),
+                                outputs_def: task_block.outputs_def.clone(),
+                                additional_inputs: task_block.additional_inputs,
+                                additional_outputs: task_block.additional_outputs,
+                            };
+                            let json = serde_json::to_value(&metadata);
+                            if let Ok(json) = json {
+                                // tracing::debug!("Task block metadata serialized to JSON: {}", json);
                                 scheduler_tx.respond_block_request(
                                     &session_id,
-                                    scheduler::BlockResponseParams {
+                                    BlockResponseParams {
                                         session_id: session_id.clone(),
                                         job_id: job_id.clone(),
-                                        error: Some(msg),
-                                        result: None,
+                                        error: None,
+                                        result: Some(json),
                                         request_id,
                                     },
                                 );
-                                continue;
-                            }
-                        };
-
-                        let task_block = match BlockResolver::new().read_task_block(&block_path) {
-                            Ok(tb) => tb,
-                            Err(e) => {
-                                let msg = format!(
-                                    "Failed to read task block from path: {}. Error: {}",
-                                    block_path.display(),
-                                    e
-                                );
-                                tracing::warn!("{}", msg);
+                            } else {
+                                tracing::warn!("Failed to serialize task block metadata to JSON");
                                 scheduler_tx.respond_block_request(
                                     &session_id,
-                                    scheduler::BlockResponseParams {
+                                    BlockResponseParams {
                                         session_id: session_id.clone(),
                                         job_id: job_id.clone(),
-                                        error: Some(msg),
                                         result: None,
+                                        error: Some(
+                                            "Failed to serialize task block metadata to JSON"
+                                                .into(),
+                                        ),
                                         request_id,
                                     },
                                 );
-                                continue;
                             }
-                        };
-
-                        #[derive(serde::Serialize)]
-                        struct TaskBlockMetadata {
-                            pub description: Option<String>,
-                            pub inputs_def: Option<InputHandles>,
-                            pub outputs_def: Option<OutputHandles>,
-                            pub additional_inputs: bool,
-                            pub additional_outputs: bool,
+                            continue;
                         }
 
-                        let metadata = TaskBlockMetadata {
-                            description: task_block.description.clone(),
-                            inputs_def: task_block.inputs_def.clone(),
-                            outputs_def: task_block.outputs_def.clone(),
-                            additional_inputs: task_block.additional_inputs,
-                            additional_outputs: task_block.additional_outputs,
-                        };
-                        let json = serde_json::to_value(&metadata);
-                        if let Ok(json) = json {
-                            // tracing::debug!("Task block metadata serialized to JSON: {}", json);
-                            scheduler_tx.respond_block_request(
-                                &session_id,
-                                BlockResponseParams {
-                                    session_id: session_id.clone(),
-                                    job_id: job_id.clone(),
-                                    error: None,
-                                    result: Some(json),
-                                    request_id,
-                                },
-                            );
-                        } else {
-                            tracing::warn!("Failed to serialize task block metadata to JSON");
-                            scheduler_tx.respond_block_request(
-                                &session_id,
-                                BlockResponseParams {
-                                    session_id: session_id.clone(),
-                                    job_id: job_id.clone(),
-                                    result: None,
-                                    error: Some(
-                                        "Failed to serialize task block metadata to JSON".into(),
-                                    ),
-                                    request_id,
-                                },
-                            );
+                        if let Ok(subflow_path) = flow_path {
+                            let subflow_block = match BlockResolver::new()
+                                .read_flow_block(&subflow_path, &mut flow_shared.path_finder)
+                            {
+                                Ok(block) => block,
+                                Err(e) => {
+                                    tracing::warn!(
+                                        "Failed to read subflow block from path: {}. Error: {}",
+                                        subflow_path.display(),
+                                        e
+                                    );
+                                    continue;
+                                }
+                            };
+
+                            #[derive(serde::Serialize)]
+                            struct SubflowMetadata {
+                                #[serde(skip_serializing_if = "Option::is_none")]
+                                description: Option<String>,
+                                inputs_def: Option<InputHandles>,
+                                outputs_def: Option<OutputHandles>,
+                                has_slot: bool,
+                            }
+
+                            let metadata = SubflowMetadata {
+                                description: subflow_block.description.clone(),
+                                inputs_def: subflow_block.inputs_def.clone(),
+                                outputs_def: subflow_block.outputs_def.clone(),
+                                has_slot: subflow_block.has_slot(),
+                            };
+
+                            let json = serde_json::to_value(&metadata);
+                            if let Ok(json) = json {
+                                scheduler_tx.respond_block_request(
+                                    &session_id,
+                                    BlockResponseParams {
+                                        session_id: session_id.clone(),
+                                        job_id: job_id.clone(),
+                                        error: None,
+                                        result: Some(json),
+                                        request_id,
+                                    },
+                                );
+                            } else {
+                                tracing::warn!(
+                                    "Failed to serialize subflow block metadata to JSON"
+                                );
+                                scheduler_tx.respond_block_request(
+                                    &session_id,
+                                    BlockResponseParams {
+                                        session_id: session_id.clone(),
+                                        job_id: job_id.clone(),
+                                        result: None,
+                                        error: Some(
+                                            "Failed to serialize task block metadata to JSON"
+                                                .into(),
+                                        ),
+                                        request_id,
+                                    },
+                                );
+                            }
                         }
                     }
                 },

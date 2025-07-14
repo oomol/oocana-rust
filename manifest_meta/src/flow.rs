@@ -58,6 +58,7 @@ pub type InjectionStore = HashMap<InjectionTarget, InjectionMeta>;
 
 #[derive(Debug, Clone)]
 pub struct SubflowBlock {
+    pub description: Option<String>,
     pub nodes: HashMap<NodeId, Node>,
     pub inputs_def: Option<InputHandles>,
     pub outputs_def: Option<OutputHandles>,
@@ -162,9 +163,7 @@ pub fn generate_node_inputs(
                             node_id: node_id.clone(),
                             output_handle: output_handle.clone(),
                         }),
-                        _ => {
-                            None
-                        }
+                        _ => None,
                     })
                     .collect::<Vec<_>>()
             });
@@ -270,6 +269,7 @@ impl SubflowBlock {
         mut path_finder: BlockPathFinder,
     ) -> Result<Self> {
         let manifest::SubflowBlock {
+            description,
             nodes,
             inputs_def,
             outputs_def,
@@ -966,6 +966,7 @@ impl SubflowBlock {
         }
 
         Ok(Self {
+            description: description,
             nodes: new_nodes,
             inputs_def,
             outputs_def,

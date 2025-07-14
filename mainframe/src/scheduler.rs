@@ -36,7 +36,7 @@ pub enum BlockRequest {
         job_id: JobId,
         block: String,
         block_job_id: String,
-        inputs: HashMap<HandleName, JsonValue>,
+        payload: serde_json::Value,
         request_id: String, // this is used to match the response with the request
     },
     QueryBlock {
