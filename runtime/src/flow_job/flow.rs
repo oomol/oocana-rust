@@ -503,10 +503,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                                 warn!("can find block package path, this should never happen");
                                                 flow_shared.scope.package_path.clone()
                                             }),
-                                        node_id: Some(NodeId::from(format!(
-                                            "run_block::{}",
-                                            block
-                                        ))),
+                                        node_id: None,
                                         is_inject: false,
                                         enable_layer: layer::feature_enabled(),
                                     }
