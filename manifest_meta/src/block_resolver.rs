@@ -185,7 +185,7 @@ impl BlockResolver {
         Ok(Arc::new(slotflow))
     }
 
-    fn read_flow_block(
+    pub fn read_flow_block(
         &mut self,
         flow_path: &Path,
         resolver: &mut BlockPathFinder,
