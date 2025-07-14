@@ -10,7 +10,6 @@ use uuid::Uuid;
 use crate::{
     block_job::{run_block, run_task_block, BlockJobHandle, RunBlockArgs, RunTaskBlockArgs},
     block_status::{self, BlockStatusTx},
-    flow_job::flow,
     shared::Shared,
 };
 use mainframe::{
