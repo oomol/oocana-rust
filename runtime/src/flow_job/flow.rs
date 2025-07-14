@@ -22,8 +22,8 @@ use utils::output::OutputValue;
 
 use job::{BlockInputs, BlockJobStacks, JobId, RunningPackageScope};
 use manifest_meta::{
-    BlockResolver, HandleName, HandleTo, InputHandle, InputHandles, Node, NodeId, OutputHandles,
-    RunningScope, Slot, SubflowBlock,
+    BlockResolver, HandleName, HandleTo, InputHandle, InputHandles, Node, NodeId, OutputHandle,
+    OutputHandles, RunningScope, Slot, SubflowBlock,
 };
 
 use super::node_input_values;
@@ -401,6 +401,63 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                     )
                                 })
                                 .collect();
+
+                            let additional_inputs_def: HashMap<HandleName, InputHandle> = payload
+                                .as_object()
+                                .and_then(|obj| obj.get("additional_inputs_def"))
+                                .and_then(|v| v.as_array())
+                                .map(|obj| {
+                                    obj.iter()
+                                        .filter_map(|v| {
+                                            serde_json::from_value::<InputHandle>(v.clone()).ok()
+                                        })
+                                        .map(|input| {
+                                            (
+                                                input.handle.to_owned(),
+                                                InputHandle {
+                                                    remember: false,
+                                                    is_additional: true,
+                                                    ..input
+                                                },
+                                            )
+                                        })
+                                        .collect::<HashMap<HandleName, InputHandle>>()
+                                })
+                                .unwrap_or_default();
+
+                            let additional_outputs_def: HashMap<HandleName, OutputHandle> = payload
+                                .as_object()
+                                .and_then(|obj| obj.get("additional_outputs_def"))
+                                .and_then(|v| v.as_array())
+                                .map(|obj| {
+                                    obj.iter()
+                                        .filter_map(|v| {
+                                            serde_json::from_value::<OutputHandle>(v.clone()).ok()
+                                        })
+                                        .map(|output| {
+                                            (
+                                                output.handle.to_owned(),
+                                                OutputHandle {
+                                                    is_additional: true,
+                                                    ..output
+                                                },
+                                            )
+                                        })
+                                        .collect::<HashMap<HandleName, OutputHandle>>()
+                                })
+                                .unwrap_or_default();
+
+                            let mut task_inner = (*task_block).clone();
+                            task_inner.inputs_def = task_inner.inputs_def.map(|mut inputs_def| {
+                                inputs_def.extend(additional_inputs_def);
+                                inputs_def
+                            });
+
+                            task_inner.outputs_def =
+                                task_inner.outputs_def.map(|mut outputs_def| {
+                                    outputs_def.extend(additional_outputs_def);
+                                    outputs_def
+                                });
 
                             let missing_inputs = task_block
                                 .inputs_def
