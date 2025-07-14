@@ -516,6 +516,8 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                 _ => flow_shared.scope.clone(),
                             };
 
+                            tracing::info!("run block request for task block: {}", block);
+
                             if let Some(handle) = run_task_block(RunTaskBlockArgs {
                                 task_block,
                                 shared: Arc::clone(&flow_shared.shared),
@@ -624,6 +626,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                 continue;
                             }
 
+                            tracing::info!("run block request for subflow block: {}", block);
                             if let Some(handle) = run_flow(RunFlowArgs {
                                 flow_block: subflow_block,
                                 shared: Arc::clone(&flow_shared.shared),
