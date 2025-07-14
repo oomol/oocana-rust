@@ -508,7 +508,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                             block
                                         ))),
                                         is_inject: false,
-                                        enable_layer: flow_shared.scope.enable_layer,
+                                        enable_layer: layer::feature_enabled(),
                                     }
                                     } else {
                                         flow_shared.scope.clone()
@@ -569,7 +569,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                             }),
                                             node_id: None,
                                             is_inject: false,
-                                            enable_layer: flow_shared.scope.enable_layer,
+                                            enable_layer: layer::feature_enabled(),
                                         }
                                     } else {
                                         flow_shared.scope.clone()
