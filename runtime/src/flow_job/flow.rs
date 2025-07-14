@@ -1,3 +1,4 @@
+use manifest_reader::path_finder::{calculate_block_value_type, BlockValueType};
 use std::{
     collections::{HashMap, HashSet},
     path::PathBuf,
@@ -423,7 +424,31 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                             continue;
                         }
 
-                        tracing::info!("running task block: {} as {}", block, new_job_id);
+                        let block_scope = match calculate_block_value_type(&block) {
+                            BlockValueType::Pkg { pkg_name, .. } => {
+                                if let Some(_) = pkg_name {
+                                    RunningPackageScope {
+                                        package_path: task_block
+                                            .package_path
+                                            .clone()
+                                            .unwrap_or_else(|| {
+                                                // if package path is not set, use flow shared scope package path
+                                                warn!("can find block package path, this should never happen");
+                                                flow_shared.scope.package_path.clone()
+                                            }),
+                                        node_id: Some(NodeId::from(format!(
+                                            "run_block::{}",
+                                            block
+                                        ))),
+                                        is_inject: false,
+                                        enable_layer: flow_shared.scope.enable_layer,
+                                    }
+                                } else {
+                                    flow_shared.scope.clone()
+                                }
+                            }
+                            _ => flow_shared.scope.clone(),
+                        };
 
                         if let Some(handle) = run_task_block(RunTaskBlockArgs {
                             task_block,
@@ -437,7 +462,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                             job_id: new_job_id.clone().into(),
                             inputs: Some(inputs_map),
                             block_status: run_flow_ctx.block_status.clone(),
-                            scope: flow_shared.scope.clone(),
+                            scope: block_scope,
                             timeout: None,
                             inputs_def_patch: None,
                         }) {
