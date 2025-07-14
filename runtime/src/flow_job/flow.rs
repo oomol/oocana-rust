@@ -525,7 +525,38 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                 })
                                 .collect();
 
-                            // TODO: subflow missing inputs error
+                            let missing_inputs = subflow_block
+                                .inputs_def
+                                .as_ref()
+                                .map(|inputs_def| {
+                                    inputs_def
+                                        .iter()
+                                        .filter_map(|(handle, _)| {
+                                            (!inputs_map.contains_key(handle))
+                                                .then_some(handle.clone())
+                                        })
+                                        .collect::<Vec<_>>()
+                                })
+                                .unwrap_or_default();
+
+                            if !missing_inputs.is_empty() {
+                                let msg = format!(
+                                    "subflow block {} inputs missing these input handles: {:?}",
+                                    block, missing_inputs
+                                );
+                                tracing::warn!("{}", msg);
+                                scheduler_tx.respond_block_request(
+                                    &flow_shared.shared.session_id,
+                                    scheduler::BlockResponseParams {
+                                        session_id: flow_shared.shared.session_id.clone(),
+                                        job_id: job_id.clone(),
+                                        error: Some(msg),
+                                        result: None,
+                                        request_id,
+                                    },
+                                );
+                                continue;
+                            }
 
                             if let Some(handle) = run_flow(RunFlowArgs {
                                 flow_block: subflow_block,
