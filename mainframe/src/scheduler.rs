@@ -1515,3 +1515,29 @@ where
         },
     )
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_output_options() {
+        let raw_str = r#"{"target": {"to_node": [{"node_id": "node1","input_handle": "input1"}]}}"#;
+
+        let op: OutputOptions = serde_json::from_str(raw_str).unwrap();
+        assert!(op.target.map_or(false, |t| {
+            if t.to_node.is_some_and(|mut inputs| {
+                inputs.pop().is_some_and(|node_input| {
+                    node_input.eq(&ToNodeInput {
+                        node_id: format!("node1").into(),
+                        input_handle: format!("input1").into(),
+                    })
+                })
+            }) {
+                true
+            } else {
+                false
+            }
+        }));
+    }
+}
