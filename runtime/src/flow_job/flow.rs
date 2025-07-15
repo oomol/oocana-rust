@@ -1083,11 +1083,13 @@ fn produce_new_value(
                 node_id,
                 input_handle,
             } => {
-                // if options is some:
-                // - if to_node_input is not in options(None), skip this handle_to processing
-                // - if to_node_input is in options, check whether this handle_to is contained in to_node_input. if in options, continue processing, if not skip this handle_to processing
+                // only handle when options is some:
+                // - if to_node_inputs is not in options(None), skip this handle_to processing
+                // - if to_node_inputs is in options: check whether this handle_to is contained in to_node_inputs.
+                //      if handle_to is in to_node_input, continue processing
+                //      if not, skip this handle_to processing
                 if options.as_ref().is_some_and(|op| {
-                    op.to_node_input.as_ref().map_or(true, |to_nodes| {
+                    op.to_node_inputs.as_ref().map_or(true, |to_nodes| {
                         !to_nodes.contains(&ToNodeInput {
                             node_id: node_id.to_owned(),
                             input_handle: input_handle.to_owned(),
@@ -1150,7 +1152,7 @@ fn produce_new_value(
             } => {
                 // Refer to the logic for handling ToNodeInput
                 if options.as_ref().is_some_and(|op| {
-                    op.to_flow_output.as_ref().map_or(true, |to_outputs| {
+                    op.to_flow_outputs.as_ref().map_or(true, |to_outputs| {
                         !to_outputs.contains(&ToFlowOutput {
                             output_handle: flow_output_handle.to_owned(),
                         })

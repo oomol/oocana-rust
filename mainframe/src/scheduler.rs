@@ -65,8 +65,8 @@ impl BlockRequest {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct OutputOptions {
-    pub to_node_input: Option<Vec<ToNodeInput>>,
-    pub to_flow_output: Option<Vec<ToFlowOutput>>,
+    pub to_node_inputs: Option<Vec<ToNodeInput>>,
+    pub to_flow_outputs: Option<Vec<ToFlowOutput>>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
