@@ -65,6 +65,13 @@ impl BlockRequest {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct OutputOptions {
+    /// Specifies the destination for block outputs, such as node inputs or flow outputs.
+    /// If `None`, outputs are sent to all default destinations.
+    pub target: Option<OutputTarget>,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct OutputTarget {
     pub to_node_inputs: Option<Vec<ToNodeInput>>,
     pub to_flow_outputs: Option<Vec<ToFlowOutput>>,
 }

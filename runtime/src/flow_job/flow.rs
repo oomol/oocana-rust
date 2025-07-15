@@ -1089,10 +1089,12 @@ fn produce_new_value(
                 //      if handle_to is in to_node_input, continue processing
                 //      if not, skip this handle_to processing
                 if options.as_ref().is_some_and(|op| {
-                    op.to_node_inputs.as_ref().map_or(true, |to_nodes| {
-                        !to_nodes.contains(&ToNodeInput {
-                            node_id: node_id.to_owned(),
-                            input_handle: input_handle.to_owned(),
+                    op.target.as_ref().map_or(false, |targets| {
+                        targets.to_node_inputs.as_ref().map_or(true, |to_nodes| {
+                            !to_nodes.contains(&ToNodeInput {
+                                node_id: node_id.to_owned(),
+                                input_handle: input_handle.to_owned(),
+                            })
                         })
                     })
                 }) {
@@ -1152,9 +1154,11 @@ fn produce_new_value(
             } => {
                 // Refer to the logic for handling ToNodeInput
                 if options.as_ref().is_some_and(|op| {
-                    op.to_flow_outputs.as_ref().map_or(true, |to_outputs| {
-                        !to_outputs.contains(&ToFlowOutput {
-                            output_handle: flow_output_handle.to_owned(),
+                    op.target.as_ref().map_or(false, |targets| {
+                        targets.to_flow_outputs.as_ref().map_or(true, |to_outputs| {
+                            !to_outputs.contains(&ToFlowOutput {
+                                output_handle: flow_output_handle.to_owned(),
+                            })
                         })
                     })
                 }) {
