@@ -75,7 +75,7 @@ mod tests {
             ));
             if let manifest_meta::HandleTo::ToNodeInput {
                 node_id,
-                node_input_handle,
+                input_handle: node_input_handle,
             } = to_node3
             {
                 assert_eq!(node_id, &NodeId::new("node3".to_owned()));
@@ -156,7 +156,7 @@ mod tests {
         ));
         if let manifest_meta::HandleTo::ToNodeInput {
             node_id,
-            node_input_handle,
+            input_handle: node_input_handle,
         } = to_node1
         {
             assert_eq!(node_id, &node1_id);

@@ -54,7 +54,7 @@ pub enum HandleFrom {
     },
     FromNodeOutput {
         node_id: NodeId,
-        node_output_handle: HandleName,
+        output_handle: HandleName,
     },
     FromValue {
         value: Option<Option<JsonValue>>,
@@ -68,6 +68,6 @@ pub enum HandleTo {
     },
     ToNodeInput {
         node_id: NodeId,
-        node_input_handle: HandleName,
+        input_handle: HandleName,
     },
 }

@@ -80,7 +80,7 @@ impl Connections {
                         runtime_handle.clone(),
                         HandleFrom::FromNodeOutput {
                             node_id: from_node.node_id.to_owned(),
-                            node_output_handle: from_node.output_handle.to_owned(),
+                            output_handle: from_node.output_handle.to_owned(),
                         },
                     );
 
@@ -89,7 +89,7 @@ impl Connections {
                         from_node.output_handle.to_owned(),
                         HandleTo::ToNodeInput {
                             node_id: subflow_node_id.to_owned(),
-                            node_input_handle: runtime_handle.clone(),
+                            input_handle: runtime_handle.clone(),
                         },
                     );
                 }
@@ -101,7 +101,7 @@ impl Connections {
                         flow_handle.input_handle.to_owned(),
                         HandleTo::ToNodeInput {
                             node_id: subflow_node_id.to_owned(),
-                            node_input_handle: runtime_handle.clone(),
+                            input_handle: runtime_handle.clone(),
                         },
                     );
                     self.node_inputs_froms.add(
@@ -142,7 +142,7 @@ impl Connections {
                             output_from.handle.to_owned(),
                             HandleFrom::FromNodeOutput {
                                 node_id: from_node.node_id.to_owned(),
-                                node_output_handle: from_node.output_handle.to_owned(),
+                                output_handle: from_node.output_handle.to_owned(),
                             },
                         );
                         self.node_outputs_tos.add(
@@ -221,7 +221,7 @@ impl Connections {
                             input_from.handle.to_owned(),
                             HandleFrom::FromNodeOutput {
                                 node_id: from_node.node_id.to_owned(),
-                                node_output_handle: from_node.output_handle.to_owned(),
+                                output_handle: from_node.output_handle.to_owned(),
                             },
                         );
                         self.node_outputs_tos.add(
@@ -229,7 +229,7 @@ impl Connections {
                             from_node.output_handle.to_owned(),
                             HandleTo::ToNodeInput {
                                 node_id: node_id.to_owned(),
-                                node_input_handle: input_from.handle.to_owned(),
+                                input_handle: input_from.handle.to_owned(),
                             },
                         );
                     }
@@ -252,7 +252,7 @@ impl Connections {
                                 flow_handle.input_handle.to_owned(),
                                 HandleTo::ToNodeInput {
                                     node_id: node_id.to_owned(),
-                                    node_input_handle: input_from.handle.to_owned(),
+                                    input_handle: input_from.handle.to_owned(),
                                 },
                             );
                         } else {

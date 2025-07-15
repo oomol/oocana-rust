@@ -2,7 +2,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use flume::{Receiver, Sender};
 use job::JobId;
-use mainframe::scheduler::BlockRequest;
+use mainframe::scheduler::{BlockRequest, OutputOptions};
 use utils::output::OutputValue;
 
 use manifest_meta::HandleName;
@@ -12,6 +12,7 @@ pub enum Status {
         job_id: JobId,
         result: Arc<OutputValue>,
         handle: HandleName,
+        options: Option<OutputOptions>,
     },
     Outputs {
         job_id: JobId,
@@ -34,12 +35,19 @@ pub struct BlockStatusTx {
 }
 
 impl BlockStatusTx {
-    pub fn output(&self, job_id: JobId, result: Arc<OutputValue>, handle: HandleName) {
+    pub fn output(
+        &self,
+        job_id: JobId,
+        result: Arc<OutputValue>,
+        handle: HandleName,
+        options: Option<OutputOptions>,
+    ) {
         self.tx
             .send(Status::Output {
                 job_id,
                 result,
                 handle,
+                options,
             })
             .unwrap();
     }

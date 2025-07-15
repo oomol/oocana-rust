@@ -16,7 +16,7 @@ use utils::calculate_short_hash;
 use job::{BlockInputs, BlockJobStackLevel, JobId, RunningPackageScope, SessionId};
 
 use manifest_meta::{
-    HandleName, InjectionStore, InputDefPatchMap, InputHandles, JsonValue, OutputHandles,
+    HandleName, InjectionStore, InputDefPatchMap, InputHandles, JsonValue, NodeId, OutputHandles,
     ServiceExecutorOptions, TaskBlockExecutor,
 };
 use tokio::io::AsyncBufReadExt;
@@ -64,6 +64,30 @@ impl BlockRequest {
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct OutputOptions {
+    /// Specifies the destination for block outputs, such as node inputs or flow outputs.
+    /// If `None`, outputs are sent to all default destinations.
+    pub target: Option<OutputTarget>,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct OutputTarget {
+    pub to_node: Option<Vec<ToNodeInput>>,
+    pub to_flow: Option<Vec<ToFlowOutput>>,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+pub struct ToFlowOutput {
+    pub output_handle: HandleName,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+pub struct ToNodeInput {
+    pub node_id: NodeId,
+    pub input_handle: HandleName,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(tag = "type")]
 pub enum ReceiveMessage {
     BlockReady {
@@ -75,6 +99,9 @@ pub enum ReceiveMessage {
         job_id: JobId,
         handle: HandleName,
         output: JsonValue,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        /// if not None, it means this output is only to specific nodes. None means all nodes.
+        options: Option<OutputOptions>,
     },
     BlockOutputs {
         session_id: SessionId,
@@ -1487,4 +1514,30 @@ where
             rx,
         },
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_output_options() {
+        let raw_str = r#"{"target": {"to_node": [{"node_id": "node1","input_handle": "input1"}]}}"#;
+
+        let op: OutputOptions = serde_json::from_str(raw_str).unwrap();
+        assert!(op.target.map_or(false, |t| {
+            if t.to_node.is_some_and(|mut inputs| {
+                inputs.pop().is_some_and(|node_input| {
+                    node_input.eq(&ToNodeInput {
+                        node_id: format!("node1").into(),
+                        input_handle: format!("input1").into(),
+                    })
+                })
+            }) {
+                true
+            } else {
+                false
+            }
+        }));
+    }
 }

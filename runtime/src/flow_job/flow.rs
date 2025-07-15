@@ -14,7 +14,9 @@ use crate::{
 };
 use mainframe::{
     reporter::FlowReporterTx,
-    scheduler::{self, BlockRequest, BlockResponseParams},
+    scheduler::{
+        self, BlockRequest, BlockResponseParams, OutputOptions, ToFlowOutput, ToNodeInput,
+    },
 };
 use tracing::warn;
 use utils::output::OutputValue;
@@ -181,7 +183,8 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
 
     let (block_status_tx, block_status_rx) = block_status::create();
 
-    let mut filtered_nodes = nodes.clone();
+    // Build limit_nodes: if Some, run only those nodes and all their upstream dependencies; None means run all nodes.
+    let mut limit_nodes = nodes.clone();
     let mut run_flow_ctx = RunFlowContext {
         node_input_values: node_value_store,
         parent_block_status,
@@ -226,7 +229,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
 
         // add upstream nodes to filtered_nodes
         for node in upstream_nodes {
-            filtered_nodes
+            limit_nodes
                 .as_mut()
                 .map(|nodes| nodes.insert(NodeId::from(node)));
         }
@@ -261,8 +264,9 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                     &flow_shared,
                     &mut run_flow_ctx,
                     true,
-                    &filtered_nodes,
+                    &limit_nodes,
                     &reporter,
+                    &None,
                 );
             }
         }
@@ -281,6 +285,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                     job_id,
                     result,
                     handle,
+                    options,
                 } => {
                     if let Some(job) = run_flow_ctx.jobs.get(&job_id) {
                         if let Some(node) = flow_shared.flow_block.nodes.get(&job.node_id) {
@@ -292,8 +297,9 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                         &flow_shared,
                                         &mut run_flow_ctx,
                                         true,
-                                        &filtered_nodes,
+                                        &limit_nodes,
                                         &reporter,
+                                        &options,
                                     );
                                 }
                             }
@@ -315,8 +321,9 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                             &flow_shared,
                                             &mut run_flow_ctx,
                                             true,
-                                            &filtered_nodes,
+                                            &limit_nodes,
                                             &reporter,
+                                            &None,
                                         );
                                     }
                                 }
@@ -835,8 +842,9 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                             &flow_shared,
                                             &mut run_flow_ctx,
                                             true,
-                                            &filtered_nodes,
+                                            &limit_nodes,
                                             &reporter,
+                                            &None,
                                         );
                                     }
                                 }
@@ -1065,36 +1073,56 @@ fn produce_new_value(
     shared: &FlowShared,
     ctx: &mut RunFlowContext,
     run_next_node: bool,
-    filter_nodes: &Option<HashSet<NodeId>>,
+    limit_nodes: &Option<HashSet<NodeId>>,
     reporter: &FlowReporterTx,
+    options: &Option<OutputOptions>,
 ) {
     for handle_to in handle_tos {
         match handle_to {
             HandleTo::ToNodeInput {
                 node_id,
-                node_input_handle,
+                input_handle,
             } => {
-                let in_run_nodes = filter_nodes.as_ref().is_some()
-                    && filter_nodes
-                        .as_ref()
-                        .is_some_and(|nodes| nodes.contains(node_id));
-                let should_run_output_node =
-                    run_next_node && (filter_nodes.as_ref().is_none() || in_run_nodes);
+                // only handle when options is some:
+                // - if to_node_inputs is not in options(None), skip this handle_to processing
+                // - if to_node_inputs is in options: check whether this handle_to is contained in to_node_inputs.
+                //      if handle_to is in to_node_input, continue processing
+                //      if not, skip this handle_to processing
+                if options.as_ref().is_some_and(|op| {
+                    op.target.as_ref().map_or(false, |t| {
+                        t.to_node.as_ref().map_or(true, |to_nodes| {
+                            !to_nodes.contains(&ToNodeInput {
+                                node_id: node_id.to_owned(),
+                                input_handle: input_handle.to_owned(),
+                            })
+                        })
+                    })
+                }) {
+                    continue;
+                }
 
-                let previous_pending_fulfill =
-                    if let Some(node) = shared.flow_block.nodes.get(node_id) {
-                        ctx.node_input_values.node_pending_fulfill(node)
-                    } else {
-                        0
-                    };
-                // still need to insert value, even if the node is not in the run_nodes list
+                let last_fulfill_count = if let Some(node) = shared.flow_block.nodes.get(node_id) {
+                    ctx.node_input_values.node_pending_fulfill(node)
+                } else {
+                    0
+                };
+
+                // even if the node is not in the run_nodes list, we still need to insert value, because we can use this value with cache option in next run.
                 ctx.node_input_values.insert(
                     node_id.to_owned(),
-                    node_input_handle.to_owned(),
+                    input_handle.to_owned(),
                     Arc::clone(value),
                 );
 
-                if should_run_output_node {
+                // if limit_nodes is Some, output should only send to these nodes
+                if limit_nodes
+                    .as_ref()
+                    .is_some_and(|nodes| !nodes.contains(node_id))
+                {
+                    continue;
+                }
+
+                if run_next_node {
                     if let Some(node) = shared.flow_block.nodes.get(node_id) {
                         if ctx.node_input_values.is_node_fulfill(node) {
                             let node_queue =
@@ -1105,12 +1133,12 @@ fn produce_new_value(
                                 let pending_fulfill =
                                     ctx.node_input_values.node_pending_fulfill(node);
                                 // this value is fulfill the node's input again, we need added a pending job to queue.
-                                if pending_fulfill > previous_pending_fulfill {
+                                if pending_fulfill > last_fulfill_count {
                                     node_queue.pending.insert(JobId::random());
                                     tracing::info!("node queue ({}) is full, add a pending job. current jobs count: {}, concurrency: {}",node_id,node_queue.jobs.len(),node.concurrency());
                                 } else {
                                     tracing::info!(
-                                        "this node ({}) is fulfill because has pending job, this input value event not won't trigger because it not fulfill more than before",
+                                        "Node ({}) has pending jobs; this input event will not trigger again as it did not fulfill more than before.",
                                         node_id
                                     );
                                 }
@@ -1124,11 +1152,25 @@ fn produce_new_value(
             HandleTo::ToFlowOutput {
                 output_handle: flow_output_handle,
             } => {
+                // Refer to the logic for handling ToNodeInput
+                if options.as_ref().is_some_and(|op| {
+                    op.target.as_ref().map_or(false, |t| {
+                        t.to_flow.as_ref().map_or(true, |to_outputs| {
+                            !to_outputs.contains(&ToFlowOutput {
+                                output_handle: flow_output_handle.to_owned(),
+                            })
+                        })
+                    })
+                }) {
+                    continue;
+                }
+
                 reporter.output(value.clone(), flow_output_handle);
                 ctx.parent_block_status.output(
                     shared.job_id.to_owned(),
                     Arc::clone(value),
                     flow_output_handle.to_owned(),
+                    None, // don't support specify nodes for flow output yet. only support limit whether output to flow output or not
                 );
             }
         }

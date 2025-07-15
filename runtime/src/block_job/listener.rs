@@ -252,13 +252,19 @@ pub fn listen_to_worker(args: ListenerArgs) -> tokio::task::JoinHandle<()> {
                     output: value,
                     handle,
                     job_id,
+                    options,
                     ..
                 } => {
                     reporter.output(&value, &handle);
 
                     let cacheable = is_cacheable(&handle, &value, &outputs_def);
 
-                    block_status.output(job_id, Arc::new(OutputValue { value, cacheable }), handle);
+                    block_status.output(
+                        job_id,
+                        Arc::new(OutputValue { value, cacheable }),
+                        handle,
+                        options,
+                    );
                 }
                 scheduler::ReceiveMessage::BlockFinished {
                     result,
