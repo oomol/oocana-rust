@@ -183,9 +183,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
 
     let (block_status_tx, block_status_rx) = block_status::create();
 
-    // Generate from nodes options, but not only contain nodes but also their upstream nodes.
-    // None means all nodes will run.
-    // Some means only the nodes in the set will run.
+    // Build limit_nodes: if Some, run only those nodes and all their upstream dependencies; None means run all nodes.
     let mut limit_nodes = nodes.clone();
     let mut run_flow_ctx = RunFlowContext {
         node_input_values: node_value_store,
@@ -1134,7 +1132,7 @@ fn produce_new_value(
                                     tracing::info!("node queue ({}) is full, add a pending job. current jobs count: {}, concurrency: {}",node_id,node_queue.jobs.len(),node.concurrency());
                                 } else {
                                     tracing::info!(
-                                        "this node ({}) is fulfill because has pending job, this input value event not won't trigger because it not fulfill more than before",
+                                        "Node ({}) has pending jobs; this input event will not trigger again as it did not fulfill more than before.",
                                         node_id
                                     );
                                 }
