@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.29.1 (2025-07-15)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* feat: support output to special nodes by @leavesster in https://github.com/oomol/oocana-rust/pull/227
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.29.0...v0.29.1
+
 ## 0.29.0 (2025-07-14)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
