@@ -158,7 +158,7 @@ pub fn generate_node_inputs(
                         }
                         crate::HandleFrom::FromNodeOutput {
                             node_id,
-                            node_output_handle: output_handle,
+                            output_handle,
                         } => Some(crate::node::HandleSource::NodeOutput {
                             node_id: node_id.clone(),
                             output_handle: output_handle.clone(),
@@ -587,7 +587,7 @@ impl SubflowBlock {
                                                     .or_default()
                                                     .push(crate::HandleTo::ToNodeInput {
                                                         node_id: slot_node.node_id.clone(),
-                                                        node_input_handle: input.handle.to_owned(),
+                                                        input_handle: input.handle.to_owned(),
                                                     });
                                             }
 
