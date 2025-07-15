@@ -516,6 +516,7 @@ fn bind_shell_stdio(
                     job_id: job_id_clone.clone(),
                     output: serde_json::json!(output),
                     handle: "stdout".to_string().into(),
+                    options: None,
                 });
             }));
         }
@@ -544,6 +545,7 @@ fn bind_shell_stdio(
                     job_id: job_id_clone,
                     output: serde_json::json!(stderr_output),
                     handle: "stderr".to_string().into(),
+                    options: None,
                 });
             }));
         }
