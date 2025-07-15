@@ -1083,10 +1083,12 @@ fn produce_new_value(
                 node_id,
                 input_handle,
             } => {
-                // if target nodes is some, output should only send to these nodes
+                // if options is some:
+                // - if to_node_input is not in options(None), skip this handle_to processing
+                // - if to_node_input is in options, check whether this handle_to is contained in to_node_input. if in options, continue processing, if not skip this handle_to processing
                 if options.as_ref().is_some_and(|op| {
-                    op.to_node_input.as_ref().is_some_and(|to_nodes| {
-                        to_nodes.contains(&ToNodeInput {
+                    op.to_node_input.as_ref().map_or(true, |to_nodes| {
+                        !to_nodes.contains(&ToNodeInput {
                             node_id: node_id.to_owned(),
                             input_handle: input_handle.to_owned(),
                         })
@@ -1146,9 +1148,10 @@ fn produce_new_value(
             HandleTo::ToFlowOutput {
                 output_handle: flow_output_handle,
             } => {
+                // Refer to the logic for handling ToNodeInput
                 if options.as_ref().is_some_and(|op| {
-                    op.to_flow_output.as_ref().is_some_and(|to_outputs| {
-                        to_outputs.contains(&ToFlowOutput {
+                    op.to_flow_output.as_ref().map_or(true, |to_outputs| {
+                        !to_outputs.contains(&ToFlowOutput {
                             output_handle: flow_output_handle.to_owned(),
                         })
                     })
