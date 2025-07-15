@@ -72,8 +72,8 @@ pub struct OutputOptions {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct OutputTarget {
-    pub to_node_inputs: Option<Vec<ToNodeInput>>,
-    pub to_flow_outputs: Option<Vec<ToFlowOutput>>,
+    pub to_node: Option<Vec<ToNodeInput>>,
+    pub to_flow: Option<Vec<ToFlowOutput>>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
