@@ -876,7 +876,8 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                                         flow_downstream.push(FlowDownstream {
                                                             output_handle: output_handle
                                                                 .to_string(),
-                                                            output_handle_def: flow_block
+                                                            output_handle_def: flow_shared
+                                                                .flow_block
                                                                 .outputs_def
                                                                 .as_ref()
                                                                 .and_then(|def| {
@@ -897,12 +898,14 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                                             .get_or_insert_with(Vec::new);
                                                         node_downstream.push(NodeDownstream {
                                                             node_id: node_id.to_string(),
-                                                            description: flow_block
+                                                            description: flow_shared
+                                                                .flow_block
                                                                 .nodes
                                                                 .get(node_id)
                                                                 .and_then(|n| n.description()),
                                                             input_handle: input_handle.to_string(),
-                                                            input_handle_def: flow_block
+                                                            input_handle_def: flow_shared
+                                                                .flow_block
                                                                 .nodes
                                                                 .get(node_id)
                                                                 .and_then(|n| n.inputs_def())
