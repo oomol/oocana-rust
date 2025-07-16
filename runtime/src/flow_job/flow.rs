@@ -840,20 +840,25 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                 #[derive(serde::Serialize)]
                                 struct FlowDownstream {
                                     output_handle: String,
+                                    #[serde(skip_serializing_if = "Option::is_none")]
                                     output_handle_def: Option<OutputHandle>,
                                 }
 
                                 #[derive(serde::Serialize)]
                                 struct NodeDownstream {
                                     node_id: String,
+                                    #[serde(skip_serializing_if = "Option::is_none")]
                                     description: Option<String>,
                                     input_handle: String,
+                                    #[serde(skip_serializing_if = "Option::is_none")]
                                     input_handle_def: Option<InputHandle>,
                                 }
 
                                 #[derive(serde::Serialize, Default)]
                                 struct Downstream {
+                                    #[serde(skip_serializing_if = "Option::is_none")]
                                     to_flow: Option<Vec<FlowDownstream>>,
+                                    #[serde(skip_serializing_if = "Option::is_none")]
                                     to_node: Option<Vec<NodeDownstream>>,
                                 }
 
