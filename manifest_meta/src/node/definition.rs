@@ -33,10 +33,10 @@ pub enum Node {
 impl Node {
     pub fn description(&self) -> Option<String> {
         match self {
-            Self::Task(task) => task.task.description.clone(),
-            Self::Flow(flow) => flow.flow.description.clone(),
-            Self::Slot(_) => None,
-            Self::Service(_) => None,
+            Self::Task(task) => task.description.clone(),
+            Self::Flow(flow) => flow.description.clone(),
+            Self::Slot(slot) => slot.description.clone(),
+            Self::Service(service) => service.description.clone(),
         }
     }
     pub fn node_id(&self) -> &NodeId {

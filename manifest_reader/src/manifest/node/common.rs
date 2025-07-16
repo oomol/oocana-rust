@@ -8,6 +8,7 @@ macro_rules! extend_node_common_field {
             $(pub $field: $type,)*
             pub node_id: NodeId,
             pub timeout: Option<u64>,
+            pub description: Option<String>,
             pub inputs_from: Option<Vec<NodeInputFrom>>,
             #[serde(default = "default_concurrency")]
             pub concurrency: i32,

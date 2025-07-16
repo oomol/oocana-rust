@@ -20,6 +20,7 @@ macro_rules! extend_node_common_field {
         pub struct $name {
             $(pub $field: $type,)*
             pub node_id: NodeId,
+            pub description: Option<String>,
             pub timeout: Option<u64>,
             pub to: Option<HandlesTos>,
             pub inputs: HashMap<HandleName, NodeInput>,

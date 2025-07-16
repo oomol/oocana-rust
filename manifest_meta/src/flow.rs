@@ -693,6 +693,7 @@ impl SubflowBlock {
                     new_nodes.insert(
                         subflow_node.node_id.to_owned(),
                         Node::Flow(SubflowNode {
+                            description: subflow_node.description.clone(),
                             to,
                             flow,
                             node_id: subflow_node.node_id.to_owned(),
@@ -728,6 +729,7 @@ impl SubflowBlock {
                     new_nodes.insert(
                         service_node.node_id.to_owned(),
                         Node::Service(ServiceNode {
+                            description: service_node.description.clone(),
                             to: connections.node_outputs_tos.remove(&service_node.node_id),
                             node_id: service_node.node_id.to_owned(),
                             timeout: service_node.timeout,
@@ -887,6 +889,7 @@ impl SubflowBlock {
                     new_nodes.insert(
                         task_node.node_id.to_owned(),
                         Node::Task(TaskNode {
+                            description: task_node.description.clone(),
                             to: connections.node_outputs_tos.remove(&task_node.node_id),
                             node_id: task_node.node_id.to_owned(),
                             timeout: task_node.timeout,
@@ -913,6 +916,7 @@ impl SubflowBlock {
                     new_nodes.insert(
                         slot_node.node_id.to_owned(),
                         Node::Slot(SlotNode {
+                            description: slot_node.description.clone(),
                             to: connections.node_outputs_tos.remove(&slot_node.node_id),
                             node_id: slot_node.node_id.to_owned(),
                             timeout: slot_node.timeout,
