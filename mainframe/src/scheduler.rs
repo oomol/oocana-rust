@@ -45,6 +45,13 @@ pub enum BlockRequest {
         block: String,      // format: `self::<block>` / `<package>::<block>`
         request_id: String, // this is used to match the response with the request
     },
+    QueryDownstream {
+        session_id: SessionId,
+        job_id: JobId,
+        /// None means return all handle outputs
+        outputs: Option<Vec<HandleName>>,
+        request_id: String,
+    },
 }
 
 impl BlockRequest {
@@ -52,6 +59,7 @@ impl BlockRequest {
         match self {
             BlockRequest::RunBlock { session_id, .. } => session_id,
             BlockRequest::QueryBlock { session_id, .. } => session_id,
+            BlockRequest::QueryDownstream { session_id, .. } => session_id,
         }
     }
 
@@ -59,6 +67,16 @@ impl BlockRequest {
         match self {
             BlockRequest::RunBlock { job_id, .. } => job_id,
             BlockRequest::QueryBlock { job_id, .. } => job_id,
+            BlockRequest::QueryDownstream { job_id, .. } => job_id,
+        }
+    }
+
+    // request_id must exist.
+    pub fn request_id(&self) -> &str {
+        match self {
+            BlockRequest::RunBlock { request_id, .. } => request_id,
+            BlockRequest::QueryBlock { request_id, .. } => request_id,
+            BlockRequest::QueryDownstream { request_id, .. } => request_id,
         }
     }
 }

@@ -1,4 +1,5 @@
 use manifest_reader::path_finder::{calculate_block_value_type, BlockValueType};
+use serde_json::json;
 use std::{
     collections::{HashMap, HashSet},
     default,
@@ -817,6 +818,48 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                             "Failed to serialize task block metadata to JSON"
                                                 .into(),
                                         ),
+                                        request_id,
+                                    },
+                                );
+                            }
+                        }
+                    }
+                    BlockRequest::QueryDownstream {
+                        job_id,
+                        outputs,
+                        request_id,
+                        session_id,
+                    } => {
+                        let node = run_flow_ctx
+                            .jobs
+                            .get(&job_id)
+                            .map(|job| job.node_id.to_owned())
+                            .and_then(|id| flow_shared.flow_block.nodes.get(&id));
+                        match node {
+                            Some(node) => {
+                                let mut downstream = HashMap::new();
+                                if let Some(tos) = node.to() {
+                                    for (handle, tos) in tos {
+                                        if outputs.as_ref().is_none_or(|o| o.contains(handle)) {
+                                            downstream.insert(
+                                                handle.to_owned(),
+                                                tos.iter()
+                                                    .map(|t| t.to_owned())
+                                                    .collect::<Vec<HandleTo>>(),
+                                            );
+                                        }
+                                    }
+                                }
+                            }
+                            None => {
+                                tracing::warn!("Job({}) is not found in flow, maybe it was executed in context run_block api", job_id);
+                                scheduler_tx.respond_block_request(
+                                    &session_id,
+                                    BlockResponseParams {
+                                        session_id: session_id.clone(),
+                                        job_id: job_id,
+                                        error: None,
+                                        result: Some(json!({})),
                                         request_id,
                                     },
                                 );
