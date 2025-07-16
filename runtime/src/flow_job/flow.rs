@@ -851,6 +851,16 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                         }
                                     }
                                 }
+                                scheduler_tx.respond_block_request(
+                                    &session_id,
+                                    BlockResponseParams {
+                                        session_id: session_id.clone(),
+                                        job_id,
+                                        error: None,
+                                        request_id,
+                                        result: Some(json!({})), // todo: replace it
+                                    },
+                                );
                             }
                             None => {
                                 tracing::warn!("Job({}) is not found in flow, maybe it was executed in context run_block api", job_id);
