@@ -4,12 +4,33 @@ use super::{
     handle::{to_input_handles, to_output_handles, InputHandle, OutputHandle},
     InputHandles, OutputHandles,
 };
-#[derive(Deserialize, Debug, Clone)]
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+#[serde(untagged)]
+enum MiddleInputHandle {
+    Input(InputHandle),
+    #[allow(dead_code)]
+    Group {
+        group: String,
+    },
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+#[serde(untagged)]
+enum MiddleOutputHandle {
+    Output(OutputHandle),
+    #[allow(dead_code)]
+    Group {
+        group: String,
+    },
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
 struct TmpTaskBlock {
     pub description: Option<String>,
     pub executor: Option<TaskBlockExecutor>,
-    pub inputs_def: Option<Vec<InputHandle>>,
-    pub outputs_def: Option<Vec<OutputHandle>>,
+    pub inputs_def: Option<Vec<MiddleInputHandle>>,
+    pub outputs_def: Option<Vec<MiddleOutputHandle>>,
     #[serde(default)]
     pub additional_inputs: bool,
     #[serde(default)]
@@ -21,8 +42,22 @@ impl From<TmpTaskBlock> for TaskBlock {
         Self {
             description: tmp.description,
             executor: tmp.executor,
-            inputs_def: to_input_handles(tmp.inputs_def),
-            outputs_def: to_output_handles(tmp.outputs_def),
+            inputs_def: to_input_handles(tmp.inputs_def.map(|v| {
+                v.into_iter()
+                    .filter_map(|h| match h {
+                        MiddleInputHandle::Input(handle) => Some(handle),
+                        MiddleInputHandle::Group { .. } => None,
+                    })
+                    .collect()
+            })),
+            outputs_def: to_output_handles(tmp.outputs_def.map(|v| {
+                v.into_iter()
+                    .filter_map(|h| match h {
+                        MiddleOutputHandle::Output(handle) => Some(handle),
+                        MiddleOutputHandle::Group { .. } => None,
+                    })
+                    .collect()
+            })),
             additional_inputs: tmp.additional_inputs,
             additional_outputs: tmp.additional_outputs,
         }
