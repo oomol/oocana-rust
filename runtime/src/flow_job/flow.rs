@@ -841,6 +841,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                 if let Some(tos) = node.to() {
                                     for (handle, tos) in tos {
                                         if outputs.as_ref().is_none_or(|o| o.contains(handle)) {
+                                            // todo: not this struct
                                             downstream.insert(
                                                 handle.to_owned(),
                                                 tos.iter()
