@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.29.3 (2025-07-16)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* feat: compatible with group by @leavesster in https://github.com/oomol/oocana-rust/pull/231
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.29.2...v0.29.3
+
 ## 0.29.2 (2025-07-16)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
