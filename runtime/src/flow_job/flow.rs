@@ -1,4 +1,5 @@
 use manifest_reader::path_finder::{calculate_block_value_type, BlockValueType};
+use serde_json::json;
 use std::{
     collections::{HashMap, HashSet},
     default,
@@ -817,6 +818,134 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                             "Failed to serialize task block metadata to JSON"
                                                 .into(),
                                         ),
+                                        request_id,
+                                    },
+                                );
+                            }
+                        }
+                    }
+                    BlockRequest::QueryDownstream {
+                        job_id,
+                        outputs,
+                        request_id,
+                        session_id,
+                    } => {
+                        let node = run_flow_ctx
+                            .jobs
+                            .get(&job_id)
+                            .map(|job| job.node_id.to_owned())
+                            .and_then(|id| flow_shared.flow_block.nodes.get(&id));
+                        match node {
+                            Some(node) => {
+                                #[derive(serde::Serialize)]
+                                struct FlowDownstream {
+                                    output_handle: String,
+                                    #[serde(skip_serializing_if = "Option::is_none")]
+                                    output_handle_def: Option<OutputHandle>,
+                                }
+
+                                #[derive(serde::Serialize)]
+                                struct NodeDownstream {
+                                    node_id: String,
+                                    #[serde(skip_serializing_if = "Option::is_none")]
+                                    description: Option<String>,
+                                    input_handle: String,
+                                    #[serde(skip_serializing_if = "Option::is_none")]
+                                    input_handle_def: Option<InputHandle>,
+                                }
+
+                                #[derive(serde::Serialize, Default)]
+                                struct Downstream {
+                                    #[serde(skip_serializing_if = "Option::is_none")]
+                                    to_flow: Option<Vec<FlowDownstream>>,
+                                    #[serde(skip_serializing_if = "Option::is_none")]
+                                    to_node: Option<Vec<NodeDownstream>>,
+                                }
+
+                                let mut downstream: HashMap<HandleName, Downstream> =
+                                    HashMap::new();
+                                if let Some(tos) = node.to() {
+                                    for (handle, tos) in tos {
+                                        if outputs.as_ref().is_none_or(|o| o.contains(handle)) {
+                                            for to in tos {
+                                                match to {
+                                                    HandleTo::ToFlowOutput {
+                                                        output_handle,
+                                                        ..
+                                                    } => {
+                                                        let flow_downstream = downstream
+                                                            .entry(handle.clone())
+                                                            .or_default()
+                                                            .to_flow
+                                                            .get_or_insert_with(Vec::new);
+                                                        flow_downstream.push(FlowDownstream {
+                                                            output_handle: output_handle
+                                                                .to_string(),
+                                                            output_handle_def: flow_shared
+                                                                .flow_block
+                                                                .outputs_def
+                                                                .as_ref()
+                                                                .and_then(|def| {
+                                                                    def.get(output_handle)
+                                                                })
+                                                                .cloned(),
+                                                        });
+                                                    }
+                                                    HandleTo::ToNodeInput {
+                                                        node_id,
+                                                        input_handle,
+                                                        ..
+                                                    } => {
+                                                        let node_downstream = downstream
+                                                            .entry(handle.clone())
+                                                            .or_default()
+                                                            .to_node
+                                                            .get_or_insert_with(Vec::new);
+                                                        node_downstream.push(NodeDownstream {
+                                                            node_id: node_id.to_string(),
+                                                            description: flow_shared
+                                                                .flow_block
+                                                                .nodes
+                                                                .get(node_id)
+                                                                .and_then(|n| n.description()),
+                                                            input_handle: input_handle.to_string(),
+                                                            input_handle_def: flow_shared
+                                                                .flow_block
+                                                                .nodes
+                                                                .get(node_id)
+                                                                .and_then(|n| n.inputs_def())
+                                                                .as_ref()
+                                                                .and_then(|inputs_def| {
+                                                                    inputs_def.get(input_handle)
+                                                                })
+                                                                .cloned(),
+                                                        });
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                scheduler_tx.respond_block_request(
+                                    &session_id,
+                                    BlockResponseParams {
+                                        session_id: session_id.clone(),
+                                        job_id,
+                                        error: None,
+                                        request_id,
+                                        result: serde_json::to_value(downstream).ok(),
+                                    },
+                                );
+                            }
+                            None => {
+                                tracing::warn!("Job({}) is not found in flow, maybe it was executed in context run_block api", job_id);
+                                scheduler_tx.respond_block_request(
+                                    &session_id,
+                                    BlockResponseParams {
+                                        session_id: session_id.clone(),
+                                        job_id: job_id,
+                                        error: None,
+                                        result: Some(json!({})),
                                         request_id,
                                     },
                                 );
