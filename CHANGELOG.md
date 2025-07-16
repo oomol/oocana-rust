@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.29.2 (2025-07-16)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* feat: support query downstream by @leavesster in https://github.com/oomol/oocana-rust/pull/229
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.29.1...v0.29.2
+
 ## 0.29.1 (2025-07-15)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
