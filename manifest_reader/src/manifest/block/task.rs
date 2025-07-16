@@ -4,12 +4,33 @@ use super::{
     handle::{to_input_handles, to_output_handles, InputHandle, OutputHandle},
     InputHandles, OutputHandles,
 };
-#[derive(Deserialize, Debug, Clone)]
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+#[serde(untagged)]
+enum MiddleInputHandle {
+    Input(InputHandle),
+    #[allow(dead_code)]
+    Group {
+        group: String,
+    },
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+#[serde(untagged)]
+enum MiddleOutputHandle {
+    Output(OutputHandle),
+    #[allow(dead_code)]
+    Group {
+        group: String,
+    },
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
 struct TmpTaskBlock {
     pub description: Option<String>,
     pub executor: Option<TaskBlockExecutor>,
-    pub inputs_def: Option<Vec<InputHandle>>,
-    pub outputs_def: Option<Vec<OutputHandle>>,
+    pub inputs_def: Option<Vec<MiddleInputHandle>>,
+    pub outputs_def: Option<Vec<MiddleOutputHandle>>,
     #[serde(default)]
     pub additional_inputs: bool,
     #[serde(default)]
@@ -21,8 +42,22 @@ impl From<TmpTaskBlock> for TaskBlock {
         Self {
             description: tmp.description,
             executor: tmp.executor,
-            inputs_def: to_input_handles(tmp.inputs_def),
-            outputs_def: to_output_handles(tmp.outputs_def),
+            inputs_def: to_input_handles(tmp.inputs_def.map(|v| {
+                v.into_iter()
+                    .filter_map(|h| match h {
+                        MiddleInputHandle::Input(handle) => Some(handle),
+                        MiddleInputHandle::Group { .. } => None,
+                    })
+                    .collect()
+            })),
+            outputs_def: to_output_handles(tmp.outputs_def.map(|v| {
+                v.into_iter()
+                    .filter_map(|h| match h {
+                        MiddleOutputHandle::Output(handle) => Some(handle),
+                        MiddleOutputHandle::Group { .. } => None,
+                    })
+                    .collect()
+            })),
             additional_inputs: tmp.additional_inputs,
             additional_outputs: tmp.additional_outputs,
         }
@@ -144,7 +179,87 @@ pub struct ShellExecutor {}
 #[cfg(test)]
 mod test {
 
+    use crate::manifest::HandleName;
+
     use super::*;
+
+    #[test]
+    fn serialize_task_block() {
+        let tmp_task_block = TmpTaskBlock {
+            description: Some("Test Task".to_string()),
+            executor: Some(TaskBlockExecutor::NodeJS(NodeJSExecutor {
+                options: Some(ExecutorOptions {
+                    entry: Some("test.js".to_string()),
+                    function: None,
+                    spawn: false,
+                }),
+            })),
+            inputs_def: Some(vec![
+                MiddleInputHandle::Input(InputHandle {
+                    handle: HandleName::new("input1".to_string()),
+                    description: Some("Input 1".to_string()),
+                    json_schema: None,
+                    kind: None,
+                    nullable: None,
+                    value: None,
+                    remember: false,
+                    is_additional: false,
+                }),
+                MiddleInputHandle::Group {
+                    group: "section".to_string(),
+                },
+            ]),
+            outputs_def: Some(vec![MiddleOutputHandle::Output(OutputHandle {
+                handle: HandleName::new("output1".to_string()),
+                description: Some("Output 1".to_string()),
+                json_schema: None,
+                kind: None,
+                nullable: None,
+                is_additional: false,
+            })]),
+            additional_inputs: true,
+            additional_outputs: false,
+        };
+
+        let str = serde_json::to_string(&tmp_task_block).unwrap();
+        println!("des: {}", str)
+    }
+
+    #[test]
+    fn deserialize_task_block() {
+        let str = r#"{
+            "description": "Test Task",
+            "executor": {
+                "name": "nodejs",
+                "options": {
+                    "entry": "test.js"
+                }
+            },
+            "inputs_def": [{"handle": "input1", "description": "Input 1"}, {"group": "section"}],
+            "outputs_def": [{"handle": "output1", "description": "Output 1"}],
+            "additional_inputs": true,
+            "additional_outputs": false
+        }"#;
+
+        let result = serde_json::from_str::<TmpTaskBlock>(str);
+
+        assert!(
+            result.is_ok(),
+            "Failed to deserialize TmpTaskBlock: {:?}",
+            result.err()
+        );
+
+        let tmp_block = result.unwrap();
+
+        assert_eq!(tmp_block.description, Some("Test Task".to_string()));
+        assert!(matches!(
+            tmp_block.executor,
+            Some(TaskBlockExecutor::NodeJS(_))
+        ));
+        assert!(tmp_block.additional_inputs);
+        assert!(!tmp_block.additional_outputs);
+    }
+
     #[test]
     fn deserialize_nodejs_executor() {
         let serialized = r#"{"name":"nodejs","options":{}}"#;
