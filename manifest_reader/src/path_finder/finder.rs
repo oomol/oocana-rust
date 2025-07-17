@@ -25,19 +25,12 @@ pub struct BlockPathFinder {
 
 // TODO: cache pkg store paths result, only update working_dir
 fn collect_latest_pkg_version(
-    working_dir: &PathBuf,
+    _working_dir: &PathBuf,
     pkg_store_paths: &Option<Vec<PathBuf>>,
 ) -> HashMap<String, String> {
     let mut pkg_version = HashMap::new();
 
-    let search_paths = vec![working_dir.clone()]
-        .into_iter()
-        .chain(
-            pkg_store_paths
-                .iter()
-                .flat_map(|paths| paths.iter().cloned()),
-        )
-        .collect::<Vec<_>>();
+    let search_paths = pkg_store_paths.clone().unwrap_or_default();
 
     for path in search_paths {
         if let Ok(entries) = fs::read_dir(path) {
