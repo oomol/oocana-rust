@@ -24,7 +24,7 @@ pub struct NodeInputValues {
     store: NodeInputStore,
     // used to store last values for each node input when `remember` is true
     memory_store: NodeInputStore,
-    last_values: Option<NodeInputStore>,
+    cache_value_store: Option<NodeInputStore>,
 }
 
 impl NodeInputValues {
@@ -32,7 +32,7 @@ impl NodeInputValues {
         Self {
             store: HashMap::new(),
             memory_store: HashMap::new(),
-            last_values: if save_cache {
+            cache_value_store: if save_cache {
                 Some(HashMap::new())
             } else {
                 None
@@ -54,14 +54,14 @@ impl NodeInputValues {
                 Ok(store) => Self {
                     store: store.clone(),
                     memory_store: HashMap::new(),
-                    last_values: Some(store),
+                    cache_value_store: Some(store),
                 },
                 Err(e) => {
                     warn!("Failed to deserialize: {:?}", e);
                     Self {
                         store: HashMap::new(),
                         memory_store: HashMap::new(),
-                        last_values,
+                        cache_value_store: last_values,
                     }
                 }
             }
@@ -69,33 +69,35 @@ impl NodeInputValues {
             Self {
                 store: HashMap::new(),
                 memory_store: HashMap::new(),
-                last_values,
+                cache_value_store: last_values,
             }
         }
     }
 
-    pub fn insert(&mut self, node_id: NodeId, handle_name: HandleName, value: Arc<OutputValue>) {
-        self.store
-            .entry(node_id.clone())
-            .or_default()
-            .entry(handle_name.clone())
-            .or_default()
-            .push_back(Arc::clone(&value));
-
-        if !value.cacheable {
-            return;
-        }
-
-        if let Some(last_values) = &mut self.last_values {
-            // replace VecDeque with Var not push_back
+    pub fn update_cache_value(
+        &mut self,
+        node_id: &NodeId,
+        handle_name: &HandleName,
+        value: Arc<OutputValue>,
+    ) {
+        if let Some(last_values) = &mut self.cache_value_store {
             let vec = last_values
-                .entry(node_id)
+                .entry(node_id.to_owned())
                 .or_default()
-                .entry(handle_name)
+                .entry(handle_name.to_owned())
                 .or_default();
             vec.clear();
             vec.push_back(value);
         }
+    }
+
+    pub fn insert(&mut self, node_id: &NodeId, handle_name: &HandleName, value: Arc<OutputValue>) {
+        self.store
+            .entry(node_id.to_owned())
+            .or_default()
+            .entry(handle_name.to_owned())
+            .or_default()
+            .push_back(value);
     }
 
     pub fn is_node_fulfill(&self, node: &Node) -> bool {
@@ -151,8 +153,8 @@ impl NodeInputValues {
         0
     }
 
-    pub fn save_last_value(&self, path: PathBuf) -> Result<(), String> {
-        if let Some(last_values) = &self.last_values {
+    pub fn save_cache(&self, path: PathBuf) -> Result<(), String> {
+        if let Some(last_values) = &self.cache_value_store {
             // save hash map to file
             let json_string = serde_json::to_string(&last_values)
                 .map_err(|e| format!("failed to serialize {}", e))?;
@@ -249,6 +251,14 @@ impl NodeInputValues {
                 }
                 continue;
             }
+        }
+
+        for (handle, value) in value_map.iter() {
+            if !value.cacheable {
+                continue;
+            }
+
+            self.update_cache_value(node_id, handle, Arc::clone(value));
         }
 
         if value_map.is_empty() {

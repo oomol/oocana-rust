@@ -1236,20 +1236,23 @@ fn produce_new_value(
                     0
                 };
 
-                // even if the node is not in the run_nodes list, we still need to insert value, because we can use this value with cache option in next run.
-                ctx.node_input_values.insert(
-                    node_id.to_owned(),
-                    input_handle.to_owned(),
-                    Arc::clone(value),
-                );
-
                 // if limit_nodes is Some, output should only send to these nodes
                 if limit_nodes
                     .as_ref()
                     .is_some_and(|nodes| !nodes.contains(node_id))
                 {
+                    // if target node is not in running nodes, we just update cache value so that we can use these value in next run.
+                    // Normally, cache values are only cached before the block is executed. This is an exception.
+                    ctx.node_input_values.update_cache_value(
+                        node_id,
+                        input_handle,
+                        Arc::clone(value),
+                    );
                     continue;
                 }
+
+                ctx.node_input_values
+                    .insert(node_id, input_handle, Arc::clone(value));
 
                 if run_next_node {
                     if let Some(node) = shared.flow_block.nodes.get(node_id) {
@@ -1412,7 +1415,7 @@ pub fn get_flow_cache_path(flow: &str) -> Option<PathBuf> {
 
 fn save_flow_cache(node_input_values: &NodeInputValues, flow: &str) {
     if let Some(cache_path) = get_flow_cache_path(flow) {
-        if let Err(e) = node_input_values.save_last_value(cache_path) {
+        if let Err(e) = node_input_values.save_cache(cache_path) {
             warn!("failed to save cache: {}", e);
         }
     } else if let Some(meta_path) = utils::cache::cache_meta_file_path() {
@@ -1420,7 +1423,7 @@ fn save_flow_cache(node_input_values: &NodeInputValues, flow: &str) {
             .unwrap_or(std::env::temp_dir())
             .join(Uuid::new_v4().to_string() + ".json");
 
-        if let Err(e) = node_input_values.save_last_value(cache_path.clone()) {
+        if let Err(e) = node_input_values.save_cache(cache_path.clone()) {
             warn!("failed to save cache: {}", e);
             return;
         }
