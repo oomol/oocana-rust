@@ -74,6 +74,23 @@ impl NodeInputValues {
         }
     }
 
+    pub fn update_cache_value(
+        &mut self,
+        node_id: &NodeId,
+        handle_name: &HandleName,
+        value: Arc<OutputValue>,
+    ) {
+        if let Some(last_values) = &mut self.cache_value_store {
+            let vec = last_values
+                .entry(node_id.to_owned())
+                .or_default()
+                .entry(handle_name.to_owned())
+                .or_default();
+            vec.clear();
+            vec.push_back(value);
+        }
+    }
+
     pub fn insert(&mut self, node_id: &NodeId, handle_name: &HandleName, value: Arc<OutputValue>) {
         self.store
             .entry(node_id.to_owned())

@@ -1241,6 +1241,13 @@ fn produce_new_value(
                     .as_ref()
                     .is_some_and(|nodes| !nodes.contains(node_id))
                 {
+                    // if target node is not in running nodes, we just update cache value so that we can use these value in next run.
+                    // Normally, cache values are only cached before the block is executed. This is an exception.
+                    ctx.node_input_values.update_cache_value(
+                        node_id,
+                        input_handle,
+                        Arc::clone(value),
+                    );
                     continue;
                 }
 
