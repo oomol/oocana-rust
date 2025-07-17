@@ -53,6 +53,13 @@ fn collect_latest_pkg_version(
                                     .to_string()
                             };
 
+                            if sub_path.file_name().is_some_and(|f| {
+                                f.to_str() == Some(pkg_name_without_version.as_str())
+                            }) {
+                                // <pkg_name_without_version> is the directory name we don't need to insert version because we will use the directory name as the package name
+                                continue;
+                            }
+
                             pkg_version
                                 .entry(pkg_name_without_version)
                                 .and_modify(|v: &mut String| {
