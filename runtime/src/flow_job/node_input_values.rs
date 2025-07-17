@@ -74,13 +74,13 @@ impl NodeInputValues {
         }
     }
 
-    pub fn insert(&mut self, node_id: NodeId, handle_name: HandleName, value: Arc<OutputValue>) {
+    pub fn insert(&mut self, node_id: &NodeId, handle_name: &HandleName, value: Arc<OutputValue>) {
         self.store
-            .entry(node_id.clone())
+            .entry(node_id.to_owned())
             .or_default()
-            .entry(handle_name.clone())
+            .entry(handle_name.to_owned())
             .or_default()
-            .push_back(Arc::clone(&value));
+            .push_back(value);
     }
 
     pub fn is_node_fulfill(&self, node: &Node) -> bool {

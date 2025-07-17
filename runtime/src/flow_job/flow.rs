@@ -1236,13 +1236,6 @@ fn produce_new_value(
                     0
                 };
 
-                // even if the node is not in the run_nodes list, we still need to insert value, because we can use this value with cache option in next run.
-                ctx.node_input_values.insert(
-                    node_id.to_owned(),
-                    input_handle.to_owned(),
-                    Arc::clone(value),
-                );
-
                 // if limit_nodes is Some, output should only send to these nodes
                 if limit_nodes
                     .as_ref()
@@ -1250,6 +1243,9 @@ fn produce_new_value(
                 {
                     continue;
                 }
+
+                ctx.node_input_values
+                    .insert(node_id, input_handle, Arc::clone(value));
 
                 if run_next_node {
                     if let Some(node) = shared.flow_block.nodes.get(node_id) {
