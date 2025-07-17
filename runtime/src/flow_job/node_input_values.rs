@@ -258,15 +258,7 @@ impl NodeInputValues {
                 continue;
             }
 
-            if let Some(last_values) = &mut self.cache_value_store {
-                let vec = last_values
-                    .entry(node_id.to_owned())
-                    .or_default()
-                    .entry(handle.to_owned())
-                    .or_default();
-                vec.clear();
-                vec.push_back(value.clone());
-            }
+            self.update_cache_value(node_id, handle, Arc::clone(value));
         }
 
         if value_map.is_empty() {
