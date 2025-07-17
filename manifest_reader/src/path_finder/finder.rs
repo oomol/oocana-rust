@@ -20,6 +20,10 @@ pub struct BlockPathFinder {
     base_dir: PathBuf,
     pub search_paths: Arc<Vec<PathBuf>>,
     cache: HashMap<String, PathBuf>,
+    /// Since package directories are named either `<pkg_name>-<version>` or `<pkg_name>`,
+    /// this field stores a map from `pkg_name` to `version` for the first case.
+    /// This allows for easy reconstruction of the directory name.
+    /// If a directory is simply named `<pkg_name>`, it is not included here.
     pub pkg_version: HashMap<String, String>,
 }
 
@@ -56,7 +60,7 @@ fn collect_latest_pkg_version(
                             if sub_path.file_name().is_some_and(|f| {
                                 f.to_str() == Some(pkg_name_without_version.as_str())
                             }) {
-                                // <pkg_name_without_version> is the directory name we don't need to insert version because we will use the directory name as the package name
+                                // skip the directory that matches the package name without version.
                                 continue;
                             }
 
