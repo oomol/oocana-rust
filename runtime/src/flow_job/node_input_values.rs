@@ -81,21 +81,6 @@ impl NodeInputValues {
             .entry(handle_name.clone())
             .or_default()
             .push_back(Arc::clone(&value));
-
-        if !value.cacheable {
-            return;
-        }
-
-        if let Some(last_values) = &mut self.last_values {
-            // replace VecDeque with Var not push_back
-            let vec = last_values
-                .entry(node_id)
-                .or_default()
-                .entry(handle_name)
-                .or_default();
-            vec.clear();
-            vec.push_back(value);
-        }
     }
 
     pub fn is_node_fulfill(&self, node: &Node) -> bool {
@@ -248,6 +233,22 @@ impl NodeInputValues {
                     );
                 }
                 continue;
+            }
+        }
+
+        for (handle, value) in value_map.iter() {
+            if !value.cacheable {
+                continue;
+            }
+
+            if let Some(last_values) = &mut self.last_values {
+                let vec = last_values
+                    .entry(node_id.to_owned())
+                    .or_default()
+                    .entry(handle.to_owned())
+                    .or_default();
+                vec.clear();
+                vec.push_back(value.clone());
             }
         }
 
