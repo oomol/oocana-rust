@@ -151,7 +151,7 @@ impl NodeInputValues {
         0
     }
 
-    pub fn save_last_value(&self, path: PathBuf) -> Result<(), String> {
+    pub fn save_cache(&self, path: PathBuf) -> Result<(), String> {
         if let Some(last_values) = &self.last_values {
             // save hash map to file
             let json_string = serde_json::to_string(&last_values)

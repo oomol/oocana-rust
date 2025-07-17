@@ -1412,7 +1412,7 @@ pub fn get_flow_cache_path(flow: &str) -> Option<PathBuf> {
 
 fn save_flow_cache(node_input_values: &NodeInputValues, flow: &str) {
     if let Some(cache_path) = get_flow_cache_path(flow) {
-        if let Err(e) = node_input_values.save_last_value(cache_path) {
+        if let Err(e) = node_input_values.save_cache(cache_path) {
             warn!("failed to save cache: {}", e);
         }
     } else if let Some(meta_path) = utils::cache::cache_meta_file_path() {
@@ -1420,7 +1420,7 @@ fn save_flow_cache(node_input_values: &NodeInputValues, flow: &str) {
             .unwrap_or(std::env::temp_dir())
             .join(Uuid::new_v4().to_string() + ".json");
 
-        if let Err(e) = node_input_values.save_last_value(cache_path.clone()) {
+        if let Err(e) = node_input_values.save_cache(cache_path.clone()) {
             warn!("failed to save cache: {}", e);
             return;
         }
