@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
 use version_compare::{compare, Cmp};
@@ -39,39 +40,44 @@ fn collect_latest_pkg_version(
         .collect::<Vec<_>>();
 
     for path in search_paths {
-        if let Some(ref pkg_path) = find_package_file(path) {
-            if let Ok(pkg) = read_package(pkg_path) {
-                // maybe the version is not set, but the pkg path contains the version
-                // currently we only support the version in the package file
-                let pkg_name_without_version = if let Some(name) = pkg.name {
-                    name
-                } else {
-                    // remove the version from the package path
-                    // e.g. /path/to/pkg-1.0.0/package.oo.yaml -> pkg-1.0.0 then strip suffix version in package.oo.yaml -> pkg
-                    pkg_path
-                        .parent()
-                        .and_then(|n| n.file_name())
-                        .and_then(|n| n.to_str())
-                        .map(|s| s.to_string())
-                        .unwrap_or_else(|| "".to_string())
-                        .strip_suffix(pkg.version.as_deref().unwrap_or(""))
-                        .unwrap_or("")
-                        .to_string()
-                };
+        if let Ok(entries) = fs::read_dir(path) {
+            for entry in entries.filter_map(Result::ok) {
+                let sub_path = entry.path();
+                if sub_path.is_dir() {
+                    if let Some(ref pkg_path) = find_package_file(&sub_path) {
+                        if let Ok(pkg) = read_package(pkg_path) {
+                            let pkg_name_without_version = if let Some(name) = pkg.name {
+                                name
+                            } else {
+                                pkg_path
+                                    .parent()
+                                    .and_then(|n| n.file_name())
+                                    .and_then(|n| n.to_str())
+                                    .map(|s| s.to_string())
+                                    .unwrap_or_else(|| "".to_string())
+                                    .strip_suffix(pkg.version.as_deref().unwrap_or(""))
+                                    .unwrap_or("")
+                                    .to_string()
+                            };
 
-                pkg_version
-                    .entry(pkg_name_without_version)
-                    .and_modify(|v: &mut String| {
-                        if let Some(version) = &pkg.version {
-                            if matches!(compare(version, v.as_str()), Ok(Cmp::Gt)) {
-                                *v = version.clone();
-                            }
+                            pkg_version
+                                .entry(pkg_name_without_version)
+                                .and_modify(|v: &mut String| {
+                                    if let Some(version) = &pkg.version {
+                                        if matches!(compare(version, v.as_str()), Ok(Cmp::Gt)) {
+                                            *v = version.clone();
+                                        }
+                                    }
+                                })
+                                .or_insert_with(|| pkg.version.unwrap_or_default());
                         }
-                    })
-                    .or_insert_with(|| pkg.version.unwrap_or_default());
+                    }
+                }
             }
         }
     }
+
+    tracing::debug!("Collected package versions: {:?}", pkg_version);
 
     pkg_version
 }
