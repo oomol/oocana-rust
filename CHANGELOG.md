@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.29.4 (2025-07-17)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* fix: cache block's last execute value not latest value by @leavesster in https://github.com/oomol/oocana-rust/pull/233
+* fix: search path packages by @leavesster in https://github.com/oomol/oocana-rust/pull/235
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.29.3...v0.29.4
+
 ## 0.29.3 (2025-07-16)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
