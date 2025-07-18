@@ -379,7 +379,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                                         ) {
                                                             Ok(()) => None,
                                                             Err(err) => Some(format!(
-                                                            "input handle ({}) value ({}) is not valid. validation error: {}.",
+                                                            "input handle ({}) value ({}) is not valid. validation error: {}",
                                                             handle, wrap_value.value, err
                                                         )),
                                                         }
