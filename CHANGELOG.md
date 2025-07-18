@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.29.5 (2025-07-18)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* feat: use inputs def to validate run block's inputs  by @leavesster in https://github.com/oomol/oocana-rust/pull/237
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.29.4...v0.29.5
+
 ## 0.29.4 (2025-07-17)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
