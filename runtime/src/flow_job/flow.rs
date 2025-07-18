@@ -511,14 +511,13 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                             inputs_map.get(handle).and_then(|wrap_value| {
                                                 match def.json_schema {
                                                     Some(ref json_schema) => {
-                                                        // todo: remove some not json_schema field
                                                         match jsonschema::validate(
                                                             json_schema,
                                                             &wrap_value.value,
                                                         ) {
                                                             Ok(()) => None,
                                                             Err(err) => Some(format!(
-                                                            "input handle {} value {} is not valid. valid error: {}.",
+                                                            "input handle ({}) value ({}) is not valid. validation error: {}.",
                                                             handle, wrap_value.value, err
                                                         )),
                                                         }
@@ -693,14 +692,13 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                             inputs_map.get(handle).and_then(|wrap_value| {
                                                 match def.json_schema {
                                                     Some(ref json_schema) => {
-                                                        // todo: remove some not json_schema field
                                                         match jsonschema::validate(
                                                             json_schema,
                                                             &wrap_value.value,
                                                         ) {
                                                             Ok(()) => None,
                                                             Err(err) => Some(format!(
-                                                            "input handle {} value {} is not valid. valid error: {}.",
+                                                            "input handle ({}) value ({}) is not valid. validation error: {}.",
                                                             handle, wrap_value.value, err
                                                         )),
                                                         }
