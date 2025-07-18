@@ -339,6 +339,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                         block_job_id: new_job_id,
                         payload,
                         request_id,
+                        strict,
                         ..
                     } => {
                         let block_path = flow_shared.path_finder.find_task_block_path(&block);
@@ -360,10 +361,12 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                             continue;
                         }
 
-                        fn validate_inputs(
-                            inputs_def: &Option<InputHandles>,
-                            inputs: &HashMap<HandleName, Arc<OutputValue>>,
-                        ) -> Vec<String> {
+                        let validate_inputs = |inputs_def: &Option<InputHandles>,
+                                               inputs: &HashMap<HandleName, Arc<OutputValue>>|
+                         -> Vec<String> {
+                            if !strict.unwrap_or(false) {
+                                return Vec::new();
+                            }
                             inputs_def
                                 .as_ref()
                                 .map(|inputs_def| {
@@ -391,7 +394,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                         .collect::<Vec<_>>()
                                 })
                                 .unwrap_or_default()
-                        }
+                        };
 
                         let inputs = payload
                             .as_object()
