@@ -339,6 +339,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                         block_job_id: new_job_id,
                         payload,
                         request_id,
+                        strict,
                         ..
                     } => {
                         let block_path = flow_shared.path_finder.find_task_block_path(&block);

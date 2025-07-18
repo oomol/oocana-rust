@@ -37,6 +37,7 @@ pub enum BlockRequest {
         block: String,
         block_job_id: String,
         payload: serde_json::Value,
+        strict: Option<bool>,
         request_id: String, // this is used to match the response with the request
     },
     QueryBlock {
