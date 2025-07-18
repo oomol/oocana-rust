@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.29.6 (2025-07-18)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* feat: run block add strict mode by @leavesster in https://github.com/oomol/oocana-rust/pull/239
+* feat: support nullable and default value in run block by @leavesster in https://github.com/oomol/oocana-rust/pull/241
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.29.5...v0.29.6
+
 ## 0.29.5 (2025-07-18)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
