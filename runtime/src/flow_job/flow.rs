@@ -1,5 +1,5 @@
 use manifest_reader::path_finder::{calculate_block_value_type, BlockValueType};
-use serde_json::json;
+use serde_json::{json, Value};
 use std::{
     collections::{HashMap, HashSet},
     default,
@@ -396,7 +396,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                 .unwrap_or_default()
                         };
 
-                        let inputs = payload
+                        let mut inputs = payload
                             .as_object()
                             .and_then(|obj| obj.get("inputs"))
                             .and_then(|v| v.as_object())
@@ -431,19 +431,6 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                         continue;
                                     }
                                 };
-
-                            let inputs_map: HashMap<HandleName, Arc<OutputValue>> = inputs
-                                .into_iter()
-                                .map(|(handle, value)| {
-                                    (
-                                        HandleName::new(handle),
-                                        Arc::new(OutputValue {
-                                            value,
-                                            cacheable: true,
-                                        }),
-                                    )
-                                })
-                                .collect();
 
                             let additional_inputs_def: HashMap<HandleName, InputHandle> = payload
                                 .as_object()
@@ -503,6 +490,36 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                 });
 
                             task_block = Arc::new(task_inner);
+
+                            if let Some(inputs_def) = &task_block.inputs_def {
+                                for (handle, def) in inputs_def {
+                                    if inputs.get(&handle.to_string()).is_none() {
+                                        if def.value.is_some() {
+                                            let v: Value = def
+                                                .value
+                                                .clone()
+                                                .unwrap_or_default()
+                                                .unwrap_or(Value::Null);
+                                            inputs.insert(handle.to_string(), v);
+                                        } else if def.nullable.unwrap_or(false) {
+                                            inputs.insert(handle.to_string(), Value::Null);
+                                        }
+                                    }
+                                }
+                            }
+
+                            let inputs_map: HashMap<HandleName, Arc<OutputValue>> = inputs
+                                .into_iter()
+                                .map(|(handle, value)| {
+                                    (
+                                        HandleName::new(handle),
+                                        Arc::new(OutputValue {
+                                            value,
+                                            cacheable: true,
+                                        }),
+                                    )
+                                })
+                                .collect();
 
                             let missing_inputs = task_block
                                 .inputs_def
@@ -644,6 +661,23 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                 }
                                 _ => flow_shared.scope.clone(),
                             };
+
+                            if let Some(inputs_def) = &subflow_block.inputs_def {
+                                for (handle, def) in inputs_def {
+                                    if inputs.get(&handle.to_string()).is_none() {
+                                        if def.value.is_some() {
+                                            let v: Value = def
+                                                .value
+                                                .clone()
+                                                .unwrap_or_default()
+                                                .unwrap_or(Value::Null);
+                                            inputs.insert(handle.to_string(), v);
+                                        } else if def.nullable.unwrap_or(false) {
+                                            inputs.insert(handle.to_string(), Value::Null);
+                                        }
+                                    }
+                                }
+                            }
 
                             // 构造输入映射
                             let inputs_map: HashMap<HandleName, Arc<OutputValue>> = inputs
