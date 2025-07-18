@@ -360,6 +360,39 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                             continue;
                         }
 
+                        fn validate_inputs(
+                            inputs_def: &Option<InputHandles>,
+                            inputs: &HashMap<HandleName, Arc<OutputValue>>,
+                        ) -> Vec<String> {
+                            inputs_def
+                                .as_ref()
+                                .map(|inputs_def| {
+                                    inputs_def
+                                        .iter()
+                                        .filter_map(|(handle, def)| {
+                                            inputs.get(handle).and_then(|wrap_value| {
+                                                match def.json_schema {
+                                                    Some(ref json_schema) => {
+                                                        match jsonschema::validate(
+                                                            json_schema,
+                                                            &wrap_value.value,
+                                                        ) {
+                                                            Ok(()) => None,
+                                                            Err(err) => Some(format!(
+                                                            "input handle ({}) value ({}) is not valid. validation error: {}.",
+                                                            handle, wrap_value.value, err
+                                                        )),
+                                                        }
+                                                    }
+                                                    None => None,
+                                                }
+                                            })
+                                        })
+                                        .collect::<Vec<_>>()
+                                })
+                                .unwrap_or_default()
+                        }
+
                         let inputs = payload
                             .as_object()
                             .and_then(|obj| obj.get("inputs"))
@@ -501,34 +534,8 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                 continue;
                             }
 
-                            let invalid_inputs = task_block
-                                .inputs_def
-                                .as_ref()
-                                .map(|inputs_def| {
-                                    inputs_def
-                                        .iter()
-                                        .filter_map(|(handle, def)| {
-                                            inputs_map.get(handle).and_then(|wrap_value| {
-                                                match def.json_schema {
-                                                    Some(ref json_schema) => {
-                                                        match jsonschema::validate(
-                                                            json_schema,
-                                                            &wrap_value.value,
-                                                        ) {
-                                                            Ok(()) => None,
-                                                            Err(err) => Some(format!(
-                                                            "input handle ({}) value ({}) is not valid. validation error: {}.",
-                                                            handle, wrap_value.value, err
-                                                        )),
-                                                        }
-                                                    }
-                                                    None => None,
-                                                }
-                                            })
-                                        })
-                                        .collect::<Vec<_>>()
-                                })
-                                .unwrap_or_default();
+                            let invalid_inputs =
+                                validate_inputs(&task_block.inputs_def, &inputs_map);
 
                             if !invalid_inputs.is_empty() {
                                 let mut msg = "run block api has some invalid inputs:".to_string();
@@ -682,34 +689,8 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                 continue;
                             }
 
-                            let invalid_inputs = subflow_block
-                                .inputs_def
-                                .as_ref()
-                                .map(|inputs_def| {
-                                    inputs_def
-                                        .iter()
-                                        .filter_map(|(handle, def)| {
-                                            inputs_map.get(handle).and_then(|wrap_value| {
-                                                match def.json_schema {
-                                                    Some(ref json_schema) => {
-                                                        match jsonschema::validate(
-                                                            json_schema,
-                                                            &wrap_value.value,
-                                                        ) {
-                                                            Ok(()) => None,
-                                                            Err(err) => Some(format!(
-                                                            "input handle ({}) value ({}) is not valid. validation error: {}.",
-                                                            handle, wrap_value.value, err
-                                                        )),
-                                                        }
-                                                    }
-                                                    None => None,
-                                                }
-                                            })
-                                        })
-                                        .collect::<Vec<_>>()
-                                })
-                                .unwrap_or_default();
+                            let invalid_inputs =
+                                validate_inputs(&subflow_block.inputs_def, &inputs_map);
 
                             if !invalid_inputs.is_empty() {
                                 let mut msg = "run block api has some invalid inputs:".to_string();
