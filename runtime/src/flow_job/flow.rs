@@ -364,7 +364,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                         let validate_inputs = |inputs_def: &Option<InputHandles>,
                                                inputs: &HashMap<HandleName, Arc<OutputValue>>|
                          -> Vec<String> {
-                            if !strict.unwrap_or(true) {
+                            if !strict.unwrap_or(false) {
                                 return Vec::new();
                             }
                             inputs_def
