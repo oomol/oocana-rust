@@ -501,6 +501,55 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                 continue;
                             }
 
+                            let invalid_inputs = task_block
+                                .inputs_def
+                                .as_ref()
+                                .map(|inputs_def| {
+                                    inputs_def
+                                        .iter()
+                                        .filter_map(|(handle, def)| {
+                                            inputs_map.get(handle).and_then(|wrap_value| {
+                                                match def.json_schema {
+                                                    Some(ref json_schema) => {
+                                                        // todo: remove some not json_schema field
+                                                        match jsonschema::validate(
+                                                            json_schema,
+                                                            &wrap_value.value,
+                                                        ) {
+                                                            Ok(()) => None,
+                                                            Err(err) => Some(format!(
+                                                            "input handle {} value {} is not valid. valid error: {}.",
+                                                            handle, wrap_value.value, err
+                                                        )),
+                                                        }
+                                                    }
+                                                    None => None,
+                                                }
+                                            })
+                                        })
+                                        .collect::<Vec<_>>()
+                                })
+                                .unwrap_or_default();
+
+                            if !invalid_inputs.is_empty() {
+                                let mut msg = "run block api has some invalid inputs:".to_string();
+                                for i in invalid_inputs {
+                                    msg += format!("\n{}", i).as_str();
+                                }
+                                tracing::warn!("{}", msg);
+                                scheduler_tx.respond_block_request(
+                                    &flow_shared.shared.session_id,
+                                    scheduler::BlockResponseParams {
+                                        session_id: flow_shared.shared.session_id.clone(),
+                                        job_id: job_id.clone(),
+                                        error: Some(msg),
+                                        result: None,
+                                        request_id,
+                                    },
+                                );
+                                continue;
+                            }
+
                             let block_scope = match calculate_block_value_type(&block) {
                                 BlockValueType::Pkg { pkg_name, .. } => {
                                     if let Some(_) = pkg_name {
@@ -620,6 +669,55 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                     "subflow block {} inputs missing these input handles: {:?}",
                                     block, missing_inputs
                                 );
+                                tracing::warn!("{}", msg);
+                                scheduler_tx.respond_block_request(
+                                    &flow_shared.shared.session_id,
+                                    scheduler::BlockResponseParams {
+                                        session_id: flow_shared.shared.session_id.clone(),
+                                        job_id: job_id.clone(),
+                                        error: Some(msg),
+                                        result: None,
+                                        request_id,
+                                    },
+                                );
+                                continue;
+                            }
+
+                            let invalid_inputs = subflow_block
+                                .inputs_def
+                                .as_ref()
+                                .map(|inputs_def| {
+                                    inputs_def
+                                        .iter()
+                                        .filter_map(|(handle, def)| {
+                                            inputs_map.get(handle).and_then(|wrap_value| {
+                                                match def.json_schema {
+                                                    Some(ref json_schema) => {
+                                                        // todo: remove some not json_schema field
+                                                        match jsonschema::validate(
+                                                            json_schema,
+                                                            &wrap_value.value,
+                                                        ) {
+                                                            Ok(()) => None,
+                                                            Err(err) => Some(format!(
+                                                            "input handle {} value {} is not valid. valid error: {}.",
+                                                            handle, wrap_value.value, err
+                                                        )),
+                                                        }
+                                                    }
+                                                    None => None,
+                                                }
+                                            })
+                                        })
+                                        .collect::<Vec<_>>()
+                                })
+                                .unwrap_or_default();
+
+                            if !invalid_inputs.is_empty() {
+                                let mut msg = "run block api has some invalid inputs:".to_string();
+                                for i in invalid_inputs {
+                                    msg += format!("\n{}", i).as_str();
+                                }
                                 tracing::warn!("{}", msg);
                                 scheduler_tx.respond_block_request(
                                     &flow_shared.shared.session_id,
