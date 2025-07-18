@@ -21,3 +21,4 @@ path-clean = "1.0.1"
 flume = { version = "0.11.0", default-features = false, features = ["async"] }
 dirs = "5.0.1"
 uuid = { version = "1.3.0", features = ["v4", "fast-rng", "macro-diagnostics"] }
+jsonschema = "0.30.0"
