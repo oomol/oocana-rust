@@ -33,6 +33,7 @@ jobs:
         with:
           path: oocana-python
           create-layer: ${{ inputs.create-layer }}
+          ref: strict
       - name: Start MQTT Broker
         run: |
           sudo apt update && sudo apt install -y --no-install-recommends mosquitto
