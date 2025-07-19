@@ -379,7 +379,11 @@ impl SubflowBlock {
 
                     let running_scope = match running_target {
                         RunningTarget::Inherit => RunningScope::default(),
-                        RunningTarget::PackagePath { path, node_id } => RunningScope::Package {
+                        RunningTarget::Package {
+                            package_path: path,
+                            node_id,
+                            ..
+                        } => RunningScope::Package {
                             name: None,
                             path,
                             node_id,
@@ -755,7 +759,11 @@ impl SubflowBlock {
 
                     let mut running_scope = match running_target {
                         RunningTarget::Inherit => RunningScope::default(),
-                        RunningTarget::PackagePath { path, node_id } => RunningScope::Package {
+                        RunningTarget::Package {
+                            package_path: path,
+                            node_id,
+                            ..
+                        } => RunningScope::Package {
                             name: None,
                             path,
                             node_id,

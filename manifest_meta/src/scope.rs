@@ -57,9 +57,10 @@ pub(crate) enum RunningTarget {
     /// this node is inject to a package
     InjectPackage { pkg_name: String },
     /// this node is a package block
-    PackagePath {
+    Package {
+        pkg_name: String, // this is the package name, not the path
         // package's path, package block should always true.
-        path: PathBuf,
+        package_path: PathBuf,
         /// Some means this block is also a spawn:true node
         node_id: Option<NodeId>,
     },
@@ -73,24 +74,34 @@ pub(crate) fn calculate_running_target(
     block_type: BlockValueType,
 ) -> RunningTarget {
     if node.should_spawn() {
-        if matches!(block_type, BlockValueType::Pkg { .. }) && package_path.is_some() {
-            return RunningTarget::PackagePath {
-                path: package_path.as_ref().unwrap().clone(),
-                node_id: Some(node.node_id().clone()),
-            };
+        match block_type {
+            BlockValueType::Pkg { pkg_name, .. } => {
+                return RunningTarget::Package {
+                    pkg_name,
+                    package_path: package_path.as_ref().unwrap().to_owned(), // TODO: fix unwrap
+                    node_id: Some(node.node_id().clone()),
+                };
+            }
+            _ => {
+                return RunningTarget::Node(node.node_id().clone());
+            }
         }
-        return RunningTarget::Node(node.node_id().clone());
     }
 
-    // package path is some not means the block is package block
-    if matches!(block_type, BlockValueType::Pkg { .. }) && package_path.is_some() {
-        return RunningTarget::PackagePath {
-            path: package_path.as_ref().unwrap().to_owned(),
-            node_id: injection.as_ref().and_then(|inj| match &inj.target {
-                manifest_reader::manifest::InjectionTarget::Node(node_id) => Some(node_id.clone()),
-                _ => None,
-            }),
-        };
+    match block_type {
+        BlockValueType::Pkg { pkg_name, .. } => {
+            return RunningTarget::Package {
+                pkg_name: pkg_name,
+                package_path: package_path.as_ref().unwrap().to_owned(),
+                node_id: injection.as_ref().and_then(|inj| match &inj.target {
+                    manifest_reader::manifest::InjectionTarget::Node(node_id) => {
+                        Some(node_id.clone())
+                    }
+                    _ => None,
+                }),
+            };
+        }
+        _ => {}
     }
 
     match injection {
