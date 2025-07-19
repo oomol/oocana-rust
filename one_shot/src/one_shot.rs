@@ -276,6 +276,8 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
         nodes,
         input_values,
         default_package_path: current_package_path.map(|p| p.to_owned()),
+        pkg_data_root,
+        project_data,
     })
     .await;
 
