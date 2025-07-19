@@ -90,8 +90,8 @@ pub struct BlockArgs<'a> {
     pub retain_env_keys: Option<Vec<String>>,
     pub env_file: Option<String>,
     pub temp_root: String,
-    pub project_data: String,
-    pub pkg_data_root: String,
+    pub project_data: &'a PathBuf,
+    pub pkg_data_root: &'a PathBuf,
 }
 
 async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
@@ -147,6 +147,20 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
 
     if metadata(&session_dir).is_err() {
         fs::create_dir_all(&session_dir)?;
+    }
+
+    if !project_data.is_dir() {
+        warn!(
+            "Project data path does not exist: {:?}, pkg_data may not work properly.",
+            project_data
+        );
+    }
+
+    if !pkg_data_root.is_dir() {
+        warn!(
+            "Package data root path does not exist: {:?}, pkg_data may not work properly.",
+            pkg_data_root
+        );
     }
 
     let tmp_root_path = PathBuf::from(temp_root);

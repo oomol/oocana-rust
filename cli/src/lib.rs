@@ -3,7 +3,7 @@ mod cache;
 mod query;
 mod fun;
 
-use std::collections::HashSet;
+use std::{collections::HashSet, path::PathBuf};
 use cache::CacheAction;
 use fun::arg::{find_env_file, load_bind_paths, parse_search_paths, temp_root, config};
 use one_shot::one_shot::{run_block, BlockArgs};
@@ -202,8 +202,8 @@ pub fn cli_match() -> Result<()> {
                 retain_env_keys: retain_env_keys.to_owned(),
                 env_file,
                 temp_root: temp_root.to_owned(),
-                project_data: project_data.to_owned(),
-                pkg_data_root: pkg_data_root.to_owned(),
+                project_data: &PathBuf::from(project_data),
+                pkg_data_root: &PathBuf::from(pkg_data_root),
             })?
         },
         Commands::Cache { action } => {
