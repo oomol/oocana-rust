@@ -2,7 +2,7 @@ use std::{collections::HashMap, path::PathBuf, sync::Arc};
 
 use manifest_reader::manifest::{InputHandles, OutputHandles};
 
-use crate::{scope::RunningScope, Block, HandleName, NodeId, ServiceBlock, SlotBlock, TaskBlock};
+use crate::{scope::BlockScope, Block, HandleName, NodeId, ServiceBlock, SlotBlock, TaskBlock};
 
 use crate::extend_node_common_field;
 
@@ -11,7 +11,7 @@ use super::subflow::SubflowNode;
 
 extend_node_common_field!(TaskNode {
     task: Arc<TaskBlock>,
-    scope: RunningScope,
+    scope: BlockScope,
 });
 
 extend_node_common_field!(ServiceNode {
@@ -155,12 +155,12 @@ impl Node {
         }
     }
 
-    pub fn scope(&self) -> RunningScope {
+    pub fn scope(&self) -> BlockScope {
         match self {
             Self::Task(task) => task.scope.clone(),
             Self::Flow(flow) => flow.scope.clone(),
-            Self::Slot(_) => RunningScope::Slot {},
-            Self::Service(_) => RunningScope::default(),
+            Self::Slot(_) => BlockScope::Slot {},
+            Self::Service(_) => BlockScope::default(),
         }
     }
 }

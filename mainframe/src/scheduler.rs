@@ -13,7 +13,7 @@ use std::{
 };
 use utils::calculate_short_hash;
 
-use job::{BlockInputs, BlockJobStackLevel, JobId, RunningPackageScope, SessionId};
+use job::{BlockInputs, BlockJobStackLevel, JobId, RuntimeScope, SessionId};
 
 use manifest_meta::{
     HandleName, InjectionStore, InputDefPatchMap, InputHandles, JsonValue, NodeId, OutputHandles,
@@ -307,7 +307,7 @@ enum SchedulerCommand {
         outputs: Option<OutputHandles>,
         executor: TaskBlockExecutor,
         injection_store: Option<InjectionStore>,
-        scope: RunningPackageScope,
+        scope: RuntimeScope,
         flow: Option<String>,
     },
     ExecuteServiceBlock {
@@ -318,7 +318,7 @@ enum SchedulerCommand {
         service_executor: ServiceExecutorOptions,
         stacks: Vec<BlockJobStackLevel>,
         outputs: Option<OutputHandles>,
-        scope: RunningPackageScope,
+        scope: RuntimeScope,
         service_hash: String,
         flow: Option<String>,
     },
@@ -382,7 +382,7 @@ pub struct ExecutorParams<'a> {
     pub dir: String,
     pub executor: &'a TaskBlockExecutor,
     pub outputs: &'a Option<OutputHandles>,
-    pub scope: &'a RunningPackageScope,
+    pub scope: &'a RuntimeScope,
     pub injection_store: &'a Option<InjectionStore>,
     pub flow: &'a Option<String>,
 }
@@ -395,7 +395,7 @@ pub struct ServiceParams<'a> {
     pub dir: String,
     pub options: &'a ServiceExecutorOptions,
     pub outputs: &'a Option<OutputHandles>,
-    pub scope: &'a RunningPackageScope,
+    pub scope: &'a RuntimeScope,
     pub flow: &'a Option<String>,
 }
 
@@ -406,14 +406,14 @@ pub struct ExecutorCheckResult {
 
 pub struct ExecutorCheckParams<'a> {
     pub executor_name: &'a str,
-    pub scope: &'a RunningPackageScope,
+    pub scope: &'a RuntimeScope,
     pub injection_store: &'a Option<InjectionStore>,
     pub flow: &'a Option<String>,
     pub executor_payload: &'a ExecutorParameters,
     pub executor_map: Arc<RwLock<HashMap<String, ExecutorState>>>,
 }
 
-fn generate_executor_map_name(executor_name: &str, scope: &RunningPackageScope) -> String {
+fn generate_executor_map_name(executor_name: &str, scope: &RuntimeScope) -> String {
     format!("{}-{}", executor_name, scope.identifier())
 }
 
@@ -458,22 +458,24 @@ impl SchedulerTx {
             .unwrap();
     }
 
-    /** TODO: generate default scope instead of default package. */
-    /** filter some scope, move then to default scope */
-    pub fn calculate_scope(&self, scope: &RunningPackageScope) -> RunningPackageScope {
+    /// disable layer feature is scope package is in exclude package.
+    /// if default package is exist, move to default FIXME: remove default package path, use package from package store.
+    pub fn calculate_scope(&self, scope: &RuntimeScope) -> RuntimeScope {
         match self.exclude_packages.as_ref() {
             Some(exclude_packages) => {
-                let pkg_str = scope.package_path().to_string_lossy().to_string();
+                let pkg_str = scope.path().to_string_lossy().to_string();
                 if exclude_packages.contains(&pkg_str) {
                     match self.default_package {
-                        Some(ref default_package) => RunningPackageScope {
-                            package_path: PathBuf::from(default_package.clone()),
+                        Some(ref default_package) => RuntimeScope {
+                            pkg_name: None,
+                            path: PathBuf::from(default_package.clone()),
                             node_id: scope.node_id().clone(),
                             enable_layer: false,
                             is_inject: scope.is_inject(),
                         },
-                        None => RunningPackageScope {
-                            package_path: scope.package_path().clone(),
+                        None => RuntimeScope {
+                            pkg_name: None,
+                            path: scope.path().clone(),
                             node_id: scope.node_id().clone(),
                             enable_layer: false,
                             is_inject: scope.is_inject(),
@@ -582,7 +584,7 @@ where
 fn spawn_executor(
     executor: &str,
     layer: Option<RuntimeLayer>,
-    scope: &RunningPackageScope,
+    scope: &RuntimeScope,
     executor_map: Arc<RwLock<HashMap<String, ExecutorState>>>,
     executor_payload: ExecutorParameters,
     tx: Sender<SchedulerCommand>,
@@ -626,10 +628,10 @@ fn spawn_executor(
     let mut executor_package: Option<String> = None;
 
     let identifier = scope.identifier();
-    let scope_package = scope.package_path().to_string_lossy().to_string();
+    let scope_package = scope.path().to_string_lossy().to_string();
 
     // this dir won't pass to executor. the executor generate tmp pkg dir by package parameter.
-    let tmp_pkg_dir = if let Some(pkg) = scope.package_path().file_name() {
+    let tmp_pkg_dir = if let Some(pkg) = scope.path().file_name() {
         tmp_dir.join(pkg)
     } else {
         tmp_dir.join("workspace")
@@ -740,11 +742,7 @@ fn spawn_executor(
     } else {
         envs.insert(
             "OOCANA_PKG_DIR".to_string(),
-            scope
-                .workspace()
-                .join(PKG_DIR)
-                .to_string_lossy()
-                .to_string(),
+            scope.path().join(PKG_DIR).to_string_lossy().to_string(),
         );
         for (key, value) in utils::env::load_env_from_file(env_file) {
             if envs.contains_key(&key) {
@@ -953,7 +951,7 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
         });
     } else if no_layer_feature {
         // TODO: better use new struct to avoid unwrap
-        let pkg_dir = scope.workspace().join(PKG_DIR);
+        let pkg_dir = scope.path().join(PKG_DIR);
         if !pkg_dir.exists() {
             std::fs::create_dir_all(&pkg_dir).unwrap_or_else(|e| {
                 tracing::warn!("Failed to create pkg_dir: {:?}, error: {}", pkg_dir, e);
@@ -968,10 +966,10 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
 
     let layer = if scope.need_layer() {
         let mut bind_paths = executor_payload.bind_paths.clone();
-        let pkg = scope.package_path();
+        let pkg = scope.path();
 
         if let Some(store) = injection_store {
-            let target = manifest_meta::InjectionTarget::Package(scope.package_path().to_owned());
+            let target = manifest_meta::InjectionTarget::Package(scope.path().to_owned());
             if let Some(meta) = store.get(&target) {
                 tracing::info!(
                     "scope layer need create with injection. target: {:?}",
@@ -1022,7 +1020,7 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
         )?;
 
         if let Some(store) = injection_store {
-            let target = manifest_meta::InjectionTarget::Package(scope.package_path().to_owned());
+            let target = manifest_meta::InjectionTarget::Package(scope.path().to_owned());
             if let Some(meta) = store.get(&target) {
                 let scripts = meta.scripts.clone().unwrap_or_default();
 
@@ -1041,7 +1039,7 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
 
         Some(runtime_layer)
     } else {
-        let pkg_dir = scope.workspace().join(PKG_DIR);
+        let pkg_dir = scope.path().join(PKG_DIR);
         if !pkg_dir.exists() {
             std::fs::create_dir_all(&pkg_dir).unwrap_or_else(|e| {
                 tracing::warn!("Failed to create pkg_dir: {:?}, error: {}", pkg_dir, e);

@@ -14,7 +14,7 @@ use tokio::signal::unix::{signal, SignalKind};
 
 use tracing::{error as log_error, info};
 
-use job::{BlockJobStacks, JobId, RunningPackageScope};
+use job::{BlockJobStacks, JobId, RuntimeScope};
 use manifest_meta::{read_flow_or_block, Block, BlockResolver, MergeInputsValue, NodeId};
 use utils::error::Result;
 
@@ -119,14 +119,16 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
             nodes,
             timeout: None,
             inputs_def_patch: None,
-            parent_scope: RunningPackageScope {
-                package_path: workspace.clone(),
+            parent_scope: RuntimeScope {
+                pkg_name: None,
+                path: workspace.clone(),
                 node_id: None,
                 enable_layer: false, // current give up layer feature
                 is_inject: false,
             },
-            scope: RunningPackageScope {
-                package_path: workspace.clone(),
+            scope: RuntimeScope {
+                pkg_name: None,
+                path: workspace.clone(),
                 node_id: None,
                 enable_layer: false,
                 is_inject: false,

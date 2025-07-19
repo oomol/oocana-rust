@@ -22,10 +22,10 @@ use mainframe::{
 use tracing::warn;
 use utils::output::OutputValue;
 
-use job::{BlockInputs, BlockJobStacks, JobId, RunningPackageScope};
+use job::{BlockInputs, BlockJobStacks, JobId, RuntimeScope};
 use manifest_meta::{
     BlockResolver, HandleName, HandleTo, InputHandle, InputHandles, Node, NodeId, OutputHandle,
-    OutputHandles, RunningScope, Slot, SubflowBlock,
+    OutputHandles, BlockScope, Slot, SubflowBlock,
 };
 
 use super::node_input_values;
@@ -55,8 +55,8 @@ struct FlowShared {
     flow_block: Arc<SubflowBlock>,
     shared: Arc<Shared>,
     stacks: BlockJobStacks,
-    parent_scope: RunningPackageScope,
-    scope: RunningPackageScope,
+    parent_scope: RuntimeScope,
+    scope: RuntimeScope,
     slot_blocks: HashMap<NodeId, Slot>,
     path_finder: manifest_reader::path_finder::BlockPathFinder,
 }
@@ -84,8 +84,8 @@ pub struct RunFlowArgs {
     pub node_value_store: NodeInputValues,
     pub parent_block_status: BlockStatusTx,
     pub nodes: Option<HashSet<NodeId>>,
-    pub parent_scope: RunningPackageScope,
-    pub scope: RunningPackageScope,
+    pub parent_scope: RuntimeScope,
+    pub scope: RuntimeScope,
     pub slot_blocks: HashMap<NodeId, Slot>,
     pub path_finder: manifest_reader::path_finder::BlockPathFinder,
 }
@@ -577,23 +577,20 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                             }
 
                             let block_scope = match calculate_block_value_type(&block) {
-                                BlockValueType::Pkg { pkg_name, .. } => {
-                                    if let Some(_) = pkg_name {
-                                        RunningPackageScope {
-                                        package_path: task_block
+                                BlockValueType::Pkg { pkg_name,.. } => {
+                                    RuntimeScope {
+                                        pkg_name: Some(pkg_name),
+                                        path: task_block
                                             .package_path
                                             .clone()
                                             .unwrap_or_else(|| {
                                                 // if package path is not set, use flow shared scope package path
                                                 warn!("can find block package path, this should never happen");
-                                                flow_shared.scope.package_path.clone()
+                                                flow_shared.scope.path.clone()
                                             }),
                                         node_id: None,
                                         is_inject: false,
                                         enable_layer: layer::feature_enabled(),
-                                    }
-                                    } else {
-                                        flow_shared.scope.clone()
                                     }
                                 }
                                 _ => flow_shared.scope.clone(),
@@ -645,19 +642,17 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
 
                             let flow_scope = match calculate_block_value_type(&block) {
                                 BlockValueType::Pkg { pkg_name, .. } => {
-                                    if let Some(_) = pkg_name {
-                                        RunningPackageScope  {
-                                            package_path: subflow_block.package_path.clone().unwrap_or_else(|| {
-                                                warn!("can find subflow package path, this should never happen");
-                                                flow_shared.scope.package_path.clone()
-                                            }),
-                                            node_id: None,
-                                            is_inject: false,
-                                            enable_layer: layer::feature_enabled(),
-                                        }
-                                    } else {
-                                        flow_shared.scope.clone()
+                                    RuntimeScope  {
+                                        pkg_name: Some(pkg_name),
+                                        path: subflow_block.package_path.clone().unwrap_or_else(|| {
+                                            warn!("can find subflow package path, this should never happen");
+                                            flow_shared.scope.path.clone()
+                                        }),
+                                        node_id: None,
+                                        is_inject: false,
+                                        enable_layer: layer::feature_enabled(),
                                     }
+                                    
                                 }
                                 _ => flow_shared.scope.clone(),
                             };
@@ -1453,20 +1448,23 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
     };
 
     let package_scope = match scope {
-        RunningScope::Package { path, node_id, .. } => RunningPackageScope {
-            package_path: path.clone(),
+        BlockScope::Package {  name, path, node_id, .. } => RuntimeScope {
+            pkg_name: Some(name),
+            path: path.clone(),
             node_id: node_id.clone(),
             enable_layer: layer::feature_enabled(),
             is_inject: node.scope().is_inject(),
         },
-        RunningScope::Flow { node_id, .. } => RunningPackageScope {
-            package_path: shared.scope.package_path().to_owned(),
+        BlockScope::Flow { node_id, .. } => RuntimeScope {
+            pkg_name: shared.scope.pkg_name.clone(),
+            path: shared.scope.path().to_owned(),
             node_id: node_id.clone(),
             enable_layer: shared.scope.need_layer(),
             is_inject: node.scope().is_inject(),
         },
-        RunningScope::Slot { .. } => RunningPackageScope {
-            package_path: shared.parent_scope.package_path().to_owned(),
+        BlockScope::Slot { .. } => RuntimeScope {
+            pkg_name: shared.parent_scope.pkg_name.clone(),
+            path: shared.parent_scope.path().to_owned(),
             node_id: None,
             enable_layer: shared.parent_scope.need_layer(),
             is_inject: node.scope().is_inject(),
