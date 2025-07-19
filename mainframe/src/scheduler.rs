@@ -929,8 +929,6 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
         flow,
     } = params;
 
-    // TODO: move layer feature to scope field
-    let no_layer_feature = !layer::feature_enabled();
     let executor_map_name = generate_executor_map_name(executor_name, scope);
 
     let executor_state = {
@@ -949,8 +947,7 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
             executor_state,
             layer: None,
         });
-    } else if no_layer_feature {
-        // TODO: better use new struct to avoid unwrap
+    } else if !scope.need_layer() {
         let pkg_dir = scope.path().join(PKG_DIR);
         if !pkg_dir.exists() {
             std::fs::create_dir_all(&pkg_dir).unwrap_or_else(|e| {
