@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.29.7 (2025-07-19)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* feat: add pkg_name to target and scope by @leavesster in https://github.com/oomol/oocana-rust/pull/244
+* feat: add package data by @leavesster in https://github.com/oomol/oocana-rust/pull/243
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.29.6...v0.29.7
+
 ## 0.29.6 (2025-07-18)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
