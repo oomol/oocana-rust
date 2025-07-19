@@ -382,9 +382,10 @@ impl SubflowBlock {
                         RunningTarget::Package {
                             package_path: path,
                             node_id,
+                            pkg_name,
                             ..
                         } => RunningScope::Package {
-                            name: None,
+                            name: pkg_name,
                             inject: false,
                             path,
                             node_id,
@@ -407,19 +408,22 @@ impl SubflowBlock {
                                         &mut path_finder,
                                     )?;
 
-                                    let scope = if matches!(
-                                        calculate_block_value_type(&task_slot_provider.task),
-                                        BlockValueType::Pkg { .. }
-                                    ) && task.package_path.is_some()
-                                    {
-                                        RunningScope::Package {
-                                            path: task.package_path.clone().unwrap(),
-                                            name: None,
-                                            inject: false,
-                                            node_id: None,
+                                    let scope = match calculate_block_value_type(
+                                        &task_slot_provider.task,
+                                    ) {
+                                        BlockValueType::Pkg { pkg_name, .. } => {
+                                            if let Some(package_path) = &task.package_path {
+                                                RunningScope::Package {
+                                                    name: pkg_name,
+                                                    path: package_path.clone(),
+                                                    inject: false,
+                                                    node_id: None,
+                                                }
+                                            } else {
+                                                RunningScope::Slot {}
+                                            }
                                         }
-                                    } else {
-                                        RunningScope::Slot {}
+                                        _ => RunningScope::Slot {},
                                     };
 
                                     let slot_block = Slot::Task(TaskSlot {
@@ -466,19 +470,22 @@ impl SubflowBlock {
                                         &mut path_finder,
                                     )?;
 
-                                    let scope = if matches!(
-                                        calculate_block_value_type(&slotflow_provider.slotflow),
-                                        BlockValueType::Pkg { .. }
-                                    ) && slotflow.package_path.is_some()
-                                    {
-                                        RunningScope::Package {
-                                            path: slotflow.package_path.clone().unwrap(),
-                                            name: None,
-                                            inject: false,
-                                            node_id: None,
+                                    let scope = match calculate_block_value_type(
+                                        &slotflow_provider.slotflow,
+                                    ) {
+                                        BlockValueType::Pkg { pkg_name, .. } => {
+                                            if let Some(package_path) = &slotflow.package_path {
+                                                RunningScope::Package {
+                                                    name: pkg_name,
+                                                    path: package_path.clone(),
+                                                    inject: false,
+                                                    node_id: None,
+                                                }
+                                            } else {
+                                                RunningScope::Slot {}
+                                            }
                                         }
-                                    } else {
-                                        RunningScope::Slot {}
+                                        _ => RunningScope::Slot {},
                                     };
 
                                     let slot_block = Slot::Subflow(SubflowSlot {
@@ -641,20 +648,24 @@ impl SubflowBlock {
                                         tracing::warn!("this subflow has slot node");
                                     }
 
-                                    let scope = if matches!(
-                                        calculate_block_value_type(&subflow_provider.subflow),
-                                        BlockValueType::Pkg { .. }
-                                    ) && slot_flow.package_path.is_some()
-                                    {
-                                        RunningScope::Package {
-                                            path: slot_flow.package_path.clone().unwrap(),
-                                            name: None,
-                                            inject: false,
-                                            node_id: None,
-                                        }
-                                    } else {
-                                        RunningScope::Slot {}
-                                    };
+                                    let scope =
+                                        match calculate_block_value_type(&subflow_provider.subflow)
+                                        {
+                                            BlockValueType::Pkg { pkg_name, .. } => {
+                                                if let Some(package_path) = &slot_flow.package_path
+                                                {
+                                                    RunningScope::Package {
+                                                        name: pkg_name,
+                                                        path: package_path.to_owned(),
+                                                        inject: false,
+                                                        node_id: None,
+                                                    }
+                                                } else {
+                                                    RunningScope::Slot {}
+                                                }
+                                            }
+                                            _ => RunningScope::Slot {},
+                                        };
 
                                     let slot_block = Slot::Subflow(SubflowSlot {
                                         slot_node_id: subflow_provider.slot_node_id.to_owned(),
@@ -764,11 +775,12 @@ impl SubflowBlock {
                     let mut running_scope = match running_target {
                         RunningTarget::Inherit => RunningScope::default(),
                         RunningTarget::Package {
+                            pkg_name,
                             package_path: path,
                             node_id,
                             ..
                         } => RunningScope::Package {
-                            name: None,
+                            name: pkg_name,
                             inject: false,
                             path,
                             node_id,
@@ -782,9 +794,9 @@ impl SubflowBlock {
                                 RunningScope::default()
                             }
                         },
-                        RunningTarget::InjectPackage { pkg_name: name } => {
+                        RunningTarget::InjectPackage { pkg_name } => {
                             let pkg_path = path_finder
-                                .find_package_file_path(&name)
+                                .find_package_file_path(&pkg_name)
                                 .ok()
                                 .map(|p| p.parent().map(|p| p.to_path_buf()))
                                 .unwrap_or(None);
@@ -821,13 +833,13 @@ impl SubflowBlock {
                                     }
                                 }
                                 RunningScope::Package {
-                                    name: Some(name),
+                                    name: pkg_name,
                                     path: pkg_path,
                                     inject: true,
                                     node_id: None,
                                 }
                             } else {
-                                warn!("package not found: {:?}", name);
+                                warn!("package not found: {:?}", pkg_name);
                                 // maybe just throw error and exit will be better
                                 RunningScope::default()
                             }

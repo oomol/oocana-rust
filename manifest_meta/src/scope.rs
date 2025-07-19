@@ -13,8 +13,8 @@ pub enum RunningScope {
         // slot need grandparent scope and not support injection for now.
     },
     Package {
+        name: String,
         path: PathBuf,
-        name: Option<String>,
         inject: bool,
         node_id: Option<NodeId>,
     },
