@@ -237,6 +237,7 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
             debug,
             wait_for_client,
         },
+        project_data.to_string_lossy().to_string(),
     );
     let scheduler_handle = scheduler_rx.event_loop();
 

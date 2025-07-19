@@ -352,8 +352,10 @@ pub enum ExecutorSpawnState {
 #[derive(Debug, Clone)]
 pub struct SchedulerTx {
     tx: Sender<SchedulerCommand>,
+    // make default scope always exist
     default_package: Option<String>,
     exclude_packages: Option<Vec<String>>,
+    data_dir: String,
 }
 
 pub struct BlockResponseParams {
@@ -466,7 +468,7 @@ impl SchedulerTx {
                     match self.default_package {
                         Some(ref default_package) => RuntimeScope {
                             pkg_name: None,
-                            data_dir: "".to_string(), // TODO: implement it
+                            data_dir: self.data_dir.clone(),
                             pkg_root: scope.pkg_root.clone(),
                             path: PathBuf::from(default_package.clone()),
                             node_id: scope.node_id().clone(),
@@ -475,7 +477,7 @@ impl SchedulerTx {
                         },
                         None => RuntimeScope {
                             pkg_name: None,
-                            data_dir: "".to_string(), // TODO: implement it
+                            data_dir: self.data_dir.clone(),
                             pkg_root: scope.pkg_root.clone(),
                             path: scope.path().clone(),
                             node_id: scope.node_id().clone(),
@@ -1499,6 +1501,7 @@ pub fn create<TT, TR>(
     default_package: Option<String>,
     exclude_packages: Option<Vec<String>>,
     executor_payload: ExecutorParameters,
+    data_dir: String,
 ) -> (SchedulerTx, SchedulerRx<TT, TR>)
 where
     TT: SchedulerTxImpl,
@@ -1510,6 +1513,7 @@ where
             tx: tx.clone(),
             default_package,
             exclude_packages,
+            data_dir,
         },
         SchedulerRx {
             impl_tx,
