@@ -4,7 +4,7 @@ use utils::calculate_short_hash;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RuntimeScope {
-    // None means it is root flow or inherit root flow scope. Some means it is running is package.
+    // None means it is root flow or inherit root flow scope. Some means it is running in package.
     pub pkg_name: Option<String>,
     pub package_path: PathBuf,
     pub node_id: Option<NodeId>,
