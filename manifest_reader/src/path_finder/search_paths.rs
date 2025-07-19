@@ -73,7 +73,8 @@ pub fn search_block_manifest(params: BlockManifestParams) -> Option<PathBuf> {
     }
 }
 
-// parse <pkg>::<block> or <pkg>::<service>::<function> to [pkg, block/service]
+// parse <pkg>::<block> or <pkg>::<service>::<function> and return an Option<(String, String)>, 
+// where the first element is the package name (pkg) and the second is the block or service name.
 fn separate_to_pkg_and_block(block_value: &str) -> Option<(String, String)> {
     let parts: Vec<&str> = block_value.split("::").filter(|s| !s.is_empty()).collect();
 
