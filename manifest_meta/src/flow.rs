@@ -769,7 +769,7 @@ impl SubflowBlock {
                                 RunningScope::default()
                             }
                         },
-                        RunningTarget::PackageName(name) => {
+                        RunningTarget::InjectPackage { pkg_name: name } => {
                             let pkg_path = path_finder
                                 .find_package_file_path(&name)
                                 .ok()

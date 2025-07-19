@@ -50,11 +50,17 @@ impl Default for RunningScope {
 }
 
 pub(crate) enum RunningTarget {
+    /// flow parent scope, inherit from parent flow
     Inherit,
+    /// this node is spawn:true, or this node is inject to a spawn:true node
     Node(NodeId),
-    PackageName(String),
+    /// this node is inject to a package
+    InjectPackage { pkg_name: String },
+    /// this node is a package block
     PackagePath {
+        // package's path, package block should always true.
         path: PathBuf,
+        /// Some means this block is also a spawn:true node
         node_id: Option<NodeId>,
     },
 }
@@ -63,7 +69,7 @@ pub(crate) enum RunningTarget {
 pub(crate) fn calculate_running_target(
     node: &ManifestNode,
     injection: &Option<manifest_reader::manifest::Injection>,
-    package_path: &Option<PathBuf>,
+    package_path: &Option<PathBuf>, // this should always be Some for package block
     block_type: BlockValueType,
 ) -> RunningTarget {
     if node.should_spawn() {
@@ -91,7 +97,9 @@ pub(crate) fn calculate_running_target(
         None => RunningTarget::Inherit,
         Some(injection) => match &injection.target {
             manifest_reader::manifest::InjectionTarget::Package(pkg) => {
-                RunningTarget::PackageName(pkg.to_owned())
+                RunningTarget::InjectPackage {
+                    pkg_name: pkg.to_owned(),
+                }
             }
             manifest_reader::manifest::InjectionTarget::Node(node_id) => {
                 RunningTarget::Node(node_id.to_owned())
