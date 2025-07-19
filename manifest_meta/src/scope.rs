@@ -76,11 +76,20 @@ pub(crate) fn calculate_running_target(
     if node.should_spawn() {
         match block_type {
             BlockValueType::Pkg { pkg_name, .. } => {
-                return RunningTarget::Package {
-                    pkg_name,
-                    package_path: package_path.as_ref().unwrap().to_owned(), // TODO: fix unwrap
-                    node_id: Some(node.node_id().clone()),
-                };
+                if let Some(package_path) = package_path {
+                    return RunningTarget::Package {
+                        pkg_name,
+                        package_path: package_path.clone(),
+                        node_id: injection.as_ref().and_then(|inj| match &inj.target {
+                            manifest_reader::manifest::InjectionTarget::Node(node_id) => {
+                                Some(node_id.clone())
+                            }
+                            _ => None,
+                        }),
+                    };
+                } else {
+                    return RunningTarget::Node(node.node_id().clone());
+                }
             }
             _ => {
                 return RunningTarget::Node(node.node_id().clone());
@@ -90,16 +99,18 @@ pub(crate) fn calculate_running_target(
 
     match block_type {
         BlockValueType::Pkg { pkg_name, .. } => {
-            return RunningTarget::Package {
-                pkg_name: pkg_name,
-                package_path: package_path.as_ref().unwrap().to_owned(),
-                node_id: injection.as_ref().and_then(|inj| match &inj.target {
-                    manifest_reader::manifest::InjectionTarget::Node(node_id) => {
-                        Some(node_id.clone())
-                    }
-                    _ => None,
-                }),
-            };
+            if let Some(package_path) = package_path {
+                return RunningTarget::Package {
+                    pkg_name,
+                    package_path: package_path.clone(),
+                    node_id: injection.as_ref().and_then(|inj| match &inj.target {
+                        manifest_reader::manifest::InjectionTarget::Node(node_id) => {
+                            Some(node_id.clone())
+                        }
+                        _ => None,
+                    }),
+                };
+            }
         }
         _ => {}
     }
