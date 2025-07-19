@@ -120,12 +120,14 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
             timeout: None,
             inputs_def_patch: None,
             parent_scope: RuntimeScope {
+                pkg_name: None,
                 package_path: workspace.clone(),
                 node_id: None,
                 enable_layer: false, // current give up layer feature
                 is_inject: false,
             },
             scope: RuntimeScope {
+                pkg_name: None,
                 package_path: workspace.clone(),
                 node_id: None,
                 enable_layer: false,
