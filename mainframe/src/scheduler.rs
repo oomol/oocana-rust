@@ -463,19 +463,19 @@ impl SchedulerTx {
     pub fn calculate_scope(&self, scope: &RuntimeScope) -> RuntimeScope {
         match self.exclude_packages.as_ref() {
             Some(exclude_packages) => {
-                let pkg_str = scope.package_path().to_string_lossy().to_string();
+                let pkg_str = scope.path().to_string_lossy().to_string();
                 if exclude_packages.contains(&pkg_str) {
                     match self.default_package {
                         Some(ref default_package) => RuntimeScope {
-                            pkg_name: None, // TODO: calculate default package name, default_package now is an absolute path. which is not a package name.
-                            package_path: PathBuf::from(default_package.clone()),
+                            pkg_name: None,
+                            path: PathBuf::from(default_package.clone()),
                             node_id: scope.node_id().clone(),
                             enable_layer: false,
                             is_inject: scope.is_inject(),
                         },
                         None => RuntimeScope {
                             pkg_name: None,
-                            package_path: scope.package_path().clone(),
+                            path: scope.path().clone(),
                             node_id: scope.node_id().clone(),
                             enable_layer: false,
                             is_inject: scope.is_inject(),
@@ -628,10 +628,10 @@ fn spawn_executor(
     let mut executor_package: Option<String> = None;
 
     let identifier = scope.identifier();
-    let scope_package = scope.package_path().to_string_lossy().to_string();
+    let scope_package = scope.path().to_string_lossy().to_string();
 
     // this dir won't pass to executor. the executor generate tmp pkg dir by package parameter.
-    let tmp_pkg_dir = if let Some(pkg) = scope.package_path().file_name() {
+    let tmp_pkg_dir = if let Some(pkg) = scope.path().file_name() {
         tmp_dir.join(pkg)
     } else {
         tmp_dir.join("workspace")
@@ -742,11 +742,7 @@ fn spawn_executor(
     } else {
         envs.insert(
             "OOCANA_PKG_DIR".to_string(),
-            scope
-                .workspace()
-                .join(PKG_DIR)
-                .to_string_lossy()
-                .to_string(),
+            scope.path().join(PKG_DIR).to_string_lossy().to_string(),
         );
         for (key, value) in utils::env::load_env_from_file(env_file) {
             if envs.contains_key(&key) {
@@ -955,7 +951,7 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
         });
     } else if no_layer_feature {
         // TODO: better use new struct to avoid unwrap
-        let pkg_dir = scope.workspace().join(PKG_DIR);
+        let pkg_dir = scope.path().join(PKG_DIR);
         if !pkg_dir.exists() {
             std::fs::create_dir_all(&pkg_dir).unwrap_or_else(|e| {
                 tracing::warn!("Failed to create pkg_dir: {:?}, error: {}", pkg_dir, e);
@@ -970,10 +966,10 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
 
     let layer = if scope.need_layer() {
         let mut bind_paths = executor_payload.bind_paths.clone();
-        let pkg = scope.package_path();
+        let pkg = scope.path();
 
         if let Some(store) = injection_store {
-            let target = manifest_meta::InjectionTarget::Package(scope.package_path().to_owned());
+            let target = manifest_meta::InjectionTarget::Package(scope.path().to_owned());
             if let Some(meta) = store.get(&target) {
                 tracing::info!(
                     "scope layer need create with injection. target: {:?}",
@@ -1024,7 +1020,7 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
         )?;
 
         if let Some(store) = injection_store {
-            let target = manifest_meta::InjectionTarget::Package(scope.package_path().to_owned());
+            let target = manifest_meta::InjectionTarget::Package(scope.path().to_owned());
             if let Some(meta) = store.get(&target) {
                 let scripts = meta.scripts.clone().unwrap_or_default();
 
@@ -1043,7 +1039,7 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
 
         Some(runtime_layer)
     } else {
-        let pkg_dir = scope.workspace().join(PKG_DIR);
+        let pkg_dir = scope.path().join(PKG_DIR);
         if !pkg_dir.exists() {
             std::fs::create_dir_all(&pkg_dir).unwrap_or_else(|e| {
                 tracing::warn!("Failed to create pkg_dir: {:?}, error: {}", pkg_dir, e);

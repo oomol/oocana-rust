@@ -4,9 +4,10 @@ use utils::calculate_short_hash;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RuntimeScope {
-    // None means it is root flow or inherit root flow scope. Some means it is running in package.
+    // None means it is in workspace. Some means it is running in package.
     pub pkg_name: Option<String>,
-    pub package_path: PathBuf,
+    /// if in package, this is the package path. otherwise it is the workspace path.
+    pub path: PathBuf,
     pub node_id: Option<NodeId>,
     pub is_inject: bool,
     pub enable_layer: bool,
@@ -15,22 +16,18 @@ pub struct RuntimeScope {
 impl RuntimeScope {
     pub fn identifier(&self) -> String {
         let str = match &self.node_id {
-            Some(node_id) => format!("{}-{}", self.package_path.display(), node_id),
-            None => self.package_path.display().to_string(),
+            Some(node_id) => format!("{}-{}", self.path.display(), node_id),
+            None => self.path.display().to_string(),
         };
         calculate_short_hash(&str, 16)
     }
 
-    pub fn package_path(&self) -> &PathBuf {
-        &self.package_path
+    pub fn path(&self) -> &PathBuf {
+        &self.path
     }
 
     pub fn node_id(&self) -> &Option<NodeId> {
         &self.node_id
-    }
-
-    pub fn workspace(&self) -> &PathBuf {
-        self.package_path()
     }
 
     pub fn need_layer(&self) -> bool {

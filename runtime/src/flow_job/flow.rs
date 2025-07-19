@@ -580,13 +580,13 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                 BlockValueType::Pkg { pkg_name,.. } => {
                                     RuntimeScope {
                                         pkg_name: Some(pkg_name),
-                                        package_path: task_block
+                                        path: task_block
                                             .package_path
                                             .clone()
                                             .unwrap_or_else(|| {
                                                 // if package path is not set, use flow shared scope package path
                                                 warn!("can find block package path, this should never happen");
-                                                flow_shared.scope.package_path.clone()
+                                                flow_shared.scope.path.clone()
                                             }),
                                         node_id: None,
                                         is_inject: false,
@@ -644,9 +644,9 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                 BlockValueType::Pkg { pkg_name, .. } => {
                                     RuntimeScope  {
                                         pkg_name: Some(pkg_name),
-                                        package_path: subflow_block.package_path.clone().unwrap_or_else(|| {
+                                        path: subflow_block.package_path.clone().unwrap_or_else(|| {
                                             warn!("can find subflow package path, this should never happen");
-                                            flow_shared.scope.package_path.clone()
+                                            flow_shared.scope.path.clone()
                                         }),
                                         node_id: None,
                                         is_inject: false,
@@ -1450,21 +1450,21 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
     let package_scope = match scope {
         BlockScope::Package {  name, path, node_id, .. } => RuntimeScope {
             pkg_name: Some(name),
-            package_path: path.clone(),
+            path: path.clone(),
             node_id: node_id.clone(),
             enable_layer: layer::feature_enabled(),
             is_inject: node.scope().is_inject(),
         },
         BlockScope::Flow { node_id, .. } => RuntimeScope {
             pkg_name: shared.scope.pkg_name.clone(),
-            package_path: shared.scope.package_path().to_owned(),
+            path: shared.scope.path().to_owned(),
             node_id: node_id.clone(),
             enable_layer: shared.scope.need_layer(),
             is_inject: node.scope().is_inject(),
         },
         BlockScope::Slot { .. } => RuntimeScope {
             pkg_name: shared.parent_scope.pkg_name.clone(),
-            package_path: shared.parent_scope.package_path().to_owned(),
+            path: shared.parent_scope.path().to_owned(),
             node_id: None,
             enable_layer: shared.parent_scope.need_layer(),
             is_inject: node.scope().is_inject(),

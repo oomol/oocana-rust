@@ -278,7 +278,7 @@ fn block_dir(
     // `task_block`. If neither is available, it uses the parent directory of the
     // `parent_flow` path, defaulting to the current directory ("./") if all else fails.
     if let Some(s) = scope.filter(|s| s.is_inject()) {
-        s.package_path().to_string_lossy().to_string()
+        s.path().to_string_lossy().to_string()
     } else if let Some(block_dir) = task_block.block_dir() {
         block_dir.to_string_lossy().to_string()
     } else {
