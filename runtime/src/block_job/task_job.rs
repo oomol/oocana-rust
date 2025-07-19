@@ -11,7 +11,7 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 use crate::block_status::BlockStatusTx;
 use crate::shared::Shared;
 
-use job::{BlockInputs, BlockJobStacks, JobId, RunningPackageScope, SessionId};
+use job::{BlockInputs, BlockJobStacks, JobId, RuntimeScope, SessionId};
 use utils::error::Result;
 use utils::path::to_absolute;
 
@@ -48,7 +48,7 @@ pub struct RunTaskBlockArgs {
     pub job_id: JobId,
     pub inputs: Option<BlockInputs>,
     pub block_status: BlockStatusTx,
-    pub scope: RunningPackageScope,
+    pub scope: RuntimeScope,
     pub timeout: Option<u64>,
     pub inputs_def_patch: Option<InputDefPatchMap>,
 }
@@ -270,7 +270,7 @@ pub fn run_task_block(args: RunTaskBlockArgs) -> Option<BlockJobHandle> {
 fn block_dir(
     task_block: &TaskBlock,
     parent_flow: Option<&Arc<SubflowBlock>>,
-    scope: Option<&RunningPackageScope>,
+    scope: Option<&RuntimeScope>,
 ) -> String {
     // Priority is given to the `scope` parameter if provided, as it represents
     // the package path associated with the running package scope. If `scope` is
@@ -297,7 +297,7 @@ struct ExecutorArgs<'a> {
     executor: &'a TaskBlockExecutor,
     parent_flow: Option<&'a Arc<SubflowBlock>>,
     job_id: &'a JobId,
-    scope: &'a RunningPackageScope,
+    scope: &'a RuntimeScope,
     scheduler_tx: SchedulerTx,
     stacks: BlockJobStacks,
 }

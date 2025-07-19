@@ -5,7 +5,7 @@ use manifest_reader::{
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum RunningScope {
+pub enum BlockScope {
     Flow {
         node_id: Option<NodeId>,
     },
@@ -20,32 +20,32 @@ pub enum RunningScope {
     },
 }
 
-impl RunningScope {
+impl BlockScope {
     pub fn workspace(&self) -> Option<PathBuf> {
         match self {
-            RunningScope::Package { path, .. } => Some(path.clone()),
+            BlockScope::Package { path, .. } => Some(path.clone()),
             _ => None,
         }
     }
 
     pub fn package_path(&self) -> Option<PathBuf> {
         match self {
-            RunningScope::Package { path, .. } => Some(path.to_path_buf()),
+            BlockScope::Package { path, .. } => Some(path.to_path_buf()),
             _ => None,
         }
     }
 
     pub fn is_inject(&self) -> bool {
         match self {
-            RunningScope::Package { inject, .. } => *inject,
+            BlockScope::Package { inject, .. } => *inject,
             _ => false,
         }
     }
 }
 
-impl Default for RunningScope {
+impl Default for BlockScope {
     fn default() -> Self {
-        RunningScope::Flow { node_id: None }
+        BlockScope::Flow { node_id: None }
     }
 }
 

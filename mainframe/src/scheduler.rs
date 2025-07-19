@@ -13,7 +13,7 @@ use std::{
 };
 use utils::calculate_short_hash;
 
-use job::{BlockInputs, BlockJobStackLevel, JobId, RunningPackageScope, SessionId};
+use job::{BlockInputs, BlockJobStackLevel, JobId, RuntimeScope, SessionId};
 
 use manifest_meta::{
     HandleName, InjectionStore, InputDefPatchMap, InputHandles, JsonValue, NodeId, OutputHandles,
@@ -307,7 +307,7 @@ enum SchedulerCommand {
         outputs: Option<OutputHandles>,
         executor: TaskBlockExecutor,
         injection_store: Option<InjectionStore>,
-        scope: RunningPackageScope,
+        scope: RuntimeScope,
         flow: Option<String>,
     },
     ExecuteServiceBlock {
@@ -318,7 +318,7 @@ enum SchedulerCommand {
         service_executor: ServiceExecutorOptions,
         stacks: Vec<BlockJobStackLevel>,
         outputs: Option<OutputHandles>,
-        scope: RunningPackageScope,
+        scope: RuntimeScope,
         service_hash: String,
         flow: Option<String>,
     },
@@ -382,7 +382,7 @@ pub struct ExecutorParams<'a> {
     pub dir: String,
     pub executor: &'a TaskBlockExecutor,
     pub outputs: &'a Option<OutputHandles>,
-    pub scope: &'a RunningPackageScope,
+    pub scope: &'a RuntimeScope,
     pub injection_store: &'a Option<InjectionStore>,
     pub flow: &'a Option<String>,
 }
@@ -395,7 +395,7 @@ pub struct ServiceParams<'a> {
     pub dir: String,
     pub options: &'a ServiceExecutorOptions,
     pub outputs: &'a Option<OutputHandles>,
-    pub scope: &'a RunningPackageScope,
+    pub scope: &'a RuntimeScope,
     pub flow: &'a Option<String>,
 }
 
@@ -406,14 +406,14 @@ pub struct ExecutorCheckResult {
 
 pub struct ExecutorCheckParams<'a> {
     pub executor_name: &'a str,
-    pub scope: &'a RunningPackageScope,
+    pub scope: &'a RuntimeScope,
     pub injection_store: &'a Option<InjectionStore>,
     pub flow: &'a Option<String>,
     pub executor_payload: &'a ExecutorParameters,
     pub executor_map: Arc<RwLock<HashMap<String, ExecutorState>>>,
 }
 
-fn generate_executor_map_name(executor_name: &str, scope: &RunningPackageScope) -> String {
+fn generate_executor_map_name(executor_name: &str, scope: &RuntimeScope) -> String {
     format!("{}-{}", executor_name, scope.identifier())
 }
 
@@ -460,19 +460,19 @@ impl SchedulerTx {
 
     /** TODO: generate default scope instead of default package. */
     /** filter some scope, move then to default scope */
-    pub fn calculate_scope(&self, scope: &RunningPackageScope) -> RunningPackageScope {
+    pub fn calculate_scope(&self, scope: &RuntimeScope) -> RuntimeScope {
         match self.exclude_packages.as_ref() {
             Some(exclude_packages) => {
                 let pkg_str = scope.package_path().to_string_lossy().to_string();
                 if exclude_packages.contains(&pkg_str) {
                     match self.default_package {
-                        Some(ref default_package) => RunningPackageScope {
+                        Some(ref default_package) => RuntimeScope {
                             package_path: PathBuf::from(default_package.clone()),
                             node_id: scope.node_id().clone(),
                             enable_layer: false,
                             is_inject: scope.is_inject(),
                         },
-                        None => RunningPackageScope {
+                        None => RuntimeScope {
                             package_path: scope.package_path().clone(),
                             node_id: scope.node_id().clone(),
                             enable_layer: false,
@@ -582,7 +582,7 @@ where
 fn spawn_executor(
     executor: &str,
     layer: Option<RuntimeLayer>,
-    scope: &RunningPackageScope,
+    scope: &RuntimeScope,
     executor_map: Arc<RwLock<HashMap<String, ExecutorState>>>,
     executor_payload: ExecutorParameters,
     tx: Sender<SchedulerCommand>,

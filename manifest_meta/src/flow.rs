@@ -19,7 +19,7 @@ use crate::{
         common::NodeInput,
         subflow::{Slot, SubflowSlot, TaskSlot},
     },
-    scope::{calculate_running_target, RunningScope, RunningTarget},
+    scope::{calculate_running_target, BlockScope, RunningTarget},
 };
 
 use tracing::warn;
@@ -378,13 +378,13 @@ impl SubflowBlock {
                     );
 
                     let running_scope = match running_target {
-                        RunningTarget::Inherit => RunningScope::default(),
+                        RunningTarget::Inherit => BlockScope::default(),
                         RunningTarget::Package {
                             package_path: path,
                             node_id,
                             pkg_name,
                             ..
-                        } => RunningScope::Package {
+                        } => BlockScope::Package {
                             name: pkg_name,
                             inject: false,
                             path,
@@ -392,7 +392,7 @@ impl SubflowBlock {
                         },
                         _ => {
                             warn!("subflow node injection not supported");
-                            RunningScope::default()
+                            BlockScope::default()
                         }
                     };
 
@@ -413,17 +413,17 @@ impl SubflowBlock {
                                     ) {
                                         BlockValueType::Pkg { pkg_name, .. } => {
                                             if let Some(package_path) = &task.package_path {
-                                                RunningScope::Package {
+                                                BlockScope::Package {
                                                     name: pkg_name,
                                                     path: package_path.clone(),
                                                     inject: false,
                                                     node_id: None,
                                                 }
                                             } else {
-                                                RunningScope::Slot {}
+                                                BlockScope::Slot {}
                                             }
                                         }
-                                        _ => RunningScope::Slot {},
+                                        _ => BlockScope::Slot {},
                                     };
 
                                     let slot_block = Slot::Task(TaskSlot {
@@ -475,17 +475,17 @@ impl SubflowBlock {
                                     ) {
                                         BlockValueType::Pkg { pkg_name, .. } => {
                                             if let Some(package_path) = &slotflow.package_path {
-                                                RunningScope::Package {
+                                                BlockScope::Package {
                                                     name: pkg_name,
                                                     path: package_path.clone(),
                                                     inject: false,
                                                     node_id: None,
                                                 }
                                             } else {
-                                                RunningScope::Slot {}
+                                                BlockScope::Slot {}
                                             }
                                         }
-                                        _ => RunningScope::Slot {},
+                                        _ => BlockScope::Slot {},
                                     };
 
                                     let slot_block = Slot::Subflow(SubflowSlot {
@@ -654,17 +654,17 @@ impl SubflowBlock {
                                             BlockValueType::Pkg { pkg_name, .. } => {
                                                 if let Some(package_path) = &slot_flow.package_path
                                                 {
-                                                    RunningScope::Package {
+                                                    BlockScope::Package {
                                                         name: pkg_name,
                                                         path: package_path.to_owned(),
                                                         inject: false,
                                                         node_id: None,
                                                     }
                                                 } else {
-                                                    RunningScope::Slot {}
+                                                    BlockScope::Slot {}
                                                 }
                                             }
-                                            _ => RunningScope::Slot {},
+                                            _ => BlockScope::Slot {},
                                         };
 
                                     let slot_block = Slot::Subflow(SubflowSlot {
@@ -773,25 +773,25 @@ impl SubflowBlock {
                     );
 
                     let mut running_scope = match running_target {
-                        RunningTarget::Inherit => RunningScope::default(),
+                        RunningTarget::Inherit => BlockScope::default(),
                         RunningTarget::Package {
                             pkg_name,
                             package_path: path,
                             node_id,
                             ..
-                        } => RunningScope::Package {
+                        } => BlockScope::Package {
                             name: pkg_name,
                             inject: false,
                             path,
                             node_id,
                         },
                         RunningTarget::Node(node_id) => match find_node(&node_id) {
-                            Some(_) => RunningScope::Flow {
+                            Some(_) => BlockScope::Flow {
                                 node_id: Some(node_id),
                             },
                             None => {
                                 warn!("target node not found: {:?}", node_id);
-                                RunningScope::default()
+                                BlockScope::default()
                             }
                         },
                         RunningTarget::InjectPackage { pkg_name } => {
@@ -832,7 +832,7 @@ impl SubflowBlock {
                                             .push(script);
                                     }
                                 }
-                                RunningScope::Package {
+                                BlockScope::Package {
                                     name: pkg_name,
                                     path: pkg_path,
                                     inject: true,
@@ -841,7 +841,7 @@ impl SubflowBlock {
                             } else {
                                 warn!("package not found: {:?}", pkg_name);
                                 // maybe just throw error and exit will be better
-                                RunningScope::default()
+                                BlockScope::default()
                             }
                         }
                     };
@@ -852,7 +852,7 @@ impl SubflowBlock {
                             task_node.node_id,
                             running_scope.package_path()
                         );
-                        running_scope = RunningScope::default();
+                        running_scope = BlockScope::default();
                     }
 
                     let merged_inputs_def =

@@ -3,14 +3,14 @@ use std::path::PathBuf;
 use utils::calculate_short_hash;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct RunningPackageScope {
+pub struct RuntimeScope {
     pub package_path: PathBuf,
     pub node_id: Option<NodeId>,
     pub is_inject: bool,
     pub enable_layer: bool,
 }
 
-impl RunningPackageScope {
+impl RuntimeScope {
     pub fn identifier(&self) -> String {
         let str = match &self.node_id {
             Some(node_id) => format!("{}-{}", self.package_path.display(), node_id),

@@ -1,6 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
-use job::{BlockInputs, BlockJobStacks, JobId, RunningPackageScope};
+use job::{BlockInputs, BlockJobStacks, JobId, RuntimeScope};
 use mainframe::{
     reporter::BlockReporterTx,
     scheduler::{self, ExecutorParams, SchedulerTx, ServiceParams},
@@ -36,7 +36,7 @@ pub struct ListenerArgs {
     pub executor: Option<TaskBlockExecutor>,
     pub service: Option<ServiceExecutorPayload>,
     pub block_dir: String,
-    pub scope: RunningPackageScope,
+    pub scope: RuntimeScope,
     pub injection_store: Option<InjectionStore>,
     pub flow: Option<String>,
 }
