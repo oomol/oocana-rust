@@ -458,8 +458,8 @@ impl SchedulerTx {
             .unwrap();
     }
 
-    /** TODO: generate default scope instead of default package. */
-    /** filter some scope, move then to default scope */
+    /// disable layer feature is scope package is in exclude package.
+    /// if default package is exist, move to default FIXME: remove default package path, use package from package store.
     pub fn calculate_scope(&self, scope: &RuntimeScope) -> RuntimeScope {
         match self.exclude_packages.as_ref() {
             Some(exclude_packages) => {
@@ -474,7 +474,7 @@ impl SchedulerTx {
                             is_inject: scope.is_inject(),
                         },
                         None => RuntimeScope {
-                            pkg_name: scope.pkg_name.clone(),
+                            pkg_name: None,
                             package_path: scope.package_path().clone(),
                             node_id: scope.node_id().clone(),
                             enable_layer: false,
