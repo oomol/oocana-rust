@@ -31,6 +31,8 @@ pub struct RunArgs<'a> {
     pub nodes: Option<HashSet<String>>,
     pub input_values: Option<String>,
     pub default_package_path: Option<PathBuf>,
+    pub project_data: &'a PathBuf,
+    pub pkg_data_root: &'a PathBuf,
 }
 
 pub async fn run(args: RunArgs<'_>) -> Result<()> {
@@ -43,6 +45,8 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
         nodes,
         input_values,
         default_package_path,
+        project_data,
+        pkg_data_root,
     } = args;
     let (block_status_tx, block_status_rx) = block_status::create();
     let job_id = job_id.unwrap_or_else(JobId::random);
@@ -122,6 +126,8 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
             parent_scope: RuntimeScope {
                 pkg_name: None,
                 path: workspace.clone(),
+                data_dir: project_data.to_string_lossy().to_string(),
+                pkg_root: pkg_data_root.to_path_buf(),
                 node_id: None,
                 enable_layer: false, // current give up layer feature
                 is_inject: false,
@@ -129,6 +135,8 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
             scope: RuntimeScope {
                 pkg_name: None,
                 path: workspace.clone(),
+                pkg_root: pkg_data_root.to_path_buf(),
+                data_dir: project_data.to_string_lossy().to_string(),
                 node_id: None,
                 enable_layer: false,
                 is_inject: false,

@@ -90,6 +90,8 @@ pub struct BlockArgs<'a> {
     pub retain_env_keys: Option<Vec<String>>,
     pub env_file: Option<String>,
     pub temp_root: String,
+    pub project_data: &'a PathBuf,
+    pub pkg_data_root: &'a PathBuf,
 }
 
 async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
@@ -111,6 +113,8 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
         retain_env_keys,
         env_file,
         temp_root,
+        project_data,
+        pkg_data_root,
     } = block_args;
     let session_id = SessionId::new(session);
     tracing::info!("Session start with session id: {}", session_id);
@@ -143,6 +147,20 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
 
     if metadata(&session_dir).is_err() {
         fs::create_dir_all(&session_dir)?;
+    }
+
+    if !project_data.is_dir() {
+        warn!(
+            "Project data path does not exist: {:?}, pkg_data may not work properly.",
+            project_data
+        );
+    }
+
+    if !pkg_data_root.is_dir() {
+        warn!(
+            "Package data root path does not exist: {:?}, pkg_data may not work properly.",
+            pkg_data_root
+        );
     }
 
     let tmp_root_path = PathBuf::from(temp_root);
@@ -221,6 +239,7 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
             debug,
             wait_for_client,
         },
+        project_data.to_string_lossy().to_string(),
     );
     let scheduler_handle = scheduler_rx.event_loop();
 
@@ -260,6 +279,8 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
         nodes,
         input_values,
         default_package_path: current_package_path.map(|p| p.to_owned()),
+        pkg_data_root,
+        project_data,
     })
     .await;
 

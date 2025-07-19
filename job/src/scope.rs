@@ -6,6 +6,8 @@ use utils::calculate_short_hash;
 pub struct RuntimeScope {
     // None means it is in workspace. Some means it is running in package.
     pub pkg_name: Option<String>,
+    pub data_dir: String,
+    pub pkg_root: PathBuf,
     /// if in package, this is the package path. otherwise it is the workspace path.
     pub path: PathBuf,
     pub node_id: Option<NodeId>,

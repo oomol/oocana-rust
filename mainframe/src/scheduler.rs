@@ -276,8 +276,6 @@ pub trait SchedulerRxImpl {
     async fn recv(&mut self) -> MessageData;
 }
 
-const PKG_DIR: &str = ".oomol/pkg-dir";
-
 enum SchedulerCommand {
     RegisterSubscriber(JobId, Sender<ReceiveMessage>),
     UnregisterSubscriber(JobId),
@@ -354,8 +352,10 @@ pub enum ExecutorSpawnState {
 #[derive(Debug, Clone)]
 pub struct SchedulerTx {
     tx: Sender<SchedulerCommand>,
+    // make default scope always exist
     default_package: Option<String>,
     exclude_packages: Option<Vec<String>>,
+    data_dir: String,
 }
 
 pub struct BlockResponseParams {
@@ -468,6 +468,8 @@ impl SchedulerTx {
                     match self.default_package {
                         Some(ref default_package) => RuntimeScope {
                             pkg_name: None,
+                            data_dir: self.data_dir.clone(),
+                            pkg_root: scope.pkg_root.clone(),
                             path: PathBuf::from(default_package.clone()),
                             node_id: scope.node_id().clone(),
                             enable_layer: false,
@@ -475,6 +477,8 @@ impl SchedulerTx {
                         },
                         None => RuntimeScope {
                             pkg_name: None,
+                            data_dir: self.data_dir.clone(),
+                            pkg_root: scope.pkg_root.clone(),
                             path: scope.path().clone(),
                             node_id: scope.node_id().clone(),
                             enable_layer: false,
@@ -693,14 +697,7 @@ fn spawn_executor(
     let mut command = if let Some(ref pkg_layer) = layer {
         let package_path_str = pkg_layer.package_path.to_string_lossy();
 
-        envs.insert(
-            "OOCANA_PKG_DIR".to_string(),
-            pkg_layer
-                .package_path
-                .join(PKG_DIR)
-                .to_string_lossy()
-                .to_string(),
-        );
+        envs.insert("OOCANA_PKG_DIR".to_string(), scope.data_dir.clone());
 
         let mut exec_form_cmd: Vec<&str> = vec![
             &executor_bin,
@@ -740,10 +737,7 @@ fn spawn_executor(
 
         pkg_layer.run_command(&script_str, &envs, env_file)
     } else {
-        envs.insert(
-            "OOCANA_PKG_DIR".to_string(),
-            scope.path().join(PKG_DIR).to_string_lossy().to_string(),
-        );
+        envs.insert("OOCANA_PKG_DIR".to_string(), scope.data_dir.clone());
         for (key, value) in utils::env::load_env_from_file(env_file) {
             if envs.contains_key(&key) {
                 // TODO: consider whether to skip the env key or not.
@@ -929,8 +923,6 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
         flow,
     } = params;
 
-    // TODO: move layer feature to scope field
-    let no_layer_feature = !layer::feature_enabled();
     let executor_map_name = generate_executor_map_name(executor_name, scope);
 
     let executor_state = {
@@ -949,9 +941,8 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
             executor_state,
             layer: None,
         });
-    } else if no_layer_feature {
-        // TODO: better use new struct to avoid unwrap
-        let pkg_dir = scope.path().join(PKG_DIR);
+    } else if !scope.need_layer() {
+        let pkg_dir = PathBuf::from(&scope.data_dir);
         if !pkg_dir.exists() {
             std::fs::create_dir_all(&pkg_dir).unwrap_or_else(|e| {
                 tracing::warn!("Failed to create pkg_dir: {:?}, error: {}", pkg_dir, e);
@@ -997,7 +988,7 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
             }
         }
 
-        let pkg_dir = pkg.join(PKG_DIR);
+        let pkg_dir = PathBuf::from(&scope.data_dir);
         if !pkg_dir.exists() {
             std::fs::create_dir_all(&pkg_dir).unwrap_or_else(|e| {
                 tracing::warn!("Failed to create pkg_dir: {:?}, error: {}", pkg_dir, e);
@@ -1039,7 +1030,7 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
 
         Some(runtime_layer)
     } else {
-        let pkg_dir = scope.path().join(PKG_DIR);
+        let pkg_dir = PathBuf::from(&scope.data_dir);
         if !pkg_dir.exists() {
             std::fs::create_dir_all(&pkg_dir).unwrap_or_else(|e| {
                 tracing::warn!("Failed to create pkg_dir: {:?}, error: {}", pkg_dir, e);
@@ -1510,6 +1501,7 @@ pub fn create<TT, TR>(
     default_package: Option<String>,
     exclude_packages: Option<Vec<String>>,
     executor_payload: ExecutorParameters,
+    data_dir: String,
 ) -> (SchedulerTx, SchedulerRx<TT, TR>)
 where
     TT: SchedulerTxImpl,
@@ -1521,6 +1513,7 @@ where
             tx: tx.clone(),
             default_package,
             exclude_packages,
+            data_dir,
         },
         SchedulerRx {
             impl_tx,
