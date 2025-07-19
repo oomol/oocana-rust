@@ -99,7 +99,7 @@ pub enum BlockValueType {
     },
     /// <pkg_name>::<block_name> or <pkg_name>::<service_name>::<block_name>
     Pkg {
-        pkg_name: String,   // package name
+        pkg_name: String,
         block_name: String, // block name
     },
     /// absolute path, start with /, path can be manifest file path or a directory contains manifest file.
