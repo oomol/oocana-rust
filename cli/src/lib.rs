@@ -70,7 +70,7 @@ enum Commands {
         session_dir: Option<String>,
         #[arg(help = "A directory that can be used for persistent data storage. Flows and blocks that are not part of a package will use this directory.", long, default_value_t = temp_root())]
         project_data: String,
-        #[arg(help = "a directory that can be used for persistent package data, all package's data will store in this directory. it can across sessions", long, default_value_t = temp_root())]
+        #[arg(help = "a directory that can be used for persistent package data, all package's data will store in this directory. it can persist across sessions", long, default_value_t = temp_root())]
         pkg_data_root: String,
         #[arg(help = "a temporary root directory. oocana will create a sub directory (calculate with the block path hash) in the root directory. The sub directory path will be context.tempDir or context.temp_dir function's return value. This sub directory will be deleted if this session success and will retain if session failed. If not provided, oocana will search OOCANA_TEMP_ROOT. If still no value the temp_root will be use os's temp dir.", long, default_value_t = temp_root())]
         temp_root: String,
