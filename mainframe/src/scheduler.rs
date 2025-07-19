@@ -467,7 +467,7 @@ impl SchedulerTx {
                 if exclude_packages.contains(&pkg_str) {
                     match self.default_package {
                         Some(ref default_package) => RuntimeScope {
-                            pkg_name: None, // TODO: calculate default package name, default_package now is a absolute path. which is not a package name.
+                            pkg_name: None, // TODO: calculate default package name, default_package now is an absolute path. which is not a package name.
                             package_path: PathBuf::from(default_package.clone()),
                             node_id: scope.node_id().clone(),
                             enable_layer: false,
