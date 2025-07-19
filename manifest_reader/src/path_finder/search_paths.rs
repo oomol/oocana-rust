@@ -54,7 +54,7 @@ pub fn search_block_manifest(params: BlockManifestParams) -> Option<PathBuf> {
                     .iter()
                     .collect()
             } else {
-                warn!("can't find package version for {}. pkg directory will use <pkg_name> without version", pkg_name);
+                warn!("can't find package version for {}. pkg directory will use {} without version", pkg_name, pkg_name);
                 [&pkg_name, block_dir, &block_name].iter().collect()
             };
             find_block_manifest_file(BlockSearchParams {
