@@ -68,6 +68,10 @@ enum Commands {
         exclude_packages: Option<String>,
         #[arg(help = "a directory which will pass to every block, oocana just check the if the path is exit, if not oocana will create one. Oocana won't do anything about this path, won't delete it. It will be the return value of context.sessionDir or context.session_dir function.", long)]
         session_dir: Option<String>,
+        #[arg(help = "A directory that can be used for persistent data storage. Flows and blocks that are not part of a package will use this directory.", long, default_value_t = temp_root())]
+        project_data: String,
+        #[arg(help = "a directory that can be used for persistent package data, all package's data will store in this directory. it can across sessions", long, default_value_t = temp_root())]
+        pkg_data_root: String,
         #[arg(help = "a temporary root directory. oocana will create a sub directory (calculate with the block path hash) in the root directory. The sub directory path will be context.tempDir or context.temp_dir function's return value. This sub directory will be deleted if this session success and will retain if session failed. If not provided, oocana will search OOCANA_TEMP_ROOT. If still no value the temp_root will be use os's temp dir.", long, default_value_t = temp_root())]
         temp_root: String,
         #[arg(help = "when spawn a new process, retain the environment variables(only accept variable name), accept multiple input. example: --retain-env-keys <env> --retain-env-keys <env>", long)]
@@ -155,7 +159,7 @@ pub fn cli_match() -> Result<()> {
     let app_config = utils::config::load_config(Some(&cli.config))?;
     debug!("config {:?} command args: {command:#?} in version: {VERSION}", cli.config);
     match command {
-        Commands::Run { block, broker, search_paths, session, reporter, debug, wait_for_client, use_cache, nodes, input_values, exclude_packages, default_package, bind_paths, session_dir: session_path, retain_env_keys, env_file, bind_path_file, verbose: _verbose, temp_root, dry_run } => {
+        Commands::Run { block, broker, search_paths, session, reporter, debug, wait_for_client, use_cache, nodes, input_values, exclude_packages, default_package, bind_paths, session_dir: session_path, retain_env_keys, env_file, bind_path_file, verbose: _verbose, temp_root, dry_run, pkg_data_root, project_data } => {
 
             let bind_paths = load_bind_paths(bind_paths, bind_path_file);
             let search_paths = parse_search_paths(search_paths);
@@ -198,6 +202,8 @@ pub fn cli_match() -> Result<()> {
                 retain_env_keys: retain_env_keys.to_owned(),
                 env_file,
                 temp_root: temp_root.to_owned(),
+                project_data: project_data.to_owned(),
+                pkg_data_root: pkg_data_root.to_owned(),
             })?
         },
         Commands::Cache { action } => {

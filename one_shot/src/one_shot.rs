@@ -90,6 +90,8 @@ pub struct BlockArgs<'a> {
     pub retain_env_keys: Option<Vec<String>>,
     pub env_file: Option<String>,
     pub temp_root: String,
+    pub project_data: String,
+    pub pkg_data_root: String,
 }
 
 async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
@@ -111,6 +113,8 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
         retain_env_keys,
         env_file,
         temp_root,
+        project_data,
+        pkg_data_root,
     } = block_args;
     let session_id = SessionId::new(session);
     tracing::info!("Session start with session id: {}", session_id);
