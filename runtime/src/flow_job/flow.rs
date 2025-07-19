@@ -577,9 +577,8 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                             }
 
                             let block_scope = match calculate_block_value_type(&block) {
-                                BlockValueType::Pkg { pkg_name, .. } => {
-                                    if let Some(_) = pkg_name {
-                                        RunningPackageScope {
+                                BlockValueType::Pkg { .. } => {
+                                    RunningPackageScope {
                                         package_path: task_block
                                             .package_path
                                             .clone()
@@ -591,9 +590,6 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                         node_id: None,
                                         is_inject: false,
                                         enable_layer: layer::feature_enabled(),
-                                    }
-                                    } else {
-                                        flow_shared.scope.clone()
                                     }
                                 }
                                 _ => flow_shared.scope.clone(),
@@ -644,20 +640,17 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                             };
 
                             let flow_scope = match calculate_block_value_type(&block) {
-                                BlockValueType::Pkg { pkg_name, .. } => {
-                                    if let Some(_) = pkg_name {
-                                        RunningPackageScope  {
-                                            package_path: subflow_block.package_path.clone().unwrap_or_else(|| {
-                                                warn!("can find subflow package path, this should never happen");
-                                                flow_shared.scope.package_path.clone()
-                                            }),
-                                            node_id: None,
-                                            is_inject: false,
-                                            enable_layer: layer::feature_enabled(),
-                                        }
-                                    } else {
-                                        flow_shared.scope.clone()
+                                BlockValueType::Pkg { .. } => {
+                                    RunningPackageScope  {
+                                        package_path: subflow_block.package_path.clone().unwrap_or_else(|| {
+                                            warn!("can find subflow package path, this should never happen");
+                                            flow_shared.scope.package_path.clone()
+                                        }),
+                                        node_id: None,
+                                        is_inject: false,
+                                        enable_layer: layer::feature_enabled(),
                                     }
+                                    
                                 }
                                 _ => flow_shared.scope.clone(),
                             };

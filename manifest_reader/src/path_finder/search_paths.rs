@@ -26,7 +26,6 @@ pub fn search_block_manifest(params: BlockManifestParams) -> Option<PathBuf> {
         pkg_version,
     } = params;
 
-    // let block_type = calculate_block_value_type(value);
     match value {
         BlockValueType::SelfBlock { name: block_name } => {
             let mut self_manifest_path = working_dir.to_path_buf();
@@ -49,19 +48,14 @@ pub fn search_block_manifest(params: BlockManifestParams) -> Option<PathBuf> {
             pkg_name,
             block_name,
         } => {
-            let manifest_path: PathBuf = if let Some(pkg) = pkg_name {
-                if let Some(version) = pkg_version.get(&pkg) {
-                    // Use "{pkg_name}-{version}" as the package directory
-                    [&format!("{}-{}", pkg, version), block_dir, &block_name]
-                        .iter()
-                        .collect()
-                } else {
-                    warn!("can't find package version for {}", pkg);
-                    [&pkg, block_dir, &block_name].iter().collect()
-                }
+            let manifest_path: PathBuf = if let Some(version) = pkg_version.get(&pkg_name) {
+                // Use "{pkg_name}-{version}" as the package directory
+                [&format!("{}-{}", pkg_name, version), block_dir, &block_name]
+                    .iter()
+                    .collect()
             } else {
-                warn!("pkg_name is None, using block_name as manifest path. this should be never happen.");
-                PathBuf::from(block_name)
+                warn!("can't find package version for {}. pkg directory will use <pkg_name> without version", pkg_name);
+                [&pkg_name, block_dir, &block_name].iter().collect()
             };
             find_block_manifest_file(BlockSearchParams {
                 manifest_path: &manifest_path,
@@ -79,15 +73,14 @@ pub fn search_block_manifest(params: BlockManifestParams) -> Option<PathBuf> {
     }
 }
 
-/// Parse block value to package name and block name.
-/// return block_name and pkg name(Option).
-fn get_block_name_and_pkg(block_value: &str) -> (String, Option<String>) {
+// parse <pkg>::<block> or <pkg>::<service>::<function> to [pkg, block/service]
+fn separate_to_pkg_and_block(block_value: &str) -> Option<(String, String)> {
     let parts: Vec<&str> = block_value.split("::").filter(|s| !s.is_empty()).collect();
 
-    if parts.len() == 1 {
-        (parts[0].to_string(), None)
+    if parts.len() > 1 {
+        Some((parts[0].to_string(), parts[1].to_string()))
     } else {
-        (parts[1].to_string(), Some(parts[0].to_string()))
+        None
     }
 }
 
@@ -105,8 +98,8 @@ pub enum BlockValueType {
     },
     /// <pkg_name>::<block_name> or <pkg_name>::<service_name>::<block_name>
     Pkg {
-        pkg_name: Option<String>, // package name
-        block_name: String,       // block name
+        pkg_name: String,   // package name
+        block_name: String, // block name
     },
     /// absolute path, start with /, path can be manifest file path or a directory contains manifest file.
     AbsPath {
@@ -137,8 +130,7 @@ pub fn calculate_block_value_type(block_value: &str) -> BlockValueType {
     // 1. <pkg_name>::<service_name>::<block_name> or <pkg_name>::<block_name>
     // 2. <block_name>
     if block_path.components().all(is_normal_path_component) {
-        if block_value.contains("::") {
-            let (block_name, pkg_name) = get_block_name_and_pkg(block_value);
+        if let Some((pkg_name, block_name)) = separate_to_pkg_and_block(block_value) {
             return BlockValueType::Pkg {
                 pkg_name,
                 block_name,
@@ -227,7 +219,7 @@ mod tests {
         assert_eq!(
             calculate_block_value_type("pkg1::block1"),
             BlockValueType::Pkg {
-                pkg_name: Some("pkg1".to_string()),
+                pkg_name: "pkg1".to_string(),
                 block_name: "block1".to_string()
             }
         );
