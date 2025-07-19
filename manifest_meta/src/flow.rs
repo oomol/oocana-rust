@@ -385,6 +385,7 @@ impl SubflowBlock {
                             ..
                         } => RunningScope::Package {
                             name: None,
+                            inject: false,
                             path,
                             node_id,
                         },
@@ -414,6 +415,7 @@ impl SubflowBlock {
                                         RunningScope::Package {
                                             path: task.package_path.clone().unwrap(),
                                             name: None,
+                                            inject: false,
                                             node_id: None,
                                         }
                                     } else {
@@ -472,6 +474,7 @@ impl SubflowBlock {
                                         RunningScope::Package {
                                             path: slotflow.package_path.clone().unwrap(),
                                             name: None,
+                                            inject: false,
                                             node_id: None,
                                         }
                                     } else {
@@ -646,6 +649,7 @@ impl SubflowBlock {
                                         RunningScope::Package {
                                             path: slot_flow.package_path.clone().unwrap(),
                                             name: None,
+                                            inject: false,
                                             node_id: None,
                                         }
                                     } else {
@@ -765,6 +769,7 @@ impl SubflowBlock {
                             ..
                         } => RunningScope::Package {
                             name: None,
+                            inject: false,
                             path,
                             node_id,
                         },
@@ -818,6 +823,7 @@ impl SubflowBlock {
                                 RunningScope::Package {
                                     name: Some(name),
                                     path: pkg_path,
+                                    inject: true,
                                     node_id: None,
                                 }
                             } else {

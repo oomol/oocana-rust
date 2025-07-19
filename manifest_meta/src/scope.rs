@@ -14,8 +14,8 @@ pub enum RunningScope {
     },
     Package {
         path: PathBuf,
-        /// None means the block is package block. Some means the block is inject to this package
         name: Option<String>,
+        inject: bool,
         node_id: Option<NodeId>,
     },
 }
@@ -37,7 +37,7 @@ impl RunningScope {
 
     pub fn is_inject(&self) -> bool {
         match self {
-            RunningScope::Package { name, .. } => name.is_some(),
+            RunningScope::Package { inject, .. } => *inject,
             _ => false,
         }
     }
