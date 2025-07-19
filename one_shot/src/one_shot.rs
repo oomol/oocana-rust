@@ -171,7 +171,9 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
         .is_some_and(|f| f.to_string_lossy().starts_with("flow.oo"))
     {
         // /app/workspace/flows/a/flow.oo.yaml -> /app/workspace
-        p.parent().and_then(|p| p.parent()).and_then(|p| p.parent())
+        p.parent()
+            .and_then(|p| p.parent())
+            .and_then(|p| p.parent())
     } else {
         // /app/workspace/flows/a -> /app/workspace
         p.parent().and_then(|p| p.parent())
