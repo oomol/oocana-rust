@@ -1,6 +1,6 @@
 [package]
 name = "manifest_reader"
-version = "0.29.8"
+version = "0.29.9"
 authors = ["CRIMX <straybugs@gmail.com>"]
 description = "Oocana block project reader"
 edition = "2021"
