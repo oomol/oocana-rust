@@ -1,4 +1,4 @@
-use std::fmt::Debug;
+use std::{fmt::Debug, path::PathBuf};
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
@@ -14,7 +14,37 @@ pub struct OutputRef {
 #[derive(Clone)]
 pub struct OutputValue {
     pub value: JsonValue,
+    // this field won't be serialized
     pub cacheable: bool,
+}
+
+impl OutputValue {
+    pub fn new(value: JsonValue, cacheable: bool) -> Self {
+        OutputValue { value, cacheable }
+    }
+
+    pub fn is_cacheable(&self) -> bool {
+        if self.cacheable {
+            return true;
+        }
+
+        if let Some(serialize_path) = self.serialize_path() {
+            let file_path = PathBuf::from(serialize_path);
+            if file_path.exists() && file_path.is_file() {
+                return true;
+            }
+        }
+
+        false
+    }
+
+    pub fn serialize_path(&self) -> Option<String> {
+        self.value
+            .as_object()
+            .and_then(|obj| obj.get("serialize_path"))
+            .and_then(JsonValue::as_str)
+            .map(String::from)
+    }
 }
 
 impl Debug for OutputValue {

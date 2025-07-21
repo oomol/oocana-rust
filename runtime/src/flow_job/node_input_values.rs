@@ -51,11 +51,40 @@ impl NodeInputValues {
             let reader = std::io::BufReader::new(file);
 
             match serde_json::from_reader::<_, NodeInputStore>(reader) {
-                Ok(store) => Self {
-                    store: store.clone(),
-                    memory_store: HashMap::new(),
-                    cache_value_store: Some(store),
-                },
+                Ok(store) => {
+                    let store: NodeInputStore = store
+                        .into_iter()
+                        .map(|(node_id, input_map)| {
+                            (
+                                node_id,
+                                input_map
+                                    .into_iter()
+                                    .map(|(handle_name, queue)| {
+                                        (
+                                            handle_name,
+                                            queue
+                                                .into_iter()
+                                                .filter_map(|v| {
+                                                    if v.is_cacheable() {
+                                                        Some(Arc::clone(&v))
+                                                    } else {
+                                                        None
+                                                    }
+                                                })
+                                                .collect::<InputValueQueue>(),
+                                        )
+                                    })
+                                    .collect(),
+                            )
+                        })
+                        .collect();
+
+                    Self {
+                        store: store.clone(),
+                        memory_store: HashMap::new(),
+                        cache_value_store: Some(store),
+                    }
+                }
                 Err(e) => {
                     warn!("Failed to deserialize: {:?}", e);
                     Self {
