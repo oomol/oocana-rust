@@ -64,13 +64,8 @@ impl NodeInputValues {
                                             handle_name,
                                             queue
                                                 .into_iter()
-                                                .filter_map(|v| {
-                                                    if v.deserializable() {
-                                                        Some(Arc::clone(&v))
-                                                    } else {
-                                                        None
-                                                    }
-                                                })
+                                                .filter(|v| v.deserializable())
+                                                .map(Arc::clone)
                                                 .collect::<InputValueQueue>(),
                                         )
                                     })
