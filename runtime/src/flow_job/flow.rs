@@ -364,7 +364,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
 
                         let mut block_stack = BlockJobStacks::new();
                         for s in stacks.iter() {
-                            let block_stack = block_stack.stack(
+                            block_stack = block_stack.stack(
                                 s.flow_job_id.clone(),
                                 s.flow.clone(),
                                 s.node_id.clone(),
