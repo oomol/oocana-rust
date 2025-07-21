@@ -53,19 +53,22 @@ impl OutputValue {
     }
 
     fn value_type(&self) -> CustomTypes {
-        if let Some(obj) = self.value.as_object() {
-            if let Some(oomol_type) = obj.get(OOMOL_TYPE_KEY) {
-                if oomol_type.is_string() {
-                    match oomol_type.as_str() {
-                        Some(OOMOL_VAR_DATA) => return CustomTypes::OomolVar,
-                        Some(OOMOL_SECRET_DATA) => return CustomTypes::OomolSecret,
-                        Some(OOMOL_BIN_DATA) => return CustomTypes::OomolBin,
-                        _ => return CustomTypes::Unknown,
-                    }
-                }
-            }
+        let obj = match self.value.as_object() {
+            Some(obj) => obj,
+            None => return CustomTypes::Plain,
+        };
+
+        let oomol_type = match obj.get(OOMOL_TYPE_KEY) {
+            Some(oomol_type) if oomol_type.is_string() => oomol_type,
+            _ => return CustomTypes::Plain,
+        };
+
+        match oomol_type.as_str() {
+            Some(OOMOL_VAR_DATA) => CustomTypes::OomolVar,
+            Some(OOMOL_SECRET_DATA) => CustomTypes::OomolSecret,
+            Some(OOMOL_BIN_DATA) => CustomTypes::OomolBin,
+            _ => CustomTypes::Unknown,
         }
-        CustomTypes::Plain
     }
 
     pub fn serialize_path(&self) -> Option<String> {
