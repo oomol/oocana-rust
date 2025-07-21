@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.29.8 (2025-07-21)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* refactor: move run block stack to request block stack by @leavesster in https://github.com/oomol/oocana-rust/pull/246
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.29.7...v0.29.8
+
 ## 0.29.7 (2025-07-19)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
