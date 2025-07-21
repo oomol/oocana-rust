@@ -65,7 +65,7 @@ impl NodeInputValues {
                                             queue
                                                 .into_iter()
                                                 .filter_map(|v| {
-                                                    if v.is_cacheable() {
+                                                    if v.deserializable() {
                                                         Some(Arc::clone(&v))
                                                     } else {
                                                         None

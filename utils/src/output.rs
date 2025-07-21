@@ -28,19 +28,36 @@ impl OutputValue {
         OutputValue { value, cacheable }
     }
 
-    pub fn is_cacheable(&self) -> bool {
+    pub fn deserializable(&self) -> bool {
         if self.cacheable {
             return true;
         }
 
-        if let Some(serialize_path) = self.serialize_path() {
-            let file_path = PathBuf::from(serialize_path);
-            if file_path.exists() && file_path.is_file() {
+        if self.is_oomol_type() {
+            if self.is_oomol_type_var()
+                && self
+                    .serialize_path()
+                    .is_some_and(|p| PathBuf::from(p).exists())
+            {
                 return true;
+            } else {
+                return false;
             }
         }
 
-        false
+        true
+    }
+
+    fn is_oomol_type(&self) -> bool {
+        self.value.is_object() && self.value.get("oomol_type").is_some()
+    }
+
+    fn is_oomol_type_var(&self) -> bool {
+        self.value.is_object()
+            && self
+                .value
+                .get("oomol_type")
+                .is_some_and(|v| v.is_string() && v.as_str() == Some(OOMOL_VAR_DATA))
     }
 
     pub fn serialize_path(&self) -> Option<String> {
