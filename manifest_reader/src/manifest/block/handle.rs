@@ -151,10 +151,6 @@ pub struct OutputHandle {
     pub is_additional: bool,
 }
 
-pub const OOMOL_VAR_DATA: &str = "oomol/var";
-pub const OOMOL_SECRET_DATA: &str = "oomol/secret";
-pub const OOMOL_BIN_DATA: &str = "oomol/bin";
-
 pub type InputHandles = HashMap<HandleName, InputHandle>;
 
 pub fn to_input_handles(inputs: Option<Vec<InputHandle>>) -> Option<InputHandles> {

@@ -7,11 +7,11 @@ use mainframe::{
 };
 use manifest_meta::{
     HandleName, InjectionStore, InputDefPatchMap, InputHandles, OutputHandles,
-    ServiceExecutorOptions, TaskBlockExecutor, OOMOL_BIN_DATA, OOMOL_SECRET_DATA, OOMOL_VAR_DATA,
+    ServiceExecutorOptions, TaskBlockExecutor,
 };
 use serde_json::Value;
 use tracing::{debug, warn};
-use utils::output::OutputValue;
+use utils::output::{OutputValue, OOMOL_BIN_DATA, OOMOL_SECRET_DATA, OOMOL_VAR_DATA};
 
 use crate::block_status::BlockStatusTx;
 

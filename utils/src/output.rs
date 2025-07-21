@@ -3,6 +3,11 @@ use std::{fmt::Debug, path::PathBuf};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 
+// {"__OOMOL_TYPE__": "oomol/var" | "oomol/secret" | "oomol/bin"}
+pub const OOMOL_VAR_DATA: &str = "oomol/var";
+pub const OOMOL_SECRET_DATA: &str = "oomol/secret";
+pub const OOMOL_BIN_DATA: &str = "oomol/bin";
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct OutputRef {
     pub session_id: String,

@@ -1,6 +1,7 @@
 use super::common::NodeId;
-use crate::manifest::{HandleName, OOMOL_SECRET_DATA};
+use crate::manifest::HandleName;
 use serde::{Deserialize, Serialize};
+use utils::output::OOMOL_SECRET_DATA;
 
 /// tmp struct
 
