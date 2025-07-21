@@ -340,6 +340,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                         payload,
                         request_id,
                         strict,
+                        stacks,
                         ..
                     } => {
                         let block_path = flow_shared.path_finder.find_task_block_path(&block);
@@ -359,6 +360,15 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                 },
                             );
                             continue;
+                        }
+
+                        let mut block_stack = BlockJobStacks::new();
+                        for s in stacks.iter() {
+                            let block_stack = block_stack.stack(
+                                s.flow_job_id.clone(),
+                                s.flow.clone(),
+                                s.node_id.clone(),
+                            );
                         }
 
                         let validate_inputs = |inputs_def: &Option<InputHandles>,
@@ -606,7 +616,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                 task_block,
                                 shared: Arc::clone(&flow_shared.shared),
                                 parent_flow: Some(flow_shared.flow_block.clone()),
-                                stacks: flow_shared.stacks.stack(
+                                stacks: block_stack.stack(
                                     flow_shared.job_id.to_owned(),
                                     flow_shared.flow_block.path_str.to_owned(),
                                     NodeId::from(format!("run_block::{}", block)),
@@ -754,7 +764,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                             if let Some(handle) = run_flow(RunFlowArgs {
                                 flow_block: subflow_block,
                                 shared: Arc::clone(&flow_shared.shared),
-                                stacks: flow_shared.stacks.stack(
+                                stacks: block_stack.stack(
                                     flow_shared.job_id.to_owned(),
                                     flow_shared.flow_block.path_str.to_owned(),
                                     NodeId::from(format!("run_block::{}", block)),
