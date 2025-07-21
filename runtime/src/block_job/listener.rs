@@ -11,7 +11,9 @@ use manifest_meta::{
 };
 use serde_json::Value;
 use tracing::{debug, warn};
-use utils::output::{OutputValue, OOMOL_BIN_DATA, OOMOL_SECRET_DATA, OOMOL_VAR_DATA};
+use utils::output::{
+    OutputValue, OOMOL_BIN_DATA, OOMOL_SECRET_DATA, OOMOL_TYPE_KEY, OOMOL_VAR_DATA,
+};
 
 use crate::block_status::BlockStatusTx;
 
@@ -43,7 +45,7 @@ pub struct ListenerArgs {
 
 fn is_cacheable(handle: &HandleName, value: &Value, outputs_def: &Option<OutputHandles>) -> bool {
     if let Some(obj) = value.as_object() {
-        if obj.contains_key("__OOMOL_TYPE__") {
+        if obj.contains_key(OOMOL_TYPE_KEY) {
             return false;
         }
     }

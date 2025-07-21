@@ -8,12 +8,21 @@ pub const OOMOL_VAR_DATA: &str = "oomol/var";
 pub const OOMOL_SECRET_DATA: &str = "oomol/secret";
 pub const OOMOL_BIN_DATA: &str = "oomol/bin";
 
+pub const OOMOL_TYPE_KEY: &str = "__OOMOL_TYPE__";
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct OutputRef {
     pub session_id: String,
     pub job_id: String,
     pub handle: String,
     pub executor: String,
+}
+
+enum CustomTypes {
+    Plain,
+    OomolVar,
+    OomolSecret,
+    OomolBin,
+    Unknown,
 }
 
 #[derive(Clone)]
@@ -33,31 +42,30 @@ impl OutputValue {
             return true;
         }
 
-        if self.is_oomol_type() {
-            if self.is_oomol_type_var()
-                && self
-                    .serialize_path()
-                    .is_some_and(|p| PathBuf::from(p).exists())
-            {
+        match self.value_type() {
+            CustomTypes::OomolVar => self
+                .serialize_path()
+                .is_some_and(|p| PathBuf::from(p).exists()),
+            _ => {
                 return true;
-            } else {
-                return false;
             }
         }
-
-        true
     }
 
-    fn is_oomol_type(&self) -> bool {
-        self.value.is_object() && self.value.get("oomol_type").is_some()
-    }
-
-    fn is_oomol_type_var(&self) -> bool {
-        self.value.is_object()
-            && self
-                .value
-                .get("oomol_type")
-                .is_some_and(|v| v.is_string() && v.as_str() == Some(OOMOL_VAR_DATA))
+    fn value_type(&self) -> CustomTypes {
+        if let Some(obj) = self.value.as_object() {
+            if let Some(oomol_type) = obj.get(OOMOL_TYPE_KEY) {
+                if oomol_type.is_string() {
+                    match oomol_type.as_str() {
+                        Some(OOMOL_VAR_DATA) => return CustomTypes::OomolVar,
+                        Some(OOMOL_SECRET_DATA) => return CustomTypes::OomolSecret,
+                        Some(OOMOL_BIN_DATA) => return CustomTypes::OomolBin,
+                        _ => return CustomTypes::Unknown,
+                    }
+                }
+            }
+        }
+        CustomTypes::Plain
     }
 
     pub fn serialize_path(&self) -> Option<String> {
