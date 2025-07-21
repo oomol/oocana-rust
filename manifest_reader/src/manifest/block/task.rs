@@ -1,29 +1,11 @@
 use serde::{Deserialize, Serialize};
 
+use crate::manifest::block::handle::{MiddleInputHandle, MiddleOutputHandle};
+
 use super::{
-    handle::{to_input_handles, to_output_handles, InputHandle, OutputHandle},
+    handle::{to_input_handles, to_output_handles},
     InputHandles, OutputHandles,
 };
-
-#[derive(Deserialize, Serialize, Debug, Clone)]
-#[serde(untagged)]
-enum MiddleInputHandle {
-    Input(InputHandle),
-    #[allow(dead_code)]
-    Group {
-        group: String,
-    },
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone)]
-#[serde(untagged)]
-enum MiddleOutputHandle {
-    Output(OutputHandle),
-    #[allow(dead_code)]
-    Group {
-        group: String,
-    },
-}
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 struct TmpTaskBlock {

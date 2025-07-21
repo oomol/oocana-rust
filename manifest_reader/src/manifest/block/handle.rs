@@ -20,6 +20,26 @@ use serde::{Deserialize, Serialize};
 pub struct HandleName(String);
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
+#[serde(untagged)]
+pub enum MiddleInputHandle {
+    Input(InputHandle),
+    #[allow(dead_code)]
+    Group {
+        group: String,
+    },
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+#[serde(untagged)]
+pub enum MiddleOutputHandle {
+    Output(OutputHandle),
+    #[allow(dead_code)]
+    Group {
+        group: String,
+    },
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
 struct TempInputHandle {
     pub handle: HandleName,
     pub description: Option<String>,
