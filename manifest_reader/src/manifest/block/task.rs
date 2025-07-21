@@ -161,7 +161,7 @@ pub struct ShellExecutor {}
 #[cfg(test)]
 mod test {
 
-    use crate::manifest::HandleName;
+    use crate::manifest::{HandleName, InputHandle, OutputHandle};
 
     use super::*;
 
