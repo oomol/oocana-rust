@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.29.9 (2025-07-21)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* fix: support group in slot and subflow block by @leavesster in https://github.com/oomol/oocana-rust/pull/249
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.29.8...v0.29.9
+
 ## 0.29.8 (2025-07-21)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
