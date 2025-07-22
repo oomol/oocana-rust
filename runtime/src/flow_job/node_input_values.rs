@@ -65,7 +65,6 @@ impl NodeInputValues {
                                             queue
                                                 .into_iter()
                                                 .filter(|v| v.deserializable())
-                                                .map(Arc::clone)
                                                 .collect::<InputValueQueue>(),
                                         )
                                     })
