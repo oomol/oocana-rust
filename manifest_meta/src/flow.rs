@@ -995,6 +995,37 @@ impl SubflowBlock {
             tracing::info!("injection: {:?}", injection);
         }
 
+        let mut serialized_node_outputs: Vec<(NodeId, HandleName)> = Vec::new();
+
+        for (_, node) in new_nodes.iter() {
+            for (_, input) in node.inputs() {
+                if input.def.serialize_for_cache {
+                    input.from.as_ref().map(|from| {
+                        for source in from.iter() {
+                            match source {
+                                crate::node::HandleSource::FlowInput { .. } => {
+                                    // Too complex to serialize flow input sources
+                                }
+                                crate::node::HandleSource::NodeOutput {
+                                    node_id: from_node_id,
+                                    output_handle,
+                                } => {
+                                    serialized_node_outputs
+                                        .push((from_node_id.clone(), output_handle.clone()));
+                                }
+                            }
+                        }
+                    });
+                }
+            }
+        }
+
+        for (node_id, output_handle) in serialized_node_outputs {
+            if let Some(node) = new_nodes.get_mut(&node_id) {
+                node.update_outputs_def_serializable(&output_handle);
+            }
+        }
+
         Ok(Self {
             description: description,
             nodes: new_nodes,
