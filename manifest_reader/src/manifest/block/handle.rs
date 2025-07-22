@@ -55,6 +55,8 @@ struct TempInputHandle {
         with = "::serde_with::rust::double_option"
     )]
     pub value: Option<Option<serde_json::Value>>,
+    #[serde(skip_serializing_if = "std::ops::Not::not", default)]
+    pub serialize_for_cache: bool,
 }
 
 impl From<TempInputHandle> for InputHandle {
@@ -66,6 +68,7 @@ impl From<TempInputHandle> for InputHandle {
             kind,
             nullable,
             value,
+            serialize_for_cache,
         } = temp;
         let value = if temp.nullable.is_some_and(|nullable| nullable) {
             if value.is_none() {
@@ -85,6 +88,7 @@ impl From<TempInputHandle> for InputHandle {
             value,
             remember: false,
             is_additional: false,
+            serialize_for_cache,
         }
     }
 }
@@ -113,6 +117,8 @@ pub struct InputHandle {
     /// Additional handles are defined in the flow node, not in the block.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub is_additional: bool,
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub serialize_for_cache: bool,
 }
 
 impl InputHandle {
@@ -126,6 +132,7 @@ impl InputHandle {
             nullable: None,
             remember: false,
             is_additional: false,
+            serialize_for_cache: false,
         }
     }
 }
@@ -149,6 +156,9 @@ pub struct OutputHandle {
     /// additional handle is not defined in block , it is defined in the flow node.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub is_additional: bool,
+    /// This field is used to indicate whether the handle should be serialized for cache. This field is generated in runtime
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub __serialize_for_cache: bool,
 }
 
 pub type InputHandles = HashMap<HandleName, InputHandle>;
@@ -188,6 +198,7 @@ mod tests {
             description: None,
             nullable: None,
             is_additional: false,
+            __serialize_for_cache: false,
         };
         let serialized = serde_json::to_string(&output_handle).unwrap();
         assert_eq!(
