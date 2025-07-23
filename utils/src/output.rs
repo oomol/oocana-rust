@@ -52,6 +52,19 @@ impl OutputValue {
         }
     }
 
+    pub fn maybe_deserializable(&self) -> bool {
+        if self.cacheable {
+            return true;
+        }
+
+        match self.value_type() {
+            CustomTypes::OomolVar => self.serialize_path().is_some(),
+            CustomTypes::OomolSecret => self.serialize_path().is_some(),
+            CustomTypes::OomolBin => self.serialize_path().is_some(),
+            _ => false,
+        }
+    }
+
     fn value_type(&self) -> CustomTypes {
         let obj = match self.value.as_object() {
             Some(obj) => obj,
@@ -71,7 +84,7 @@ impl OutputValue {
         }
     }
 
-    pub fn serialize_path(&self) -> Option<String> {
+    fn serialize_path(&self) -> Option<String> {
         self.value
             .as_object()
             .and_then(|obj| obj.get("serialize_path"))

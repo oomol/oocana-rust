@@ -258,10 +258,6 @@ impl NodeInputValues {
         }
 
         for (handle, input) in node.inputs() {
-            if value_map.contains_key(handle) {
-                continue;
-            }
-
             if input.from.as_ref().is_none_or(|f| f.is_empty()) {
                 if let Some(value) = input.value.as_ref() {
                     value_map.insert(
@@ -277,7 +273,7 @@ impl NodeInputValues {
         }
 
         for (handle, value) in value_map.iter() {
-            if !value.cacheable {
+            if !value.maybe_deserializable() {
                 continue;
             }
 
