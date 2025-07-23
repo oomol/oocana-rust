@@ -84,12 +84,11 @@ impl OutputValue {
         }
     }
 
-    fn serialize_path(&self) -> Option<String> {
+    fn serialize_path(&self) -> Option<&str> {
         self.value
             .as_object()
             .and_then(|obj| obj.get("serialize_path"))
             .and_then(JsonValue::as_str)
-            .map(String::from)
     }
 }
 
