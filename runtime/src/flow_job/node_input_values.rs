@@ -264,7 +264,7 @@ impl NodeInputValues {
                         handle.to_owned(),
                         Arc::new(OutputValue {
                             value: value.clone().unwrap_or(serde_json::Value::Null),
-                            cacheable: true,
+                            is_json_serializable: true,
                         }),
                     );
                 }

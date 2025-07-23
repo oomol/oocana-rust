@@ -28,17 +28,19 @@ enum CustomTypes {
 #[derive(Clone)]
 pub struct OutputValue {
     pub value: JsonValue,
-    // this field won't be serialized
-    pub cacheable: bool,
+    pub is_json_serializable: bool,
 }
 
 impl OutputValue {
-    pub fn new(value: JsonValue, cacheable: bool) -> Self {
-        OutputValue { value, cacheable }
+    pub fn new(value: JsonValue, is_json_serializable: bool) -> Self {
+        OutputValue {
+            value,
+            is_json_serializable,
+        }
     }
 
     pub fn deserializable(&self) -> bool {
-        if self.cacheable {
+        if self.is_json_serializable {
             return true;
         }
 
@@ -53,7 +55,7 @@ impl OutputValue {
     }
 
     pub fn maybe_deserializable(&self) -> bool {
-        if self.cacheable {
+        if self.is_json_serializable {
             return true;
         }
 
@@ -118,7 +120,7 @@ impl<'de> Deserialize<'de> for OutputValue {
         let value = JsonValue::deserialize(deserializer)?;
         Ok(OutputValue {
             value,
-            cacheable: true,
+            is_json_serializable: true,
         })
     }
 }

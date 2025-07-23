@@ -525,7 +525,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                         HandleName::new(handle),
                                         Arc::new(OutputValue {
                                             value,
-                                            cacheable: true,
+                                            is_json_serializable: true,
                                         }),
                                     )
                                 })
@@ -699,7 +699,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                         HandleName::new(handle),
                                         Arc::new(OutputValue {
                                             value,
-                                            cacheable: true,
+                                            is_json_serializable: true,
                                         }),
                                     )
                                 })
