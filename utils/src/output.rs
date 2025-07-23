@@ -48,9 +48,7 @@ impl OutputValue {
             CustomTypes::OomolVar => self
                 .serialize_path()
                 .is_some_and(|p| PathBuf::from(p).exists()),
-            _ => {
-                return true;
-            }
+            _ => false,
         }
     }
 
