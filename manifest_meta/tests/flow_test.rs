@@ -189,6 +189,37 @@ mod tests {
         }
     }
 
+    #[test]
+    fn test_serializable_var_subflow() {
+        let base_dir = test_directory();
+        let mut finder = BlockPathFinder::new(base_dir, None);
+        let mut block_reader = BlockResolver::new();
+
+        let flow_block = block_reader
+            .resolve_flow_block("serializable-var", &mut finder)
+            .unwrap();
+
+        assert!(flow_block
+            .path
+            .ends_with("serializable-var/subflow.oo.yaml"));
+
+        let node1_id = NodeId::new("node1".to_owned());
+
+        let node1 = flow_block.nodes.get(&node1_id).unwrap();
+        assert!(matches!(node1, manifest_meta::Node::Task(_)));
+        if let manifest_meta::Node::Task(task_node) = node1 {
+            let output_handle = HandleName::new("out".to_owned());
+            let output = task_node
+                .task
+                .outputs_def
+                .as_ref()
+                .unwrap()
+                .get(&output_handle)
+                .unwrap();
+            assert!(output.__serialize_for_cache);
+        }
+    }
+
     fn test_directory() -> PathBuf {
         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/flow_test")
     }

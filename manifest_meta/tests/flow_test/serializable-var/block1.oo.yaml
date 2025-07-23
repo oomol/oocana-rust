@@ -1,0 +1,7 @@
+executor:
+  name: rust
+outputs_def:
+  - handle: out
+    json_schema:
+      type: string
+      contentMediaType: oomol/var

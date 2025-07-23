@@ -1,0 +1,10 @@
+nodes:
+  - node_id: node1
+    task: "./block1.oo.yaml"
+  - node_id: node2
+    task: "./block2.oo.yaml"
+    inputs_from:
+      - handle: in
+        from_node:
+          - node_id: node1
+            output_handle: out
