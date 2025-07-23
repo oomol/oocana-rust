@@ -1,0 +1,9 @@
+executor:
+  name: rust
+inputs_def:
+  - handle: in
+    nullable: true
+    json_schema:
+      type: string
+      contentMediaType: oomol/var
+    serialize_for_cache: true

@@ -51,11 +51,34 @@ impl NodeInputValues {
             let reader = std::io::BufReader::new(file);
 
             match serde_json::from_reader::<_, NodeInputStore>(reader) {
-                Ok(store) => Self {
-                    store: store.clone(),
-                    memory_store: HashMap::new(),
-                    cache_value_store: Some(store),
-                },
+                Ok(store) => {
+                    let store: NodeInputStore = store
+                        .into_iter()
+                        .map(|(node_id, input_map)| {
+                            (
+                                node_id,
+                                input_map
+                                    .into_iter()
+                                    .map(|(handle_name, queue)| {
+                                        (
+                                            handle_name,
+                                            queue
+                                                .into_iter()
+                                                .filter(|v| v.deserializable())
+                                                .collect::<InputValueQueue>(),
+                                        )
+                                    })
+                                    .collect(),
+                            )
+                        })
+                        .collect();
+
+                    Self {
+                        store: store.clone(),
+                        memory_store: HashMap::new(),
+                        cache_value_store: Some(store),
+                    }
+                }
                 Err(e) => {
                     warn!("Failed to deserialize: {:?}", e);
                     Self {
@@ -235,17 +258,13 @@ impl NodeInputValues {
         }
 
         for (handle, input) in node.inputs() {
-            if value_map.contains_key(handle) {
-                continue;
-            }
-
             if input.from.as_ref().is_none_or(|f| f.is_empty()) {
                 if let Some(value) = input.value.as_ref() {
                     value_map.insert(
                         handle.to_owned(),
                         Arc::new(OutputValue {
                             value: value.clone().unwrap_or(serde_json::Value::Null),
-                            cacheable: true,
+                            is_json_serializable: true,
                         }),
                     );
                 }
@@ -254,7 +273,7 @@ impl NodeInputValues {
         }
 
         for (handle, value) in value_map.iter() {
-            if !value.cacheable {
+            if !value.maybe_deserializable() {
                 continue;
             }
 

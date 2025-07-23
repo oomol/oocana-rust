@@ -1,8 +1,14 @@
-use std::fmt::Debug;
+use std::{fmt::Debug, path::PathBuf};
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 
+// {"__OOMOL_TYPE__": "oomol/var" | "oomol/secret" | "oomol/bin"}
+pub const OOMOL_VAR_DATA: &str = "oomol/var";
+pub const OOMOL_SECRET_DATA: &str = "oomol/secret";
+pub const OOMOL_BIN_DATA: &str = "oomol/bin";
+
+pub const OOMOL_TYPE_KEY: &str = "__OOMOL_TYPE__";
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct OutputRef {
     pub session_id: String,
@@ -11,10 +17,79 @@ pub struct OutputRef {
     pub executor: String,
 }
 
+enum CustomTypes {
+    Plain,
+    OomolVar,
+    OomolSecret,
+    OomolBin,
+    Unknown,
+}
+
 #[derive(Clone)]
 pub struct OutputValue {
     pub value: JsonValue,
-    pub cacheable: bool,
+    pub is_json_serializable: bool,
+}
+
+impl OutputValue {
+    pub fn new(value: JsonValue, is_json_serializable: bool) -> Self {
+        OutputValue {
+            value,
+            is_json_serializable,
+        }
+    }
+
+    pub fn deserializable(&self) -> bool {
+        if self.is_json_serializable {
+            return true;
+        }
+
+        match self.value_type() {
+            CustomTypes::OomolVar => self
+                .serialize_path()
+                .is_some_and(|p| PathBuf::from(p).exists()),
+            _ => false,
+        }
+    }
+
+    pub fn maybe_deserializable(&self) -> bool {
+        if self.is_json_serializable {
+            return true;
+        }
+
+        match self.value_type() {
+            CustomTypes::OomolVar => self.serialize_path().is_some(),
+            CustomTypes::OomolSecret => self.serialize_path().is_some(),
+            CustomTypes::OomolBin => self.serialize_path().is_some(),
+            _ => false,
+        }
+    }
+
+    fn value_type(&self) -> CustomTypes {
+        let obj = match self.value.as_object() {
+            Some(obj) => obj,
+            None => return CustomTypes::Plain,
+        };
+
+        let oomol_type = match obj.get(OOMOL_TYPE_KEY) {
+            Some(oomol_type) if oomol_type.is_string() => oomol_type,
+            _ => return CustomTypes::Plain,
+        };
+
+        match oomol_type.as_str() {
+            Some(OOMOL_VAR_DATA) => CustomTypes::OomolVar,
+            Some(OOMOL_SECRET_DATA) => CustomTypes::OomolSecret,
+            Some(OOMOL_BIN_DATA) => CustomTypes::OomolBin,
+            _ => CustomTypes::Unknown,
+        }
+    }
+
+    fn serialize_path(&self) -> Option<&str> {
+        self.value
+            .as_object()
+            .and_then(|obj| obj.get("serialize_path"))
+            .and_then(JsonValue::as_str)
+    }
 }
 
 impl Debug for OutputValue {
@@ -42,7 +117,7 @@ impl<'de> Deserialize<'de> for OutputValue {
         let value = JsonValue::deserialize(deserializer)?;
         Ok(OutputValue {
             value,
-            cacheable: true,
+            is_json_serializable: true,
         })
     }
 }

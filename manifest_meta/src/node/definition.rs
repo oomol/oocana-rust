@@ -106,6 +106,56 @@ impl Node {
         }
     }
 
+    // Refactor this after move outputs def to node
+    pub fn update_outputs_def_serializable(&mut self, handle: &HandleName) {
+        match self {
+            Self::Task(task) => {
+                let mut task_inner = (*task.task).clone();
+                if let Some(output_def) = task_inner
+                    .outputs_def
+                    .as_mut()
+                    .and_then(|def| def.get_mut(handle))
+                {
+                    output_def.__serialize_for_cache = true;
+                }
+                task.task = Arc::new(task_inner);
+            }
+            Self::Flow(flow) => {
+                let mut flow_inner = (*flow.flow).clone();
+                if let Some(output_def) = flow_inner
+                    .outputs_def
+                    .as_mut()
+                    .and_then(|def| def.get_mut(handle))
+                {
+                    output_def.__serialize_for_cache = true;
+                }
+                flow.flow = Arc::new(flow_inner);
+            }
+            Self::Slot(slot) => {
+                let mut slot_inner = (*slot.slot).clone();
+                if let Some(output_def) = slot_inner
+                    .outputs_def
+                    .as_mut()
+                    .and_then(|def| def.get_mut(handle))
+                {
+                    output_def.__serialize_for_cache = true;
+                }
+                slot.slot = Arc::new(slot_inner);
+            }
+            Self::Service(service) => {
+                let mut service_inner = (*service.block).clone();
+                if let Some(output_def) = service_inner
+                    .outputs_def
+                    .as_mut()
+                    .and_then(|def| def.get_mut(handle))
+                {
+                    output_def.__serialize_for_cache = true;
+                }
+                service.block = Arc::new(service_inner);
+            }
+        }
+    }
+
     pub fn update_inputs(&mut self, inputs: HashMap<HandleName, NodeInput>) {
         match self {
             Self::Task(task) => task.inputs = inputs,

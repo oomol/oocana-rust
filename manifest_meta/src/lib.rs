@@ -4,7 +4,6 @@ use manifest_reader::path_finder::{find_flow, BlockPathFinder};
 pub use manifest_reader::{
     manifest::{
         HandleName, InputHandle, NodeId, OutputHandle, ServiceExecutorOptions, TaskBlockExecutor,
-        OOMOL_BIN_DATA, OOMOL_SECRET_DATA, OOMOL_VAR_DATA,
     },
     JsonValue,
 };

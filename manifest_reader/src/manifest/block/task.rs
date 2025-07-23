@@ -186,6 +186,7 @@ mod test {
                     value: None,
                     remember: false,
                     is_additional: false,
+                    serialize_for_cache: false,
                 }),
                 MiddleInputHandle::Group {
                     group: "section".to_string(),
@@ -198,6 +199,7 @@ mod test {
                 kind: None,
                 nullable: None,
                 is_additional: false,
+                __serialize_for_cache: false,
             })]),
             additional_inputs: true,
             additional_outputs: false,

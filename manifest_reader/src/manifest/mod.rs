@@ -3,9 +3,7 @@ mod node;
 mod package;
 mod service;
 
-pub use self::block::handle::{
-    HandleName, InputHandle, OutputHandle, OOMOL_BIN_DATA, OOMOL_SECRET_DATA, OOMOL_VAR_DATA,
-};
+pub use self::block::handle::{HandleName, InputHandle, OutputHandle};
 
 pub use self::block::{InputHandles, OutputHandles};
 pub use self::block::{ServiceBlock, SlotBlock, SubflowBlock, TaskBlock};

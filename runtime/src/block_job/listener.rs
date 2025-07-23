@@ -7,11 +7,13 @@ use mainframe::{
 };
 use manifest_meta::{
     HandleName, InjectionStore, InputDefPatchMap, InputHandles, OutputHandles,
-    ServiceExecutorOptions, TaskBlockExecutor, OOMOL_BIN_DATA, OOMOL_SECRET_DATA, OOMOL_VAR_DATA,
+    ServiceExecutorOptions, TaskBlockExecutor,
 };
 use serde_json::Value;
 use tracing::{debug, warn};
-use utils::output::OutputValue;
+use utils::output::{
+    OutputValue, OOMOL_BIN_DATA, OOMOL_SECRET_DATA, OOMOL_TYPE_KEY, OOMOL_VAR_DATA,
+};
 
 use crate::block_status::BlockStatusTx;
 
@@ -41,9 +43,13 @@ pub struct ListenerArgs {
     pub flow: Option<String>,
 }
 
-fn is_cacheable(handle: &HandleName, value: &Value, outputs_def: &Option<OutputHandles>) -> bool {
+fn is_json_serializable(
+    handle: &HandleName,
+    value: &Value,
+    outputs_def: &Option<OutputHandles>,
+) -> bool {
     if let Some(obj) = value.as_object() {
-        if obj.contains_key("__OOMOL_TYPE__") {
+        if obj.contains_key(OOMOL_TYPE_KEY) {
             return false;
         }
     }
@@ -240,7 +246,11 @@ pub fn listen_to_worker(args: ListenerArgs) -> tokio::task::JoinHandle<()> {
                             key.clone(),
                             Arc::new(OutputValue {
                                 value: value.clone(),
-                                cacheable: is_cacheable(key, value, &outputs_def),
+                                is_json_serializable: is_json_serializable(
+                                    key,
+                                    value,
+                                    &outputs_def,
+                                ),
                             }),
                         );
                         reporter_map.insert(key.to_string(), value.clone());
@@ -257,11 +267,14 @@ pub fn listen_to_worker(args: ListenerArgs) -> tokio::task::JoinHandle<()> {
                 } => {
                     reporter.output(&value, &handle);
 
-                    let cacheable = is_cacheable(&handle, &value, &outputs_def);
+                    let cacheable = is_json_serializable(&handle, &value, &outputs_def);
 
                     block_status.output(
                         job_id,
-                        Arc::new(OutputValue { value, cacheable }),
+                        Arc::new(OutputValue {
+                            value,
+                            is_json_serializable: cacheable,
+                        }),
                         handle,
                         options,
                     );
@@ -286,7 +299,11 @@ pub fn listen_to_worker(args: ListenerArgs) -> tokio::task::JoinHandle<()> {
                                 key.clone(),
                                 Arc::new(OutputValue {
                                     value: value.clone(),
-                                    cacheable: is_cacheable(key, value, &outputs_def),
+                                    is_json_serializable: is_json_serializable(
+                                        key,
+                                        value,
+                                        &outputs_def,
+                                    ),
                                 }),
                             );
                             reporter_map.insert(key.to_string(), value.clone());

@@ -5,18 +5,91 @@ mod tests {
     use manifest_reader::path_finder::BlockPathFinder;
 
     use std::path::PathBuf;
-    use utils::error::Result;
 
     #[test]
-    fn test_flow_block() {
+    fn test_basic_subflow() {
+        let base_dir = test_directory();
+        let mut finder = BlockPathFinder::new(base_dir, None);
+        let mut block_reader = BlockResolver::new();
+
+        let flow_block = block_reader
+            .resolve_flow_block("basic", &mut finder)
+            .unwrap();
+
+        let flow_input = HandleName::new("flow_in1".to_owned());
+        let handle_in1 = HandleName::new("in1".to_owned());
+
+        assert!(flow_block.path.ends_with("basic/subflow.oo.yaml"));
+
+        assert_eq!(
+            flow_block
+                .inputs_def
+                .as_ref()
+                .unwrap()
+                .get(&flow_input)
+                .unwrap()
+                .handle,
+            flow_input
+        );
+        assert!(flow_block.outputs_def.is_none());
+
+        assert_eq!(flow_block.flow_outputs_froms.len(), 0);
+
+        let node1_id = NodeId::new("node1".to_owned());
+
+        let to_node1 = flow_block
+            .flow_inputs_tos
+            .get(&flow_input)
+            .unwrap()
+            .first()
+            .unwrap();
+        assert!(matches!(
+            to_node1,
+            manifest_meta::HandleTo::ToNodeInput { .. }
+        ));
+        if let manifest_meta::HandleTo::ToNodeInput {
+            node_id,
+            input_handle: node_input_handle,
+        } = to_node1
+        {
+            assert_eq!(node_id, &node1_id);
+            assert_eq!(node_input_handle, &handle_in1);
+        }
+
+        let node1 = flow_block.nodes.get(&node1_id).unwrap();
+        assert_eq!(node1.node_id(), &node1_id);
+        assert!(matches!(node1, manifest_meta::Node::Task(_)));
+        if let manifest_meta::Node::Task(task_node) = node1 {
+            let from_subflow = &task_node
+                .inputs
+                .get(&handle_in1)
+                .unwrap()
+                .from
+                .as_ref()
+                .unwrap()
+                .first()
+                .unwrap();
+
+            assert!(matches!(
+                from_subflow,
+                manifest_meta::HandleSource::FlowInput { .. }
+            ));
+            if let manifest_meta::HandleSource::FlowInput { input_handle } = from_subflow {
+                assert_eq!(input_handle, &flow_input);
+            }
+        }
+    }
+
+    #[test]
+    fn test_additional_subflow() {
         let base_dir = test_directory();
         let mut finder = BlockPathFinder::new(base_dir, None);
         let mut block_reader = BlockResolver::new();
         let flow_block = block_reader
-            .resolve_flow_block("flow-1", &mut finder)
+            .resolve_flow_block("additional", &mut finder)
             .unwrap();
 
-        assert!(flow_block.path.ends_with("flow-1/subflow.oo.yaml"));
+        assert!(flow_block.path.ends_with("additional/subflow.oo.yaml"));
 
         assert!(flow_block.inputs_def.is_none());
         assert!(flow_block.outputs_def.is_none());
@@ -117,76 +190,34 @@ mod tests {
     }
 
     #[test]
-    fn test_subflow_with_inputs_def() -> Result<()> {
+    fn test_serializable_var_subflow() {
         let base_dir = test_directory();
         let mut finder = BlockPathFinder::new(base_dir, None);
         let mut block_reader = BlockResolver::new();
-        let flow_block = block_reader.resolve_flow_block("flow-2", &mut finder)?;
 
-        let handle_flow_in1 = HandleName::new("flow_in1".to_owned());
-        let handle_in1 = HandleName::new("in1".to_owned());
+        let flow_block = block_reader
+            .resolve_flow_block("serializable-var", &mut finder)
+            .unwrap();
 
-        assert!(flow_block.path.ends_with("flow-2/subflow.oo.yaml"));
-
-        assert_eq!(
-            flow_block
-                .inputs_def
-                .as_ref()
-                .unwrap()
-                .get(&handle_flow_in1)
-                .unwrap()
-                .handle,
-            handle_flow_in1
-        );
-        assert!(flow_block.outputs_def.is_none());
-
-        assert_eq!(flow_block.flow_outputs_froms.len(), 0);
+        assert!(flow_block
+            .path
+            .ends_with("serializable-var/subflow.oo.yaml"));
 
         let node1_id = NodeId::new("node1".to_owned());
 
-        let to_node1 = flow_block
-            .flow_inputs_tos
-            .get(&handle_flow_in1)
-            .unwrap()
-            .first()
-            .unwrap();
-        assert!(matches!(
-            to_node1,
-            manifest_meta::HandleTo::ToNodeInput { .. }
-        ));
-        if let manifest_meta::HandleTo::ToNodeInput {
-            node_id,
-            input_handle: node_input_handle,
-        } = to_node1
-        {
-            assert_eq!(node_id, &node1_id);
-            assert_eq!(node_input_handle, &handle_in1);
-        }
-
         let node1 = flow_block.nodes.get(&node1_id).unwrap();
-        assert_eq!(node1.node_id(), &node1_id);
         assert!(matches!(node1, manifest_meta::Node::Task(_)));
         if let manifest_meta::Node::Task(task_node) = node1 {
-            let from_subflow = &task_node
-                .inputs
-                .get(&handle_in1)
-                .unwrap()
-                .from
+            let output_handle = HandleName::new("out".to_owned());
+            let output = task_node
+                .task
+                .outputs_def
                 .as_ref()
                 .unwrap()
-                .first()
+                .get(&output_handle)
                 .unwrap();
-
-            assert!(matches!(
-                from_subflow,
-                manifest_meta::HandleSource::FlowInput { .. }
-            ));
-            if let manifest_meta::HandleSource::FlowInput { input_handle } = from_subflow {
-                assert_eq!(input_handle, &handle_flow_in1);
-            }
+            assert!(output.__serialize_for_cache);
         }
-
-        Ok(())
     }
 
     fn test_directory() -> PathBuf {
