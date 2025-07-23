@@ -1004,7 +1004,7 @@ impl SubflowBlock {
                         for source in from.iter() {
                             match source {
                                 crate::node::HandleSource::FlowInput { .. } => {
-                                    // Too complex to serialize flow input sources
+                                    // TODO: Serialization of flow input sources is currently not supported.
                                 }
                                 crate::node::HandleSource::NodeOutput {
                                     node_id: from_node_id,
