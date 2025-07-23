@@ -1000,7 +1000,7 @@ impl SubflowBlock {
         for (_, node) in new_nodes.iter() {
             for (_, input) in node.inputs() {
                 if input.def.serialize_for_cache {
-                    input.from.as_ref().map(|from| {
+                    if let Some(ref from) = input.from {
                         for source in from.iter() {
                             match source {
                                 crate::node::HandleSource::FlowInput { .. } => {
@@ -1015,7 +1015,7 @@ impl SubflowBlock {
                                 }
                             }
                         }
-                    });
+                    }
                 }
             }
         }
