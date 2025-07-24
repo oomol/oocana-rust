@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.29.10 (2025-07-23)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* feat: support cache serializable value by @leavesster in https://github.com/oomol/oocana-rust/pull/248
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.29.9...v0.29.10
+
 ## 0.29.9 (2025-07-21)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
