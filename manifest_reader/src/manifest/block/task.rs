@@ -199,7 +199,7 @@ mod test {
                 kind: None,
                 nullable: None,
                 is_additional: false,
-                __serialize_for_cache: false,
+                _serialize_for_cache: false,
             })]),
             additional_inputs: true,
             additional_outputs: false,
