@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.29.11 (2025-07-24)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* refactor: rename to _serialize_for_cache by @leavesster in https://github.com/oomol/oocana-rust/pull/252
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.29.10...v0.29.11
+
 ## 0.29.10 (2025-07-23)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
