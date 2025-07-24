@@ -156,9 +156,9 @@ pub struct OutputHandle {
     /// additional handle is not defined in block , it is defined in the flow node.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub is_additional: bool,
-    /// This field is used to indicate whether the handle should be serialized for cache. This field is generated in runtime
+    /// This field is used to indicate whether the handle should be serialized for cache. Field with '_' prefix is generated in runtime
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
-    pub __serialize_for_cache: bool,
+    pub _serialize_for_cache: bool,
 }
 
 pub type InputHandles = HashMap<HandleName, InputHandle>;
@@ -198,7 +198,7 @@ mod tests {
             description: None,
             nullable: None,
             is_additional: false,
-            __serialize_for_cache: false,
+            _serialize_for_cache: false,
         };
         let serialized = serde_json::to_string(&output_handle).unwrap();
         assert_eq!(

@@ -116,7 +116,7 @@ impl Node {
                     .as_mut()
                     .and_then(|def| def.get_mut(handle))
                 {
-                    output_def.__serialize_for_cache = true;
+                    output_def._serialize_for_cache = true;
                 }
                 task.task = Arc::new(task_inner);
             }
@@ -127,7 +127,7 @@ impl Node {
                     .as_mut()
                     .and_then(|def| def.get_mut(handle))
                 {
-                    output_def.__serialize_for_cache = true;
+                    output_def._serialize_for_cache = true;
                 }
                 flow.flow = Arc::new(flow_inner);
             }
@@ -138,7 +138,7 @@ impl Node {
                     .as_mut()
                     .and_then(|def| def.get_mut(handle))
                 {
-                    output_def.__serialize_for_cache = true;
+                    output_def._serialize_for_cache = true;
                 }
                 slot.slot = Arc::new(slot_inner);
             }
@@ -149,7 +149,7 @@ impl Node {
                     .as_mut()
                     .and_then(|def| def.get_mut(handle))
                 {
-                    output_def.__serialize_for_cache = true;
+                    output_def._serialize_for_cache = true;
                 }
                 service.block = Arc::new(service_inner);
             }

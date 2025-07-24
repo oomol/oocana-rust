@@ -216,7 +216,7 @@ mod tests {
                 .unwrap()
                 .get(&output_handle)
                 .unwrap();
-            assert!(output.__serialize_for_cache);
+            assert!(output._serialize_for_cache);
         }
     }
 
