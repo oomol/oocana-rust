@@ -363,6 +363,9 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                 0.0
                             };
 
+                            run_flow_ctx
+                                .parent_block_status
+                                .progress(flow_shared.job_id.clone(), estimation_flow_progress);
                             // TODO: implement report flow progress
                         }
                     }
