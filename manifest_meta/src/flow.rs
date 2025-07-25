@@ -886,8 +886,6 @@ impl SubflowBlock {
                             task.inputs_def.clone()
                         };
 
-                    let inputs_def = merged_inputs_def.clone();
-
                     let inputs_def_patch = get_inputs_def_patch(&task_node.inputs_from);
 
                     let from = connections.node_inputs_froms.remove(&task_node.node_id);
@@ -910,21 +908,20 @@ impl SubflowBlock {
                             task.outputs_def.clone()
                         };
 
-                    let mut task_inner = (*task).clone();
-                    task_inner.outputs_def = merged_outputs_def;
-                    task_inner.inputs_def = merged_inputs_def;
-                    // TODO: this behavior change task's outputs_def, this task is a new task.
-                    //       maybe we should refactor this later.
-                    let task = Arc::new(task_inner);
-
                     let inputs = generate_node_inputs(
-                        &inputs_def,
+                        &merged_inputs_def,
                         &from,
                         &task_node.inputs_from,
                         &inputs_def_patch,
                         &task_node.node_id,
                     );
 
+                    let mut task_inner = (*task).clone();
+                    task_inner.outputs_def = merged_outputs_def;
+                    task_inner.inputs_def = merged_inputs_def.clone();
+                    // TODO: this behavior change task's outputs_def, this task is a new task.
+                    //       maybe we should refactor this later.
+                    let task = Arc::new(task_inner);
                     new_nodes.insert(
                         task_node.node_id.to_owned(),
                         Node::Task(TaskNode {
