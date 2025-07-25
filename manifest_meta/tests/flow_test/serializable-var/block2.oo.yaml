@@ -6,4 +6,3 @@ inputs_def:
     json_schema:
       type: string
       contentMediaType: oomol/var
-    serialize_for_cache: true

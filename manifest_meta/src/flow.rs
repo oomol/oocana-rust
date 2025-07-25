@@ -190,7 +190,10 @@ pub fn generate_node_inputs(
             inputs.insert(
                 handle.to_owned(),
                 NodeInput {
-                    def: input_def.clone(),
+                    def: InputHandle {
+                        _deserialize_from_cache: serialize_for_cache,
+                        ..input_def.clone()
+                    },
                     patch,
                     value,
                     sources: connection_from,
