@@ -179,13 +179,25 @@ pub fn generate_node_inputs(
                 }
             }
 
+            let serialize_for_cache = if let Some(node_inputs_from) = node_inputs_from {
+                node_inputs_from.iter().any(|input_from| {
+                    input_from.handle == *handle && input_from.serialize_for_cache
+                })
+            } else {
+                false
+            };
+
             inputs.insert(
                 handle.to_owned(),
                 NodeInput {
-                    def: input_def.clone(),
+                    def: InputHandle {
+                        _deserialize_from_cache: serialize_for_cache,
+                        ..input_def.clone()
+                    },
                     patch,
                     value,
-                    from: connection_from,
+                    sources: connection_from,
+                    serialize_for_cache,
                 },
             );
         }
@@ -227,7 +239,7 @@ impl SubflowBlock {
         let mut inputs: HashMap<NodeId, Vec<InputHandle>> = HashMap::new();
         for (node_id, node) in &self.nodes {
             for input in node.inputs().values() {
-                if input.from.as_ref().is_some_and(|f| !f.is_empty()) {
+                if input.sources.as_ref().is_some_and(|f| !f.is_empty()) {
                     continue; // skip if input has connection
                 }
 
@@ -535,7 +547,17 @@ impl SubflowBlock {
                                                         },
                                                         patch: None,
                                                         value: None,
-                                                        from: None, // from will be added later
+                                                        sources: None, // from will be added later
+                                                        serialize_for_cache: slotflow_provider
+                                                            .inputs_from
+                                                            .as_ref()
+                                                            .and_then(|inputs_from| {
+                                                                inputs_from
+                                                                    .iter()
+                                                                    .find(|i| i.handle == input.handle)
+                                                                    .map(|i| i.serialize_for_cache)
+                                                            })
+                                                            .unwrap_or(false),
                                                     },
                                                 );
 
@@ -579,7 +601,7 @@ impl SubflowBlock {
                                                             .entry(input.handle.clone())
                                                             .and_modify(|node_input| {
                                                                 node_input
-                                                                    .from
+                                                                    .sources
                                                                     .get_or_insert_with(Vec::new)
                                                                     .push(
                                                                         crate::node::HandleSource::FlowInput {
@@ -682,7 +704,7 @@ impl SubflowBlock {
                         }
                     }
 
-                    let inputs_def = if !addition_subflow_inputs_def.is_empty() {
+                    let mut inputs_def = if !addition_subflow_inputs_def.is_empty() {
                         let mut merged_inputs_def = subflow_inputs_def.clone().unwrap_or_default();
                         for (handle, input) in addition_subflow_inputs_def.iter() {
                             if !merged_inputs_def.contains_key(handle) {
@@ -709,6 +731,16 @@ impl SubflowBlock {
                         &subflow_node.node_id,
                     );
 
+                    // #254
+                    for (input_handle, input) in &inputs {
+                        if input.serialize_for_cache {
+                            inputs_def
+                                .as_mut()
+                                .and_then(|def| def.get_mut(input_handle))
+                                .map(|input_def| input_def._deserialize_from_cache = true);
+                        }
+                    }
+
                     new_nodes.insert(
                         subflow_node.node_id.to_owned(),
                         Node::Flow(SubflowNode {
@@ -733,7 +765,7 @@ impl SubflowBlock {
                         service_node.service.to_owned(),
                         &mut path_finder,
                     )?;
-                    let inputs_def = service.inputs_def.clone();
+                    let mut inputs_def = service.inputs_def.clone();
                     let inputs_def_patch = get_inputs_def_patch(&service_node.inputs_from);
                     let from = connections.node_inputs_froms.remove(&service_node.node_id);
 
@@ -744,6 +776,18 @@ impl SubflowBlock {
                         &inputs_def_patch,
                         &service_node.node_id,
                     );
+
+                    // #254
+                    for (input_handle, input) in &inputs {
+                        if input.serialize_for_cache {
+                            inputs_def
+                                .as_mut()
+                                .and_then(|def| def.get_mut(input_handle))
+                                .map(|input_def| {
+                                    input_def._deserialize_from_cache = true;
+                                });
+                        }
+                    }
 
                     new_nodes.insert(
                         service_node.node_id.to_owned(),
@@ -855,7 +899,7 @@ impl SubflowBlock {
                         running_scope = BlockScope::default();
                     }
 
-                    let merged_inputs_def =
+                    let mut merged_inputs_def =
                         if task.additional_inputs && task_node.inputs_def.is_some() {
                             let mut inputs_def = task.inputs_def.clone().unwrap_or_default();
                             if let Some(node_addition_inputs) = task_node.inputs_def.as_ref() {
@@ -872,8 +916,6 @@ impl SubflowBlock {
                         } else {
                             task.inputs_def.clone()
                         };
-
-                    let inputs_def = merged_inputs_def.clone();
 
                     let inputs_def_patch = get_inputs_def_patch(&task_node.inputs_from);
 
@@ -897,20 +939,32 @@ impl SubflowBlock {
                             task.outputs_def.clone()
                         };
 
-                    let mut task_inner = (*task).clone();
-                    task_inner.outputs_def = merged_outputs_def;
-                    task_inner.inputs_def = merged_inputs_def;
-                    // TODO: this behavior change task's outputs_def, this task is a new task.
-                    //       maybe we should refactor this later.
-                    let task = Arc::new(task_inner);
-
                     let inputs = generate_node_inputs(
-                        &inputs_def,
+                        &merged_inputs_def,
                         &from,
                         &task_node.inputs_from,
                         &inputs_def_patch,
                         &task_node.node_id,
                     );
+
+                    // #254
+                    for (input_handle, input) in &inputs {
+                        if input.serialize_for_cache {
+                            merged_inputs_def
+                                .as_mut()
+                                .and_then(|def| def.get_mut(input_handle))
+                                .map(|input_def| {
+                                    input_def._deserialize_from_cache = true;
+                                });
+                        }
+                    }
+
+                    let mut task_inner = (*task).clone();
+                    task_inner.outputs_def = merged_outputs_def;
+                    task_inner.inputs_def = merged_inputs_def.clone();
+                    // TODO: this behavior change task's outputs_def, this task is a new task.
+                    //       maybe we should refactor this later.
+                    let task = Arc::new(task_inner);
 
                     new_nodes.insert(
                         task_node.node_id.to_owned(),
@@ -928,7 +982,7 @@ impl SubflowBlock {
                 }
                 manifest::Node::Slot(slot_node) => {
                     let slot = block_resolver.resolve_slot_node_block(slot_node.slot.to_owned())?;
-                    let inputs_def = slot.as_ref().inputs_def.clone();
+                    let mut inputs_def = slot.as_ref().inputs_def.clone();
                     let inputs_def_patch = get_inputs_def_patch(&slot_node.inputs_from);
 
                     let from = connections.node_inputs_froms.remove(&slot_node.node_id);
@@ -939,6 +993,19 @@ impl SubflowBlock {
                         &inputs_def_patch,
                         &slot_node.node_id,
                     );
+
+                    // #254
+                    for (input_handle, input) in &inputs {
+                        if input.serialize_for_cache {
+                            inputs_def
+                                .as_mut()
+                                .and_then(|def| def.get_mut(input_handle))
+                                .map(|input_def| {
+                                    input_def._deserialize_from_cache = true;
+                                });
+                        }
+                    }
+
                     new_nodes.insert(
                         slot_node.node_id.to_owned(),
                         Node::Slot(SlotNode {
@@ -999,8 +1066,8 @@ impl SubflowBlock {
 
         for (_, node) in new_nodes.iter() {
             for (_, input) in node.inputs() {
-                if input.def.serialize_for_cache {
-                    if let Some(ref from) = input.from {
+                if input.serialize_for_cache {
+                    if let Some(ref from) = input.sources {
                         for source in from.iter() {
                             match source {
                                 crate::node::HandleSource::FlowInput { .. } => {

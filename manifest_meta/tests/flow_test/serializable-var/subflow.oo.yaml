@@ -5,6 +5,7 @@ nodes:
     task: "./block2.oo.yaml"
     inputs_from:
       - handle: in
+        serialize_for_cache: true
         from_node:
           - node_id: node1
             output_handle: out

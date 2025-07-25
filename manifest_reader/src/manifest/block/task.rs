@@ -186,7 +186,7 @@ mod test {
                     value: None,
                     remember: false,
                     is_additional: false,
-                    serialize_for_cache: false,
+                    _deserialize_from_cache: false,
                 }),
                 MiddleInputHandle::Group {
                     group: "section".to_string(),

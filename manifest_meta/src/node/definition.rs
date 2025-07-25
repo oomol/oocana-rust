@@ -184,7 +184,7 @@ impl Node {
     pub fn has_connection(&self, handle: &HandleName) -> bool {
         self.inputs()
             .get(handle)
-            .is_some_and(|input| input.from.as_ref().is_some_and(|f| !f.is_empty()))
+            .is_some_and(|input| input.sources.as_ref().is_some_and(|f| !f.is_empty()))
     }
 
     pub fn package_path(&self) -> Option<PathBuf> {

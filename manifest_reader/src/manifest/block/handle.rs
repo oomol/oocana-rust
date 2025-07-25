@@ -55,8 +55,6 @@ struct TempInputHandle {
         with = "::serde_with::rust::double_option"
     )]
     pub value: Option<Option<serde_json::Value>>,
-    #[serde(skip_serializing_if = "std::ops::Not::not", default)]
-    pub serialize_for_cache: bool,
 }
 
 impl From<TempInputHandle> for InputHandle {
@@ -68,7 +66,6 @@ impl From<TempInputHandle> for InputHandle {
             kind,
             nullable,
             value,
-            serialize_for_cache,
         } = temp;
         let value = if temp.nullable.is_some_and(|nullable| nullable) {
             if value.is_none() {
@@ -88,7 +85,7 @@ impl From<TempInputHandle> for InputHandle {
             value,
             remember: false,
             is_additional: false,
-            serialize_for_cache,
+            _deserialize_from_cache: false,
         }
     }
 }
@@ -117,8 +114,9 @@ pub struct InputHandle {
     /// Additional handles are defined in the flow node, not in the block.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub is_additional: bool,
+    /// This field is used to indicate whether the handle should be deserialized from cache. '_' prefix means this field is generated in runtime
     #[serde(skip_serializing_if = "std::ops::Not::not")]
-    pub serialize_for_cache: bool,
+    pub _deserialize_from_cache: bool,
 }
 
 impl InputHandle {
@@ -132,7 +130,7 @@ impl InputHandle {
             nullable: None,
             remember: false,
             is_additional: false,
-            serialize_for_cache: false,
+            _deserialize_from_cache: false,
         }
     }
 }
