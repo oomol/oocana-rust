@@ -179,6 +179,14 @@ pub fn generate_node_inputs(
                 }
             }
 
+            let serialize_for_cache = if let Some(node_inputs_from) = node_inputs_from {
+                node_inputs_from.iter().any(|input_from| {
+                    input_from.handle == *handle && input_from.serialize_for_cache
+                })
+            } else {
+                false
+            };
+
             inputs.insert(
                 handle.to_owned(),
                 NodeInput {
@@ -186,6 +194,7 @@ pub fn generate_node_inputs(
                     patch,
                     value,
                     sources: connection_from,
+                    serialize_for_cache,
                 },
             );
         }
@@ -536,6 +545,7 @@ impl SubflowBlock {
                                                         patch: None,
                                                         value: None,
                                                         sources: None, // from will be added later
+                                                        serialize_for_cache: false, // TODO: get serialize_for_cache from slotflow_provider.inputs_from
                                                     },
                                                 );
 
@@ -999,7 +1009,7 @@ impl SubflowBlock {
 
         for (_, node) in new_nodes.iter() {
             for (_, input) in node.inputs() {
-                if input.def.serialize_for_cache {
+                if input.serialize_for_cache {
                     if let Some(ref from) = input.sources {
                         for source in from.iter() {
                             match source {

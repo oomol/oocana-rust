@@ -13,6 +13,7 @@ pub struct NodeInput {
     pub value: Option<Option<JsonValue>>,
     // generate from node's from.flow_input or from node's from.node_output
     pub sources: Option<Vec<HandleSource>>,
+    pub serialize_for_cache: bool,
 }
 
 #[macro_export(local_inner_macros)]

@@ -30,6 +30,7 @@ struct TmpNodeInputFrom {
     pub schema_overrides: Option<Vec<TmpInputDefPatch>>,
     pub from_flow: Option<Vec<FlowHandleFrom>>,
     pub from_node: Option<Vec<NodeHandleFrom>>,
+    pub serialize_for_cache: bool,
 }
 
 /// PatchSchema
@@ -77,6 +78,7 @@ pub struct NodeInputFrom {
 
     pub from_flow: Option<Vec<FlowHandleFrom>>,
     pub from_node: Option<Vec<NodeHandleFrom>>,
+    pub serialize_for_cache: bool,
 }
 
 impl From<TmpNodeInputFrom> for NodeInputFrom {
@@ -110,11 +112,12 @@ impl From<TmpNodeInputFrom> for NodeInputFrom {
         };
 
         NodeInputFrom {
+            schema_overrides,
             handle: data.handle,
             value: data.value,
-            schema_overrides,
             from_flow: data.from_flow,
             from_node: data.from_node,
+            serialize_for_cache: data.serialize_for_cache,
         }
     }
 }
