@@ -66,7 +66,7 @@ fn calc_node_deps(
             continue;
         }
 
-        for node_source in input.from.iter().flatten() {
+        for node_source in input.sources.iter().flatten() {
             if let manifest_meta::HandleSource::NodeOutput { node_id, .. } = node_source {
                 if !should_run_nodes.contains(node_id) {
                     if let Some(dependent_node) = flow.nodes.get(node_id) {

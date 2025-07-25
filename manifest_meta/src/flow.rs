@@ -185,7 +185,7 @@ pub fn generate_node_inputs(
                     def: input_def.clone(),
                     patch,
                     value,
-                    from: connection_from,
+                    sources: connection_from,
                 },
             );
         }
@@ -227,7 +227,7 @@ impl SubflowBlock {
         let mut inputs: HashMap<NodeId, Vec<InputHandle>> = HashMap::new();
         for (node_id, node) in &self.nodes {
             for input in node.inputs().values() {
-                if input.from.as_ref().is_some_and(|f| !f.is_empty()) {
+                if input.sources.as_ref().is_some_and(|f| !f.is_empty()) {
                     continue; // skip if input has connection
                 }
 
@@ -535,7 +535,7 @@ impl SubflowBlock {
                                                         },
                                                         patch: None,
                                                         value: None,
-                                                        from: None, // from will be added later
+                                                        sources: None, // from will be added later
                                                     },
                                                 );
 
@@ -579,7 +579,7 @@ impl SubflowBlock {
                                                             .entry(input.handle.clone())
                                                             .and_modify(|node_input| {
                                                                 node_input
-                                                                    .from
+                                                                    .sources
                                                                     .get_or_insert_with(Vec::new)
                                                                     .push(
                                                                         crate::node::HandleSource::FlowInput {
@@ -1000,7 +1000,7 @@ impl SubflowBlock {
         for (_, node) in new_nodes.iter() {
             for (_, input) in node.inputs() {
                 if input.def.serialize_for_cache {
-                    if let Some(ref from) = input.from {
+                    if let Some(ref from) = input.sources {
                         for source in from.iter() {
                             match source {
                                 crate::node::HandleSource::FlowInput { .. } => {

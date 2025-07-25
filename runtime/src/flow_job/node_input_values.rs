@@ -125,7 +125,7 @@ impl NodeInputValues {
 
     pub fn is_node_fulfill(&self, node: &Node) -> bool {
         for (handle, input) in node.inputs() {
-            if input.from.as_ref().is_none_or(|f| f.is_empty()) && input.value.is_some() {
+            if input.sources.as_ref().is_none_or(|f| f.is_empty()) && input.value.is_some() {
                 continue;
             }
 
@@ -149,7 +149,7 @@ impl NodeInputValues {
 
     pub fn node_has_input(&self, node: &Node, handle_name: &HandleName) -> bool {
         if let Some(input) = node.inputs().get(handle_name) {
-            if input.from.as_ref().is_none_or(|f| f.is_empty()) && input.value.is_some() {
+            if input.sources.as_ref().is_none_or(|f| f.is_empty()) && input.value.is_some() {
                 return true;
             }
         }
@@ -198,7 +198,7 @@ impl NodeInputValues {
     pub fn remove_input_values(&mut self, node: &Node, from_nodes: &HashSet<NodeId>) {
         if let Some(inputs_map) = self.store.get_mut(node.node_id()) {
             for (handle, node_input) in node.inputs() {
-                for from in node_input.from.iter().flatten() {
+                for from in node_input.sources.iter().flatten() {
                     if let manifest_meta::HandleSource::NodeOutput { node_id, .. } = from {
                         if from_nodes.contains(node_id) {
                             inputs_map.remove(handle);
@@ -258,7 +258,7 @@ impl NodeInputValues {
         }
 
         for (handle, input) in node.inputs() {
-            if input.from.as_ref().is_none_or(|f| f.is_empty()) {
+            if input.sources.as_ref().is_none_or(|f| f.is_empty()) {
                 if let Some(value) = input.value.as_ref() {
                     value_map.insert(
                         handle.to_owned(),

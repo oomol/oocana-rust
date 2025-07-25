@@ -64,7 +64,7 @@ mod tests {
                 .inputs
                 .get(&handle_in1)
                 .unwrap()
-                .from
+                .sources
                 .as_ref()
                 .unwrap()
                 .first()
@@ -121,13 +121,13 @@ mod tests {
                 .is_some_and(|schema| { schema.get("type").is_some_and(|t| t == "string") }));
 
             assert!(matches!(
-                input_in1.from.as_ref().unwrap().first().unwrap(),
+                input_in1.sources.as_ref().unwrap().first().unwrap(),
                 manifest_meta::HandleSource::NodeOutput { .. }
             ));
             if let manifest_meta::HandleSource::NodeOutput {
                 node_id,
                 output_handle,
-            } = input_in1.from.as_ref().unwrap().first().unwrap()
+            } = input_in1.sources.as_ref().unwrap().first().unwrap()
             {
                 assert_eq!(node_id, &node1_id);
                 assert_eq!(output_handle, &handle_out2);
