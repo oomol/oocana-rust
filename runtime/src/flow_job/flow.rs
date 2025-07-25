@@ -307,6 +307,8 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                         }
                     }
                 }
+                block_status::Status::Progress { job_id, progress } => {
+                }
                 block_status::Status::Outputs {
                     job_id,
                     outputs: map,
