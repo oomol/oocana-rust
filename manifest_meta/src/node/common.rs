@@ -28,6 +28,7 @@ macro_rules! extend_node_common_field {
             pub to: Option<HandlesTos>,
             pub inputs: HashMap<HandleName, NodeInput>,
             pub concurrency: i32,
+            pub progress_weight: f32,
         }
     };
 }

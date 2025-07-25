@@ -12,6 +12,8 @@ macro_rules! extend_node_common_field {
             pub inputs_from: Option<Vec<NodeInputFrom>>,
             #[serde(default = "default_concurrency")]
             pub concurrency: i32,
+            #[serde(default = "default_progress_weight")]
+            pub progress_weight: f32,
             #[serde(default)]
             pub ignore: bool,
         }
@@ -22,6 +24,9 @@ pub fn default_concurrency() -> i32 {
     1
 }
 
+pub fn default_progress_weight() -> f32 {
+    1.0
+}
 #[derive(
     Serialize,
     Deserialize,
