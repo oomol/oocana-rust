@@ -70,6 +70,13 @@ pub enum ReporterMessage<'a> {
         stacks: &'a Vec<BlockJobStackLevel>,
         create_at: u128,
     },
+    SubflowBlockProgress {
+        session_id: &'a str,
+        job_id: &'a str,
+        block_path: &'a Option<String>,
+        stacks: &'a Vec<BlockJobStackLevel>,
+        progress: f32,
+    },
     SubflowBlockFinished {
         session_id: &'a str,
         job_id: &'a str,
