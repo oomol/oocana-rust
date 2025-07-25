@@ -30,8 +30,7 @@ struct TmpNodeInputFrom {
     pub schema_overrides: Option<Vec<TmpInputDefPatch>>,
     pub from_flow: Option<Vec<FlowHandleFrom>>,
     pub from_node: Option<Vec<NodeHandleFrom>>,
-    /// Indicates whether the input should be serialized for caching purposes.
-    /// Set this to `true` if the input needs to be stored in a cache for reuse.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub serialize_for_cache: bool,
 }
 
@@ -80,6 +79,8 @@ pub struct NodeInputFrom {
 
     pub from_flow: Option<Vec<FlowHandleFrom>>,
     pub from_node: Option<Vec<NodeHandleFrom>>,
+    /// Indicates whether the input should be serialized for caching purposes (implemented in executor)
+    /// Set this to `true` if the input needs to be stored in a cache for reuse. Currently, this is only used for Python Pandas DataFrame inputs.
     pub serialize_for_cache: bool,
 }
 
