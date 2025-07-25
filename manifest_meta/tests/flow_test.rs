@@ -218,6 +218,21 @@ mod tests {
                 .unwrap();
             assert!(output._serialize_for_cache);
         }
+
+        let node2_id = NodeId::new("node2".to_owned());
+        let node2 = flow_block.nodes.get(&node2_id).unwrap();
+        assert!(matches!(node2, manifest_meta::Node::Task(_)));
+        if let manifest_meta::Node::Task(task_node) = node2 {
+            let input_handle = HandleName::new("in".to_owned());
+            let input = task_node
+                .task
+                .inputs_def
+                .as_ref()
+                .unwrap()
+                .get(&input_handle)
+                .unwrap();
+            assert!(input._deserialize_from_cache);
+        }
     }
 
     fn test_directory() -> PathBuf {
