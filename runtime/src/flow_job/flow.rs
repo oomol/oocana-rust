@@ -328,45 +328,44 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                 }
                 block_status::Status::Progress { job_id, progress } => {
                     if let Some(job) = run_flow_ctx.jobs.get(&job_id) {
-                        if let Some(_) = flow_shared.flow_block.nodes.get(&job.node_id) {
+                        if flow_shared.flow_block.nodes.contains_key(&job.node_id) {
                             let node_weight_progress =
                                 estimation_node_progress_store.get_mut(&job.node_id);
 
-                            if node_weight_progress.is_none() {
-                                continue;
+                            if let Some(node_weight_progress) = node_weight_progress {
+                                if node_weight_progress.weight == 0.0
+                                    || node_weight_progress.progress == 100.0
+                                    || (progress - node_weight_progress.progress).abs()
+                                        < f32::EPSILON
+                                {
+                                    continue;
+                                }
+
+                                let new_progress =
+                                    f32::max(node_weight_progress.progress, progress)
+                                        .clamp(0.0, 100.0);
+
+                                let old_weight_progress =
+                                    node_weight_progress.progress * node_weight_progress.weight;
+
+                                node_weight_progress.progress = new_progress;
+                                let new_weight_progress =
+                                    new_progress * node_weight_progress.weight;
+
+                                estimation_progress_sum +=
+                                    new_weight_progress - old_weight_progress;
+
+                                let estimation_flow_progress = if total_weight > 0.0 {
+                                    estimation_progress_sum / total_weight
+                                } else {
+                                    0.0
+                                };
+
+                                run_flow_ctx
+                                    .parent_block_status
+                                    .progress(flow_shared.job_id.clone(), estimation_flow_progress);
+                                reporter.progress(estimation_flow_progress);
                             }
-                            let node_weight_progress = node_weight_progress.unwrap();
-
-                            if node_weight_progress.weight == 0.0
-                                || node_weight_progress.progress == 1.0
-                                || (progress - node_weight_progress.progress).abs() < f32::EPSILON
-                            {
-                                continue;
-                            }
-
-                            let new_progress = f32::max(
-                                f32::min(f32::max(node_weight_progress.progress, progress), 100.0),
-                                0.0,
-                            );
-
-                            let old_weight_progress =
-                                node_weight_progress.progress * node_weight_progress.weight;
-
-                            node_weight_progress.progress = new_progress;
-                            let new_weight_progress = new_progress * node_weight_progress.weight;
-
-                            estimation_progress_sum += new_weight_progress - old_weight_progress;
-
-                            let estimation_flow_progress = if total_weight > 0.0 {
-                                estimation_progress_sum / total_weight
-                            } else {
-                                0.0
-                            };
-
-                            run_flow_ctx
-                                .parent_block_status
-                                .progress(flow_shared.job_id.clone(), estimation_flow_progress);
-                            reporter.progress(estimation_flow_progress);
                         }
                     }
                 }
