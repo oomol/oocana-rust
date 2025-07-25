@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.29.12 (2025-07-25)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* refactor: move serialize_for_cache to input_from field by @leavesster in https://github.com/oomol/oocana-rust/pull/255
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.29.11...v0.29.12
+
 ## 0.29.11 (2025-07-24)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
