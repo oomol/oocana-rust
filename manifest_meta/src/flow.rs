@@ -554,7 +554,9 @@ impl SubflowBlock {
                                                             .and_then(|inputs_from| {
                                                                 inputs_from
                                                                     .iter()
-                                                                    .find(|i| i.handle == input.handle)
+                                                                    .find(|i| {
+                                                                        i.handle == input.handle
+                                                                    })
                                                                     .map(|i| i.serialize_for_cache)
                                                             })
                                                             .unwrap_or(false),
