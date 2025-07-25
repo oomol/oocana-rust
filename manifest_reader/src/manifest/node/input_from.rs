@@ -30,6 +30,8 @@ struct TmpNodeInputFrom {
     pub schema_overrides: Option<Vec<TmpInputDefPatch>>,
     pub from_flow: Option<Vec<FlowHandleFrom>>,
     pub from_node: Option<Vec<NodeHandleFrom>>,
+    /// Indicates whether the input should be serialized for caching purposes.
+    /// Set this to `true` if the input needs to be stored in a cache for reuse.
     pub serialize_for_cache: bool,
 }
 
