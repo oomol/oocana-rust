@@ -133,6 +133,12 @@ pub enum ReceiveMessage {
         job_id: JobId,
         error: String,
     },
+    BlockProgress {
+        session_id: SessionId,
+        job_id: JobId,
+        /// progress is a float number between 0.0 ~ 100.0
+        progress: f32,
+    },
     BlockFinished {
         session_id: SessionId,
         job_id: JobId,
@@ -173,6 +179,7 @@ impl ReceiveMessage {
             ReceiveMessage::BlockOutput { session_id, .. } => session_id,
             ReceiveMessage::BlockOutputs { session_id, .. } => session_id,
             ReceiveMessage::BlockError { session_id, .. } => session_id,
+            ReceiveMessage::BlockProgress { session_id, .. } => session_id,
             ReceiveMessage::BlockFinished { session_id, .. } => session_id,
             ReceiveMessage::BlockRequest(block) => block.session_id(),
             ReceiveMessage::ExecutorReady { session_id, .. } => session_id,
@@ -188,6 +195,7 @@ impl ReceiveMessage {
             ReceiveMessage::BlockOutput { job_id, .. } => Some(job_id),
             ReceiveMessage::BlockOutputs { job_id, .. } => Some(job_id),
             ReceiveMessage::BlockError { job_id, .. } => Some(job_id),
+            ReceiveMessage::BlockProgress { job_id, .. } => Some(job_id),
             ReceiveMessage::BlockFinished { job_id, .. } => Some(job_id),
             ReceiveMessage::BlockRequest(block) => Some(block.job_id()),
             ReceiveMessage::ExecutorReady { .. } => None,

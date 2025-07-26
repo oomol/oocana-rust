@@ -171,6 +171,11 @@ pub fn listen_to_worker(args: ListenerArgs) -> tokio::task::JoinHandle<()> {
                         });
                     }
                 }
+                scheduler::ReceiveMessage::BlockProgress {
+                    job_id, progress, ..
+                } => {
+                    block_status.progress(job_id, progress);
+                }
                 scheduler::ReceiveMessage::ExecutorExit {
                     executor_name,
                     code,
