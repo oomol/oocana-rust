@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.29.13 (2025-07-26)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* feat: report subflow progress by @leavesster in https://github.com/oomol/oocana-rust/pull/257
+* feat: query block add type field to indicate it is task or subflow by @leavesster in https://github.com/oomol/oocana-rust/pull/259
+* fix: update subflow progress when block finish by @leavesster in https://github.com/oomol/oocana-rust/pull/260
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.29.12...v0.29.13
+
 ## 0.29.12 (2025-07-25)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
