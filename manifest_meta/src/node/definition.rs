@@ -57,6 +57,15 @@ impl Node {
         }
     }
 
+    pub fn progress_weight(&self) -> f32 {
+        match self {
+            Self::Task(task) => task.progress_weight,
+            Self::Flow(flow) => flow.progress_weight,
+            Self::Slot(slot) => slot.progress_weight,
+            Self::Service(service) => service.progress_weight,
+        }
+    }
+
     pub fn block(&self) -> Block {
         match self {
             Self::Task(task) => Block::Task(Arc::clone(&task.task)),

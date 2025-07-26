@@ -7,7 +7,7 @@ use crate::{
     path_finder::{calculate_block_value_type, BlockValueType},
 };
 
-use super::common::{default_concurrency, NodeId};
+use super::common::{default_concurrency, default_progress_weight, NodeId};
 
 extend_node_common_field!(TaskNode {
     task: TaskNodeBlock,

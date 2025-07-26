@@ -2,7 +2,7 @@ use serde::Deserialize;
 
 use crate::{extend_node_common_field, manifest::NodeInputFrom};
 
-use super::common::{default_concurrency, NodeId};
+use super::common::{default_concurrency, default_progress_weight, NodeId};
 
 extend_node_common_field!(ServiceNode { service: String });
 

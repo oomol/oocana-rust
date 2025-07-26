@@ -278,6 +278,25 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
         return None;
     }
 
+    struct EstimationNodeProgress {
+        progress: f32,
+        weight: f32,
+    }
+
+    let mut estimation_node_progress_store = HashMap::new();
+    let mut total_weight = 0.0;
+    for (node_id, node) in flow_shared.flow_block.nodes.iter() {
+        estimation_node_progress_store.insert(
+            node_id.clone(),
+            EstimationNodeProgress {
+                progress: 0.0,
+                weight: node.progress_weight(),
+            },
+        );
+        total_weight += node.progress_weight();
+    }
+    let mut estimation_progress_sum = 0.0;
+
     let scheduler_tx = flow_shared.shared.scheduler_tx.clone();
     let spawn_handle = tokio::spawn(async move {
         while let Some(status) = block_status_rx.recv().await {
@@ -303,6 +322,49 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                         &options,
                                     );
                                 }
+                            }
+                        }
+                    }
+                }
+                block_status::Status::Progress { job_id, progress } => {
+                    if let Some(job) = run_flow_ctx.jobs.get(&job_id) {
+                        if flow_shared.flow_block.nodes.contains_key(&job.node_id) {
+                            let node_weight_progress =
+                                estimation_node_progress_store.get_mut(&job.node_id);
+
+                            if let Some(node_weight_progress) = node_weight_progress {
+                                if node_weight_progress.weight == 0.0
+                                    || node_weight_progress.progress == 100.0
+                                    || (progress - node_weight_progress.progress).abs()
+                                        < f32::EPSILON
+                                {
+                                    continue;
+                                }
+
+                                let new_progress =
+                                    f32::max(node_weight_progress.progress, progress)
+                                        .clamp(0.0, 100.0);
+
+                                let old_weight_progress =
+                                    node_weight_progress.progress * node_weight_progress.weight;
+
+                                node_weight_progress.progress = new_progress;
+                                let new_weight_progress =
+                                    new_progress * node_weight_progress.weight;
+
+                                estimation_progress_sum +=
+                                    new_weight_progress - old_weight_progress;
+
+                                let estimation_flow_progress = if total_weight > 0.0 {
+                                    estimation_progress_sum / total_weight
+                                } else {
+                                    0.0
+                                };
+
+                                run_flow_ctx
+                                    .parent_block_status
+                                    .progress(flow_shared.job_id.clone(), estimation_flow_progress);
+                                reporter.progress(estimation_flow_progress);
                             }
                         }
                     }

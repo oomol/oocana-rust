@@ -18,6 +18,10 @@ pub enum Status {
         job_id: JobId,
         outputs: HashMap<HandleName, Arc<OutputValue>>,
     },
+    Progress {
+        job_id: JobId,
+        progress: f32,
+    },
     Request(BlockRequest),
     Done {
         job_id: JobId,
@@ -53,6 +57,9 @@ impl BlockStatusTx {
     }
     pub fn outputs(&self, job_id: JobId, outputs: HashMap<HandleName, Arc<OutputValue>>) {
         self.tx.send(Status::Outputs { job_id, outputs }).unwrap();
+    }
+    pub fn progress(&self, job_id: JobId, progress: f32) {
+        self.tx.send(Status::Progress { job_id, progress }).unwrap();
     }
     pub fn run_request(&self, request: BlockRequest) {
         self.tx.send(Status::Request(request)).unwrap();
