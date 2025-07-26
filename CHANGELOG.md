@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.29.14 (2025-07-26)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* fix: add progress event by @leavesster in https://github.com/oomol/oocana-rust/pull/261
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.29.13...v0.29.14
+
 ## 0.29.13 (2025-07-26)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
