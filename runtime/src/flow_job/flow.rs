@@ -903,14 +903,19 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                             };
                             #[derive(serde::Serialize)]
                             struct TaskBlockMetadata {
+                                pub r#type: String,
+                                #[serde(skip_serializing_if = "Option::is_none")]
                                 pub description: Option<String>,
+                                #[serde(skip_serializing_if = "Option::is_none")]
                                 pub inputs_def: Option<InputHandles>,
+                                #[serde(skip_serializing_if = "Option::is_none")]
                                 pub outputs_def: Option<OutputHandles>,
                                 pub additional_inputs: bool,
                                 pub additional_outputs: bool,
                             }
 
                             let metadata = TaskBlockMetadata {
+                                r#type: "task".to_string(),
                                 description: task_block.description.clone(),
                                 inputs_def: task_block.inputs_def.clone(),
                                 outputs_def: task_block.outputs_def.clone(),
@@ -966,14 +971,18 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
 
                             #[derive(serde::Serialize)]
                             struct SubflowMetadata {
+                                r#type: String,
                                 #[serde(skip_serializing_if = "Option::is_none")]
                                 description: Option<String>,
+                                #[serde(skip_serializing_if = "Option::is_none")]
                                 inputs_def: Option<InputHandles>,
+                                #[serde(skip_serializing_if = "Option::is_none")]
                                 outputs_def: Option<OutputHandles>,
                                 has_slot: bool,
                             }
 
                             let metadata = SubflowMetadata {
+                                r#type: "subflow".to_string(),
                                 description: subflow_block.description.clone(),
                                 inputs_def: subflow_block.inputs_def.clone(),
                                 outputs_def: subflow_block.outputs_def.clone(),
