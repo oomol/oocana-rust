@@ -295,7 +295,35 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
         );
         total_weight += node.progress_weight();
     }
-    let mut estimation_progress_sum = 0.0;
+    let mut estimation_progress_sum = 0.0; // 0.0 ~ 100.0
+
+    let mut update_node_progress = move |progress: f32,
+                                         estimation_node_progress: &mut EstimationNodeProgress|
+          -> Option<f32> {
+        if estimation_node_progress.weight == 0.0
+            || estimation_node_progress.progress >= 100.0
+            || (progress - estimation_node_progress.progress).abs() < f32::EPSILON
+        {
+            return None;
+        }
+
+        let new_progress = f32::max(estimation_node_progress.progress, progress).clamp(0.0, 100.0);
+
+        let old_weight_progress =
+            estimation_node_progress.progress * estimation_node_progress.weight;
+
+        estimation_node_progress.progress = new_progress;
+        let new_weight_progress = new_progress * estimation_node_progress.weight;
+
+        estimation_progress_sum += new_weight_progress - old_weight_progress;
+
+        let estimation_flow_progress = if total_weight > 0.0 {
+            estimation_progress_sum / total_weight
+        } else {
+            return None;
+        };
+        Some(estimation_flow_progress.clamp(0.0, 100.0))
+    };
 
     let scheduler_tx = flow_shared.shared.scheduler_tx.clone();
     let spawn_handle = tokio::spawn(async move {
@@ -333,38 +361,14 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                 estimation_node_progress_store.get_mut(&job.node_id);
 
                             if let Some(node_weight_progress) = node_weight_progress {
-                                if node_weight_progress.weight == 0.0
-                                    || node_weight_progress.progress == 100.0
-                                    || (progress - node_weight_progress.progress).abs()
-                                        < f32::EPSILON
+                                if let Some(flow_progress) =
+                                    update_node_progress(progress, node_weight_progress)
                                 {
-                                    continue;
+                                    run_flow_ctx
+                                        .parent_block_status
+                                        .progress(flow_shared.job_id.to_owned(), flow_progress);
+                                    reporter.progress(flow_progress);
                                 }
-
-                                let new_progress =
-                                    f32::max(node_weight_progress.progress, progress)
-                                        .clamp(0.0, 100.0);
-
-                                let old_weight_progress =
-                                    node_weight_progress.progress * node_weight_progress.weight;
-
-                                node_weight_progress.progress = new_progress;
-                                let new_weight_progress =
-                                    new_progress * node_weight_progress.weight;
-
-                                estimation_progress_sum +=
-                                    new_weight_progress - old_weight_progress;
-
-                                let estimation_flow_progress = if total_weight > 0.0 {
-                                    estimation_progress_sum / total_weight
-                                } else {
-                                    0.0
-                                };
-
-                                run_flow_ctx
-                                    .parent_block_status
-                                    .progress(flow_shared.job_id.clone(), estimation_flow_progress);
-                                reporter.progress(estimation_flow_progress);
                             }
                         }
                     }
@@ -1159,6 +1163,20 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
 
                     if let Some(job) = run_flow_ctx.jobs.get(&job_id) {
                         if let Some(node) = flow_shared.flow_block.nodes.get(&job.node_id) {
+                            let node_weight_progress =
+                                estimation_node_progress_store.get_mut(&job.node_id);
+
+                            if let Some(node_weight_progress) = node_weight_progress {
+                                if let Some(flow_progress) =
+                                    update_node_progress(100.0, node_weight_progress)
+                                {
+                                    run_flow_ctx
+                                        .parent_block_status
+                                        .progress(flow_shared.job_id.to_owned(), flow_progress);
+                                    reporter.progress(flow_progress);
+                                }
+                            }
+
                             if let Some(tos) = node.to() {
                                 for (handle, value) in result.unwrap_or_default().iter() {
                                     if let Some(handle_tos) = tos.get(handle) {
