@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.29.15 (2025-07-27)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* feat: add inputs and rename inputs_value to nodes_inputs by @leavesster in https://github.com/oomol/oocana-rust/pull/264
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.29.14...v0.29.15
+
 ## 0.29.14 (2025-07-26)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
