@@ -12,7 +12,7 @@ use std::{
 };
 use tokio::signal::unix::{signal, SignalKind};
 
-use tracing::{error as log_error, info};
+use tracing::{error as log_error, info, warn};
 
 use job::{BlockJobStacks, JobId, RuntimeScope};
 use manifest_meta::{read_flow_or_block, Block, BlockResolver, MergeInputsValue, NodeId};
@@ -122,6 +122,24 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
     } else {
         None
     };
+
+    // TODO: exit with error if inputs are not valid
+    if let Some(ref inputs) = inputs {
+        if let Some(inputs_def) = block.inputs_def() {
+            for (handle, _) in inputs.iter() {
+                if let Some(input_handle) = inputs_def.get(handle) {
+                    if input_handle.is_variable() {
+                        warn!(
+                            "Input handle {} is a variable, it will not be set in block",
+                            handle
+                        );
+                    }
+                } else {
+                    warn!("Input handle {} not found in block", handle);
+                }
+            }
+        }
+    }
 
     let handle = block_job::run_block({
         block_job::RunBlockArgs {

@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use manifest_reader::manifest::InputHandles;
+
 use crate::{ServiceBlock, SlotBlock, SubflowBlock, TaskBlock};
 
 #[derive(Debug, Clone)]
@@ -17,6 +19,15 @@ impl Block {
             Block::Flow(flow) => Some(&flow.path_str),
             Block::Slot(slot) => slot.path_str.as_ref(),
             Block::Service(_) => None,
+        }
+    }
+
+    pub fn inputs_def(&self) -> Option<&InputHandles> {
+        match self {
+            Block::Task(task) => task.inputs_def.as_ref(),
+            Block::Flow(flow) => flow.inputs_def.as_ref(),
+            Block::Slot(slot) => slot.inputs_def.as_ref(),
+            Block::Service(service) => service.inputs_def.as_ref(),
         }
     }
 }
