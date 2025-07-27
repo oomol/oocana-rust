@@ -61,9 +61,9 @@ enum Commands {
         #[arg(help = "Stop the flow after the node is finished.", long)]
         nodes: Option<String>,
         #[arg(help = "Input values for the input handles value, It's used when block is a task block. format is {\"inputHandleName\": <VALUE>} first key is handle name, the first level value is a key-value pair", long)]
-        block_values: Option<String>,
+        inputs: Option<String>,
         #[arg(help = "Values for the input handles value. It's used when block is a flow format is {\"node_id\": {\"inputHandleName\": <VALUE>}}. first key is node id, the first level value is a key-value pair, the next level's value is input values", long)]
-        input_values: Option<String>,
+        nodes_inputs: Option<String>,
         #[arg(help = "default package environment, any block has no package will use this package environment", long)]
         default_package: Option<String>,
         #[arg(help = "exclude package, these package will skip layer feature, accept package path", long)]
@@ -161,7 +161,7 @@ pub fn cli_match() -> Result<()> {
     let app_config = utils::config::load_config(Some(&cli.config))?;
     debug!("config {:?} command args: {command:#?} in version: {VERSION}", cli.config);
     match command {
-        Commands::Run { block, broker, search_paths, session, reporter, debug, wait_for_client, use_cache, nodes, input_values, block_values, exclude_packages, default_package, bind_paths, session_dir: session_path, retain_env_keys, env_file, bind_path_file, verbose: _verbose, temp_root, dry_run, pkg_data_root, project_data } => {
+        Commands::Run { block, broker, search_paths, session, reporter, debug, wait_for_client, use_cache, nodes, nodes_inputs, inputs, exclude_packages, default_package, bind_paths, session_dir: session_path, retain_env_keys, env_file, bind_path_file, verbose: _verbose, temp_root, dry_run, pkg_data_root, project_data } => {
 
             let bind_paths = load_bind_paths(bind_paths, bind_path_file);
             let search_paths = parse_search_paths(search_paths);
@@ -194,8 +194,8 @@ pub fn cli_match() -> Result<()> {
                         .map(|node| node.to_string())
                         .collect::<HashSet<String>>()
                 }),
-                block_values: block_values.to_owned(),
-                input_values: input_values.to_owned(),
+                inputs: inputs.to_owned(),
+                nodes_inputs: nodes_inputs.to_owned(),
                 default_package: default_package.to_owned(),
                 exclude_packages: exclude_packages.as_ref()
                 .map(|p| p.split(',').map(|s| s.to_string()).collect())

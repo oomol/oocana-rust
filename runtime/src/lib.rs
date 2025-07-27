@@ -29,8 +29,8 @@ pub struct RunArgs<'a> {
     pub path_finder: BlockPathFinder,
     pub job_id: Option<JobId>,
     pub nodes: Option<HashSet<String>>,
-    pub block_values: Option<String>,
-    pub input_values: Option<String>,
+    pub inputs: Option<String>,
+    pub nodes_inputs: Option<String>,
     pub default_package_path: Option<PathBuf>,
     pub project_data: &'a PathBuf,
     pub pkg_data_root: &'a PathBuf,
@@ -44,8 +44,8 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
         path_finder,
         job_id,
         nodes,
-        block_values,
-        input_values,
+        inputs,
+        nodes_inputs,
         default_package_path,
         project_data,
         pkg_data_root,
@@ -99,7 +99,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
         _ => NodeInputValues::new(true),
     };
 
-    if let Some(patch_value_str) = input_values {
+    if let Some(patch_value_str) = nodes_inputs {
         let merge_inputs_value = serde_json::from_str::<MergeInputsValue>(&patch_value_str)
             .map_err(|e| {
                 log_error!("Failed to parse input values: {}", e);
@@ -112,7 +112,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
         }
     }
 
-    let inputs = if let Some(block_values) = block_values {
+    let inputs = if let Some(block_values) = inputs {
         serde_json::from_str::<job::BlockInputs>(&block_values)
             .map_err(|e| {
                 log_error!("Failed to parse block values: {}", e);
