@@ -62,7 +62,7 @@ enum Commands {
         nodes: Option<String>,
         #[arg(help = "Values for the input handles value. It's used to fulfill a block's inputs definition. Format is {\"inputHandleName\": <VALUE>} where the first key is the handle name, and the first-level value is a key-value pair.", long)]
         inputs: Option<String>,
-        #[arg(help = "Values for the flow nodes's input handle value. It's used when block is a flow's node inputs. Format is {\"node_id\": {\"inputHandleName\": <VALUE>}}. first key is node id, the first level value is a key-value pair, the next level's value is input values", long)]
+        #[arg(help = "Values for the flow nodes' input handle value. It's used when a block has flow node inputs. Format is {\"node_id\": {\"inputHandleName\": <VALUE>}}. First key is node id, the first level value is a key-value pair, and the next level's value is input values", long)]
         nodes_inputs: Option<String>,
         #[arg(help = "default package environment, any block has no package will use this package environment", long)]
         default_package: Option<String>,
