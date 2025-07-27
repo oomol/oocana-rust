@@ -82,7 +82,8 @@ pub struct BlockArgs<'a> {
     pub wait_for_client: bool,
     pub use_cache: bool,
     pub nodes: Option<HashSet<String>>,
-    pub input_values: Option<String>,
+    pub inputs: Option<String>,
+    pub nodes_inputs: Option<String>,
     pub default_package: Option<String>,
     pub exclude_packages: Option<Vec<String>>,
     pub session_dir: Option<String>,
@@ -105,7 +106,8 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
         wait_for_client,
         use_cache,
         nodes,
-        input_values,
+        inputs,
+        nodes_inputs,
         default_package,
         exclude_packages,
         bind_paths,
@@ -171,9 +173,7 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
         .is_some_and(|f| f.to_string_lossy().starts_with("flow.oo"))
     {
         // /app/workspace/flows/a/flow.oo.yaml -> /app/workspace
-        p.parent()
-            .and_then(|p| p.parent())
-            .and_then(|p| p.parent())
+        p.parent().and_then(|p| p.parent()).and_then(|p| p.parent())
     } else {
         // /app/workspace/flows/a -> /app/workspace
         p.parent().and_then(|p| p.parent())
@@ -277,7 +277,8 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
         path_finder: block_path_finder,
         job_id: None,
         nodes,
-        input_values,
+        inputs,
+        nodes_inputs,
         default_package_path: current_package_path.map(|p| p.to_owned()),
         pkg_data_root,
         project_data,

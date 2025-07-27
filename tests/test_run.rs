@@ -51,7 +51,7 @@ fn run_flow_with_input() {
         .args([
             "run",
             "examples/input",
-            "--input-values",
+            "--nodes-inputs",
             "{\"block-1\": {\"my_count\": 1}, \"block-2\": {\"my_count\": 2}}",
         ])
         .stdin(Stdio::null())

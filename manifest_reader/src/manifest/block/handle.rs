@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
+use utils::output::OOMOL_VAR_DATA;
 
 #[derive(
     Serialize,
@@ -132,6 +133,17 @@ impl InputHandle {
             is_additional: false,
             _deserialize_from_cache: false,
         }
+    }
+
+    pub fn is_variable(&self) -> bool {
+        self.json_schema
+            .as_ref()
+            .map(|schema| {
+                schema
+                    .get("contentMediaType")
+                    .is_some_and(|v| v.as_str() == Some(OOMOL_VAR_DATA))
+            })
+            .unwrap_or(false)
     }
 }
 

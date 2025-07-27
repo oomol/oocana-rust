@@ -12,7 +12,7 @@ use std::{
 };
 use tokio::signal::unix::{signal, SignalKind};
 
-use tracing::{error as log_error, info};
+use tracing::{error as log_error, info, warn};
 
 use job::{BlockJobStacks, JobId, RuntimeScope};
 use manifest_meta::{read_flow_or_block, Block, BlockResolver, MergeInputsValue, NodeId};
@@ -29,7 +29,8 @@ pub struct RunArgs<'a> {
     pub path_finder: BlockPathFinder,
     pub job_id: Option<JobId>,
     pub nodes: Option<HashSet<String>>,
-    pub input_values: Option<String>,
+    pub inputs: Option<String>,
+    pub nodes_inputs: Option<String>,
     pub default_package_path: Option<PathBuf>,
     pub project_data: &'a PathBuf,
     pub pkg_data_root: &'a PathBuf,
@@ -43,7 +44,8 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
         path_finder,
         job_id,
         nodes,
-        input_values,
+        inputs,
+        nodes_inputs,
         default_package_path,
         project_data,
         pkg_data_root,
@@ -97,7 +99,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
         _ => NodeInputValues::new(true),
     };
 
-    if let Some(patch_value_str) = input_values {
+    if let Some(patch_value_str) = nodes_inputs {
         let merge_inputs_value = serde_json::from_str::<MergeInputsValue>(&patch_value_str)
             .map_err(|e| {
                 log_error!("Failed to parse input values: {}", e);
@@ -110,6 +112,35 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
         }
     }
 
+    let inputs = if let Some(block_values) = inputs {
+        serde_json::from_str::<job::BlockInputs>(&block_values)
+            .map_err(|e| {
+                log_error!("Failed to parse block values: {}", e);
+                format!("Invalid block values: {}", e)
+            })
+            .ok()
+    } else {
+        None
+    };
+
+    // TODO: exit with error if inputs are not valid
+    if let Some(ref inputs) = inputs {
+        if let Some(inputs_def) = block.inputs_def() {
+            for (handle, _) in inputs.iter() {
+                if let Some(input_handle) = inputs_def.get(handle) {
+                    if input_handle.is_variable() {
+                        warn!(
+                            "Input handle {} is a variable, it will not be set in block",
+                            handle
+                        );
+                    }
+                } else {
+                    warn!("Input handle {} not found in block", handle);
+                }
+            }
+        }
+    }
+
     let handle = block_job::run_block({
         block_job::RunBlockArgs {
             block,
@@ -117,7 +148,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
             parent_flow: None,
             stacks,
             job_id,
-            inputs: None,
+            inputs,
             block_status: block_status_tx.clone(),
             node_value_store: Some(node_value_store),
             nodes,
