@@ -60,7 +60,7 @@ enum Commands {
         use_cache: bool,
         #[arg(help = "Stop the flow after the node is finished.", long)]
         nodes: Option<String>,
-        #[arg(help = "Values for the input handles value, It's used when block is fulfill a block's inputs def. Format is {\"inputHandleName\": <VALUE>} first key is handle name, the first level value is a key-value pair", long)]
+        #[arg(help = "Values for the input handles value. It's used to fulfill a block's inputs definition. Format is {\"inputHandleName\": <VALUE>} where the first key is the handle name, and the first-level value is a key-value pair.", long)]
         inputs: Option<String>,
         #[arg(help = "Values for the flow nodes's input handle value. It's used when block is a flow's node inputs. Format is {\"node_id\": {\"inputHandleName\": <VALUE>}}. first key is node id, the first level value is a key-value pair, the next level's value is input values", long)]
         nodes_inputs: Option<String>,
