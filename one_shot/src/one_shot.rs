@@ -82,6 +82,7 @@ pub struct BlockArgs<'a> {
     pub wait_for_client: bool,
     pub use_cache: bool,
     pub nodes: Option<HashSet<String>>,
+    pub block_values: Option<String>,
     pub input_values: Option<String>,
     pub default_package: Option<String>,
     pub exclude_packages: Option<Vec<String>>,
@@ -105,6 +106,7 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
         wait_for_client,
         use_cache,
         nodes,
+        block_values,
         input_values,
         default_package,
         exclude_packages,
@@ -171,9 +173,7 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
         .is_some_and(|f| f.to_string_lossy().starts_with("flow.oo"))
     {
         // /app/workspace/flows/a/flow.oo.yaml -> /app/workspace
-        p.parent()
-            .and_then(|p| p.parent())
-            .and_then(|p| p.parent())
+        p.parent().and_then(|p| p.parent()).and_then(|p| p.parent())
     } else {
         // /app/workspace/flows/a -> /app/workspace
         p.parent().and_then(|p| p.parent())

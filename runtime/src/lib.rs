@@ -29,6 +29,7 @@ pub struct RunArgs<'a> {
     pub path_finder: BlockPathFinder,
     pub job_id: Option<JobId>,
     pub nodes: Option<HashSet<String>>,
+    pub block_values: Option<String>,
     pub input_values: Option<String>,
     pub default_package_path: Option<PathBuf>,
     pub project_data: &'a PathBuf,
@@ -43,6 +44,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
         path_finder,
         job_id,
         nodes,
+        block_values,
         input_values,
         default_package_path,
         project_data,
@@ -110,6 +112,17 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
         }
     }
 
+    let inputs = if let Some(block_values) = block_values {
+        serde_json::from_str::<job::BlockInputs>(&block_values)
+            .map_err(|e| {
+                log_error!("Failed to parse block values: {}", e);
+                format!("Invalid block values: {}", e)
+            })
+            .ok()
+    } else {
+        None
+    };
+
     let handle = block_job::run_block({
         block_job::RunBlockArgs {
             block,
@@ -117,7 +130,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
             parent_flow: None,
             stacks,
             job_id,
-            inputs: None,
+            inputs,
             block_status: block_status_tx.clone(),
             node_value_store: Some(node_value_store),
             nodes,
