@@ -189,7 +189,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
                 data_dir: project_data.to_string_lossy().to_string(),
                 pkg_root: pkg_data_root.to_path_buf(),
                 node_id: None,
-                enable_layer: in_layer && layer::feature_enabled(),
+                enable_layer: in_layer,
                 is_inject: false,
             },
             scope: RuntimeScope {
@@ -198,7 +198,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
                 pkg_root: pkg_data_root.to_path_buf(),
                 data_dir: project_data.to_string_lossy().to_string(),
                 node_id: None,
-                enable_layer: in_layer && layer::feature_enabled(),
+                enable_layer: in_layer,
                 is_inject: false,
             },
             slot_blocks: None,

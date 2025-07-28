@@ -173,7 +173,7 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
             || f.to_string_lossy().starts_with("block.oo.")
             || f.to_string_lossy().starts_with("subflow.oo")
     }) {
-        // /app/workspace/flows/a/flow.oo.yaml -> /app/workspace
+        // /app/workspace/flows/a/xxx.oo.yaml -> /app/workspace
         p.parent().and_then(|p| p.parent()).and_then(|p| p.parent())
     } else {
         // /app/workspace/flows/a -> /app/workspace
@@ -221,6 +221,16 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
         info!("create flow tmp dir {:?}", flow_tmp_dir);
         fs::create_dir_all(&flow_tmp_dir)?;
     }
+
+    // Determine if the current package path is part of a specific layer based on exclude_packages
+    let run_in_layer = exclude_packages
+        .as_ref()
+        .map_or(layer::feature_enabled(), |excludes| {
+            !excludes.iter().any(|e| {
+                current_package_path.map_or(layer::feature_enabled(), |p| p.to_string_lossy().eq(e))
+                // currently we use eq not starts_with. consider changing this if needed (need update executor's test cases struct to match this change)
+            })
+        });
 
     let (scheduler_tx, scheduler_rx) = mainframe::scheduler::create(
         _scheduler_impl_tx,
@@ -283,10 +293,7 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
         default_package_path: current_package_path.map(|p| p.to_owned()),
         pkg_data_root,
         project_data,
-        in_layer: exclude_packages.map_or(true, |e| {
-            !e.iter()
-                .any(|ee| current_package_path.map_or(true, |p| p.to_string_lossy().eq(ee)))
-        }), // Determine if the current package path is part of a specific layer based on exclude_packages
+        in_layer: run_in_layer,
     })
     .await;
 
