@@ -282,7 +282,7 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
         pkg_data_root,
         project_data,
         in_layer: exclude_packages.map_or(true, |e| {
-            e.iter().any(|ee| {
+            !e.iter().any(|ee| {
                 current_package_path.map_or(false, |p| p.to_string_lossy().starts_with(ee))
             })
         }), // current give up layer feature
