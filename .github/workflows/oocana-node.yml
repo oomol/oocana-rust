@@ -33,7 +33,7 @@ jobs:
         with:
           path: oocana-node
           create-layer: ${{ inputs.create-layer }}
-          # ref: dev # uncomment this line to use a specific branch or tag
+          ref: run-block # uncomment this line to use a specific branch or tag
       - name: Start MQTT Broker
         run: |
           sudo apt update && sudo apt install -y --no-install-recommends mosquitto
