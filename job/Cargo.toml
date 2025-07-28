@@ -1,6 +1,6 @@
 [package]
 name = "job"
-version = "0.29.15"
+version = "0.29.16"
 authors = ["CRIMX <straybugs@gmail.com>"]
 description = "Oocana runner job"
 edition = "2021"
