@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.29.17 (2025-07-28)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* fix: add block workaround by @leavesster in https://github.com/oomol/oocana-rust/pull/269
+* feat: fulfill feature support all block type by @leavesster in https://github.com/oomol/oocana-rust/pull/271
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.29.16...v0.29.17
+
 ## 0.29.16 (2025-07-28)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
