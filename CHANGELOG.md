@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.29.16 (2025-07-28)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* feat: fulfill block input with default and null value by @leavesster in https://github.com/oomol/oocana-rust/pull/267
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.29.15...v0.29.16
+
 ## 0.29.15 (2025-07-27)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
