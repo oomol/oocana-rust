@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.29.18 (2025-07-28)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* fix: block need consider whether it should be run in layer or not by @leavesster in https://github.com/oomol/oocana-rust/pull/272
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.29.17...v0.29.18
+
 ## 0.29.17 (2025-07-28)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
