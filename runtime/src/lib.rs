@@ -169,9 +169,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
                 inputs = Some(pass_through_inputs);
             }
         }
-        _ => {
-            log_error!("Block is not a flow block: {}", block_path);
-        }
+        _ => {}
     }
 
     let handle = block_job::run_block({
