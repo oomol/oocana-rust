@@ -140,36 +140,31 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
         }
     }
 
-    match &block {
-        Block::Task(task) => {
-            if let Some(ref inputs_def) = task.inputs_def {
-                let mut pass_through_inputs = inputs.unwrap_or_default();
-                for (handle, input_def) in inputs_def.iter() {
-                    if pass_through_inputs.contains_key(handle) {
-                        continue;
-                    }
-                    if let Some(value) = &input_def.value {
-                        pass_through_inputs.insert(
-                            handle.clone(),
-                            Arc::new(utils::output::OutputValue::new(
-                                value.clone().unwrap_or_else(|| serde_json::Value::Null),
-                                true,
-                            )),
-                        );
-                    } else if input_def.nullable.unwrap_or(false) {
-                        pass_through_inputs.insert(
-                            handle.clone(),
-                            Arc::new(utils::output::OutputValue::new(
-                                serde_json::Value::Null,
-                                true,
-                            )),
-                        );
-                    }
-                }
-                inputs = Some(pass_through_inputs);
+    if let Some(ref inputs_def) = block.inputs_def() {
+        let mut pass_through_inputs = inputs.unwrap_or_default();
+        for (handle, input_def) in inputs_def.iter() {
+            if pass_through_inputs.contains_key(handle) {
+                continue;
+            }
+            if let Some(value) = &input_def.value {
+                pass_through_inputs.insert(
+                    handle.clone(),
+                    Arc::new(utils::output::OutputValue::new(
+                        value.clone().unwrap_or_else(|| serde_json::Value::Null),
+                        true,
+                    )),
+                );
+            } else if input_def.nullable.unwrap_or(false) {
+                pass_through_inputs.insert(
+                    handle.clone(),
+                    Arc::new(utils::output::OutputValue::new(
+                        serde_json::Value::Null,
+                        true,
+                    )),
+                );
             }
         }
-        _ => {}
+        inputs = Some(pass_through_inputs);
     }
 
     let handle = block_job::run_block({
