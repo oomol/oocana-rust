@@ -34,6 +34,7 @@ pub struct RunArgs<'a> {
     pub default_package_path: Option<PathBuf>,
     pub project_data: &'a PathBuf,
     pub pkg_data_root: &'a PathBuf,
+    pub in_layer: bool,
 }
 
 pub async fn run(args: RunArgs<'_>) -> Result<()> {
@@ -49,6 +50,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
         default_package_path,
         project_data,
         pkg_data_root,
+        in_layer,
     } = args;
     let (block_status_tx, block_status_rx) = block_status::create();
     let job_id = job_id.unwrap_or_else(JobId::random);
@@ -134,6 +136,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
                         );
                     }
                 } else {
+                    // TODO: throw error
                     warn!("Input handle {} not found in block", handle);
                 }
             }
@@ -186,7 +189,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
                 data_dir: project_data.to_string_lossy().to_string(),
                 pkg_root: pkg_data_root.to_path_buf(),
                 node_id: None,
-                enable_layer: false, // current give up layer feature
+                enable_layer: in_layer && layer::feature_enabled(),
                 is_inject: false,
             },
             scope: RuntimeScope {
@@ -195,7 +198,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
                 pkg_root: pkg_data_root.to_path_buf(),
                 data_dir: project_data.to_string_lossy().to_string(),
                 node_id: None,
-                enable_layer: false,
+                enable_layer: in_layer && layer::feature_enabled(),
                 is_inject: false,
             },
             slot_blocks: None,

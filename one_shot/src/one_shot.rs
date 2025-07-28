@@ -227,7 +227,7 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
         default_pkg_path
             .as_ref()
             .and_then(|p| p.to_str().map(|s| s.to_owned())),
-        exclude_packages,
+        exclude_packages.clone(),
         ExecutorParameters {
             addr: addr.to_string(),
             session_id: session_id.to_owned(),
@@ -282,6 +282,11 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
         default_package_path: current_package_path.map(|p| p.to_owned()),
         pkg_data_root,
         project_data,
+        in_layer: exclude_packages.map_or(true, |e| {
+            e.iter().any(|ee| {
+                current_package_path.map_or(false, |p| p.to_string_lossy().starts_with(ee))
+            })
+        }), // current give up layer feature
     })
     .await;
 
