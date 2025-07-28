@@ -170,6 +170,8 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
         inputs = Some(pass_through_inputs);
     }
 
+    tracing::info!("in_layer {}", in_layer);
+
     let handle = block_job::run_block({
         block_job::RunBlockArgs {
             block,
