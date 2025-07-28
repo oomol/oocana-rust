@@ -168,11 +168,12 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
     let tmp_root_path = PathBuf::from(temp_root);
 
     let p = PathBuf::from(block_path);
-    let current_package_path = if p
-        .file_name()
-        .is_some_and(|f| f.to_string_lossy().starts_with("flow.oo"))
-    {
-        // /app/workspace/flows/a/flow.oo.yaml -> /app/workspace
+    let current_package_path = if p.file_name().is_some_and(|f| {
+        f.to_string_lossy().starts_with("flow.oo")
+            || f.to_string_lossy().starts_with("block.oo.")
+            || f.to_string_lossy().starts_with("subflow.oo")
+    }) {
+        // /app/workspace/flows/a/xxx.oo.yaml -> /app/workspace
         p.parent().and_then(|p| p.parent()).and_then(|p| p.parent())
     } else {
         // /app/workspace/flows/a -> /app/workspace
@@ -221,13 +222,23 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
         fs::create_dir_all(&flow_tmp_dir)?;
     }
 
+    // Determine if the current package path is part of a specific layer based on exclude_packages
+    let run_in_layer = exclude_packages
+        .as_ref()
+        .map_or(layer::feature_enabled(), |excludes| {
+            !excludes.iter().any(|e| {
+                current_package_path.map_or(layer::feature_enabled(), |p| p.to_string_lossy().eq(e))
+                // currently we use eq not starts_with. consider changing this if needed (need update executor's test cases struct to match this change)
+            })
+        });
+
     let (scheduler_tx, scheduler_rx) = mainframe::scheduler::create(
         _scheduler_impl_tx,
         _scheduler_impl_rx,
         default_pkg_path
             .as_ref()
             .and_then(|p| p.to_str().map(|s| s.to_owned())),
-        exclude_packages,
+        exclude_packages.clone(),
         ExecutorParameters {
             addr: addr.to_string(),
             session_id: session_id.to_owned(),
@@ -282,6 +293,7 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
         default_package_path: current_package_path.map(|p| p.to_owned()),
         pkg_data_root,
         project_data,
+        in_layer: run_in_layer,
     })
     .await;
 

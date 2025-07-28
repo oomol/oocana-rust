@@ -6,6 +6,7 @@ description = "Oocana runner core"
 edition = "2021"
 
 [dependencies]
+layer = { path = "../layer" }
 utils = { path = "../utils" }
 runtime = { path = "../runtime" }
 job = { path = "../job" }
