@@ -153,7 +153,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
                             handle.clone(),
                             Arc::new(utils::output::OutputValue::new(
                                 value.clone().unwrap_or_else(|| serde_json::Value::Null),
-                                false,
+                                true,
                             )),
                         );
                     } else if input_def.nullable.unwrap_or(false) {
