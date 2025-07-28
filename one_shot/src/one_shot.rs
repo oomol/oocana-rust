@@ -169,7 +169,9 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
 
     let p = PathBuf::from(block_path);
     let current_package_path = if p.file_name().is_some_and(|f| {
-        f.to_string_lossy().starts_with("flow.oo") || f.to_string_lossy().starts_with("block.oo.")
+        f.to_string_lossy().starts_with("flow.oo")
+            || f.to_string_lossy().starts_with("block.oo.")
+            || f.to_string_lossy().starts_with("subflow.oo")
     }) {
         // /app/workspace/flows/a/flow.oo.yaml -> /app/workspace
         p.parent().and_then(|p| p.parent()).and_then(|p| p.parent())
