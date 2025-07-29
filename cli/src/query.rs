@@ -41,12 +41,10 @@ pub enum QueryAction {
         #[arg(help = "Use previous result cache if exist.", long)]
         use_cache: bool,
     },
-    #[command(about = "query flow's all start inputs(no connection)")]
-    Input {
-        #[arg(
-            help = "Absolute Path to the Oocana Block Manifest file or a directory with flow.oo.yaml."
-        )]
-        block: String,
+    #[command(about = "query flow block's all start inputs(no connection)")]
+    NodesInputs {
+        #[arg(help = "path to the flow block, it can be a directory or file path.")]
+        flow: String,
         #[arg(
             help = "filter input types, e.g. 'all', 'absence', 'nullable', if not provided, it will return all inputs.",
             long,
@@ -127,8 +125,8 @@ pub fn query(action: &QueryAction) -> Result<()> {
                 println!("package-status: {:?}:{:?}", package, layer);
             }
         }
-        QueryAction::Input {
-            block,
+        QueryAction::NodesInputs {
+            flow,
             search_paths,
             input_types: _, // todo: support input types filter
             output,
@@ -138,10 +136,10 @@ pub fn query(action: &QueryAction) -> Result<()> {
                 env::current_dir().unwrap(),
                 parse_search_paths(search_paths),
             );
-            let block_or_flow = read_flow_or_block(block, block_reader, block_path_finder)?;
+            let block_or_flow = read_flow_or_block(flow, block_reader, block_path_finder)?;
             match block_or_flow {
                 manifest_meta::Block::Flow(flow) => {
-                    let input = flow.query_inputs();
+                    let input = flow.query_nodes_inputs();
                     let json_result = serde_json::to_string(&input)?;
                     if let Some(output) = output {
                         let mut file = std::fs::File::create(output)?;

@@ -140,7 +140,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
     ));
     reporter.started(&inputs);
     let absence_inputs = flow_block
-        .query_inputs()
+        .query_nodes_inputs()
         .into_iter()
         .filter_map(|(node_id, handles)| {
             if flow_block
