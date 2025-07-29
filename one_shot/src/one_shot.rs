@@ -223,15 +223,20 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
         fs::create_dir_all(&flow_tmp_dir)?;
     }
 
-    // Determine if the current package path is part of a specific layer based on exclude_packages
-    let run_in_layer = exclude_packages
+    let current_package_in_excludes = current_package_path
         .as_ref()
-        .map_or(layer::feature_enabled(), |excludes| {
-            !excludes.iter().any(|e| {
-                current_package_path.map_or(layer::feature_enabled(), |p| p.to_string_lossy().eq(e))
-                // currently we use eq not starts_with. consider changing this if needed (need update executor's test cases struct to match this change)
-            })
+        .and_then(|p| p.to_str())
+        .map_or(false, |p| {
+            exclude_packages
+                .as_ref()
+                .map_or(false, |excludes| excludes.iter().any(|e| p.eq(e)))
         });
+
+    let run_in_layer = if layer::feature_enabled() {
+        !current_package_in_excludes
+    } else {
+        false
+    };
 
     let (scheduler_tx, scheduler_rx) = mainframe::scheduler::create(
         _scheduler_impl_tx,
