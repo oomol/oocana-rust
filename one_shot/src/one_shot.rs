@@ -167,26 +167,28 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
 
     let tmp_root_path = PathBuf::from(temp_root);
 
-    let p = PathBuf::from(block_path);
-    let current_package_path = if p.file_name().is_some_and(|f| {
+    let block_path_buf = PathBuf::from(block_path);
+    let current_package_path = if block_path_buf.file_name().is_some_and(|f| {
         f.to_string_lossy().ends_with(".oo.yaml") || f.to_string_lossy().ends_with(".oo.yml")
     }) {
         // TODO: support yaml file directly in package or other file structure.
         // /app/workspace/xxx/a/yyy.oo.yaml -> /app/workspace
-        p.parent().and_then(|p| p.parent()).and_then(|p| p.parent())
+        block_path_buf
+            .parent()
+            .and_then(|p| p.parent())
+            .and_then(|p| p.parent())
     } else {
         // /app/workspace/flows/a -> /app/workspace
-        p.parent().and_then(|p| p.parent())
+        block_path_buf.parent().and_then(|p| p.parent())
     };
     let flow_tmp_name = {
-        let p = PathBuf::from(block_path);
-        let name = if p.file_name().is_some_and(|f| {
+        let name = if block_path_buf.file_name().is_some_and(|f| {
             f.to_string_lossy().ends_with(".oo.yaml") || f.to_string_lossy().ends_with(".oo.yml")
         }) {
             // /app/workspace/xxx/a/yyy.oo.yaml -> a
-            p.parent().and_then(|p| p.file_name())
+            block_path_buf.parent().and_then(|p| p.file_name())
         } else {
-            p.file_name()
+            block_path_buf.file_name()
         };
 
         name.map(|f| {
