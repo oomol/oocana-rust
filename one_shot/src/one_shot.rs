@@ -169,12 +169,10 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
 
     let p = PathBuf::from(block_path);
     let current_package_path = if p.file_name().is_some_and(|f| {
-        f.to_string_lossy().starts_with("flow.oo")
-            || f.to_string_lossy().starts_with("block.oo.")
-            || f.to_string_lossy().starts_with("subflow.oo")
-            || f.to_string_lossy().starts_with("task.oo")
+        f.to_string_lossy().ends_with(".oo.yaml") || f.to_string_lossy().ends_with(".oo.yml")
     }) {
-        // /app/workspace/flows/a/xxx.oo.yaml -> /app/workspace
+        // TODO: support yaml file directly in package or other file structure.
+        // /app/workspace/xxx/a/yyy.oo.yaml -> /app/workspace
         p.parent().and_then(|p| p.parent()).and_then(|p| p.parent())
     } else {
         // /app/workspace/flows/a -> /app/workspace
