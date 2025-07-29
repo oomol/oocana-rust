@@ -39,7 +39,7 @@ impl OutputValue {
         }
     }
 
-    // when this function is called, the value is already deserialized and is_json_serializable is already set true.
+    // when this function is called, OutputValue is already deserialized and is_json_serializable is already set true.
     // so we need check it from value_type
     pub fn deserializable(&self) -> bool {
         match self.value_type() {

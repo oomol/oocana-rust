@@ -97,6 +97,7 @@ impl NodeInputValues {
         }
     }
 
+    /// this api will update to cache value store directly. Some unserializable values will also insert to cache value store, these value will filter out on recover_from (depends on `__OOMOL_TYPE__` key, to see more details, see `OutputValue::deserializable`).
     pub fn update_cache_value(
         &mut self,
         node_id: &NodeId,
