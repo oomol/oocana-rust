@@ -34,13 +34,13 @@ fn query_upstream() {
 }
 
 #[test]
-fn query_input() {
+fn query_nodes_inputs() {
     let mut cmd = Command::cargo_bin("oocana").unwrap();
-    let tmp_file = temp_dir().join("oocana_test_query_input.json");
+    let tmp_file = temp_dir().join("oocana_test_query_nodes_inputs.json");
 
     cmd.args([
         "query",
-        "input",
+        "nodes-inputs",
         "examples/input",
         "--output",
         tmp_file.to_str().unwrap(),
