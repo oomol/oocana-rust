@@ -229,7 +229,7 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
         .map_or(false, |p| {
             exclude_packages
                 .as_ref()
-                .map_or(false, |excludes| excludes.iter().any(|e| p.eq(e)))
+                .map_or(false, |excludes| excludes.iter().any(|e| p.starts_with(e)))
         });
 
     let run_in_layer = if layer::feature_enabled() {
