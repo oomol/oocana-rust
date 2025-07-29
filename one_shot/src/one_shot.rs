@@ -180,23 +180,23 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
     };
     let flow_tmp_name = {
         let p = PathBuf::from(block_path);
-        let flow_name = if p.file_name().is_some_and(|f| {
-            f.to_string_lossy() == "flow.oo.yaml" || f.to_string_lossy() == "flow.oo.yml"
+        let name = if p.file_name().is_some_and(|f| {
+            f.to_string_lossy().ends_with(".oo.yaml") || f.to_string_lossy().ends_with(".oo.yml")
         }) {
+            // /app/workspace/xxx/a/yyy.oo.yaml -> a
             p.parent().and_then(|p| p.file_name())
         } else {
             p.file_name()
         };
 
-        flow_name
-            .map(|f| {
-                format!(
-                    "{}-{}",
-                    f.to_string_lossy(),
-                    calculate_short_hash(block_path, 8)
-                )
-            })
-            .unwrap_or_else(|| "flow".to_string())
+        name.map(|f| {
+            format!(
+                "{}-{}",
+                f.to_string_lossy(),
+                calculate_short_hash(block_path, 8)
+            )
+        })
+        .unwrap_or_else(|| "flow".to_string())
     };
 
     // Each flow gets its own temporary directory, which is uniquely named based on the flow file to avoid conflicts
