@@ -273,7 +273,7 @@ impl NodeInputValues {
         }
 
         for (handle, value) in value_map.iter() {
-            if !value.maybe_deserializable() {
+            if !value.maybe_serializable() {
                 continue;
             }
 
