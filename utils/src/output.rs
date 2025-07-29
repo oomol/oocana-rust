@@ -39,12 +39,11 @@ impl OutputValue {
         }
     }
 
+    // when this function is called, OutputValue is already deserialized and is_json_serializable is already set true.
+    // so we need check it from value_type
     pub fn deserializable(&self) -> bool {
-        if self.is_json_serializable {
-            return true;
-        }
-
         match self.value_type() {
+            CustomTypes::Plain => true,
             CustomTypes::OomolVar => self
                 .serialize_path()
                 .is_some_and(|p| PathBuf::from(p).exists()),
@@ -52,7 +51,7 @@ impl OutputValue {
         }
     }
 
-    pub fn maybe_deserializable(&self) -> bool {
+    pub fn maybe_serializable(&self) -> bool {
         if self.is_json_serializable {
             return true;
         }
