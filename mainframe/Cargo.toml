@@ -1,6 +1,6 @@
 [package]
 name = "mainframe"
-version = "0.29.18"
+version = "0.29.19"
 authors = ["CRIMX <straybugs@gmail.com>"]
 description = "Oocana runner mainframe"
 edition = "2021"

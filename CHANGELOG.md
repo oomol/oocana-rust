@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.29.19 (2025-07-29)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* feat: merge subflow progress to block progress by @leavesster in https://github.com/oomol/oocana-rust/pull/276
+* fix: cache deserializable check failed by @leavesster in https://github.com/oomol/oocana-rust/pull/278
+* refactor: improve cache serialize logic by @leavesster in https://github.com/oomol/oocana-rust/pull/279
+* feat: add query inputs and rename input to nodes-inputs by @leavesster in https://github.com/oomol/oocana-rust/pull/275
+* fix: run block need consider task yaml by @leavesster in https://github.com/oomol/oocana-rust/pull/280
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.29.18...v0.29.19
+
 ## 0.29.18 (2025-07-28)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
