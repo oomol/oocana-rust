@@ -39,7 +39,7 @@ impl OutputValue {
         }
     }
 
-    // here we ignore is_json_serializable's value (we calculate it base on internal value), because some is_json_serializable:false value(oomol/var) can be deserializable from serialized path.
+    // here we ignore is_json_serializable's value (we calculate it based on internal value), because some is_json_serializable:false value (oomol/var) can be deserialized from a serialized path.
     pub fn deserializable(&self) -> bool {
         match self.value_type() {
             CustomTypes::Plain => true,
