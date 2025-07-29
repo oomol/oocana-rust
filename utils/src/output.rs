@@ -39,12 +39,11 @@ impl OutputValue {
         }
     }
 
-    // when this function is called, OutputValue is already deserialized and is_json_serializable is already set true.
-    // so we need check it from value_type
+    // here we ignore is_json_serializable's value (we calculate it based on internal value), because some is_json_serializable:false value (oomol/var) can be deserialized from a serialized path.
     pub fn deserializable(&self) -> bool {
         match self.value_type() {
             CustomTypes::Plain => true,
-            CustomTypes::OomolVar => self
+            CustomTypes::OomolVar | CustomTypes::OomolBin | CustomTypes::Unknown => self
                 .serialize_path()
                 .is_some_and(|p| PathBuf::from(p).exists()),
             _ => false,
@@ -57,9 +56,10 @@ impl OutputValue {
         }
 
         match self.value_type() {
-            CustomTypes::OomolVar => self.serialize_path().is_some(),
-            CustomTypes::OomolSecret => self.serialize_path().is_some(),
-            CustomTypes::OomolBin => self.serialize_path().is_some(),
+            CustomTypes::Plain => true,
+            CustomTypes::OomolVar | CustomTypes::OomolBin | CustomTypes::Unknown => {
+                self.serialize_path().is_some()
+            }
             _ => false,
         }
     }
@@ -115,8 +115,8 @@ impl<'de> Deserialize<'de> for OutputValue {
     {
         let value = JsonValue::deserialize(deserializer)?;
         Ok(OutputValue {
+            is_json_serializable: !(value.is_object() && value.get(OOMOL_TYPE_KEY).is_some()),
             value,
-            is_json_serializable: true,
         })
     }
 }
