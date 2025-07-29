@@ -49,7 +49,11 @@ pub fn read_flow_or_block(
     mut path_finder: BlockPathFinder,
 ) -> Result<Block> {
     // TODO: Remove this check when the block reader is fully implemented
-    if block_name.ends_with("block.oo.yaml") || block_name.ends_with("block.oo.yml") {
+    if block_name.ends_with("block.oo.yaml")
+        || block_name.ends_with("block.oo.yml")
+        || block_name.ends_with("task.oo.yaml")
+        || block_name.ends_with("task.oo.yml")
+    {
         return block_reader
             .read_task_block(std::path::Path::new(block_name))
             .map(Block::Task);
