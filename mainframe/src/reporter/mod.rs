@@ -76,6 +76,7 @@ pub enum ReporterMessage<'a> {
         block_path: &'a Option<String>,
         stacks: &'a Vec<BlockJobStackLevel>,
         progress: f32,
+        rate: f32, // backward compatibility, TODO: remove in future versions
     },
     SubflowBlockFinished {
         session_id: &'a str,

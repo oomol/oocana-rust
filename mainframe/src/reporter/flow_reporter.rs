@@ -153,6 +153,7 @@ impl FlowReporterTx {
                 block_path: &self.path,
                 stacks: self.stacks.vec(),
                 progress,
+                rate: progress,
             }),
             FlowType::Flow => {}
             FlowType::SlotFlow => {}
