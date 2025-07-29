@@ -43,7 +43,7 @@ impl OutputValue {
     pub fn deserializable(&self) -> bool {
         match self.value_type() {
             CustomTypes::Plain => true,
-            CustomTypes::OomolVar => self
+            CustomTypes::OomolVar | CustomTypes::OomolBin | CustomTypes::Unknown => self
                 .serialize_path()
                 .is_some_and(|p| PathBuf::from(p).exists()),
             _ => false,
@@ -56,9 +56,10 @@ impl OutputValue {
         }
 
         match self.value_type() {
-            CustomTypes::OomolVar => self.serialize_path().is_some(),
-            CustomTypes::OomolSecret => self.serialize_path().is_some(),
-            CustomTypes::OomolBin => self.serialize_path().is_some(),
+            CustomTypes::Plain => true,
+            CustomTypes::OomolVar | CustomTypes::OomolBin | CustomTypes::Unknown => {
+                self.serialize_path().is_some()
+            }
             _ => false,
         }
     }
