@@ -172,6 +172,7 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
         f.to_string_lossy().starts_with("flow.oo")
             || f.to_string_lossy().starts_with("block.oo.")
             || f.to_string_lossy().starts_with("subflow.oo")
+            || f.to_string_lossy().starts_with("task.oo")
     }) {
         // /app/workspace/flows/a/xxx.oo.yaml -> /app/workspace
         p.parent().and_then(|p| p.parent()).and_then(|p| p.parent())

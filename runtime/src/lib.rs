@@ -127,17 +127,17 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
 
     if let Some(ref inputs) = inputs {
         if let Some(inputs_def) = block.inputs_def() {
-            for (handle, _) in inputs.iter() {
-                if let Some(input_handle) = inputs_def.get(handle) {
-                    if input_handle.is_variable() {
-                        warn!(
-                            "Input handle {} is a variable, it will not be set in block",
-                            handle
-                        );
-                    }
-                } else {
-                    // TODO: throw error
-                    warn!("Input handle {} not found in block", handle);
+            for (handle, input_def) in inputs_def.iter() {
+                if inputs.get(handle).is_some() && input_def.is_variable() {
+                    warn!(
+                        "Input handle {} is a variable but defined as non-variable in block",
+                        handle
+                    )
+                } else if inputs.get(handle).is_none()
+                    && input_def.nullable.unwrap_or(false)
+                    && input_def.value.is_none()
+                {
+                    warn!("missing input handle {} in block", handle);
                 }
             }
         }
