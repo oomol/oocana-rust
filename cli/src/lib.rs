@@ -140,6 +140,7 @@ pub fn cli_match() -> Result<()> {
                         query::QueryAction::Service { .. } => "service",
                         query::QueryAction::Package { .. } => "package",
                         query::QueryAction::NodesInputs { .. } => "nodes-inputs",
+                        query::QueryAction::Inputs { .. } => "inputs",
                     },
                     output_to_console: false,
                     capture_stdout_stderr_target: false,

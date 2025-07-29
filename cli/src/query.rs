@@ -41,6 +41,22 @@ pub enum QueryAction {
         #[arg(help = "Use previous result cache if exist.", long)]
         use_cache: bool,
     },
+    #[command(about = "query block(task, subflow)'s inputs")]
+    Inputs {
+        #[arg(help = "path to the block, it can be a directory or file path.")]
+        path: String,
+        #[arg(
+            help = "Paths to search for blocks. Fallback to the directory of current flow block.",
+            long,
+            alias = "block-search-paths"
+        )]
+        search_paths: Option<String>,
+        #[arg(
+            help = "output file path (JSON format), if not provided, it will print to stdout",
+            long
+        )]
+        output: Option<String>,
+    },
     #[command(about = "query flow block's all start inputs(no connection)")]
     NodesInputs {
         #[arg(help = "path to the flow block, it can be a directory or file path.")]
@@ -123,6 +139,28 @@ pub fn query(action: &QueryAction) -> Result<()> {
             })?;
             for (package, layer) in package_status {
                 println!("package-status: {:?}:{:?}", package, layer);
+            }
+        }
+        QueryAction::Inputs {
+            path,
+            search_paths,
+            output,
+        } => {
+            let block_reader = BlockResolver::new();
+            let block_path_finder = BlockPathFinder::new(
+                env::current_dir().unwrap(),
+                parse_search_paths(search_paths),
+            );
+            let block_or_flow = read_flow_or_block(path, block_reader, block_path_finder)?;
+            let inputs = block_or_flow.inputs_def();
+            let json_result = serde_json::to_string(&inputs)?;
+            if let Some(output) = output {
+                let mut file = std::fs::File::create(output)?;
+                write!(file, "{}", json_result)?;
+                file.flush()?;
+                println!("inputs written to file: {}", output);
+            } else {
+                println!("{}", json_result);
             }
         }
         QueryAction::NodesInputs {
