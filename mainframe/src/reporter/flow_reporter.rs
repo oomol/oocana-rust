@@ -147,12 +147,13 @@ impl FlowReporterTx {
 
     pub fn progress(&self, progress: f32) {
         match self.flow_type {
-            FlowType::Subflow => self.tx.send(ReporterMessage::SubflowBlockProgress {
+            FlowType::Subflow => self.tx.send(ReporterMessage::BlockProgress {
                 session_id: &self.tx.session_id,
                 job_id: &self.job_id,
                 block_path: &self.path,
                 stacks: self.stacks.vec(),
                 progress,
+                rate: progress,
             }),
             FlowType::Flow => {}
             FlowType::SlotFlow => {}
