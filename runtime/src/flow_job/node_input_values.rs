@@ -97,13 +97,15 @@ impl NodeInputValues {
         }
     }
 
-    /// this api will update to cache value store directly. Some unserializable values will also insert to cache value store, these value will filter out on recover_from (depends on `__OOMOL_TYPE__` key, to see more details, see `OutputValue::deserializable`).
-    pub fn update_cache_value(
+    pub fn update_serializable_cache_value(
         &mut self,
         node_id: &NodeId,
         handle_name: &HandleName,
         value: Arc<OutputValue>,
     ) {
+        if !value.maybe_serializable() {
+            return;
+        }
         if let Some(last_values) = &mut self.cache_value_store {
             let vec = last_values
                 .entry(node_id.to_owned())
@@ -274,11 +276,7 @@ impl NodeInputValues {
         }
 
         for (handle, value) in value_map.iter() {
-            if !value.maybe_serializable() {
-                continue;
-            }
-
-            self.update_cache_value(node_id, handle, Arc::clone(value));
+            self.update_serializable_cache_value(node_id, handle, Arc::clone(value));
         }
 
         if value_map.is_empty() {

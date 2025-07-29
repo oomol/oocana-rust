@@ -1458,7 +1458,7 @@ fn produce_new_value(
                 {
                     // if target node is not in running nodes, we just update cache value so that we can use these value in next run.
                     // Normally, cache values are only cached before the block is executed. This is an exception.
-                    ctx.node_input_values.update_cache_value(
+                    ctx.node_input_values.update_serializable_cache_value(
                         node_id,
                         input_handle,
                         Arc::clone(value),
