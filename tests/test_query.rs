@@ -34,13 +34,43 @@ fn query_upstream() {
 }
 
 #[test]
-fn query_input() {
+fn query_inputs() {
     let mut cmd = Command::cargo_bin("oocana").unwrap();
-    let tmp_file = temp_dir().join("oocana_test_query_input.json");
+    let tmp_file = temp_dir().join("oocana_test_query_inputs.json");
 
     cmd.args([
         "query",
-        "input",
+        "inputs",
+        "examples/base/pkg_a/blocks/blk-b",
+        "--output",
+        tmp_file.to_str().unwrap(),
+    ])
+    .stdin(Stdio::null())
+    .stderr(Stdio::inherit())
+    .assert()
+    .success();
+
+    let result_str = std::fs::read_to_string(&tmp_file).expect("Failed to read output file");
+    println!("result: {}", result_str);
+
+    let map = serde_json::from_str::<serde_json::Value>(&result_str)
+        .unwrap_or_else(|_| panic!("Failed to parse JSON output {}", result_str));
+
+    assert!(map.is_object());
+    assert!(
+        map.get("my_count").is_some(),
+        "Expected 'inputs' key in output"
+    );
+}
+
+#[test]
+fn query_nodes_inputs() {
+    let mut cmd = Command::cargo_bin("oocana").unwrap();
+    let tmp_file = temp_dir().join("oocana_test_query_nodes_inputs.json");
+
+    cmd.args([
+        "query",
+        "nodes-inputs",
         "examples/input",
         "--output",
         tmp_file.to_str().unwrap(),

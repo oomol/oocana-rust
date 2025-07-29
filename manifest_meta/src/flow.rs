@@ -235,7 +235,7 @@ impl SubflowBlock {
         }
     }
 
-    pub fn query_inputs(&self) -> HashMap<NodeId, Vec<InputHandle>> {
+    pub fn query_nodes_inputs(&self) -> HashMap<NodeId, Vec<InputHandle>> {
         let mut inputs: HashMap<NodeId, Vec<InputHandle>> = HashMap::new();
         for (node_id, node) in &self.nodes {
             for input in node.inputs().values() {
