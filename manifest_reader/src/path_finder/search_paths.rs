@@ -1,6 +1,6 @@
 use tracing::warn;
 
-use super::manifest_file::{find_oo_yaml, find_oo_yaml_in_dir, find_oo_yaml_without_suffix};
+use super::manifest_file::{find_oo_yaml, find_oo_yaml_in_dir, find_oo_yaml_without_oo_suffix};
 use std::collections::HashMap;
 use std::fs::canonicalize;
 use std::path::{Component, Path, PathBuf};
@@ -54,7 +54,10 @@ pub fn search_block_manifest(params: BlockManifestParams) -> Option<PathBuf> {
                     .iter()
                     .collect()
             } else {
-                warn!("can't find package version for {}. pkg directory will use {} without version", pkg_name, pkg_name);
+                warn!(
+                    "can't find package version for {}. pkg directory will use {} without version",
+                    pkg_name, pkg_name
+                );
                 [&pkg_name, block_dir, &block_name].iter().collect()
             };
             find_block_manifest_file(BlockSearchParams {
@@ -73,7 +76,7 @@ pub fn search_block_manifest(params: BlockManifestParams) -> Option<PathBuf> {
     }
 }
 
-// parse <pkg>::<block> or <pkg>::<service>::<function> and return an Option<(String, String)>, 
+// parse <pkg>::<block> or <pkg>::<service>::<function> and return an Option<(String, String)>,
 // where the first element is the package name (pkg) and the second is the block or service name.
 fn separate_to_pkg_and_block(block_value: &str) -> Option<(String, String)> {
     let parts: Vec<&str> = block_value.split("::").filter(|s| !s.is_empty()).collect();
@@ -192,7 +195,7 @@ fn find_manifest_yaml_file(file_or_dir_path: &Path, base_name: &str) -> Option<P
         return result;
     }
 
-    find_oo_yaml_without_suffix(file_or_dir_path)
+    find_oo_yaml_without_oo_suffix(file_or_dir_path)
 }
 
 fn is_normal_path_component(component: Component) -> bool {
