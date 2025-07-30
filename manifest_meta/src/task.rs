@@ -7,7 +7,7 @@ use crate::TaskBlockExecutor;
 #[derive(Debug, Clone)]
 pub struct TaskBlock {
     pub description: Option<String>,
-    pub executor: Option<TaskBlockExecutor>,
+    pub executor: TaskBlockExecutor,
     pub inputs_def: Option<InputHandles>,
     pub outputs_def: Option<OutputHandles>,
     /// block.oo.[yml|yaml] 的路径；如果是 inline block，这个字段为空。

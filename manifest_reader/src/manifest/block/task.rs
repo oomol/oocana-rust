@@ -10,7 +10,7 @@ use super::{
 #[derive(Deserialize, Serialize, Debug, Clone)]
 struct TmpTaskBlock {
     pub description: Option<String>,
-    pub executor: Option<TaskBlockExecutor>,
+    pub executor: TaskBlockExecutor,
     pub inputs_def: Option<Vec<MiddleInputHandle>>,
     pub outputs_def: Option<Vec<MiddleOutputHandle>>,
     #[serde(default)]
@@ -50,7 +50,7 @@ impl From<TmpTaskBlock> for TaskBlock {
 #[serde(from = "TmpTaskBlock")]
 pub struct TaskBlock {
     pub description: Option<String>,
-    pub executor: Option<TaskBlockExecutor>,
+    pub executor: TaskBlockExecutor,
     pub inputs_def: Option<InputHandles>,
     pub outputs_def: Option<OutputHandles>,
     pub additional_inputs: bool,
