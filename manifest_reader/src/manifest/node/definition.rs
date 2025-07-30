@@ -60,10 +60,7 @@ impl Node {
         match self {
             Node::Task(task) => match &task.task {
                 TaskNodeBlock::File(_) => false,
-                TaskNodeBlock::Inline(task) => task
-                    .executor
-                    .as_ref()
-                    .is_some_and(|executor| executor.should_spawn()),
+                TaskNodeBlock::Inline(task) => task.executor.should_spawn(),
             },
             Node::Subflow(_) => false,
             Node::Slot(_) => false,

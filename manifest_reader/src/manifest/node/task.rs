@@ -27,13 +27,7 @@ impl TaskNodeBlock {
     pub fn entry_file(&self) -> Option<&str> {
         match self {
             TaskNodeBlock::File(_) => None,
-            TaskNodeBlock::Inline(task) => {
-                if let Some(executor) = &task.executor {
-                    executor.entry()
-                } else {
-                    None
-                }
-            }
+            TaskNodeBlock::Inline(task) => task.executor.entry(),
         }
     }
 
