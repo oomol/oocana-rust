@@ -1,0 +1,7 @@
+executor:
+  name: rust
+inputs_def:
+  - handle: in1
+outputs_def:
+  - handle: out1
+  - handle: out2

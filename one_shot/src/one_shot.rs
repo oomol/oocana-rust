@@ -167,38 +167,38 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
 
     let tmp_root_path = PathBuf::from(temp_root);
 
-    let p = PathBuf::from(block_path);
-    let current_package_path = if p.file_name().is_some_and(|f| {
-        f.to_string_lossy().starts_with("flow.oo")
-            || f.to_string_lossy().starts_with("block.oo.")
-            || f.to_string_lossy().starts_with("subflow.oo")
-            || f.to_string_lossy().starts_with("task.oo")
+    let block_path_buf = PathBuf::from(block_path);
+    let current_package_path = if block_path_buf.file_name().is_some_and(|f| {
+        f.to_string_lossy().ends_with(".oo.yaml") || f.to_string_lossy().ends_with(".oo.yml")
     }) {
-        // /app/workspace/flows/a/xxx.oo.yaml -> /app/workspace
-        p.parent().and_then(|p| p.parent()).and_then(|p| p.parent())
+        // TODO: support yaml file directly in package or other file structure.
+        // /app/workspace/xxx/a/yyy.oo.yaml -> /app/workspace
+        block_path_buf
+            .parent()
+            .and_then(|p| p.parent())
+            .and_then(|p| p.parent())
     } else {
         // /app/workspace/flows/a -> /app/workspace
-        p.parent().and_then(|p| p.parent())
+        block_path_buf.parent().and_then(|p| p.parent())
     };
     let flow_tmp_name = {
-        let p = PathBuf::from(block_path);
-        let flow_name = if p.file_name().is_some_and(|f| {
-            f.to_string_lossy() == "flow.oo.yaml" || f.to_string_lossy() == "flow.oo.yml"
+        let name = if block_path_buf.file_name().is_some_and(|f| {
+            f.to_string_lossy().ends_with(".oo.yaml") || f.to_string_lossy().ends_with(".oo.yml")
         }) {
-            p.parent().and_then(|p| p.file_name())
+            // /app/workspace/xxx/a/yyy.oo.yaml -> a
+            block_path_buf.parent().and_then(|p| p.file_name())
         } else {
-            p.file_name()
+            block_path_buf.file_name()
         };
 
-        flow_name
-            .map(|f| {
-                format!(
-                    "{}-{}",
-                    f.to_string_lossy(),
-                    calculate_short_hash(block_path, 8)
-                )
-            })
-            .unwrap_or_else(|| "flow".to_string())
+        name.map(|f| {
+            format!(
+                "{}-{}",
+                f.to_string_lossy(),
+                calculate_short_hash(block_path, 8)
+            )
+        })
+        .unwrap_or_else(|| "flow".to_string())
     };
 
     // Each flow gets its own temporary directory, which is uniquely named based on the flow file to avoid conflicts
@@ -223,15 +223,20 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
         fs::create_dir_all(&flow_tmp_dir)?;
     }
 
-    // Determine if the current package path is part of a specific layer based on exclude_packages
-    let run_in_layer = exclude_packages
+    let current_package_in_excludes = current_package_path
         .as_ref()
-        .map_or(layer::feature_enabled(), |excludes| {
-            !excludes.iter().any(|e| {
-                current_package_path.map_or(layer::feature_enabled(), |p| p.to_string_lossy().eq(e))
-                // currently we use eq not starts_with. consider changing this if needed (need update executor's test cases struct to match this change)
-            })
+        .and_then(|p| p.to_str())
+        .map_or(false, |p| {
+            exclude_packages
+                .as_ref()
+                .map_or(false, |excludes| excludes.iter().any(|e| p.starts_with(e)))
         });
+
+    let run_in_layer = if layer::feature_enabled() {
+        !current_package_in_excludes
+    } else {
+        false
+    };
 
     let (scheduler_tx, scheduler_rx) = mainframe::scheduler::create(
         _scheduler_impl_tx,
