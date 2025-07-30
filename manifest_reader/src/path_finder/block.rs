@@ -26,7 +26,7 @@ pub fn find_task_block(params: TaskBlockManifestParams) -> Result<PathBuf> {
     } = params;
     if let Some(path) = search_block_manifest(BlockManifestParams {
         block_value: calculate_block_value_type(value),
-        base_name: "block",
+        file_prefix: "block",
         block_dir: "blocks",
         working_dir: base_dir,
         search_paths,
@@ -37,7 +37,7 @@ pub fn find_task_block(params: TaskBlockManifestParams) -> Result<PathBuf> {
 
     if let Some(path) = search_block_manifest(BlockManifestParams {
         block_value: calculate_block_value_type(value),
-        base_name: "task",
+        file_prefix: "task",
         block_dir: "tasks",
         working_dir: base_dir,
         search_paths,
@@ -74,7 +74,7 @@ pub fn find_flow_block(params: SubflowBlockManifestParams) -> Result<PathBuf> {
     } = params;
     match search_block_manifest(BlockManifestParams {
         block_value: calculate_block_value_type(value),
-        base_name: "subflow",
+        file_prefix: "subflow",
         block_dir: "subflows",
         working_dir: base_dir,
         search_paths,
@@ -120,7 +120,7 @@ pub fn find_slot_flow(params: SlotBlockManifestParams) -> Result<PathBuf> {
 
     match search_block_manifest(BlockManifestParams {
         block_value: calculate_block_value_type(value),
-        base_name: "slotflow",
+        file_prefix: "slotflow",
         block_dir: "slotflows",
         working_dir: base_dir,
         search_paths,
