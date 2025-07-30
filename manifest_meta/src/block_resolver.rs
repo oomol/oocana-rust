@@ -101,6 +101,7 @@ impl BlockResolver {
     ) -> Result<Block> {
         let task_path = finder.find_task_block_path(block_name);
 
+        // task's executor field is required, so we can load it first, if fail then use load others
         if let Ok(task_path) = task_path {
             match self.read_task_block(&task_path) {
                 Ok(task) => {
@@ -133,6 +134,7 @@ impl BlockResolver {
             }
         }
 
+        // currently it not consider, so we can ignore it for now. when we support, we need check the block_name is flow or service, because flow can be empty, all yaml file can loaded as flow block
         let service_path = finder.find_service_block(block_name);
         if let Ok(service_path) = service_path {
             match self.read_service_block(&service_path, block_name) {
