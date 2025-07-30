@@ -71,7 +71,18 @@ pub fn search_block_manifest(params: BlockManifestParams) -> Option<PathBuf> {
         BlockValueType::AbsPath { path } => find_manifest_yaml_file(path.as_ref(), file_prefix),
         BlockValueType::RelPath { path } => {
             let block_manifest_path = working_dir.join(path);
-            find_manifest_yaml_file(&block_manifest_path, file_prefix)
+            // 1. The path is a directory ike `/path/to/block_name`.
+            //    In this case, we will search it `<manifest>.oo.yaml` or `<manifest>.oo.yml` in this directory.
+            // 2. The path is a file, like `/path/to/block_name/xxx.oo.yaml` or `/path/to/block_name/xxx.oo.yml`.
+            //    In this case, the the xxx can be any name,  but we still require the file is suffixed with .oo.yaml or .oo.yml.
+            // 3. The path is a path without oo.<yaml|yml> suffix, like /path/to/block_name/manifest.
+            //    In this case, we will search it with suffix .oo.yaml or .oo.yml.
+            let relative_file_prefix = block_manifest_path
+                .file_stem()
+                .and_then(|f| f.to_str())
+                .and_then(|s| s.strip_suffix(".oo"))
+                .unwrap_or(file_prefix);
+            find_manifest_yaml_file(&block_manifest_path, &relative_file_prefix)
         }
     }
 }
