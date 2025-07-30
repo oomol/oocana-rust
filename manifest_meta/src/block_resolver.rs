@@ -105,7 +105,10 @@ impl BlockResolver {
             match self.read_flow_block(&flow_path, finder) {
                 Ok(flow) => return Ok(Block::Flow(flow)),
                 Err(err) => {
-                    if flow_path.ends_with("block.oo.yaml") || flow_path.ends_with("block.oo.yml") {
+                    if flow_path
+                        .file_stem()
+                        .is_some_and(|s| s == "flow.oo" || s == "subflow.oo")
+                    {
                         return Err(err);
                     }
                 }
@@ -120,7 +123,10 @@ impl BlockResolver {
                     return Ok(Block::Task(task));
                 }
                 Err(err) => {
-                    if task_path.ends_with("block.oo.yaml") || task_path.ends_with("block.oo.yml") {
+                    if task_path
+                        .file_stem()
+                        .is_some_and(|s| s == "task.oo" || s == "block.oo")
+                    {
                         return Err(err);
                     }
                 }
@@ -134,9 +140,7 @@ impl BlockResolver {
                     return Ok(Block::Service(service));
                 }
                 Err(err) => {
-                    if service_path.ends_with("service.oo.yaml")
-                        || service_path.ends_with("service.oo.yml")
-                    {
+                    if service_path.file_stem().is_some_and(|s| s == "service.oo") {
                         return Err(err);
                     }
                 }
