@@ -26,11 +26,23 @@ pub fn find_oo_yaml_without_oo_suffix<P: AsRef<Path>>(
     None
 }
 
-pub fn find_oo_yaml<P: AsRef<Path>>(file_or_dir_path: P, basename: &str) -> Option<PathBuf> {
-    if file_or_dir_path.as_ref().is_file() {
-        Some(file_or_dir_path.as_ref().to_path_buf())
+/// if path is a dir, find `<basename>.oo.yaml` or `<basename>.oo.yml` file in the dir.
+/// if path is a file, check if it is `<basename>.oo.yaml` or `<basename>.oo.yml`.
+/// if path is neither, return None.
+pub fn find_oo_yaml<P: AsRef<Path>>(path: P, basename: &str) -> Option<PathBuf> {
+    let path = path.as_ref();
+    if path.is_dir() {
+        return find_oo_yaml_in_dir(path, basename);
+    } else if path.is_file() {
+        let filename = path.file_name();
+        if let Some(name) = filename.and_then(|n| n.to_str()) {
+            if name == format!("{basename}.oo.yaml") || name == format!("{basename}.oo.yml") {
+                return Some(path.to_path_buf());
+            }
+        }
+        return None;
     } else {
-        find_oo_yaml_in_dir(file_or_dir_path.as_ref(), basename)
+        return None;
     }
 }
 
