@@ -99,22 +99,6 @@ impl BlockResolver {
         block_name: &str,
         finder: &mut BlockPathFinder,
     ) -> Result<Block> {
-        let flow_path = finder.find_flow_block_path(block_name);
-
-        if let Ok(flow_path) = flow_path {
-            match self.read_flow_block(&flow_path, finder) {
-                Ok(flow) => return Ok(Block::Flow(flow)),
-                Err(err) => {
-                    if flow_path
-                        .file_stem()
-                        .is_some_and(|s| s == "flow.oo" || s == "subflow.oo")
-                    {
-                        return Err(err);
-                    }
-                }
-            }
-        }
-
         let task_path = finder.find_task_block_path(block_name);
 
         if let Ok(task_path) = task_path {
@@ -126,6 +110,22 @@ impl BlockResolver {
                     if task_path
                         .file_stem()
                         .is_some_and(|s| s == "task.oo" || s == "block.oo")
+                    {
+                        return Err(err);
+                    }
+                }
+            }
+        }
+
+        let flow_path = finder.find_flow_block_path(block_name);
+
+        if let Ok(flow_path) = flow_path {
+            match self.read_flow_block(&flow_path, finder) {
+                Ok(flow) => return Ok(Block::Flow(flow)),
+                Err(err) => {
+                    if flow_path
+                        .file_stem()
+                        .is_some_and(|s| s == "flow.oo" || s == "subflow.oo")
                     {
                         return Err(err);
                     }
