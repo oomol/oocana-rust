@@ -3,18 +3,10 @@ use std::path::{Path, PathBuf};
 /// find `<basename>.oo.yaml` or `<basename>.oo.yml` file in <dir_path>, return the existing path or None.
 pub fn find_oo_yaml_in_dir<P: AsRef<Path>>(dir_path: P, basename: &str) -> Option<PathBuf> {
     if dir_path.as_ref().is_dir() {
-        let mut guess_file = dir_path.as_ref().join(format!("{}.oo.yaml", basename));
-        if guess_file.is_file() {
-            return Some(guess_file);
-        }
-
-        guess_file.set_extension("yml");
-        if guess_file.is_file() {
-            return Some(guess_file);
-        }
+        find_oo_yaml_without_oo_suffix(dir_path.as_ref().join(basename))
+    } else {
+        None
     }
-
-    None
 }
 
 //  find `<basename_path>.oo.yaml` or `<basename_path>.oo.yml` file, return the existing path or None.
