@@ -66,3 +66,85 @@ pub fn read_flow_or_block(
 
     block_reader.resolve_block(block_name, &mut path_finder)
 }
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+
+    use super::*;
+    use manifest_reader::path_finder::BlockPathFinder;
+
+    #[test]
+    fn test_read_subflow() {
+        let base_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests");
+        let finder = BlockPathFinder::new(&base_dir, None);
+        let block_reader = BlockResolver::new();
+
+        let block = read_flow_or_block(
+            base_dir
+                .join("flow_test")
+                .join("basic")
+                .join("subflow.oo.yaml")
+                .to_str()
+                .unwrap(),
+            block_reader,
+            finder,
+        )
+        .unwrap();
+
+        assert!(
+            matches!(block, Block::Flow(_)),
+            "Expected a Flow block, found {:?}",
+            block.variant_name()
+        );
+    }
+
+    #[test]
+    fn test_read_block() {
+        let base_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests");
+        let finder = BlockPathFinder::new(&base_dir, None);
+        let block_reader = BlockResolver::new();
+
+        let block = read_flow_or_block(
+            base_dir
+                .join("flow_test")
+                .join("basic")
+                .join("block.oo.yaml")
+                .to_str()
+                .unwrap(),
+            block_reader,
+            finder,
+        )
+        .unwrap();
+
+        assert!(
+            matches!(block, Block::Task(_)),
+            "Expected a Task block, found {:?}",
+            block.variant_name()
+        );
+    }
+
+    #[test]
+    fn test_read_task() {
+        let base_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests");
+        let finder = BlockPathFinder::new(&base_dir, None);
+        let block_reader = BlockResolver::new();
+
+        let block = read_flow_or_block(
+            base_dir
+                .join("flow_test")
+                .join("task.oo.yaml")
+                .to_str()
+                .unwrap(),
+            block_reader,
+            finder,
+        )
+        .unwrap();
+
+        assert!(
+            matches!(block, Block::Task(_)),
+            "Expected a Task block, found {:?}",
+            block.variant_name()
+        );
+    }
+}

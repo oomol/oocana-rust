@@ -30,4 +30,14 @@ impl Block {
             Block::Service(service) => service.inputs_def.as_ref(),
         }
     }
+
+    #[cfg(test)]
+    pub fn variant_name(&self) -> &'static str {
+        match self {
+            Block::Task(_) => "Task Block",
+            Block::Flow(_) => "Flow/Subflow Block",
+            Block::Slot(_) => "Slot Block",
+            Block::Service(_) => "Service Block",
+        }
+    }
 }
