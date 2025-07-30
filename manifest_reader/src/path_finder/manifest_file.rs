@@ -9,7 +9,7 @@ pub fn find_oo_yaml_in_dir<P: AsRef<Path>>(dir_path: P, basename: &str) -> Optio
     }
 }
 
-//  find `</a/b/c/basename_path>.oo.yaml` or `</a/b/c/basename_path>.oo.yml` file, return the existing path or None.
+/// find `</a/b/c/basename_path>.oo.yaml` or `</a/b/c/basename_path>.oo.yml` file, return the existing path or None.
 pub fn find_oo_yaml_without_oo_suffix<P: AsRef<Path>>(
     path_without_oo_suffix: P,
 ) -> Option<PathBuf> {
