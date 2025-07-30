@@ -1,9 +1,9 @@
 use std::path::{Path, PathBuf};
 
 /// find `<basename>.oo.yaml` or `<basename>.oo.yml` file in <dir_path>, return the existing path or None.
-pub fn find_oo_yaml_in_dir(dir_path: &Path, basename: &str) -> Option<PathBuf> {
-    if dir_path.is_dir() {
-        let mut guess_file = dir_path.join(format!("{}.oo.yaml", basename));
+pub fn find_oo_yaml_in_dir<P: AsRef<Path>>(dir_path: P, basename: &str) -> Option<PathBuf> {
+    if dir_path.as_ref().is_dir() {
+        let mut guess_file = dir_path.as_ref().join(format!("{}.oo.yaml", basename));
         if guess_file.is_file() {
             return Some(guess_file);
         }
@@ -17,9 +17,11 @@ pub fn find_oo_yaml_in_dir(dir_path: &Path, basename: &str) -> Option<PathBuf> {
     None
 }
 
-/// Find `<basename_path>.oo.yaml` or `<basename_path>.oo.yml` file, return the existing path or None.
-pub fn find_oo_yaml_without_suffix(basename_path: &Path) -> Option<PathBuf> {
-    let mut guess_file_path = basename_path.with_extension("oo.yaml");
+//  find `<basename_path>.oo.yaml` or `<basename_path>.oo.yml` file, return the existing path or None.
+pub fn find_oo_yaml_without_oo_suffix<P: AsRef<Path>>(
+    path_without_oo_suffix: P,
+) -> Option<PathBuf> {
+    let mut guess_file_path = path_without_oo_suffix.as_ref().with_extension("oo.yaml");
 
     if guess_file_path.is_file() {
         return Some(guess_file_path);
