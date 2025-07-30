@@ -26,7 +26,7 @@ pub fn find_service(params: ServiceManifestParams) -> Result<PathBuf> {
     } = params;
     if let Some(path) = search_block_manifest(BlockManifestParams {
         block_value: calculate_block_value_type(value),
-        base_name: "service",
+        file_prefix: "service",
         block_dir: "services",
         working_dir: base_dir,
         search_paths: block_search_paths,
@@ -37,7 +37,7 @@ pub fn find_service(params: ServiceManifestParams) -> Result<PathBuf> {
 
     if let Some(path) = search_block_manifest(BlockManifestParams {
         block_value: calculate_block_value_type(value),
-        base_name: "service",
+        file_prefix: "service",
         block_dir: "blocks",
         working_dir: base_dir,
         search_paths: block_search_paths,
