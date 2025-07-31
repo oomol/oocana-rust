@@ -1161,19 +1161,23 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                 } => {
                     run_pending_node(job_id.to_owned(), &flow_shared, &mut run_flow_ctx);
 
+                    let success_done = error.is_none();
+
                     if let Some(job) = run_flow_ctx.jobs.get(&job_id) {
                         if let Some(node) = flow_shared.flow_block.nodes.get(&job.node_id) {
                             let node_weight_progress =
                                 estimation_node_progress_store.get_mut(&job.node_id);
 
                             if let Some(node_weight_progress) = node_weight_progress {
-                                if let Some(flow_progress) =
-                                    update_node_progress(100.0, node_weight_progress)
-                                {
-                                    run_flow_ctx
-                                        .parent_block_status
-                                        .progress(flow_shared.job_id.to_owned(), flow_progress);
-                                    reporter.progress(flow_progress);
+                                if success_done {
+                                    if let Some(flow_progress) =
+                                        update_node_progress(100.0, node_weight_progress)
+                                    {
+                                        run_flow_ctx
+                                            .parent_block_status
+                                            .progress(flow_shared.job_id.to_owned(), flow_progress);
+                                        reporter.progress(flow_progress);
+                                    }
                                 }
                             }
 
