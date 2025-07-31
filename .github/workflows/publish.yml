@@ -110,6 +110,7 @@ jobs:
                 mkdir -p "../target/$target_name/release"
 
                 # Move the file to its destination
+                chmod +x "$file"
                 mv "$file" "../target/$target_name/release/oocana"
 
                 echo "Moved $file to ../target/$target_name/release/oocana"
