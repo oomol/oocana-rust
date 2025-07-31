@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.30.0 (2025-07-31)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* refactor: some improve by @leavesster in https://github.com/oomol/oocana-rust/pull/283
+* refactor: path finder by @leavesster in https://github.com/oomol/oocana-rust/pull/285
+* refactor!: add more strict block load logic by @leavesster in https://github.com/oomol/oocana-rust/pull/286
+* feat: make task executor required for better logic by @leavesster in https://github.com/oomol/oocana-rust/pull/287
+* feat: add executable to target by @leavesster in https://github.com/oomol/oocana-rust/pull/288
+* refactor: detect block type base on file name if filename is specific name by @leavesster in https://github.com/oomol/oocana-rust/pull/289
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.29.19...v0.30.0
+
 ## 0.29.19 (2025-07-29)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
