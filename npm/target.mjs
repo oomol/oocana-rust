@@ -3,7 +3,7 @@ export const packageTemplate = {
         "node": ">=22"
     },
     "files": [
-        "bin"
+        "bin", "index.js"
     ],
     "publishConfig": {
         "registry": "https://npm.pkg.github.com"
