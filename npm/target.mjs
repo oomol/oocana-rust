@@ -1,8 +1,10 @@
 export const packageTemplate = {
-    "preferUnplugged": true,
     "engines": {
-        "node": ">=12"
+        "node": ">=22"
     },
+    "files": [
+        "bin"
+    ],
     "publishConfig": {
         "registry": "https://npm.pkg.github.com"
     }

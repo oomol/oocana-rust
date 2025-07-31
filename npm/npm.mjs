@@ -54,9 +54,6 @@ for (const target of targets) {
         name: `@${owner}/oocana-cli-${target}`,
         description: `The ${target} cli binary for @${owner}/oocana`,
         version,
-        bin: {
-            "oocana": `bin/oocana`,
-        },
         os: targetConfig[target].os,
         cpu: targetConfig[target].cpu,
         ...packageTemplate,
