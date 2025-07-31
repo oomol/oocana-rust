@@ -170,7 +170,7 @@ impl BlockResolver {
         }
 
         if matches!(block_type, BlockType::Service | BlockType::Unknown) {
-            // currently it not consider, so we can ignore it for now. when we support, we need check the block_name is flow or service, because flow can be empty, all yaml file can loaded as flow block
+            // currently it is not considered, so we can ignore it for now. When we support it, we need to check whether the block_name is flow or service, because a flow can be empty, and all YAML files can be loaded as flow blocks.
             let service_path = finder.find_service_block(block_name);
             if let Ok(service_path) = service_path {
                 match self.read_service_block(&service_path, block_name) {
