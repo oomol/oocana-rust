@@ -7,7 +7,7 @@ use crate::TaskBlockExecutor;
 #[derive(Debug, Clone)]
 pub struct TaskBlock {
     pub description: Option<String>,
-    pub executor: Option<TaskBlockExecutor>,
+    pub executor: TaskBlockExecutor,
     pub inputs_def: Option<InputHandles>,
     pub outputs_def: Option<OutputHandles>,
     /// block.oo.[yml|yaml] 的路径；如果是 inline block，这个字段为空。
@@ -21,15 +21,12 @@ pub struct TaskBlock {
 
 impl TaskBlock {
     pub fn executor_entry(&self) -> Option<&str> {
-        self.executor.as_ref().and_then(|executor| executor.entry())
+        self.executor.entry()
     }
 
     // script 小脚本，首先是 TaskNodeBlock File 类型。但是这里没办法自己判断。
     fn is_script_block(&self) -> bool {
-        self.executor
-            .as_ref()
-            .map(|executor| executor.is_script())
-            .unwrap_or(false)
+        self.executor.is_script()
     }
 
     pub fn block_dir(&self) -> Option<PathBuf> {

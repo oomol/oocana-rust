@@ -99,34 +99,42 @@ impl BlockResolver {
         block_name: &str,
         finder: &mut BlockPathFinder,
     ) -> Result<Block> {
-        let flow_path = finder.find_flow_block_path(block_name);
-
-        if let Ok(flow_path) = flow_path {
-            match self.read_flow_block(&flow_path, finder) {
-                Ok(flow) => return Ok(Block::Flow(flow)),
-                Err(err) => {
-                    if flow_path.ends_with("block.oo.yaml") || flow_path.ends_with("block.oo.yml") {
-                        return Err(err);
-                    }
-                }
-            }
-        }
-
         let task_path = finder.find_task_block_path(block_name);
 
+        // task's executor field is required, so we can load it first, if fail then use load others
         if let Ok(task_path) = task_path {
             match self.read_task_block(&task_path) {
                 Ok(task) => {
                     return Ok(Block::Task(task));
                 }
                 Err(err) => {
-                    if task_path.ends_with("block.oo.yaml") || task_path.ends_with("block.oo.yml") {
+                    if task_path
+                        .file_stem()
+                        .is_some_and(|s| s == "task.oo" || s == "block.oo")
+                    {
                         return Err(err);
                     }
                 }
             }
         }
 
+        let flow_path = finder.find_flow_block_path(block_name);
+
+        if let Ok(flow_path) = flow_path {
+            match self.read_flow_block(&flow_path, finder) {
+                Ok(flow) => return Ok(Block::Flow(flow)),
+                Err(err) => {
+                    if flow_path
+                        .file_stem()
+                        .is_some_and(|s| s == "flow.oo" || s == "subflow.oo")
+                    {
+                        return Err(err);
+                    }
+                }
+            }
+        }
+
+        // currently it not consider, so we can ignore it for now. when we support, we need check the block_name is flow or service, because flow can be empty, all yaml file can loaded as flow block
         let service_path = finder.find_service_block(block_name);
         if let Ok(service_path) = service_path {
             match self.read_service_block(&service_path, block_name) {
@@ -134,9 +142,7 @@ impl BlockResolver {
                     return Ok(Block::Service(service));
                 }
                 Err(err) => {
-                    if service_path.ends_with("service.oo.yaml")
-                        || service_path.ends_with("service.oo.yml")
-                    {
+                    if service_path.file_stem().is_some_and(|s| s == "service.oo") {
                         return Err(err);
                     }
                 }

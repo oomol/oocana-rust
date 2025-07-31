@@ -97,7 +97,7 @@ pub fn run_task_block(args: RunTaskBlockArgs) -> Option<BlockJobHandle> {
         inputs_def: task_block.inputs_def.clone(),
         block_status: block_status.clone(),
         reporter: Arc::clone(&reporter),
-        executor: task_block.executor.clone(),
+        executor: Some(task_block.executor.clone()),
         service: None,
         block_dir: block_dir(&task_block, parent_flow.as_ref(), Some(&scope)),
         scope: scope.clone(),
@@ -106,164 +106,156 @@ pub fn run_task_block(args: RunTaskBlockArgs) -> Option<BlockJobHandle> {
         inputs_def_patch,
     });
 
-    if let Some(executor) = &task_block.executor {
-        match executor {
-            TaskBlockExecutor::Rust(e) => {
-                let execute_result = spawn(
-                    &task_block,
-                    &e.options,
-                    parent_flow.as_ref(),
-                    &shared.address,
-                    &shared.session_id,
-                    &job_id,
-                );
+    match task_block.executor.clone() {
+        TaskBlockExecutor::Rust(e) => {
+            let execute_result = spawn(
+                &task_block,
+                &e.options,
+                parent_flow.as_ref(),
+                &shared.address,
+                &shared.session_id,
+                &job_id,
+            );
 
-                match execute_result {
-                    Ok(mut child) => {
-                        spawn_handles.push(worker_listener_handle);
-                        bind_stdio(&mut child, &reporter, &mut spawn_handles);
+            match execute_result {
+                Ok(mut child) => {
+                    spawn_handles.push(worker_listener_handle);
+                    bind_stdio(&mut child, &reporter, &mut spawn_handles);
 
-                        Some(BlockJobHandle::new(
-                            job_id.to_owned(),
-                            TaskJobHandle {
-                                job_id,
-                                shared,
-                                child: Some(child),
-                                spawn_handles,
-                            },
-                        ))
-                    }
-                    Err(e) => {
-                        worker_listener_handle.abort();
-                        reporter.finished(None, Some(e.to_string()));
-                        Some(BlockJobHandle::new(
-                            job_id.to_owned(),
-                            TaskJobHandle {
-                                job_id,
-                                shared,
-                                child: None,
-                                spawn_handles,
-                            },
-                        ))
-                    }
+                    Some(BlockJobHandle::new(
+                        job_id.to_owned(),
+                        TaskJobHandle {
+                            job_id,
+                            shared,
+                            child: Some(child),
+                            spawn_handles,
+                        },
+                    ))
                 }
-            }
-            TaskBlockExecutor::Shell(_) => {
-                let execute_result = spawn_shell(
-                    &task_block,
-                    parent_flow.as_ref(),
-                    inputs,
-                    &shared.session_id,
-                    &job_id,
-                );
-
-                match execute_result {
-                    Ok(mut child) => {
-                        spawn_handles.push(worker_listener_handle);
-                        bind_shell_stdio(
-                            &mut child,
-                            &reporter,
-                            &mut spawn_handles,
-                            shared.scheduler_tx.clone(),
-                            &shared.session_id,
-                            job_id.clone(),
-                        );
-
-                        let job_id_clone = job_id.clone();
-                        let shared_clone = Arc::clone(&shared);
-
-                        // TODO: consider to use tokio::process::Command
-                        let exit_handler = tokio::task::spawn_blocking(move || {
-                            let status = child.wait().unwrap();
-                            let status_code = status.code().unwrap_or(-1);
-                            if status_code != 0 {
-                                let msg = format!(
-                                    "Task block '{:?}' exited with code {}",
-                                    task_block.path_str, status_code
-                                );
-                                shared_clone.scheduler_tx.send_block_event(
-                                    scheduler::ReceiveMessage::BlockFinished {
-                                        session_id: shared_clone.session_id.clone(),
-                                        job_id: job_id_clone.clone(),
-                                        result: None,
-                                        error: Some(msg),
-                                    },
-                                );
-                            } else {
-                                shared_clone.scheduler_tx.send_block_event(
-                                    scheduler::ReceiveMessage::BlockFinished {
-                                        session_id: shared_clone.session_id.clone(),
-                                        job_id: job_id_clone.clone(),
-                                        result: None,
-                                        error: None,
-                                    },
-                                );
-                            }
-                        });
-
-                        spawn_handles.push(exit_handler);
-
-                        Some(BlockJobHandle::new(
-                            job_id.to_owned(),
-                            TaskJobHandle {
-                                job_id,
-                                shared,
-                                child: None, // TODO: keep child and also wait exit code
-                                spawn_handles,
-                            },
-                        ))
-                    }
-                    Err(_) => {
-                        shared.scheduler_tx.send_block_event(
-                            scheduler::ReceiveMessage::BlockFinished {
-                                session_id: shared.session_id.clone(),
-                                job_id: job_id.clone(),
-                                result: None,
-                                error: Some("Failed to spawn shell".to_owned()),
-                            },
-                        );
-                        Some(BlockJobHandle::new(
-                            job_id.to_owned(),
-                            TaskJobHandle {
-                                job_id,
-                                shared,
-                                child: None,
-                                spawn_handles,
-                            },
-                        ))
-                    }
+                Err(e) => {
+                    worker_listener_handle.abort();
+                    reporter.finished(None, Some(e.to_string()));
+                    Some(BlockJobHandle::new(
+                        job_id.to_owned(),
+                        TaskJobHandle {
+                            job_id,
+                            shared,
+                            child: None,
+                            spawn_handles,
+                        },
+                    ))
                 }
-            }
-            _ => {
-                send_to_executor(ExecutorArgs {
-                    task_block: &task_block,
-                    executor,
-                    parent_flow: parent_flow.as_ref(),
-                    job_id: &job_id,
-                    scheduler_tx: shared.scheduler_tx.clone(),
-                    scope: &scope,
-                    stacks,
-                });
-
-                spawn_handles.push(worker_listener_handle);
-
-                Some(BlockJobHandle::new(
-                    job_id.to_owned(),
-                    TaskJobHandle {
-                        job_id,
-                        shared,
-                        child: None,
-                        spawn_handles,
-                    },
-                ))
             }
         }
-    } else {
-        reporter.finished(
-            None,
-            Some(format!("{:?} has no executor field exist", task_block)),
-        );
-        None
+        TaskBlockExecutor::Shell(_) => {
+            let execute_result = spawn_shell(
+                &task_block,
+                parent_flow.as_ref(),
+                inputs,
+                &shared.session_id,
+                &job_id,
+            );
+
+            match execute_result {
+                Ok(mut child) => {
+                    spawn_handles.push(worker_listener_handle);
+                    bind_shell_stdio(
+                        &mut child,
+                        &reporter,
+                        &mut spawn_handles,
+                        shared.scheduler_tx.clone(),
+                        &shared.session_id,
+                        job_id.clone(),
+                    );
+
+                    let job_id_clone = job_id.clone();
+                    let shared_clone = Arc::clone(&shared);
+
+                    // TODO: consider to use tokio::process::Command
+                    let exit_handler = tokio::task::spawn_blocking(move || {
+                        let status = child.wait().unwrap();
+                        let status_code = status.code().unwrap_or(-1);
+                        if status_code != 0 {
+                            let msg = format!(
+                                "Task block '{:?}' exited with code {}",
+                                task_block.path_str, status_code
+                            );
+                            shared_clone.scheduler_tx.send_block_event(
+                                scheduler::ReceiveMessage::BlockFinished {
+                                    session_id: shared_clone.session_id.clone(),
+                                    job_id: job_id_clone.clone(),
+                                    result: None,
+                                    error: Some(msg),
+                                },
+                            );
+                        } else {
+                            shared_clone.scheduler_tx.send_block_event(
+                                scheduler::ReceiveMessage::BlockFinished {
+                                    session_id: shared_clone.session_id.clone(),
+                                    job_id: job_id_clone.clone(),
+                                    result: None,
+                                    error: None,
+                                },
+                            );
+                        }
+                    });
+
+                    spawn_handles.push(exit_handler);
+
+                    Some(BlockJobHandle::new(
+                        job_id.to_owned(),
+                        TaskJobHandle {
+                            job_id,
+                            shared,
+                            child: None, // TODO: keep child and also wait exit code
+                            spawn_handles,
+                        },
+                    ))
+                }
+                Err(_) => {
+                    shared.scheduler_tx.send_block_event(
+                        scheduler::ReceiveMessage::BlockFinished {
+                            session_id: shared.session_id.clone(),
+                            job_id: job_id.clone(),
+                            result: None,
+                            error: Some("Failed to spawn shell".to_owned()),
+                        },
+                    );
+                    Some(BlockJobHandle::new(
+                        job_id.to_owned(),
+                        TaskJobHandle {
+                            job_id,
+                            shared,
+                            child: None,
+                            spawn_handles,
+                        },
+                    ))
+                }
+            }
+        }
+        _ => {
+            send_to_executor(ExecutorArgs {
+                task_block: &task_block,
+                executor: &task_block.executor,
+                parent_flow: parent_flow.as_ref(),
+                job_id: &job_id,
+                scheduler_tx: shared.scheduler_tx.clone(),
+                scope: &scope,
+                stacks,
+            });
+
+            spawn_handles.push(worker_listener_handle);
+
+            Some(BlockJobHandle::new(
+                job_id.to_owned(),
+                TaskJobHandle {
+                    job_id,
+                    shared,
+                    child: None,
+                    spawn_handles,
+                },
+            ))
+        }
     }
 }
 

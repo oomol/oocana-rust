@@ -10,7 +10,7 @@ use super::{
 #[derive(Deserialize, Serialize, Debug, Clone)]
 struct TmpTaskBlock {
     pub description: Option<String>,
-    pub executor: Option<TaskBlockExecutor>,
+    pub executor: TaskBlockExecutor,
     pub inputs_def: Option<Vec<MiddleInputHandle>>,
     pub outputs_def: Option<Vec<MiddleOutputHandle>>,
     #[serde(default)]
@@ -50,7 +50,7 @@ impl From<TmpTaskBlock> for TaskBlock {
 #[serde(from = "TmpTaskBlock")]
 pub struct TaskBlock {
     pub description: Option<String>,
-    pub executor: Option<TaskBlockExecutor>,
+    pub executor: TaskBlockExecutor,
     pub inputs_def: Option<InputHandles>,
     pub outputs_def: Option<OutputHandles>,
     pub additional_inputs: bool,
@@ -169,13 +169,13 @@ mod test {
     fn serialize_task_block() {
         let tmp_task_block = TmpTaskBlock {
             description: Some("Test Task".to_string()),
-            executor: Some(TaskBlockExecutor::NodeJS(NodeJSExecutor {
+            executor: TaskBlockExecutor::NodeJS(NodeJSExecutor {
                 options: Some(ExecutorOptions {
                     entry: Some("test.js".to_string()),
                     function: None,
                     spawn: false,
                 }),
-            })),
+            }),
             inputs_def: Some(vec![
                 MiddleInputHandle::Input(InputHandle {
                     handle: HandleName::new("input1".to_string()),
@@ -236,10 +236,7 @@ mod test {
         let tmp_block = result.unwrap();
 
         assert_eq!(tmp_block.description, Some("Test Task".to_string()));
-        assert!(matches!(
-            tmp_block.executor,
-            Some(TaskBlockExecutor::NodeJS(_))
-        ));
+        assert!(matches!(tmp_block.executor, TaskBlockExecutor::NodeJS(_)));
         assert!(tmp_block.additional_inputs);
         assert!(!tmp_block.additional_outputs);
     }

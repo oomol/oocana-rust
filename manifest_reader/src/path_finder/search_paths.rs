@@ -68,7 +68,16 @@ pub fn search_block_manifest(params: BlockManifestParams) -> Option<PathBuf> {
                 manifest_maybe_file: false,
             })
         }
-        BlockValueType::AbsPath { path } => find_manifest_yaml_file(path.as_ref(), file_prefix),
+        BlockValueType::AbsPath { path } => {
+            // Refer to the handling of RelPath
+            let absolute_path = PathBuf::from(path);
+            let absolute_file_prefix = absolute_path
+                .file_stem()
+                .and_then(|f| f.to_str())
+                .and_then(|s| s.strip_suffix(".oo"))
+                .unwrap_or(file_prefix);
+            find_manifest_yaml_file(&absolute_path, absolute_file_prefix)
+        }
         BlockValueType::RelPath { path } => {
             let block_manifest_path = working_dir.join(path);
             // 1. The path is a directory ike `/path/to/block_name`.
