@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.30.1 (2025-07-31)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* feat: only update flow progress when node finish successfully by @leavesster in https://github.com/oomol/oocana-rust/pull/290
+* feat: remove npm bin field by @leavesster in https://github.com/oomol/oocana-rust/pull/292
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.30.0...v0.30.1
+
 ## 0.30.0 (2025-07-31)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
