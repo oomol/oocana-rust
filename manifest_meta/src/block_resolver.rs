@@ -119,6 +119,11 @@ impl BlockResolver {
             } else {
                 BlockType::Unknown
             }
+        } else if file_path.is_dir() {
+            // if it's a directory, we chose load flow not task, because flow is more common usage.
+            finder
+                .find_flow_block_path(block_name)
+                .map_or(BlockType::Unknown, |_| BlockType::Flow)
         } else {
             BlockType::Unknown
         };
