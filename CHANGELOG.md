@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.30.2 (2025-08-01)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* feat: fix npm package can't be resolved by @leavesster in https://github.com/oomol/oocana-rust/pull/293
+* chore: add npm to release by @leavesster in https://github.com/oomol/oocana-rust/pull/294
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.30.1...v0.30.2
+
 ## 0.30.1 (2025-07-31)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
