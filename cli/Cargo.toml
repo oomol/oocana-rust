@@ -1,6 +1,6 @@
 [package]
 name = "cli"
-version = "0.30.1"
+version = "0.30.2"
 authors = ["CRIMX <straybugs@gmail.com>"]
 description = "CLI interface for oocana"
 edition = "2021"
