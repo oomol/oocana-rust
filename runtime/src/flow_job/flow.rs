@@ -1200,7 +1200,8 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                         }
                     }
 
-                    if let Some(ref err) = error {
+                    // error already handled in the block report
+                    if let Some(err) = error {
                         save_flow_cache(
                             &run_flow_ctx.node_input_values,
                             &flow_shared.flow_block.path_str,
@@ -1224,33 +1225,26 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
 
                         run_flow_ctx.jobs.clear();
 
+                        // add error node stack
+                        let error_stack = format!(
+                            "{} failed",
+                            node_id
+                                .map(|n| format!("node id: {n}"))
+                                .unwrap_or_else(|| format!("job_id: {}", job_id)),
+                        );
+                        reporter.done(&Some(error_stack.clone()));
+
                         if flow_shared.stacks.is_root() {
-                            // root already show error one top level message
                             run_flow_ctx.parent_block_status.finish(
                                 flow_shared.job_id.to_owned(),
                                 None,
-                                Some(format!(
-                                    "{} failed",
-                                    node_id
-                                        .map(|n| format!("node id: {n}"))
-                                        .unwrap_or_else(|| format!("job_id: {}", job_id))
-                                )),
+                                Some(format!("flow {} failed.", flow_shared.flow_block.path_str)),
                             );
                         } else {
-                            // add error node stack
-                            let error_message = format!(
-                                "{} failed:\n{}",
-                                node_id
-                                    .map(|n| format!("node id: {n}"))
-                                    .unwrap_or_else(|| format!("job_id: {}", job_id)),
-                                err
-                            );
-                            reporter.done(&Some(error_message.clone()));
-
                             run_flow_ctx.parent_block_status.finish(
                                 flow_shared.job_id.to_owned(),
                                 None,
-                                Some(error_message),
+                                Some(err),
                             );
                         }
                         break;
