@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.30.3 (2025-08-02)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* feat: import layer even if no package file by @leavesster in https://github.com/oomol/oocana-rust/pull/296
+* fix: move path to new package path by @leavesster in https://github.com/oomol/oocana-rust/pull/297
+* fix: add flow error and only report error stack by @leavesster in https://github.com/oomol/oocana-rust/pull/299
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.30.2...v0.30.3
+
 ## 0.30.2 (2025-08-01)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->

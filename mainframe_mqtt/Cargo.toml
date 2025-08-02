@@ -1,6 +1,6 @@
 [package]
 name = "mainframe_mqtt"
-version = "0.30.2"
+version = "0.30.3"
 authors = ["CRIMX <straybugs@gmail.com>"]
 description = "Oocana runner mainframe MQTT runtime"
 edition = "2021"
