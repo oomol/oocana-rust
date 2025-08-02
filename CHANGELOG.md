@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.30.4 (2025-08-02)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* fix: some npm version download failed when only files by @leavesster in https://github.com/oomol/oocana-rust/pull/300
+* fix: update node engine version requirement to >=20 by @leavesster in https://github.com/oomol/oocana-rust/pull/302
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.30.3...v0.30.4
+
 ## 0.30.3 (2025-08-02)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
