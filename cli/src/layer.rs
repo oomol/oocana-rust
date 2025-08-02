@@ -189,7 +189,7 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
                     )));
                 }
                 Err(e) => {
-                    tracing::info!("import package path doesn't exist package file: {:?}. just import package layer.", e);
+                    tracing::info!("import package path doesn't have a package file: {:?}. Just importing package layer.", e);
                     layer::import_package_layer(import_package, layer_dir)?;
                 }
             }
