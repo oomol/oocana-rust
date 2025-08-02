@@ -5,6 +5,7 @@ export const packageTemplate = {
     "files": [
         "bin", "index.js"
     ],
+    "main": "index.js",
     "publishConfig": {
         "registry": "https://npm.pkg.github.com"
     }
