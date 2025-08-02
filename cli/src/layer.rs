@@ -64,9 +64,9 @@ pub enum LayerAction {
     #[command(about = "import package layer. It requires the package layer doesn't exist")]
     Import {
         #[arg(help = "directory that contains package layer's export files")]
-        dir: String,
+        layer_dir: String,
         #[arg(help = "package path")]
-        package: String,
+        import_package: String,
     },
     #[command(about = "list package layer")]
     List {},
@@ -173,21 +173,24 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
                 }
             }
         }
-        LayerAction::Import { package, dir } => {
-            let status = layer::package_layer_status(package);
+        LayerAction::Import {
+            import_package,
+            layer_dir,
+        } => {
+            let status = layer::package_layer_status(import_package);
             match status {
                 Ok(layer::PackageLayerStatus::NotInStore) => {
-                    layer::import_package_layer(package, dir)?;
+                    layer::import_package_layer(import_package, layer_dir)?;
                 }
                 Ok(layer::PackageLayerStatus::Exist) => {
                     return Err(Error::from(format!(
                         "Package layer {:?} already exists",
-                        package
+                        import_package
                     )));
                 }
                 Err(e) => {
                     tracing::info!("import package path doesn't exist package file: {:?}. just import package layer.", e);
-                    layer::import_package_layer(package, dir)?;
+                    layer::import_package_layer(import_package, layer_dir)?;
                 }
             }
         }
