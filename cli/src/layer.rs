@@ -174,15 +174,21 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
             }
         }
         LayerAction::Import { package, dir } => {
-            let status = layer::package_layer_status(package)?;
+            let status = layer::package_layer_status(package);
             match status {
-                layer::PackageLayerStatus::Exist => {
+                Ok(layer::PackageLayerStatus::NotInStore) => {
+                    layer::import_package_layer(package, dir)?;
+                }
+                Ok(layer::PackageLayerStatus::Exist) => {
                     return Err(Error::from(format!(
                         "Package layer {:?} already exists",
                         package
                     )));
                 }
-                layer::PackageLayerStatus::NotInStore => import_package_layer(package, dir)?,
+                Err(e) => {
+                    tracing::info!("import package path doesn't exist package file: {:?}. just import package layer.", e);
+                    layer::import_package_layer(package, dir)?;
+                }
             }
         }
         LayerAction::List {} => {
