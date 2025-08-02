@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 use crate::fun::arg::{find_env_file, load_bind_paths};
 use clap::Subcommand;
-use layer::import_package_layer;
 use manifest_reader::path_finder::find_package_file;
 use std::io::Write;
 use tracing::info;
@@ -189,7 +188,7 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
                     )));
                 }
                 Err(e) => {
-                    tracing::info!("import package path doesn't have a package file: {:?}. Just importing package layer.", e);
+                    tracing::info!("import package path doesn't exist package file: {:?}. just import package layer.", e);
                     layer::import_package_layer(import_package, layer_dir)?;
                 }
             }

@@ -48,6 +48,15 @@ pub struct PackageLayer {
 }
 
 impl PackageLayer {
+    pub fn layers(&self) -> Vec<String> {
+        let mut layers = self.base_layers.clone().unwrap_or_default();
+        layers.push(self.source_layer.clone());
+        if let Some(bootstrap_layer) = &self.bootstrap_layer {
+            layers.push(bootstrap_layer.clone());
+        }
+        layers
+    }
+
     #[instrument(skip_all)]
     pub fn create<P: Into<PathBuf> + Debug>(
         version: Option<String>,
@@ -197,10 +206,33 @@ pub fn import_package_layer(package_path: &str, from: &str) -> Result<()> {
     let package_file = File::open(&package_file_path)?;
     let reader = std::io::BufReader::new(package_file);
     let mut package: PackageLayer = serde_json::from_reader(reader)?;
+
+    let source_dir = package.package_path.to_string_lossy().to_string();
+
     package.package_path = PathBuf::from(package_path);
 
     let layer_tar = format!("{}/layers.tar", from);
     import_layer(&layer_tar)?;
+
+    if source_dir != package_path {
+        // because layer's path is relative to package path , is not a fixed path.
+        // so we need to copy the every thing to the new package path.
+        tracing::info!(
+            "move source dir {} to package path {}",
+            source_dir,
+            package_path
+        );
+        for layer in package.layers() {
+            run_script_unmerge(
+                &vec![layer],
+                &vec![],
+                &None,
+                &format!("mv {} {}", source_dir, package_path),
+                &HashMap::new(),
+                &None,
+            )?;
+        }
+    }
 
     package.validate()?;
 
