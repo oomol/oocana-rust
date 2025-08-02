@@ -1,6 +1,6 @@
 export const packageTemplate = {
     "engines": {
-        "node": ">=22"
+        "node": ">=20"
     },
     "files": [
         "bin", "index.js"
