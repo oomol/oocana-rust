@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.30.5 (2025-08-04)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* fix: add session to identifier to support run multiple concurrency by @leavesster in https://github.com/oomol/oocana-rust/pull/303
+* feat: format failed message by @leavesster in https://github.com/oomol/oocana-rust/pull/306
+* feat: add vault by @BlackHole1 in https://github.com/oomol/oocana-rust/pull/307
+
+## New Contributors
+* @BlackHole1 made their first contribution in https://github.com/oomol/oocana-rust/pull/307
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.30.4...v0.30.5
+
 ## 0.30.4 (2025-08-02)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
