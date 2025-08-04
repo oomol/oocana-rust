@@ -1231,7 +1231,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                         let error_stack = format!(
                             "{} failed",
                             node_id
-                                .map(|n| format!("node id: {n}"))
+                                .map(|n| format!("[node id: {n}]"))
                                 .unwrap_or_else(|| format!("job_id: {}", job_id)),
                         );
                         reporter.done(&Some(error_stack.clone()));
