@@ -322,7 +322,8 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
         } else {
             return None;
         };
-        Some(estimation_flow_progress.clamp(0.0, 100.0))
+        // we calculate the estimation flow progress by node finish, but node can run multiple times, leave it to 95% at most.
+        Some(estimation_flow_progress.clamp(0.0, 95.0))
     };
 
     let scheduler_tx = flow_shared.shared.scheduler_tx.clone();
