@@ -2,8 +2,11 @@ use manifest_meta::NodeId;
 use std::path::PathBuf;
 use utils::calculate_short_hash;
 
+use crate::SessionId;
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RuntimeScope {
+    pub session_id: SessionId,
     // None means it is in workspace. Some means it is running in package.
     pub pkg_name: Option<String>,
     pub data_dir: String,
@@ -21,7 +24,7 @@ impl RuntimeScope {
             Some(node_id) => format!("{}-{}", self.path.display(), node_id),
             None => self.path.display().to_string(),
         };
-        calculate_short_hash(&str, 16)
+        format!("{}-{}", self.session_id, calculate_short_hash(&str, 16))
     }
 
     pub fn path(&self) -> &PathBuf {

@@ -476,6 +476,7 @@ impl SchedulerTx {
                 if exclude_packages.contains(&pkg_str) {
                     match self.default_package {
                         Some(ref default_package) => RuntimeScope {
+                            session_id: scope.session_id.clone(),
                             pkg_name: None,
                             data_dir: self.data_dir.clone(),
                             pkg_root: scope.pkg_root.clone(),
@@ -485,6 +486,7 @@ impl SchedulerTx {
                             is_inject: scope.is_inject(),
                         },
                         None => RuntimeScope {
+                            session_id: scope.session_id.clone(),
                             pkg_name: None,
                             data_dir: self.data_dir.clone(),
                             pkg_root: scope.pkg_root.clone(),
