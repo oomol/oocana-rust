@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.30.6 (2025-08-04)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* feat: retain 5% for whole session finish by @leavesster in https://github.com/oomol/oocana-rust/pull/308
+* fix: add missing run block workaround by @leavesster in https://github.com/oomol/oocana-rust/pull/310
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.30.5...v0.30.6
+
 ## 0.30.5 (2025-08-04)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
