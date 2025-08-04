@@ -20,15 +20,19 @@ pub struct VaultClient {
     pub api_key: String,
     pub max_retries: u32,
     pub timeout_secs: u64,
+    client: Client,
 }
 
 impl VaultClient {
     pub fn new(domain: String, api_key: String) -> Self {
+        let client = Client::new();
+
         Self {
             domain,
             api_key,
             max_retries: DEFAULT_MAX_RETRIES,
             timeout_secs: DEFAULT_TIMEOUT_SECS,
+            client,
         }
     }
 
@@ -72,12 +76,12 @@ impl VaultClient {
     /// ```
     pub async fn fetch(&self, id: String) -> Result<HashMap<String, String>> {
         let start_time = Instant::now();
-        let client: Client = Client::new();
         let url = format!("{}/v1/vaultlet/{}", self.domain, id);
         let auth_header = format!("Bearer api-{}", self.api_key);
 
         for attempt in 0..=self.max_retries {
-            let response = client
+            let response = self
+                .client
                 .get(&url)
                 .header("Authorization", &auth_header)
                 .timeout(Duration::from_secs(self.timeout_secs))
@@ -322,7 +326,7 @@ mod tests {
         let result = client.fetch("invalid-json".to_string()).await;
         assert!(result.is_err());
 
-        let error_msg: String = result.unwrap_err().to_string();
+        let error_msg = result.unwrap_err().to_string();
         assert!(error_msg.contains("Failed to parse JSON response"));
     }
 
