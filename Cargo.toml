@@ -32,6 +32,7 @@ members = [
     "examples/concurrency/pkg_a/blocks/blk-b",
     "examples/flows/pkg/pkg_v-0.1.0/blocks/blk-b",
     "layer",
+    "vault",
 ]
 
 [features]
