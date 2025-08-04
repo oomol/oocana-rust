@@ -24,7 +24,7 @@ impl RuntimeScope {
             Some(node_id) => format!("{}-{}", self.path.display(), node_id),
             None => self.path.display().to_string(),
         };
-        calculate_short_hash(&str, 16)
+        format!("{}-{}", self.session_id, calculate_short_hash(&str, 16))
     }
 
     pub fn path(&self) -> &PathBuf {
