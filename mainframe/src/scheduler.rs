@@ -1331,7 +1331,7 @@ where
 
                             let session_id_clone = session_id.clone();
                             _ = tokio::spawn(async move {
-                                tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
+                                tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
                                 let data = serde_json::to_vec(&ReceiveMessage::ListenerTimeout {
                                     job_id: job_id.clone(),
                                     session_id: session_id_clone.clone(),
