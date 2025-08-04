@@ -8,8 +8,8 @@ reqwest = { version = "0.11", features = ["json"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tokio = { version = "1.0", features = ["full"] }
-anyhow = "1.0"
 tracing = "0.1.41"
+utils = { path = "../utils" }
 
 [dev-dependencies]
 wiremock = "0.6.4"

@@ -1,9 +1,9 @@
-use anyhow::{Result, anyhow};
 use reqwest::Client;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
-use tracing::{debug, info, warn};
+use tracing::{debug, warn};
+use utils::error::{Error, Result};
 
 const DEFAULT_MAX_RETRIES: u32 = 2;
 const DEFAULT_TIMEOUT_SECS: u64 = 5;
@@ -60,9 +60,10 @@ impl VaultClient {
     ///
     /// ```no_run
     /// use vault::VaultClient;
+    /// use utils::error::Result;
     ///
     /// #[tokio::main]
-    /// async fn main() -> anyhow::Result<()> {
+    /// async fn main() -> Result<()> {
     ///     let client = VaultClient::new(
     ///         "http://127.0.0.1:7893".to_string(),
     ///         "your-api-key".to_string()
@@ -123,17 +124,17 @@ impl VaultClient {
                         continue;
                     } else {
                         log_request_duration(&id, start_time, &format!("failed with error: {}", e));
-                        return Err(anyhow!(
+                        return Err(Error::new(&format!(
                             "Request failed after {} retries: {}",
-                            self.max_retries,
-                            e
-                        ));
+                            self.max_retries, e
+                        )));
                     }
                 }
             }
         }
 
-        unreachable!("Loop should have returned or continued")
+        warn!("Vault request loop completed without returning - this should not happen");
+        Err(Error::new("Request loop completed unexpectedly"))
     }
 }
 
@@ -142,7 +143,7 @@ fn log_request_duration(id: &str, start_time: Instant, status: &str) {
     let duration_secs = elapsed.as_secs_f64();
 
     if elapsed >= Duration::from_secs(2) {
-        info!(
+        warn!(
             "Vault request for ID '{}' {} in {:.2}s",
             id, status, duration_secs
         );
@@ -158,7 +159,7 @@ async fn parse_vaultlet_response(resp: reqwest::Response) -> Result<HashMap<Stri
     let vault_data: VaultValueOnly = resp
         .json()
         .await
-        .map_err(|e| anyhow!("Failed to parse JSON response: {}", e))?;
+        .map_err(|e| Error::new(&format!("Failed to parse JSON response: {}", e)))?;
 
     Ok(vault_data.value)
 }
@@ -167,11 +168,14 @@ fn should_retry(status: reqwest::StatusCode, attempt: u32, max_retries: u32) -> 
     status.as_u16() >= 500 && attempt < max_retries
 }
 
-fn create_status_error(status: reqwest::StatusCode, max_retries: u32) -> anyhow::Error {
+fn create_status_error(status: reqwest::StatusCode, max_retries: u32) -> Error {
     if status.as_u16() >= 500 {
-        anyhow!("Server error after {} retries: {}", max_retries, status)
+        Error::new(&format!(
+            "Server error after {} retries: {}",
+            max_retries, status
+        ))
     } else {
-        anyhow!("Client error: {}", status)
+        Error::new(&format!("Client error: {}", status))
     }
 }
 
