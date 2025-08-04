@@ -104,6 +104,34 @@ pub fn listen_to_worker(args: ListenerArgs) -> tokio::task::JoinHandle<()> {
 
     scheduler_tx.register_subscriber(job_id.to_owned(), job_tx);
     tokio::spawn(async move {
+        let run_block = |executor: Option<&TaskBlockExecutor>,
+                         service: Option<&ServiceExecutorPayload>| {
+            if let Some(executor) = executor {
+                scheduler_tx.send_to_executor(ExecutorParams {
+                    executor_name: &executor.name(),
+                    job_id: job_id.to_owned(),
+                    stacks: stacks.vec(),
+                    dir: block_dir.to_owned(),
+                    executor,
+                    outputs: &outputs_def,
+                    scope: &scope,
+                    injection_store: &injection_store,
+                    flow: &flow,
+                });
+            } else if let Some(service) = service {
+                scheduler_tx.send_to_service(ServiceParams {
+                    executor_name: &service.executor_name,
+                    block_name: &service.block_name,
+                    job_id: job_id.to_owned(),
+                    stacks: stacks.vec(),
+                    dir: block_dir.to_owned(),
+                    options: &service.options,
+                    outputs: &outputs_def,
+                    scope: &scope,
+                    flow: &flow,
+                });
+            }
+        };
         let mut has_executor_response = false;
         while let Ok(message) = job_rx.recv_async().await {
             match message {
@@ -137,18 +165,7 @@ pub fn listen_to_worker(args: ListenerArgs) -> tokio::task::JoinHandle<()> {
                             );
                             continue;
                         }
-
-                        scheduler_tx.send_to_executor(ExecutorParams {
-                            executor_name: &executor_name,
-                            job_id: job_id.to_owned(),
-                            stacks: stacks.vec(),
-                            dir: block_dir.to_owned(),
-                            executor,
-                            outputs: &outputs_def,
-                            scope: &scope,
-                            injection_store: &injection_store,
-                            flow: &flow,
-                        });
+                        run_block(Some(executor), None);
                     } else if let Some(ref service) = service {
                         if executor_name != service.executor_name {
                             debug!(
@@ -157,18 +174,7 @@ pub fn listen_to_worker(args: ListenerArgs) -> tokio::task::JoinHandle<()> {
                             );
                             continue;
                         }
-
-                        scheduler_tx.send_to_service(ServiceParams {
-                            executor_name: &executor_name,
-                            block_name: &service.block_name,
-                            job_id: job_id.to_owned(),
-                            stacks: stacks.vec(),
-                            dir: block_dir.to_owned(),
-                            options: &service.options,
-                            outputs: &outputs_def,
-                            scope: &scope,
-                            flow: &flow,
-                        });
+                        run_block(None, Some(service));
                     }
                 }
                 scheduler::ReceiveMessage::BlockProgress {
