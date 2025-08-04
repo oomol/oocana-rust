@@ -184,6 +184,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
             timeout: None,
             inputs_def_patch: None,
             parent_scope: RuntimeScope {
+                session_id: shared.session_id.clone(),
                 pkg_name: None,
                 path: workspace.clone(),
                 data_dir: project_data.to_string_lossy().to_string(),
@@ -193,6 +194,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
                 is_inject: false,
             },
             scope: RuntimeScope {
+                session_id: shared.session_id.clone(),
                 pkg_name: None,
                 path: workspace.clone(),
                 pkg_root: pkg_data_root.to_path_buf(),

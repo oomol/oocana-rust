@@ -655,6 +655,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                             let block_scope = match calculate_block_value_type(&block) {
                                 BlockValueType::Pkg { pkg_name, .. } => {
                                     RuntimeScope {
+                                        session_id: flow_shared.shared.session_id.clone(),
                                         pkg_name: Some(pkg_name.clone()),
                                         data_dir: flow_shared.scope.pkg_root.join(pkg_name)
                                             .to_string_lossy()
@@ -723,6 +724,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                             let flow_scope = match calculate_block_value_type(&block) {
                                 BlockValueType::Pkg { pkg_name, .. } => {
                                     RuntimeScope  {
+                                        session_id: flow_shared.shared.session_id.clone(),
                                         pkg_name: Some(pkg_name.clone()),
                                         data_dir: flow_shared.scope.pkg_root.join(pkg_name)
                                             .to_string_lossy()
@@ -1558,6 +1560,7 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
             node_id,
             ..
         } => RuntimeScope {
+            session_id: shared.scope.session_id.clone(),
             pkg_name: Some(name.clone()),
             path: path.clone(),
             data_dir: shared
@@ -1572,6 +1575,7 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
             is_inject: node.scope().is_inject(),
         },
         BlockScope::Flow { node_id, .. } => RuntimeScope {
+            session_id: shared.scope.session_id.clone(),
             pkg_name: shared.scope.pkg_name.clone(),
             pkg_root: shared.scope.pkg_root.clone(),
             data_dir: shared.scope.data_dir.clone(),
@@ -1581,6 +1585,7 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
             is_inject: node.scope().is_inject(),
         },
         BlockScope::Slot { .. } => RuntimeScope {
+            session_id: shared.scope.session_id.clone(),
             pkg_name: shared.parent_scope.pkg_name.clone(),
             pkg_root: shared.parent_scope.pkg_root.clone(),
             data_dir: shared.parent_scope.data_dir.clone(),
