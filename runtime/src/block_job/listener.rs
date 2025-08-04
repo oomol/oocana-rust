@@ -240,12 +240,8 @@ pub fn listen_to_worker(args: ListenerArgs) -> tokio::task::JoinHandle<()> {
                     if has_executor_response || job_id != msg_job_id {
                         continue;
                     }
-                    // 用户 block 可能会耗尽资源，导致无法及时响应。暂时只记录日志，不做处理
-                    // let error_message =
-                    // Some(format!("executor execute {msg_job_id} timeout after 10s"));
-                    warn!("listener wait timeout 10s. job_id: {msg_job_id}");
-                    // reporter.done(&error_message);
-                    // block_status.error(error_message.unwrap_or_default());
+                    warn!("listener wait timeout 3s. job_id: {msg_job_id}. try to run block again, executor will filter duplicate job_id");
+                    run_block(executor.as_ref(), service.as_ref());
                 }
                 scheduler::ReceiveMessage::BlockOutputs {
                     job_id, outputs, ..
