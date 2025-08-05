@@ -7,6 +7,10 @@ use utils::error::{Error, Result};
 
 const DEFAULT_MAX_RETRIES: u32 = 2;
 const DEFAULT_TIMEOUT_SECS: u64 = 5;
+const API_TOKEN_PREFIX: &str = "api-";
+const X_JWT_TOKEN_HEADER: &str = "x-jwt-token";
+const AUTHORIZATION_HEADER: &str = "Authorization";
+const BEARER_PREFIX: &str = "Bearer";
 
 /// Lightweight structure specifically for extracting the value field
 #[derive(Debug, Deserialize)]
@@ -17,22 +21,38 @@ struct VaultValueOnly {
 #[derive(Debug, Clone)]
 pub struct VaultClient {
     pub domain: String,
-    pub api_key: String,
+    pub token: String,
     pub max_retries: u32,
     pub timeout_secs: u64,
     client: Client,
+    auth_header_name: &'static str,
+    auth_header_value: String,
 }
 
 impl VaultClient {
-    pub fn new(domain: String, api_key: String) -> Self {
+    pub fn new(domain: String, token: String) -> Self {
         let client = Client::new();
+
+        // Pre-compute authentication header based on token prefix
+        let (auth_header_name, auth_header_value) = Self::compute_auth_headers(&token);
 
         Self {
             domain,
-            api_key,
+            token,
             max_retries: DEFAULT_MAX_RETRIES,
             timeout_secs: DEFAULT_TIMEOUT_SECS,
             client,
+            auth_header_name,
+            auth_header_value,
+        }
+    }
+
+    /// Compute authentication headers based on token prefix
+    fn compute_auth_headers(token: &str) -> (&'static str, String) {
+        if token.starts_with(API_TOKEN_PREFIX) {
+            (AUTHORIZATION_HEADER, format!("{} {}", BEARER_PREFIX, token))
+        } else {
+            (X_JWT_TOKEN_HEADER, token.to_string())
         }
     }
 
@@ -66,7 +86,7 @@ impl VaultClient {
     /// async fn main() -> Result<()> {
     ///     let client = VaultClient::new(
     ///         "http://127.0.0.1:7893".to_string(),
-    ///         "your-api-key".to_string()
+    ///         "your-token".to_string()
     ///     ).with_max_retries(5)
     ///      .with_timeout_secs(10);
     ///     
@@ -78,13 +98,12 @@ impl VaultClient {
     pub async fn fetch(&self, id: String) -> Result<HashMap<String, String>> {
         let start_time = Instant::now();
         let url = format!("{}/v1/vaultlet/{}", self.domain, id);
-        let auth_header = format!("Bearer api-{}", self.api_key);
 
         for attempt in 0..=self.max_retries {
             let response = self
                 .client
                 .get(&url)
-                .header("Authorization", &auth_header)
+                .header(self.auth_header_name, &self.auth_header_value)
                 .timeout(Duration::from_secs(self.timeout_secs))
                 .send()
                 .await;
@@ -193,7 +212,7 @@ mod tests {
         let client = VaultClient::new("http://127.0.0.1:7893".to_string(), "test-key".to_string());
 
         assert_eq!(client.domain, "http://127.0.0.1:7893");
-        assert_eq!(client.api_key, "test-key");
+        assert_eq!(client.token, "test-key");
         assert_eq!(client.max_retries, DEFAULT_MAX_RETRIES);
         assert_eq!(client.timeout_secs, DEFAULT_TIMEOUT_SECS);
 
@@ -220,12 +239,15 @@ mod tests {
 
         Mock::given(method("GET"))
             .and(path("/v1/vaultlet/test-id"))
-            .and(header("Authorization", "Bearer api-test-key"))
+            .and(header(
+                AUTHORIZATION_HEADER,
+                &format!("{} api-test-key", BEARER_PREFIX),
+            ))
             .respond_with(ResponseTemplate::new(200).set_body_json(&response_body))
             .mount(&mock_server)
             .await;
 
-        let client = VaultClient::new(mock_server.uri(), "test-key".to_string());
+        let client = VaultClient::new(mock_server.uri(), "api-test-key".to_string());
 
         let result = client.fetch("test-id".to_string()).await;
         assert!(result.is_ok());
@@ -239,12 +261,15 @@ mod tests {
 
         Mock::given(method("GET"))
             .and(path("/v1/vaultlet/non-existent"))
-            .and(header("Authorization", "Bearer api-test-key"))
+            .and(header(
+                AUTHORIZATION_HEADER,
+                &format!("{} api-test-key", BEARER_PREFIX),
+            ))
             .respond_with(ResponseTemplate::new(404))
             .mount(&mock_server)
             .await;
 
-        let client = VaultClient::new(mock_server.uri(), "test-key".to_string());
+        let client = VaultClient::new(mock_server.uri(), "api-test-key".to_string());
 
         // Test client error (should not retry)
         let result = client.fetch("non-existent".to_string()).await;
@@ -263,13 +288,16 @@ mod tests {
 
         Mock::given(method("GET"))
             .and(path("/v1/vaultlet/server-error"))
-            .and(header("Authorization", "Bearer api-test-key"))
+            .and(header(
+                AUTHORIZATION_HEADER,
+                &format!("{} api-test-key", BEARER_PREFIX),
+            ))
             .respond_with(ResponseTemplate::new(500))
             .expect(total_attempts as u64) // Should be called total_attempts times
             .mount(&mock_server)
             .await;
 
-        let client = VaultClient::new(mock_server.uri(), "test-key".to_string());
+        let client = VaultClient::new(mock_server.uri(), "api-test-key".to_string());
 
         // Test server error (should retry and eventually fail)
         let result = client.fetch("server-error".to_string()).await;
@@ -285,7 +313,10 @@ mod tests {
 
         Mock::given(method("GET"))
             .and(path("/v1/vaultlet/retry-success"))
-            .and(header("Authorization", "Bearer api-test-key"))
+            .and(header(
+                AUTHORIZATION_HEADER,
+                &format!("{} api-test-key", BEARER_PREFIX),
+            ))
             .respond_with(ResponseTemplate::new(500))
             .up_to_n_times(1)
             .mount(&mock_server)
@@ -300,12 +331,15 @@ mod tests {
 
         Mock::given(method("GET"))
             .and(path("/v1/vaultlet/retry-success"))
-            .and(header("Authorization", "Bearer api-test-key"))
+            .and(header(
+                AUTHORIZATION_HEADER,
+                &format!("{} api-test-key", BEARER_PREFIX),
+            ))
             .respond_with(ResponseTemplate::new(200).set_body_json(&response_body))
             .mount(&mock_server)
             .await;
 
-        let client = VaultClient::new(mock_server.uri(), "test-key".to_string());
+        let client = VaultClient::new(mock_server.uri(), "api-test-key".to_string());
 
         let result = client.fetch("retry-success".to_string()).await;
         assert!(result.is_ok());
@@ -320,12 +354,15 @@ mod tests {
 
         Mock::given(method("GET"))
             .and(path("/v1/vaultlet/invalid-json"))
-            .and(header("Authorization", "Bearer api-test-key"))
+            .and(header(
+                AUTHORIZATION_HEADER,
+                &format!("{} api-test-key", BEARER_PREFIX),
+            ))
             .respond_with(ResponseTemplate::new(200).set_body_string("invalid json"))
             .mount(&mock_server)
             .await;
 
-        let client = VaultClient::new(mock_server.uri(), "test-key".to_string());
+        let client = VaultClient::new(mock_server.uri(), "api-test-key".to_string());
 
         let result = client.fetch("invalid-json".to_string()).await;
         assert!(result.is_err());
@@ -340,7 +377,10 @@ mod tests {
 
         Mock::given(method("GET"))
             .and(path("/v1/vaultlet/timeout-test"))
-            .and(header("Authorization", "Bearer api-test-key"))
+            .and(header(
+                AUTHORIZATION_HEADER,
+                &format!("{} api-test-key", BEARER_PREFIX),
+            ))
             .respond_with(
                 ResponseTemplate::new(200)
                     .set_body_json(&serde_json::json!({"value": {"test": "value"}}))
@@ -350,12 +390,39 @@ mod tests {
             .await;
 
         let client =
-            VaultClient::new(mock_server.uri(), "test-key".to_string()).with_timeout_secs(1);
+            VaultClient::new(mock_server.uri(), "api-test-key".to_string()).with_timeout_secs(1);
 
         let result = client.fetch("timeout-test".to_string()).await;
         assert!(result.is_err());
 
         let error_msg = result.unwrap_err().to_string();
         assert!(error_msg.contains("timeout"));
+    }
+
+    #[tokio::test]
+    async fn test_auth_headers_precomputation() {
+        let api_client =
+            VaultClient::new("http://example.com".to_string(), "api-test-key".to_string());
+        assert_eq!(api_client.auth_header_name, AUTHORIZATION_HEADER);
+        assert_eq!(
+            api_client.auth_header_value,
+            format!("{} api-test-key", BEARER_PREFIX)
+        );
+
+        let jwt_client = VaultClient::new(
+            "http://example.com".to_string(),
+            "jwt-token-123".to_string(),
+        );
+        assert_eq!(jwt_client.auth_header_name, X_JWT_TOKEN_HEADER);
+        assert_eq!(jwt_client.auth_header_value, "jwt-token-123");
+
+        let empty_client = VaultClient::new("http://example.com".to_string(), "".to_string());
+        assert_eq!(empty_client.auth_header_name, X_JWT_TOKEN_HEADER);
+        assert_eq!(empty_client.auth_header_value, "");
+
+        let api_no_dash_client =
+            VaultClient::new("http://example.com".to_string(), "api".to_string());
+        assert_eq!(api_no_dash_client.auth_header_name, X_JWT_TOKEN_HEADER);
+        assert_eq!(api_no_dash_client.auth_header_value, "api");
     }
 }
