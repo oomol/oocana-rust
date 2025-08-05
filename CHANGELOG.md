@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.30.7 (2025-08-05)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* refactor(vault): support x-jwt-token by @BlackHole1 in https://github.com/oomol/oocana-rust/pull/313
+* fix: import package need exist and mv need add * by @leavesster in https://github.com/oomol/oocana-rust/pull/315
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.30.6...v0.30.7
+
 ## 0.30.6 (2025-08-04)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
