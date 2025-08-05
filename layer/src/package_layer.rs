@@ -227,7 +227,10 @@ pub fn import_package_layer(package_path: &str, from: &str) -> Result<()> {
                 &vec![layer],
                 &vec![],
                 &None,
-                &format!("mv {} {}", source_dir, package_path),
+                &format!(
+                    "mkdir -p {} && mv {}/* {}",
+                    package_path, source_dir, package_path
+                ),
                 &HashMap::new(),
                 &None,
             )?;
