@@ -5,12 +5,71 @@ on:
       - .github/workflows/layer-export.yml
       - .github/actions/ovmlayer/**
   workflow_call:
+    inputs:
+      token:
+        description: "GitHub token to use for downloading releases"
+        required: false
+        type: string
+        default: ${{ github.token }}
+      oocana:
+        description: "Oocana release tag to download. Defaults to latest"
+        required: false
+        type: string
+        default: "latest"
+      ovmlayer:
+        description: "ovmlayer@0.5.1"
+        required: false
+        type: string
+        default: ovmlayer@0.5.1
+      rootfs:
+        description: "rootfs tar"
+        required: false
+        type: string
+        default: "studio-rootfs@1.0.0"
+      package:
+        description: "Package to export"
+        required: true
+        type: string
+        default: "oomol/oocana-rust"
 
 jobs:
-  test-layer:
+  test-layer-action:
     runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'workflow_call' }}
     steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/layer
+
+  export-layer:
+    if: ${{ github.event_name == 'workflow_call' }}
+    runs-on: [ubuntu-latest, ubuntu-24.04-arm]
+    steps:
+      - name: architecture
+        run: |
+          echo "${{ runner.os == 'Linux' && runner.arch == 'arm64' && 'arm64' || 'amd64' }}" >> $GITHUB_OUTPUT
+        id: arch
       - uses: actions/checkout@v4
       - uses: ./.github/actions/layer
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          oocana: ${{ inputs.oocana }}
+          ovmlayer: ${{ inputs.ovmlayer }}
+          rootfs: ${{ inputs.rootfs }}
+          architecture: ${{ steps.arch.outputs.architecture }}
+      - uses: ./.github/actions/layer
+      - name: create layer
+        run: |
+          oocana create layer ${{inputs.package}}
+      - name: export layer
+        if: ${{ inputs.package != '' }}
+        run: |
+          oocana export layer ${{inputs.package}} ${{runner.temp}}/export
+
+      # TODO: change to upload when server api is ready
+      - name: upload layer
+        if: ${{ inputs.package != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.arch.outputs.architecture }}-layer
+          path: ${{runner.temp}}/export
+          retention-days: 1
