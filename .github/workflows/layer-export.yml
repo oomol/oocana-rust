@@ -1,0 +1,16 @@
+name: test layer action
+on:
+  pull_request:
+    paths:
+      - .github/workflows/layer-export.yml
+      - .github/actions/ovmlayer/**
+  workflow_call:
+
+jobs:
+  test-layer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/layer
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}

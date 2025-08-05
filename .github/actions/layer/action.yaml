@@ -1,0 +1,78 @@
+name: prepare ovmlayer environment
+description: "Prepare ovmlayer environment for building Oocana layers"
+inputs:
+  token:
+    description: "GitHub token to use for downloading releases"
+    required: true
+    default: ${{ github.token }}
+  architecture:
+    description: "Architecture to build. Defaults to amd64, can be amd64, arm64"
+    required: true
+    default: "amd64"
+  oocana:
+    description: "Oocana release tag to download. Defaults to latest"
+    required: false
+    default: "latest"
+  ovmlayer:
+    description: "ovmlayer@0.5.1"
+    required: false
+    default: ovmlayer@0.5.1
+  rootfs:
+    description: "rootfs tar"
+    required: false
+    default: "studio-rootfs@1.0.0"
+
+runs:
+  using: "composite"
+  steps:
+    - name: get oocana version
+      id: oocana-version
+      run: echo "oocana=$(gh release list --repo oomol/oocana-rust | head -n 1 | awk '{print $1}')" >> $GITHUB_OUTPUT
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+      shell: bash
+    - name: setup oocana cli
+      run: |
+        echo ${{ steps.oocana-version.outputs.oocana }}
+        version=${{ steps.oocana-version.outputs.oocana }}
+        if [ "${{ inputs.architecture }}" = "amd64" ]; then
+          gh release download $version --repo oomol/oocana-rust --pattern "oocana-cli-x86_64-unknown-linux-gnu.tar.gz" --clobber -O oocana-cli-${{inputs.architecture}}.tar.gz
+          tar -xf oocana-cli-${{inputs.architecture}}.tar.gz -C ${{runner.temp}}
+          sudo mv ${{runner.temp}}/oocana-cli-x86_64-unknown-linux-gnu /usr/bin/oocana
+        elif [ "${{ inputs.architecture }}" = "arm64" ]; then
+          gh release download $version --repo oomol/oocana-rust --pattern "oocana-cli-aarch64-unknown-linux-gnu.tar.gz" --clobber -O oocana-cli-${{inputs.architecture}}.tar.gz
+          tar -xf oocana-cli-${{inputs.architecture}}.tar.gz -C ${{runner.temp}}
+          sudo mv ${{runner.temp}}/oocana-cli-aarch64-unknown-linux-gnu /usr/bin/oocana
+        fi
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+    - name: download ovmlayer
+      run: |
+        if [ "${{ inputs.architecture }}" = "amd64" ]; then
+          gh release download ${{ inputs.ovmlayer }} --repo oomol/ovmlayer-rootfs --pattern "ovmlayer_amd64.tar.zst" --clobber -O ovmlayer.tar.zst
+        elif [ "${{ inputs.architecture }}" = "arm64" ]; then
+          gh release download ${{ inputs.ovmlayer }} --repo oomol/ovmlayer-rootfs --pattern "ovmlayer_arm64.tar.zst" --clobber -O ovmlayer.tar.zst
+        fi
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+
+    - name: extract ovmlayer
+      run: |
+        zstd -d ovmlayer.tar.zst -o ${{runner.temp}}/ovmlayer.tar
+        tar -xf ${{runner.temp}}/ovmlayer.tar -C ${{runner.temp}}
+        sudo mv ${{runner.temp}}/ovmlayer/* /usr/bin/
+      shell: bash
+
+    - name: download studio rootfs
+      run: |
+        gh release download ${{ inputs.rootfs }} --repo oomol/ovmlayer-rootfs --pattern "${{inputs.architecture}}*" -O ${{runner.temp}}/rootfs.tar
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+
+    - name: setup rootfs
+      run: |
+        sudo ovmlayer setup dev --base-rootfs=${{runner.temp}}/rootfs.tar --layer-disk=/root/tmp_over_desk
+      shell: bash
