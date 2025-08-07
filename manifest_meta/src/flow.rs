@@ -381,6 +381,8 @@ impl SubflowBlock {
                     let to = connections.node_outputs_tos.remove(&subflow_node.node_id);
 
                     let mut addition_subflow_inputs_def: InputHandles = HashMap::new();
+                    let mut subflow_inputs_from =
+                        subflow_node.inputs_from.clone().unwrap_or_default();
 
                     let running_target = calculate_running_target(
                         node,
@@ -537,29 +539,34 @@ impl SubflowBlock {
                                                     continue;
                                                 }
 
+
+                                                let handle_input_from = slotflow_provider
+                                                    .inputs_from
+                                                    .as_ref()
+                                                    .and_then(|inputs_from| {
+                                                        inputs_from
+                                                            .iter()
+                                                            .find(|i| i.handle == input.handle)
+                                                    });
+
+                                                let serialize = handle_input_from
+                                                    .map_or(false, |input_from| {
+                                                        input_from.serialize_for_cache
+                                                    });
+
                                                 new_slot_node_inputs.insert(
                                                     input.handle.clone(),
                                                     NodeInput {
                                                         def: InputHandle {
                                                             remember: true,
                                                             is_additional: true,
+                                                            _deserialize_from_cache: serialize,
                                                             ..input.clone()
                                                         },
                                                         patch: None,
                                                         value: None,
                                                         sources: None, // from will be added later
-                                                        serialize_for_cache: slotflow_provider
-                                                            .inputs_from
-                                                            .as_ref()
-                                                            .and_then(|inputs_from| {
-                                                                inputs_from
-                                                                    .iter()
-                                                                    .find(|i| {
-                                                                        i.handle == input.handle
-                                                                    })
-                                                                    .map(|i| i.serialize_for_cache)
-                                                            })
-                                                            .unwrap_or(false),
+                                                        serialize_for_cache: serialize,
                                                     },
                                                 );
 
@@ -571,6 +578,15 @@ impl SubflowBlock {
                                                         ..input.clone()
                                                     },
                                                 );
+
+                                                if let Some(input_from) = handle_input_from {
+                                                    subflow_inputs_from.push(
+                                                        manifest::NodeInputFrom {
+                                                            handle: runtime_handle_name.clone(),
+                                                            ..input_from.clone()
+                                                        },
+                                                    );
+                                                }
 
                                                 if let Some(input_from) = slotflow_provider
                                                     .inputs_from
@@ -725,10 +741,15 @@ impl SubflowBlock {
                     };
 
                     let from = connections.node_inputs_froms.remove(&subflow_node.node_id);
+                    let subflow_inputs_from_op = if subflow_inputs_from.is_empty() {
+                        None
+                    } else {
+                        Some(subflow_inputs_from)
+                    };
                     let inputs = generate_node_inputs(
                         &inputs_def,
                         &from,
-                        &subflow_node.inputs_from,
+                        &subflow_inputs_from_op,
                         &subflow_inputs_def_patch,
                         &subflow_node.node_id,
                     );

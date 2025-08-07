@@ -25,7 +25,9 @@ mod task;
 pub use task::TaskBlock;
 
 mod flow;
-pub use flow::{InjectionStore, InjectionTarget, MergeInputsValue, SubflowBlock};
+pub use flow::{
+    generate_runtime_handle_name, InjectionStore, InjectionTarget, MergeInputsValue, SubflowBlock,
+};
 
 mod slot;
 pub use slot::SlotBlock;

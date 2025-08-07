@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
 
-    use manifest_meta::{BlockResolver, HandleName, NodeId};
+    use manifest_meta::{generate_runtime_handle_name, BlockResolver, HandleName, NodeId};
     use manifest_reader::path_finder::BlockPathFinder;
 
     use std::path::PathBuf;
@@ -97,62 +97,67 @@ mod tests {
         assert_eq!(flow_block.flow_inputs_tos.len(), 0);
         assert_eq!(flow_block.flow_outputs_froms.len(), 0);
 
+        // node1
         let node1_id = NodeId::new("node1".to_owned());
+        {
+            let node1 = flow_block.nodes.get(&node1_id).unwrap();
+            assert_eq!(node1.node_id(), &node1_id);
+            assert!(matches!(node1, manifest_meta::Node::Task(_)));
+        }
 
-        let node1 = flow_block.nodes.get(&node1_id).unwrap();
-        assert_eq!(node1.node_id(), &node1_id);
-        assert!(matches!(node1, manifest_meta::Node::Task(_)));
-
+        // node2
         let node2_id = NodeId::new("node2".to_owned());
-        let handle_in1 = HandleName::new("in1".to_owned());
-        let handle_out1 = HandleName::new("out1".to_owned());
-        let handle_out2 = HandleName::new("out2".to_owned());
+        {
+            let handle_in1 = HandleName::new("in1".to_owned());
+            let handle_out1 = HandleName::new("out1".to_owned());
+            let handle_out2 = HandleName::new("out2".to_owned());
 
-        let node2 = flow_block.nodes.get(&node2_id).unwrap();
-        assert!(matches!(node2, manifest_meta::Node::Task(_)));
-        if let manifest_meta::Node::Task(task_node) = node2 {
-            let input_in1 = task_node.inputs.get(&handle_in1).unwrap();
+            let node2 = flow_block.nodes.get(&node2_id).unwrap();
+            assert!(matches!(node2, manifest_meta::Node::Task(_)));
+            if let manifest_meta::Node::Task(task_node) = node2 {
+                let input_in1 = task_node.inputs.get(&handle_in1).unwrap();
 
-            let definition = input_in1.def.clone();
-            assert_eq!(definition.handle, handle_in1);
-            assert_eq!(definition.nullable, Some(true));
-            assert!(definition
-                .json_schema
-                .is_some_and(|schema| { schema.get("type").is_some_and(|t| t == "string") }));
+                let definition = input_in1.def.clone();
+                assert_eq!(definition.handle, handle_in1);
+                assert_eq!(definition.nullable, Some(true));
+                assert!(definition
+                    .json_schema
+                    .is_some_and(|schema| { schema.get("type").is_some_and(|t| t == "string") }));
 
-            assert!(matches!(
-                input_in1.sources.as_ref().unwrap().first().unwrap(),
-                manifest_meta::HandleSource::NodeOutput { .. }
-            ));
-            if let manifest_meta::HandleSource::NodeOutput {
-                node_id,
-                output_handle,
-            } = input_in1.sources.as_ref().unwrap().first().unwrap()
-            {
-                assert_eq!(node_id, &node1_id);
-                assert_eq!(output_handle, &handle_out2);
-            }
+                assert!(matches!(
+                    input_in1.sources.as_ref().unwrap().first().unwrap(),
+                    manifest_meta::HandleSource::NodeOutput { .. }
+                ));
+                if let manifest_meta::HandleSource::NodeOutput {
+                    node_id,
+                    output_handle,
+                } = input_in1.sources.as_ref().unwrap().first().unwrap()
+                {
+                    assert_eq!(node_id, &node1_id);
+                    assert_eq!(output_handle, &handle_out2);
+                }
 
-            let to_node3 = task_node
-                .to
-                .as_ref()
-                .unwrap()
-                .get(&handle_out1)
-                .unwrap()
-                .first()
-                .unwrap();
+                let to_node3 = task_node
+                    .to
+                    .as_ref()
+                    .unwrap()
+                    .get(&handle_out1)
+                    .unwrap()
+                    .first()
+                    .unwrap();
 
-            assert!(matches!(
-                to_node3,
-                manifest_meta::HandleTo::ToNodeInput { .. }
-            ));
-            if let manifest_meta::HandleTo::ToNodeInput {
-                node_id,
-                input_handle: node_input_handle,
-            } = to_node3
-            {
-                assert_eq!(node_id, &NodeId::new("node3".to_owned()));
-                assert_eq!(node_input_handle, &handle_in1);
+                assert!(matches!(
+                    to_node3,
+                    manifest_meta::HandleTo::ToNodeInput { .. }
+                ));
+                if let manifest_meta::HandleTo::ToNodeInput {
+                    node_id,
+                    input_handle: node_input_handle,
+                } = to_node3
+                {
+                    assert_eq!(node_id, &NodeId::new("node3".to_owned()));
+                    assert_eq!(node_input_handle, &handle_in1);
+                }
             }
         }
 
@@ -160,32 +165,35 @@ mod tests {
             .nodes
             .get(&NodeId::new("node3".to_owned()))
             .unwrap();
-        assert!(matches!(node3, manifest_meta::Node::Task(_)));
-        if let manifest_meta::Node::Task(task_node) = node3 {
-            let node_additional_in = task_node
-                .inputs
-                .get(&HandleName::new("additional_in".to_owned()));
-            assert!(node_additional_in.is_some());
-            let additional_inputs = node_additional_in.unwrap();
-            assert!(additional_inputs.def.is_additional);
+        // node3
+        {
+            assert!(matches!(node3, manifest_meta::Node::Task(_)));
+            if let manifest_meta::Node::Task(task_node) = node3 {
+                let node_additional_in = task_node
+                    .inputs
+                    .get(&HandleName::new("additional_in".to_owned()));
+                assert!(node_additional_in.is_some());
+                let additional_inputs = node_additional_in.unwrap();
+                assert!(additional_inputs.def.is_additional);
 
-            let block_additional_in = task_node
-                .task
-                .inputs_def
-                .as_ref()
-                .unwrap()
-                .get(&HandleName::new("additional_in".to_owned()));
-            assert!(block_additional_in.is_some());
-            assert!(block_additional_in.unwrap().is_additional);
+                let block_additional_in = task_node
+                    .task
+                    .inputs_def
+                    .as_ref()
+                    .unwrap()
+                    .get(&HandleName::new("additional_in".to_owned()));
+                assert!(block_additional_in.is_some());
+                assert!(block_additional_in.unwrap().is_additional);
 
-            let block_additional_out = task_node
-                .task
-                .outputs_def
-                .as_ref()
-                .unwrap()
-                .get(&HandleName::new("additional_out".to_owned()));
-            assert!(block_additional_out.is_some());
-            assert!(block_additional_out.unwrap().is_additional);
+                let block_additional_out = task_node
+                    .task
+                    .outputs_def
+                    .as_ref()
+                    .unwrap()
+                    .get(&HandleName::new("additional_out".to_owned()));
+                assert!(block_additional_out.is_some());
+                assert!(block_additional_out.unwrap().is_additional);
+            }
         }
     }
 
@@ -204,34 +212,62 @@ mod tests {
             .ends_with("serializable-var/subflow.oo.yaml"));
 
         let node1_id = NodeId::new("node1".to_owned());
-
-        let node1 = flow_block.nodes.get(&node1_id).unwrap();
-        assert!(matches!(node1, manifest_meta::Node::Task(_)));
-        if let manifest_meta::Node::Task(task_node) = node1 {
-            let output_handle = HandleName::new("out".to_owned());
-            let output = task_node
-                .task
-                .outputs_def
-                .as_ref()
-                .unwrap()
-                .get(&output_handle)
-                .unwrap();
-            assert!(output._serialize_for_cache);
+        // node1
+        {
+            let node1 = flow_block.nodes.get(&node1_id).unwrap();
+            assert!(matches!(node1, manifest_meta::Node::Task(_)));
+            if let manifest_meta::Node::Task(task_node) = node1 {
+                let output_handle = HandleName::new("out".to_owned());
+                let output = task_node
+                    .task
+                    .outputs_def
+                    .as_ref()
+                    .unwrap()
+                    .get(&output_handle)
+                    .unwrap();
+                assert!(output._serialize_for_cache);
+            }
         }
 
         let node2_id = NodeId::new("node2".to_owned());
-        let node2 = flow_block.nodes.get(&node2_id).unwrap();
-        assert!(matches!(node2, manifest_meta::Node::Task(_)));
-        if let manifest_meta::Node::Task(task_node) = node2 {
-            let input_handle = HandleName::new("in".to_owned());
-            let input = task_node
-                .task
-                .inputs_def
-                .as_ref()
-                .unwrap()
-                .get(&input_handle)
-                .unwrap();
-            assert!(input._deserialize_from_cache);
+        // node2
+        {
+            let node2 = flow_block.nodes.get(&node2_id).unwrap();
+            assert!(matches!(node2, manifest_meta::Node::Task(_)));
+            if let manifest_meta::Node::Task(task_node) = node2 {
+                let input_handle = HandleName::new("in".to_owned());
+                let input = task_node
+                    .task
+                    .inputs_def
+                    .as_ref()
+                    .unwrap()
+                    .get(&input_handle)
+                    .unwrap();
+                assert!(input._deserialize_from_cache);
+
+                let node_input = task_node.inputs.get(&input_handle).unwrap();
+                assert!(node_input.serialize_for_cache);
+            }
+        }
+
+        let node3 = flow_block
+            .nodes
+            .get(&NodeId::new("node3".to_owned()))
+            .unwrap();
+        // node3
+        {
+            assert!(matches!(node3, manifest_meta::Node::Flow(_)));
+            if let manifest_meta::Node::Flow(subflow_node) = node3 {
+                let additional_input = subflow_node.inputs.get(&generate_runtime_handle_name(
+                    "+slot#1",
+                    &HandleName::new("input2".to_owned()),
+                ));
+                assert!(additional_input.is_some());
+                let additional_input = additional_input.unwrap();
+                assert!(additional_input.def.is_additional);
+                assert_eq!(additional_input.serialize_for_cache, true);
+                assert_eq!(additional_input.def._deserialize_from_cache, true);
+            }
         }
     }
 
