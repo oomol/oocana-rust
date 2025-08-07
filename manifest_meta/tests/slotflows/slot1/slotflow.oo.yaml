@@ -1,0 +1,30 @@
+nodes:
+  - node_id: +python#1
+    title: "Python #1"
+    icon: ":logos:python:"
+    task:
+      ui:
+        default_width: 450
+      inputs_def:
+        - handle: input2
+          json_schema:
+            contentMediaType: oomol/var
+          nullable: false
+      outputs_def:
+        - handle: output
+          json_schema:
+            {}
+      executor:
+        name: python
+        options:
+          entry: scriptlets/+scriptlet#1.py
+    inputs_from:
+      - handle: input2
+        from_flow:
+          - input_handle: input2
+        serialize_for_cache: true
+outputs_from:
+  - handle: output
+    from_node:
+      - node_id: +python#1
+        output_handle: output

@@ -1,0 +1,31 @@
+inputs_def:
+  - handle: input
+    json_schema:
+      {}
+outputs_def:
+  - handle: output
+    json_schema:
+      {}
+nodes:
+  - node_id: +slot#1
+    title: "Slot #1"
+    slot:
+      inputs_def:
+        - handle: input
+          json_schema:
+            {}
+          nullable: false
+      outputs_def:
+        - handle: output
+          json_schema:
+            {}
+    inputs_from:
+      - handle: input
+        from_flow:
+          - input_handle: input
+title: slot-additional
+outputs_from:
+  - handle: output
+    from_node:
+      - node_id: +slot#1
+        output_handle: output

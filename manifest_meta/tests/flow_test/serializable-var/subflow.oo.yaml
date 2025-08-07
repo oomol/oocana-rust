@@ -9,3 +9,25 @@ nodes:
         from_node:
           - node_id: node1
             output_handle: out
+  - node_id: node3
+    subflow: "./subflow1.oo.yaml"
+    inputs_from:
+      - handle: input
+        value: aaaa
+        schema_overrides:
+          - schema:
+              type: string
+    slots:
+      - slot_node_id: +slot#1
+        slotflow: self::slot1
+        inputs_def:
+          - handle: input2
+            json_schema:
+              contentMediaType: oomol/var
+            executor_name: python
+        inputs_from:
+          - handle: input2
+            from_node:
+              - node_id: +python#1
+                output_handle: output
+            serialize_for_cache: true
