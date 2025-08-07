@@ -23,11 +23,3 @@ nodes:
       - handle: additional_out
         json_schema:
           type: string
-  - node_id: slot
-    slot:
-      inputs_def:
-        - handle: in1
-          type: int
-      outputs_def:
-        - handle: out1
-          type: int
