@@ -381,6 +381,8 @@ impl SubflowBlock {
                     let to = connections.node_outputs_tos.remove(&subflow_node.node_id);
 
                     let mut addition_subflow_inputs_def: InputHandles = HashMap::new();
+                    let mut subflow_inputs_from =
+                        subflow_node.inputs_from.clone().unwrap_or_default();
 
                     let running_target = calculate_running_target(
                         node,
@@ -577,6 +579,15 @@ impl SubflowBlock {
                                                     },
                                                 );
 
+                                                if let Some(input_from) = handle_input_from {
+                                                    subflow_inputs_from.push(
+                                                        manifest::NodeInputFrom {
+                                                            handle: runtime_handle_name.clone(),
+                                                            ..input_from.clone()
+                                                        },
+                                                    );
+                                                }
+
                                                 if let Some(input_from) = slotflow_provider
                                                     .inputs_from
                                                     .as_ref()
@@ -730,10 +741,15 @@ impl SubflowBlock {
                     };
 
                     let from = connections.node_inputs_froms.remove(&subflow_node.node_id);
+                    let subflow_inputs_from_op = if subflow_inputs_from.is_empty() {
+                        None
+                    } else {
+                        Some(subflow_inputs_from)
+                    };
                     let inputs = generate_node_inputs(
                         &inputs_def,
                         &from,
-                        &subflow_node.inputs_from,
+                        &subflow_inputs_from_op,
                         &subflow_inputs_def_patch,
                         &subflow_node.node_id,
                     );
