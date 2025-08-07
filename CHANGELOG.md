@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.30.8 (2025-08-07)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* feat: support slot additional input serialize_for_cache by @leavesster in https://github.com/oomol/oocana-rust/pull/316
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.30.7...v0.30.8
+
 ## 0.30.7 (2025-08-05)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
