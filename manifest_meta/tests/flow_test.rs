@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
 
-    use manifest_meta::{BlockResolver, HandleName, NodeId};
+    use manifest_meta::{generate_runtime_handle_name, BlockResolver, HandleName, NodeId};
     use manifest_reader::path_finder::BlockPathFinder;
 
     use std::path::PathBuf;
@@ -212,34 +212,62 @@ mod tests {
             .ends_with("serializable-var/subflow.oo.yaml"));
 
         let node1_id = NodeId::new("node1".to_owned());
-
-        let node1 = flow_block.nodes.get(&node1_id).unwrap();
-        assert!(matches!(node1, manifest_meta::Node::Task(_)));
-        if let manifest_meta::Node::Task(task_node) = node1 {
-            let output_handle = HandleName::new("out".to_owned());
-            let output = task_node
-                .task
-                .outputs_def
-                .as_ref()
-                .unwrap()
-                .get(&output_handle)
-                .unwrap();
-            assert!(output._serialize_for_cache);
+        // node1
+        {
+            let node1 = flow_block.nodes.get(&node1_id).unwrap();
+            assert!(matches!(node1, manifest_meta::Node::Task(_)));
+            if let manifest_meta::Node::Task(task_node) = node1 {
+                let output_handle = HandleName::new("out".to_owned());
+                let output = task_node
+                    .task
+                    .outputs_def
+                    .as_ref()
+                    .unwrap()
+                    .get(&output_handle)
+                    .unwrap();
+                assert!(output._serialize_for_cache);
+            }
         }
 
         let node2_id = NodeId::new("node2".to_owned());
-        let node2 = flow_block.nodes.get(&node2_id).unwrap();
-        assert!(matches!(node2, manifest_meta::Node::Task(_)));
-        if let manifest_meta::Node::Task(task_node) = node2 {
-            let input_handle = HandleName::new("in".to_owned());
-            let input = task_node
-                .task
-                .inputs_def
-                .as_ref()
-                .unwrap()
-                .get(&input_handle)
-                .unwrap();
-            assert!(input._deserialize_from_cache);
+        // node2
+        {
+            let node2 = flow_block.nodes.get(&node2_id).unwrap();
+            assert!(matches!(node2, manifest_meta::Node::Task(_)));
+            if let manifest_meta::Node::Task(task_node) = node2 {
+                let input_handle = HandleName::new("in".to_owned());
+                let input = task_node
+                    .task
+                    .inputs_def
+                    .as_ref()
+                    .unwrap()
+                    .get(&input_handle)
+                    .unwrap();
+                assert!(input._deserialize_from_cache);
+
+                let node_input = task_node.inputs.get(&input_handle).unwrap();
+                assert!(node_input.serialize_for_cache);
+            }
+        }
+
+        let node3 = flow_block
+            .nodes
+            .get(&NodeId::new("node3".to_owned()))
+            .unwrap();
+        // node3
+        {
+            assert!(matches!(node3, manifest_meta::Node::Flow(_)));
+            if let manifest_meta::Node::Flow(subflow_node) = node3 {
+                let additional_input = subflow_node.inputs.get(&generate_runtime_handle_name(
+                    "+slot#1",
+                    &HandleName::new("input2".to_owned()),
+                ));
+                assert!(additional_input.is_some());
+                let additional_input = additional_input.unwrap();
+                assert!(additional_input.def.is_additional);
+                assert_eq!(additional_input.serialize_for_cache, false);
+                assert_eq!(additional_input.def._deserialize_from_cache, false);
+            }
         }
     }
 
