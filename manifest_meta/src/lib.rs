@@ -51,7 +51,7 @@ pub fn read_flow_or_block(
     mut path_finder: BlockPathFinder,
 ) -> Result<Block> {
     if let Ok(flow_path) = find_flow(block_name) {
-        return flow_resolver::read_flow(&flow_path, &mut block_reader, &mut path_finder)
+        return flow_resolver::read_flow(&flow_path, &mut block_reader, &path_finder)
             .map(|flow| Block::Flow(Arc::new(flow)));
     }
 
