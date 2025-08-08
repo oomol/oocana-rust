@@ -444,17 +444,16 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                             );
                         }
 
-                        let validate_inputs =
-                            |inputs_def: &Option<InputHandles>,
-                             inputs: &HashMap<HandleName, Arc<OutputValue>>|
-                             -> HashMap<HandleName, String> {
-                                if !strict.unwrap_or(false) {
-                                    return HashMap::new();
-                                }
-                                block_job::validate_inputs(inputs_def, inputs)
-                            };
+                        let validate_fn = |inputs_def: &Option<InputHandles>,
+                                           inputs: &HashMap<HandleName, Arc<OutputValue>>|
+                         -> HashMap<HandleName, String> {
+                            if !strict.unwrap_or(false) {
+                                return HashMap::new();
+                            }
+                            block_job::validate_inputs(inputs_def, inputs)
+                        };
 
-                        let mut inputs = payload
+                        let mut values = payload
                             .as_object()
                             .and_then(|obj| obj.get("inputs"))
                             .and_then(|v| v.as_object())
@@ -533,24 +532,25 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
 
                                 let task_block = Arc::new(task_inner);
 
+                                // insert nullable input and default value if not present in input_values
                                 if let Some(inputs_def) = &task_block.inputs_def {
                                     for (handle, def) in inputs_def {
-                                        if inputs.get(&handle.to_string()).is_none() {
+                                        if values.get(&handle.to_string()).is_none() {
                                             if def.value.is_some() {
                                                 let v: Value = def
                                                     .value
                                                     .clone()
                                                     .unwrap_or_default()
                                                     .unwrap_or(Value::Null);
-                                                inputs.insert(handle.to_string(), v);
+                                                values.insert(handle.to_string(), v);
                                             } else if def.nullable.unwrap_or(false) {
-                                                inputs.insert(handle.to_string(), Value::Null);
+                                                values.insert(handle.to_string(), Value::Null);
                                             }
                                         }
                                     }
                                 }
 
-                                let inputs_map: HashMap<HandleName, Arc<OutputValue>> = inputs
+                                let inputs_values: HashMap<HandleName, Arc<OutputValue>> = values
                                     .into_iter()
                                     .map(|(handle, value)| {
                                         (
@@ -570,7 +570,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                         inputs_def
                                             .iter()
                                             .filter_map(|(handle, _)| {
-                                                (!inputs_map.contains_key(handle))
+                                                (!inputs_values.contains_key(handle))
                                                     .then_some(handle.clone())
                                             })
                                             .collect::<Vec<_>>()
@@ -597,7 +597,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                 }
 
                                 let invalid_inputs =
-                                    validate_inputs(&task_block.inputs_def, &inputs_map);
+                                    validate_fn(&task_block.inputs_def, &inputs_values);
 
                                 if !invalid_inputs.is_empty() {
                                     let mut msg =
@@ -656,7 +656,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                         NodeId::from(format!("run_block::{}", block)),
                                     ),
                                     job_id: new_job_id.clone().into(),
-                                    inputs: Some(inputs_map),
+                                    inputs: Some(inputs_values),
                                     block_status: run_flow_ctx.block_status.clone(),
                                     scope: block_scope,
                                     timeout: None,
@@ -695,23 +695,22 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
 
                                 if let Some(inputs_def) = &subflow_block.inputs_def {
                                     for (handle, def) in inputs_def {
-                                        if inputs.get(&handle.to_string()).is_none() {
+                                        if values.get(&handle.to_string()).is_none() {
                                             if def.value.is_some() {
                                                 let v: Value = def
                                                     .value
                                                     .clone()
                                                     .unwrap_or_default()
                                                     .unwrap_or(Value::Null);
-                                                inputs.insert(handle.to_string(), v);
+                                                values.insert(handle.to_string(), v);
                                             } else if def.nullable.unwrap_or(false) {
-                                                inputs.insert(handle.to_string(), Value::Null);
+                                                values.insert(handle.to_string(), Value::Null);
                                             }
                                         }
                                     }
                                 }
 
-                                // 构造输入映射
-                                let inputs_map: HashMap<HandleName, Arc<OutputValue>> = inputs
+                                let input_values: HashMap<HandleName, Arc<OutputValue>> = values
                                     .into_iter()
                                     .map(|(handle, value)| {
                                         (
@@ -731,7 +730,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                         inputs_def
                                             .iter()
                                             .filter_map(|(handle, _)| {
-                                                (!inputs_map.contains_key(handle))
+                                                (!input_values.contains_key(handle))
                                                     .then_some(handle.clone())
                                             })
                                             .collect::<Vec<_>>()
@@ -758,7 +757,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                 }
 
                                 let invalid_inputs =
-                                    validate_inputs(&subflow_block.inputs_def, &inputs_map);
+                                    validate_fn(&subflow_block.inputs_def, &input_values);
 
                                 if !invalid_inputs.is_empty() {
                                     let mut msg =
@@ -790,7 +789,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                         NodeId::from(format!("run_block::{}", block)),
                                     ),
                                     flow_job_id: new_job_id.clone().into(),
-                                    inputs: Some(inputs_map),
+                                    inputs: Some(input_values),
                                     node_value_store: NodeInputValues::new(false),
                                     parent_block_status: run_flow_ctx.block_status.clone(),
                                     nodes: None,
