@@ -808,7 +808,21 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                     );
                                 }
                             }
-                            _ => {}
+                            _ => {
+                                let msg =
+                                    format!("block not found for run block request: {}", block);
+                                tracing::warn!("{}", msg);
+                                scheduler_tx.respond_block_request(
+                                    &flow_shared.shared.session_id,
+                                    scheduler::BlockResponseParams {
+                                        session_id: flow_shared.shared.session_id.clone(),
+                                        job_id: job_id.clone(),
+                                        error: Some(msg),
+                                        result: None,
+                                        request_id,
+                                    },
+                                );
+                            }
                         }
                     }
                     BlockRequest::QueryBlock {
