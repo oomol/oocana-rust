@@ -443,7 +443,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                              inputs: &HashMap<HandleName, Arc<OutputValue>>|
                              -> HashMap<HandleName, String> {
                                 if !strict.unwrap_or(false) {
-                                    return default::Default::default();
+                                    return HashMap::new();
                                 }
                                 block_job::validate_inputs(inputs_def, inputs)
                             };
