@@ -24,8 +24,8 @@ use utils::output::OutputValue;
 
 use job::{BlockInputs, BlockJobStacks, JobId, RuntimeScope};
 use manifest_meta::{
-    BlockResolver, BlockScope, HandleName, HandleTo, InputHandle, InputHandles, Node, NodeId,
-    OutputHandle, OutputHandles, Slot, SubflowBlock,
+    read_flow_or_block, BlockResolver, BlockScope, HandleName, HandleTo, InputHandle, InputHandles,
+    Node, NodeId, OutputHandle, OutputHandles, Slot, SubflowBlock,
 };
 
 use super::node_input_values;
@@ -840,35 +840,121 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                         block,
                         request_id,
                     } => {
-                        let flow_path = flow_shared.path_finder.find_flow_block_path(&block);
-                        let block_path = flow_shared.path_finder.find_task_block_path(&block);
+                        let block_result = read_flow_or_block(
+                            &block,
+                            BlockResolver::new(),
+                            flow_shared.path_finder.clone(),
+                        );
 
-                        if flow_path.is_err() && block_path.is_err() {
-                            let msg = format!("Failed to find {} for block or subflow", block);
-                            tracing::warn!("{}", msg);
-                            scheduler_tx.respond_block_request(
-                                &session_id,
-                                scheduler::BlockResponseParams {
-                                    session_id: session_id.clone(),
-                                    job_id: job_id.clone(),
-                                    error: Some(msg),
-                                    result: None,
-                                    request_id,
-                                },
-                            );
-                            continue;
-                        };
+                        match block_result {
+                            Ok(block) => match block {
+                                manifest_meta::Block::Task(task_block) => {
+                                    #[derive(serde::Serialize)]
+                                    struct TaskBlockMetadata {
+                                        pub r#type: String,
+                                        #[serde(skip_serializing_if = "Option::is_none")]
+                                        pub description: Option<String>,
+                                        #[serde(skip_serializing_if = "Option::is_none")]
+                                        pub inputs_def: Option<InputHandles>,
+                                        #[serde(skip_serializing_if = "Option::is_none")]
+                                        pub outputs_def: Option<OutputHandles>,
+                                        pub additional_inputs: bool,
+                                        pub additional_outputs: bool,
+                                    }
 
-                        if let Ok(block_path) = block_path {
-                            let task_block = match BlockResolver::new().read_task_block(&block_path)
-                            {
-                                Ok(tb) => tb,
-                                Err(e) => {
-                                    let msg = format!(
-                                        "Failed to read task block from path: {}. Error: {}",
-                                        block_path.display(),
-                                        e
-                                    );
+                                    let metadata = TaskBlockMetadata {
+                                        r#type: "task".to_string(),
+                                        description: task_block.description.clone(),
+                                        inputs_def: task_block.inputs_def.clone(),
+                                        outputs_def: task_block.outputs_def.clone(),
+                                        additional_inputs: task_block.additional_inputs,
+                                        additional_outputs: task_block.additional_outputs,
+                                    };
+                                    let json = serde_json::to_value(&metadata);
+                                    if let Ok(json) = json {
+                                        // tracing::debug!("Task block metadata serialized to JSON: {}", json);
+                                        scheduler_tx.respond_block_request(
+                                            &session_id,
+                                            BlockResponseParams {
+                                                session_id: session_id.clone(),
+                                                job_id: job_id.clone(),
+                                                error: None,
+                                                result: Some(json),
+                                                request_id,
+                                            },
+                                        );
+                                    } else {
+                                        tracing::warn!(
+                                            "Failed to serialize task block metadata to JSON"
+                                        );
+                                        scheduler_tx.respond_block_request(
+                                            &session_id,
+                                            BlockResponseParams {
+                                                session_id: session_id.clone(),
+                                                job_id: job_id.clone(),
+                                                result: None,
+                                                error: Some(
+                                                    "Failed to serialize task block metadata to JSON"
+                                                        .into(),
+                                                ),
+                                                request_id,
+                                            });
+                                    }
+                                }
+                                manifest_meta::Block::Flow(subflow_block) => {
+                                    #[derive(serde::Serialize)]
+                                    struct SubflowMetadata {
+                                        r#type: String,
+                                        #[serde(skip_serializing_if = "Option::is_none")]
+                                        description: Option<String>,
+                                        #[serde(skip_serializing_if = "Option::is_none")]
+                                        inputs_def: Option<InputHandles>,
+                                        #[serde(skip_serializing_if = "Option::is_none")]
+                                        outputs_def: Option<OutputHandles>,
+                                        has_slot: bool,
+                                    }
+
+                                    let metadata = SubflowMetadata {
+                                        r#type: "subflow".to_string(),
+                                        description: subflow_block.description.clone(),
+                                        inputs_def: subflow_block.inputs_def.clone(),
+                                        outputs_def: subflow_block.outputs_def.clone(),
+                                        has_slot: subflow_block.has_slot(),
+                                    };
+
+                                    let json = serde_json::to_value(&metadata);
+                                    if let Ok(json) = json {
+                                        scheduler_tx.respond_block_request(
+                                            &session_id,
+                                            BlockResponseParams {
+                                                session_id: session_id.clone(),
+                                                job_id: job_id.clone(),
+                                                error: None,
+                                                result: Some(json),
+                                                request_id,
+                                            },
+                                        );
+                                    } else {
+                                        tracing::warn!(
+                                            "Failed to serialize subflow block metadata to JSON"
+                                        );
+                                        scheduler_tx.respond_block_request(
+                                            &session_id,
+                                            BlockResponseParams {
+                                                session_id: session_id.clone(),
+                                                job_id: job_id.clone(),
+                                                result: None,
+                                                error: Some(
+                                                    "Failed to serialize task block metadata to JSON"
+                                                        .into(),
+                                                ),
+                                                request_id,
+                                            }
+                                        );
+                                    }
+                                }
+                                _ => {
+                                    let msg = format!("block not found for block or subflow");
                                     tracing::warn!("{}", msg);
                                     scheduler_tx.respond_block_request(
                                         &session_id,
@@ -880,123 +966,18 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                             request_id,
                                         },
                                     );
-                                    continue;
                                 }
-                            };
-                            #[derive(serde::Serialize)]
-                            struct TaskBlockMetadata {
-                                pub r#type: String,
-                                #[serde(skip_serializing_if = "Option::is_none")]
-                                pub description: Option<String>,
-                                #[serde(skip_serializing_if = "Option::is_none")]
-                                pub inputs_def: Option<InputHandles>,
-                                #[serde(skip_serializing_if = "Option::is_none")]
-                                pub outputs_def: Option<OutputHandles>,
-                                pub additional_inputs: bool,
-                                pub additional_outputs: bool,
-                            }
-
-                            let metadata = TaskBlockMetadata {
-                                r#type: "task".to_string(),
-                                description: task_block.description.clone(),
-                                inputs_def: task_block.inputs_def.clone(),
-                                outputs_def: task_block.outputs_def.clone(),
-                                additional_inputs: task_block.additional_inputs,
-                                additional_outputs: task_block.additional_outputs,
-                            };
-                            let json = serde_json::to_value(&metadata);
-                            if let Ok(json) = json {
-                                // tracing::debug!("Task block metadata serialized to JSON: {}", json);
+                            },
+                            Err(_) => {
+                                let msg = format!("Failed to find {} for block or subflow", block);
+                                tracing::warn!("{}", msg);
                                 scheduler_tx.respond_block_request(
                                     &session_id,
-                                    BlockResponseParams {
+                                    scheduler::BlockResponseParams {
                                         session_id: session_id.clone(),
                                         job_id: job_id.clone(),
-                                        error: None,
-                                        result: Some(json),
-                                        request_id,
-                                    },
-                                );
-                            } else {
-                                tracing::warn!("Failed to serialize task block metadata to JSON");
-                                scheduler_tx.respond_block_request(
-                                    &session_id,
-                                    BlockResponseParams {
-                                        session_id: session_id.clone(),
-                                        job_id: job_id.clone(),
+                                        error: Some(msg),
                                         result: None,
-                                        error: Some(
-                                            "Failed to serialize task block metadata to JSON"
-                                                .into(),
-                                        ),
-                                        request_id,
-                                    },
-                                );
-                            }
-                            continue;
-                        }
-
-                        if let Ok(subflow_path) = flow_path {
-                            let subflow_block = match BlockResolver::new()
-                                .read_flow_block(&subflow_path, &mut flow_shared.path_finder)
-                            {
-                                Ok(block) => block,
-                                Err(e) => {
-                                    tracing::warn!(
-                                        "Failed to read subflow block from path: {}. Error: {}",
-                                        subflow_path.display(),
-                                        e
-                                    );
-                                    continue;
-                                }
-                            };
-
-                            #[derive(serde::Serialize)]
-                            struct SubflowMetadata {
-                                r#type: String,
-                                #[serde(skip_serializing_if = "Option::is_none")]
-                                description: Option<String>,
-                                #[serde(skip_serializing_if = "Option::is_none")]
-                                inputs_def: Option<InputHandles>,
-                                #[serde(skip_serializing_if = "Option::is_none")]
-                                outputs_def: Option<OutputHandles>,
-                                has_slot: bool,
-                            }
-
-                            let metadata = SubflowMetadata {
-                                r#type: "subflow".to_string(),
-                                description: subflow_block.description.clone(),
-                                inputs_def: subflow_block.inputs_def.clone(),
-                                outputs_def: subflow_block.outputs_def.clone(),
-                                has_slot: subflow_block.has_slot(),
-                            };
-
-                            let json = serde_json::to_value(&metadata);
-                            if let Ok(json) = json {
-                                scheduler_tx.respond_block_request(
-                                    &session_id,
-                                    BlockResponseParams {
-                                        session_id: session_id.clone(),
-                                        job_id: job_id.clone(),
-                                        error: None,
-                                        result: Some(json),
-                                        request_id,
-                                    },
-                                );
-                            } else {
-                                tracing::warn!(
-                                    "Failed to serialize subflow block metadata to JSON"
-                                );
-                                scheduler_tx.respond_block_request(
-                                    &session_id,
-                                    BlockResponseParams {
-                                        session_id: session_id.clone(),
-                                        job_id: job_id.clone(),
-                                        result: None,
-                                        error: Some(
-                                            "Failed to serialize task block metadata to JSON"
-                                                .into(),
-                                        ),
                                         request_id,
                                     },
                                 );
