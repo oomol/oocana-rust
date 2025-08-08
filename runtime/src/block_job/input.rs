@@ -15,25 +15,22 @@ pub fn validate_inputs(
         inputs_def
             .as_ref()
             .and_then(|inputs_def| inputs_def.get(handle))
-            .map_or_else(
-                || {},
-                |def| {
-                    if let Some(ref json_schema) = def.json_schema {
-                        match validate(json_schema, &wrap_value.value) {
-                            Ok(()) => {}
-                            Err(err) => {
-                                error_handle.insert(
-                                    handle.clone(),
-                                    format!(
-                                        "value ({}) is not valid. validation error: {}",
-                                        wrap_value.value, err
-                                    ),
-                                );
-                            }
+            .map(|def| {
+                if let Some(ref json_schema) = def.json_schema {
+                    match validate(json_schema, &wrap_value.value) {
+                        Ok(()) => {}
+                        Err(err) => {
+                            error_handle.insert(
+                                handle.clone(),
+                                format!(
+                                    "value ({}) is not valid. validation error: {}",
+                                    wrap_value.value, err
+                                ),
+                            );
                         }
                     }
-                },
-            );
+                }
+            });
     }
 
     error_handle
