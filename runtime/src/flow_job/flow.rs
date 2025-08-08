@@ -1,4 +1,3 @@
-use core::task;
 use manifest_reader::path_finder::{calculate_block_value_type, BlockValueType};
 use serde_json::{json, Value};
 use std::{
@@ -196,7 +195,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
     };
 
     let flow_path = flow_block.path.clone();
-    let mut flow_shared = FlowShared {
+    let flow_shared = FlowShared {
         flow_block,
         job_id: flow_job_id.to_owned(),
         shared,
