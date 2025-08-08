@@ -412,8 +412,8 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                     } => {
                         let result = read_flow_or_block(
                             &block,
-                            BlockResolver::new(),
-                            flow_shared.path_finder.clone(),
+                            &mut BlockResolver::new(),
+                            &mut flow_shared.path_finder.clone(),
                         );
 
                         if result.is_err() {
@@ -831,8 +831,8 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                     } => {
                         let block_result = read_flow_or_block(
                             &block,
-                            BlockResolver::new(),
-                            flow_shared.path_finder.clone(),
+                            &mut BlockResolver::new(),
+                            &mut flow_shared.path_finder.clone(),
                         );
 
                         match block_result {
