@@ -9,7 +9,7 @@ use std::{
 use uuid::Uuid;
 
 use crate::{
-    block_job::{run_block, run_task_block, BlockJobHandle, RunBlockArgs, RunTaskBlockArgs},
+    block_job::{self, run_block, run_task_block, BlockJobHandle, RunBlockArgs, RunTaskBlockArgs},
     block_status::{self, BlockStatusTx},
     shared::Shared,
 };
@@ -438,40 +438,15 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                             );
                         }
 
-                        let validate_inputs = |inputs_def: &Option<InputHandles>,
-                                               inputs: &HashMap<HandleName, Arc<OutputValue>>|
-                         -> Vec<String> {
-                            if !strict.unwrap_or(false) {
-                                return Vec::new();
-                            }
-                            inputs_def
-                                .as_ref()
-                                .map(|inputs_def| {
-                                    inputs_def
-                                        .iter()
-                                        .filter_map(|(handle, def)| {
-                                            inputs.get(handle).and_then(|wrap_value| {
-                                                match def.json_schema {
-                                                    Some(ref json_schema) => {
-                                                        match jsonschema::validate(
-                                                            json_schema,
-                                                            &wrap_value.value,
-                                                        ) {
-                                                            Ok(()) => None,
-                                                            Err(err) => Some(format!(
-                                                            "input handle ({}) value ({}) is not valid. validation error: {}",
-                                                            handle, wrap_value.value, err
-                                                        )),
-                                                        }
-                                                    }
-                                                    None => None,
-                                                }
-                                            })
-                                        })
-                                        .collect::<Vec<_>>()
-                                })
-                                .unwrap_or_default()
-                        };
+                        let validate_inputs =
+                            |inputs_def: &Option<InputHandles>,
+                             inputs: &HashMap<HandleName, Arc<OutputValue>>|
+                             -> HashMap<HandleName, String> {
+                                if !strict.unwrap_or(false) {
+                                    return default::Default::default();
+                                }
+                                block_job::validate_inputs(inputs_def, inputs)
+                            };
 
                         let mut inputs = payload
                             .as_object()
@@ -636,8 +611,8 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
 
                             if !invalid_inputs.is_empty() {
                                 let mut msg = "run block api has some invalid inputs:".to_string();
-                                for i in invalid_inputs {
-                                    msg += format!("\n{}", i).as_str();
+                                for (handle, error) in invalid_inputs {
+                                    msg += format!("\n{}: {}", handle, error).as_str();
                                 }
                                 tracing::warn!("{}", msg);
                                 scheduler_tx.respond_block_request(
@@ -812,8 +787,8 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
 
                             if !invalid_inputs.is_empty() {
                                 let mut msg = "run block api has some invalid inputs:".to_string();
-                                for i in invalid_inputs {
-                                    msg += format!("\n{}", i).as_str();
+                                for (handle, error) in invalid_inputs {
+                                    msg += format!("\n{}: {}", handle, error).as_str();
                                 }
                                 tracing::warn!("{}", msg);
                                 scheduler_tx.respond_block_request(
