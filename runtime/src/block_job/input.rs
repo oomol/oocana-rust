@@ -12,26 +12,28 @@ pub fn validate_inputs(
     let mut error_handle = HashMap::new();
 
     for (handle, wrap_value) in input_values {
-        inputs_def.as_ref().and_then(|inputs_def| inputs_def.get(handle)).map_or_else(
-            || {
-            },
-            |def| {
-                if let Some(ref json_schema) = def.json_schema {
-                    match validate(json_schema, &wrap_value.value) {
-                        Ok(()) => {}
-                        Err(err) => {
-                            error_handle.insert(
-                                handle.clone(),
-                                format!(
-                                    "input handle ({}) value ({}) is not valid. validation error: {}",
-                                    handle, wrap_value.value, err
-                                ),
-                            );
+        inputs_def
+            .as_ref()
+            .and_then(|inputs_def| inputs_def.get(handle))
+            .map_or_else(
+                || {},
+                |def| {
+                    if let Some(ref json_schema) = def.json_schema {
+                        match validate(json_schema, &wrap_value.value) {
+                            Ok(()) => {}
+                            Err(err) => {
+                                error_handle.insert(
+                                    handle.clone(),
+                                    format!(
+                                        "value ({}) is not valid. validation error: {}",
+                                        wrap_value.value, err
+                                    ),
+                                );
+                            }
                         }
                     }
-                }
-            },
-        );
+                },
+            );
     }
 
     error_handle
