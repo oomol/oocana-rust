@@ -327,6 +327,8 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
     };
 
     let scheduler_tx = flow_shared.shared.scheduler_tx.clone();
+    let mut block_resolver = BlockResolver::new();
+    let mut flow_path_finder = flow_shared.path_finder.clone();
     let spawn_handle = tokio::spawn(async move {
         while let Some(status) = block_status_rx.recv().await {
             match status {
@@ -410,11 +412,8 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                         stacks,
                         ..
                     } => {
-                        let result = read_flow_or_block(
-                            &block,
-                            &mut BlockResolver::new(),
-                            &mut flow_shared.path_finder.clone(),
-                        );
+                        let result =
+                            read_flow_or_block(&block, &mut block_resolver, &mut flow_path_finder);
 
                         if result.is_err() {
                             let msg = format!("Failed to read block or subflow: {}", block);
@@ -829,11 +828,8 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                         block,
                         request_id,
                     } => {
-                        let block_result = read_flow_or_block(
-                            &block,
-                            &mut BlockResolver::new(),
-                            &mut flow_shared.path_finder.clone(),
-                        );
+                        let block_result =
+                            read_flow_or_block(&block, &mut block_resolver, &mut flow_path_finder);
 
                         match block_result {
                             Ok(block) => match block {
