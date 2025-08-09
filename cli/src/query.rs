@@ -146,12 +146,13 @@ pub fn query(action: &QueryAction) -> Result<()> {
             search_paths,
             output,
         } => {
-            let block_reader = BlockResolver::new();
-            let block_path_finder = BlockPathFinder::new(
+            let mut block_reader = BlockResolver::new();
+            let mut block_path_finder = BlockPathFinder::new(
                 env::current_dir().unwrap(),
                 parse_search_paths(search_paths),
             );
-            let block_or_flow = read_flow_or_block(path, block_reader, block_path_finder)?;
+            let block_or_flow =
+                read_flow_or_block(path, &mut block_reader, &mut block_path_finder)?;
             let inputs = block_or_flow.inputs_def();
             let json_result = serde_json::to_string(&inputs)?;
             if let Some(output) = output {
@@ -169,12 +170,13 @@ pub fn query(action: &QueryAction) -> Result<()> {
             input_types: _, // todo: support input types filter
             output,
         } => {
-            let block_reader = BlockResolver::new();
-            let block_path_finder = BlockPathFinder::new(
+            let mut block_reader = BlockResolver::new();
+            let mut block_path_finder = BlockPathFinder::new(
                 env::current_dir().unwrap(),
                 parse_search_paths(search_paths),
             );
-            let block_or_flow = read_flow_or_block(flow, block_reader, block_path_finder)?;
+            let block_or_flow =
+                read_flow_or_block(flow, &mut block_reader, &mut block_path_finder)?;
             match block_or_flow {
                 manifest_meta::Block::Flow(flow) => {
                     let input = flow.query_nodes_inputs();
@@ -200,13 +202,14 @@ pub fn query(action: &QueryAction) -> Result<()> {
             block,
             search_paths,
         } => {
-            let block_reader = BlockResolver::new();
-            let block_path_finder = BlockPathFinder::new(
+            let mut block_reader = BlockResolver::new();
+            let mut block_path_finder = BlockPathFinder::new(
                 env::current_dir().unwrap(),
                 parse_search_paths(search_paths),
             );
 
-            let block_or_flow = read_flow_or_block(block, block_reader, block_path_finder)?;
+            let block_or_flow =
+                read_flow_or_block(block, &mut block_reader, &mut block_path_finder)?;
 
             match block_or_flow {
                 manifest_meta::Block::Flow(flow) => {
