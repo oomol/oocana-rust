@@ -1,6 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
 use jsonschema::validate;
+use serde_json::Value;
 
 use manifest_meta::{HandleName, InputHandles};
 use utils::output::OutputValue;
@@ -34,6 +35,24 @@ pub fn validate_inputs(
     }
 
     error_handle
+}
+
+pub fn fulfill_nullable_and_default(
+    input_values: &mut HashMap<String, Value>,
+    inputs_def: &Option<InputHandles>,
+) {
+    if let Some(inputs_def) = inputs_def {
+        for (handle, def) in inputs_def {
+            if input_values.get(&handle.to_string()).is_none() {
+                if def.value.is_some() {
+                    let v: Value = def.value.clone().unwrap_or_default().unwrap_or(Value::Null);
+                    input_values.insert(handle.to_string(), v);
+                } else if def.nullable.unwrap_or(false) {
+                    input_values.insert(handle.to_string(), Value::Null);
+                }
+            }
+        }
+    }
 }
 
 #[cfg(test)]

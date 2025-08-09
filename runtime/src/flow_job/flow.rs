@@ -9,7 +9,10 @@ use std::{
 use uuid::Uuid;
 
 use crate::{
-    block_job::{self, run_block, run_task_block, BlockJobHandle, RunBlockArgs, RunTaskBlockArgs},
+    block_job::{
+        self, fulfill_nullable_and_default, run_block, run_task_block, BlockJobHandle,
+        RunBlockArgs, RunTaskBlockArgs,
+    },
     block_status::{self, BlockStatusTx},
     shared::Shared,
 };
@@ -530,23 +533,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
 
                                 let task_block = Arc::new(task_inner);
 
-                                // insert nullable input and default value if not present in input_values
-                                if let Some(inputs_def) = &task_block.inputs_def {
-                                    for (handle, def) in inputs_def {
-                                        if values.get(&handle.to_string()).is_none() {
-                                            if def.value.is_some() {
-                                                let v: Value = def
-                                                    .value
-                                                    .clone()
-                                                    .unwrap_or_default()
-                                                    .unwrap_or(Value::Null);
-                                                values.insert(handle.to_string(), v);
-                                            } else if def.nullable.unwrap_or(false) {
-                                                values.insert(handle.to_string(), Value::Null);
-                                            }
-                                        }
-                                    }
-                                }
+                                fulfill_nullable_and_default(&mut values, &task_block.inputs_def);
 
                                 let inputs_values: HashMap<HandleName, Arc<OutputValue>> = values
                                     .into_iter()
@@ -691,22 +678,10 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                     _ => flow_shared.scope.clone(),
                                 };
 
-                                if let Some(inputs_def) = &subflow_block.inputs_def {
-                                    for (handle, def) in inputs_def {
-                                        if values.get(&handle.to_string()).is_none() {
-                                            if def.value.is_some() {
-                                                let v: Value = def
-                                                    .value
-                                                    .clone()
-                                                    .unwrap_or_default()
-                                                    .unwrap_or(Value::Null);
-                                                values.insert(handle.to_string(), v);
-                                            } else if def.nullable.unwrap_or(false) {
-                                                values.insert(handle.to_string(), Value::Null);
-                                            }
-                                        }
-                                    }
-                                }
+                                fulfill_nullable_and_default(
+                                    &mut values,
+                                    &subflow_block.inputs_def,
+                                );
 
                                 let input_values: HashMap<HandleName, Arc<OutputValue>> = values
                                     .into_iter()
