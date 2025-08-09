@@ -139,7 +139,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
         stacks.clone(),
     ));
     reporter.started(&inputs);
-    let absence_inputs = flow_block
+    let absence_node_inputs = flow_block
         .query_nodes_inputs()
         .into_iter()
         .filter_map(|(node_id, handles)| {
@@ -162,8 +162,8 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
         })
         .collect::<HashMap<NodeId, Vec<InputHandle>>>();
 
-    if !absence_inputs.is_empty() {
-        let node_and_handles = absence_inputs
+    if !absence_node_inputs.is_empty() {
+        let node_and_handles = absence_node_inputs
             .iter()
             .map(|(node_id, handles)| {
                 let handles_name = handles
