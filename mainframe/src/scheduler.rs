@@ -29,24 +29,30 @@ use utils::error::{Error, Result};
 use crate::MessageData;
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct RunBlockRequest {
+    pub session_id: SessionId,
+    pub job_id: JobId,
+    pub block: String, // format: `self::<block>` / `<package>::<block>`
+    pub block_job_id: String,
+    pub payload: serde_json::Value,
+    pub strict: Option<bool>,
+    pub stacks: Vec<BlockJobStackLevel>,
+    pub request_id: String,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct QueryBlockRequest {
+    pub session_id: SessionId,
+    pub job_id: JobId,
+    pub block: String, // format: `self::<block>` / `<package>::<block>`
+    pub request_id: String,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(tag = "action")]
 pub enum BlockRequest {
-    RunBlock {
-        session_id: SessionId,
-        job_id: JobId,
-        block: String,
-        block_job_id: String,
-        payload: serde_json::Value,
-        strict: Option<bool>,
-        stacks: Vec<BlockJobStackLevel>,
-        request_id: String, // this is used to match the response with the request
-    },
-    QueryBlock {
-        session_id: SessionId,
-        job_id: JobId,
-        block: String,      // format: `self::<block>` / `<package>::<block>`
-        request_id: String, // this is used to match the response with the request
-    },
+    RunBlock(RunBlockRequest),
+    QueryBlock(QueryBlockRequest),
     QueryDownstream {
         session_id: SessionId,
         job_id: JobId,
@@ -59,16 +65,16 @@ pub enum BlockRequest {
 impl BlockRequest {
     pub fn session_id(&self) -> &SessionId {
         match self {
-            BlockRequest::RunBlock { session_id, .. } => session_id,
-            BlockRequest::QueryBlock { session_id, .. } => session_id,
+            BlockRequest::RunBlock(request) => &request.session_id,
+            BlockRequest::QueryBlock(request) => &request.session_id,
             BlockRequest::QueryDownstream { session_id, .. } => session_id,
         }
     }
 
     pub fn job_id(&self) -> &JobId {
         match self {
-            BlockRequest::RunBlock { job_id, .. } => job_id,
-            BlockRequest::QueryBlock { job_id, .. } => job_id,
+            BlockRequest::RunBlock(request) => &request.job_id,
+            BlockRequest::QueryBlock(request) => &request.job_id,
             BlockRequest::QueryDownstream { job_id, .. } => job_id,
         }
     }
@@ -76,8 +82,8 @@ impl BlockRequest {
     // request_id must exist.
     pub fn request_id(&self) -> &str {
         match self {
-            BlockRequest::RunBlock { request_id, .. } => request_id,
-            BlockRequest::QueryBlock { request_id, .. } => request_id,
+            BlockRequest::RunBlock(request) => &request.request_id,
+            BlockRequest::QueryBlock(request) => &request.request_id,
             BlockRequest::QueryDownstream { request_id, .. } => request_id,
         }
     }

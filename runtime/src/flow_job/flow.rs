@@ -1,5 +1,5 @@
 use manifest_reader::path_finder::{calculate_block_value_type, BlockValueType};
-use serde_json::{json, Value};
+use serde_json::json;
 use std::{
     collections::{HashMap, HashSet},
     default,
@@ -405,7 +405,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                     }
                 }
                 block_status::Status::Request(request) => match request {
-                    BlockRequest::RunBlock {
+                    BlockRequest::RunBlock(scheduler::RunBlockRequest {
                         block,
                         job_id,
                         block_job_id: new_job_id,
@@ -414,7 +414,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                         strict,
                         stacks,
                         ..
-                    } => {
+                    }) => {
                         let result =
                             read_flow_or_block(&block, &mut block_resolver, &mut flow_path_finder);
 
@@ -797,12 +797,12 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                             }
                         }
                     }
-                    BlockRequest::QueryBlock {
+                    BlockRequest::QueryBlock(scheduler::QueryBlockRequest {
                         session_id,
                         job_id,
                         block,
                         request_id,
-                    } => {
+                    }) => {
                         let block_result =
                             read_flow_or_block(&block, &mut block_resolver, &mut flow_path_finder);
 
