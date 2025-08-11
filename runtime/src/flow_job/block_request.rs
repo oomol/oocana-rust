@@ -223,7 +223,7 @@ pub fn parse_run_block_request(
                     data_dir: scope.pkg_root.join(pkg_name).to_string_lossy().to_string(),
                     pkg_root: scope.pkg_root.clone(),
                     path: subflow_block.package_path.clone().unwrap_or_else(|| {
-                        warn!("can find subflow package path, this should never happen");
+                        warn!("cannot find subflow package path, this should never happen");
                         scope.path.clone()
                     }),
                     node_id: None,
