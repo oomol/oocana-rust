@@ -384,7 +384,11 @@ pub fn parse_node_downstream(
 ) -> Result<serde_json::Value, String> {
     let query_node = match query_node {
         Some(node) => node,
-        None => return Err("don't have relative node".to_string()),
+        None => {
+            // if none return empty downstream
+            return serde_json::to_value(HashMap::<HandleName, ()>::new())
+                .map_err(|e| format!("Failed to serialize empty downstream: {}", e));
+        }
     };
 
     #[derive(serde::Serialize)]
