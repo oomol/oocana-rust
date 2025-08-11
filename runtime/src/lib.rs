@@ -404,8 +404,8 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
                 }
             }
             block_status::Status::Error { error } => {
-                // it should never happened now
-                tracing::warn!("this should never happened: {}", error);
+                // it should never happen now
+                tracing::warn!("this should never happen: {}", error);
                 result_error = Some(error);
                 break;
             }
