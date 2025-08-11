@@ -9,7 +9,9 @@ pub struct RuntimeScope {
     pub session_id: SessionId,
     // None means it is in workspace. Some means it is running in package.
     pub pkg_name: Option<String>,
+    /// current package data directory, workspace use a different directory, other package will use pkg_root to generate data_dir (add pkg_name)
     pub data_dir: String,
+    /// pkg_root is used to generate data_dir for these other package
     pub pkg_root: PathBuf,
     /// if in package, this is the package path. otherwise it is the workspace path.
     pub path: PathBuf,

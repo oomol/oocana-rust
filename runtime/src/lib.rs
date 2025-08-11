@@ -42,7 +42,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
         shared,
         block_name,
         block_reader,
-        path_finder,
+        mut path_finder,
         job_id,
         nodes,
         inputs,
@@ -58,7 +58,9 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
     let partial = nodes.is_some();
     let cache = shared.use_cache;
 
-    let mut block = match read_flow_or_block(block_name, block_reader, path_finder.clone()) {
+    let mut block_reader = block_reader;
+
+    let mut block = match read_flow_or_block(block_name, &mut block_reader, &mut path_finder) {
         Ok(block) => block,
         Err(err) => {
             log_error!("Failed to read block: {}", err);
@@ -271,8 +273,8 @@ pub struct GetPackageArgs<'a> {
 pub fn get_packages(args: GetPackageArgs<'_>) -> Result<HashMap<PathBuf, String>> {
     let GetPackageArgs {
         block,
-        block_reader,
-        path_finder,
+        mut block_reader,
+        mut path_finder,
         nodes,
     } = args;
 
@@ -280,7 +282,7 @@ pub fn get_packages(args: GetPackageArgs<'_>) -> Result<HashMap<PathBuf, String>
     let filter_nodes = nodes.unwrap_or_default();
 
     let mut packages = vec![];
-    match read_flow_or_block(block, block_reader, path_finder) {
+    match read_flow_or_block(block, &mut block_reader, &mut path_finder) {
         Ok(block) => match block {
             Block::Flow(flow) => {
                 flow.nodes
@@ -330,13 +332,13 @@ pub fn find_upstream(
 ) -> Result<(Vec<String>, Vec<String>, Vec<String>)> {
     let FindUpstreamArgs {
         block_name,
-        block_reader,
+        mut block_reader,
         use_cache,
-        path_finder,
+        mut path_finder,
         nodes,
     } = args;
 
-    let block = match read_flow_or_block(block_name, block_reader, path_finder) {
+    let block = match read_flow_or_block(block_name, &mut block_reader, &mut path_finder) {
         Ok(block) => block,
         Err(err) => {
             log_error!("Failed to read block: {}", err);

@@ -47,15 +47,15 @@ pub mod flow_resolver;
 
 pub fn read_flow_or_block(
     block_name: &str,
-    mut block_reader: BlockResolver,
-    mut path_finder: BlockPathFinder,
+    block_reader: &mut BlockResolver,
+    path_finder: &mut BlockPathFinder,
 ) -> Result<Block> {
     if let Ok(flow_path) = find_flow(block_name) {
-        return flow_resolver::read_flow(&flow_path, &mut block_reader, &mut path_finder)
+        return flow_resolver::read_flow(&flow_path, block_reader, path_finder)
             .map(|flow| Block::Flow(Arc::new(flow)));
     }
 
-    block_reader.resolve_block(block_name, &mut path_finder)
+    block_reader.resolve_block(block_name, path_finder)
 }
 
 #[cfg(test)]
@@ -68,8 +68,8 @@ mod tests {
     #[test]
     fn test_read_subflow() {
         let base_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests");
-        let finder = BlockPathFinder::new(&base_dir, None);
-        let block_reader = BlockResolver::new();
+        let mut finder = BlockPathFinder::new(&base_dir, None);
+        let mut block_reader = BlockResolver::new();
 
         let block = read_flow_or_block(
             base_dir
@@ -78,8 +78,8 @@ mod tests {
                 .join("subflow.oo.yaml")
                 .to_str()
                 .unwrap(),
-            block_reader,
-            finder,
+            &mut block_reader,
+            &mut finder,
         )
         .unwrap();
 
@@ -93,8 +93,8 @@ mod tests {
     #[test]
     fn test_read_block() {
         let base_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests");
-        let finder = BlockPathFinder::new(&base_dir, None);
-        let block_reader = BlockResolver::new();
+        let mut finder = BlockPathFinder::new(&base_dir, None);
+        let mut block_reader = BlockResolver::new();
 
         let block = read_flow_or_block(
             base_dir
@@ -103,8 +103,8 @@ mod tests {
                 .join("block.oo.yaml")
                 .to_str()
                 .unwrap(),
-            block_reader,
-            finder,
+            &mut block_reader,
+            &mut finder,
         )
         .unwrap();
 
@@ -118,8 +118,8 @@ mod tests {
     #[test]
     fn test_read_task() {
         let base_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests");
-        let finder = BlockPathFinder::new(&base_dir, None);
-        let block_reader = BlockResolver::new();
+        let mut finder = BlockPathFinder::new(&base_dir, None);
+        let mut block_reader = BlockResolver::new();
 
         let block = read_flow_or_block(
             base_dir
@@ -127,8 +127,8 @@ mod tests {
                 .join("task.oo.yaml")
                 .to_str()
                 .unwrap(),
-            block_reader,
-            finder,
+            &mut block_reader,
+            &mut finder,
         )
         .unwrap();
 

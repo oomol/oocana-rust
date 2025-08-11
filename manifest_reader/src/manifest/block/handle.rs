@@ -20,6 +20,12 @@ use utils::output::OOMOL_VAR_DATA;
 )]
 pub struct HandleName(String);
 
+impl From<&str> for HandleName {
+    fn from(value: &str) -> Self {
+        HandleName(value.to_string())
+    }
+}
+
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum MiddleInputHandle {
