@@ -3,9 +3,11 @@ pub mod block_status;
 pub mod delay_abort;
 mod flow_job;
 pub mod shared;
+use mainframe::scheduler::{BlockRequest, BlockResponseParams, QueryBlockRequest};
 use manifest_reader::path_finder::BlockPathFinder;
 use std::{
     collections::{HashMap, HashSet},
+    default,
     env::current_dir,
     path::PathBuf,
     sync::Arc,
@@ -18,7 +20,13 @@ use job::{BlockJobStacks, JobId, RuntimeScope};
 use manifest_meta::{read_flow_or_block, Block, BlockResolver, MergeInputsValue, NodeId};
 use utils::error::Result;
 
-use crate::flow_job::{flow::get_flow_cache_path, NodeInputValues};
+use crate::{
+    block_job::{run_task_block, RunTaskBlockArgs},
+    flow_job::{
+        flow::get_flow_cache_path, parse_node_downstream, parse_query_block_request,
+        parse_run_block_request, run_flow, NodeInputValues, RunBlockSuccessResponse, RunFlowArgs,
+    },
+};
 
 const SESSION_CANCEL_INFO: &str = "Cancelled";
 
@@ -53,7 +61,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
         in_layer,
     } = args;
     let (block_status_tx, block_status_rx) = block_status::create();
-    let job_id = job_id.unwrap_or_else(JobId::random);
+    let root_job_id = job_id.unwrap_or_else(JobId::random);
     let stacks = BlockJobStacks::new();
     let partial = nodes.is_some();
     let cache = shared.use_cache;
@@ -172,73 +180,232 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
         inputs = Some(pass_through_inputs);
     }
 
+    let root_scope = RuntimeScope {
+        session_id: shared.session_id.clone(),
+        pkg_name: None,
+        path: workspace.clone(),
+        data_dir: project_data.to_string_lossy().to_string(),
+        pkg_root: pkg_data_root.to_path_buf(),
+        node_id: None,
+        enable_layer: in_layer,
+        is_inject: false,
+    };
+
     let handle = block_job::run_block({
         block_job::RunBlockArgs {
             block,
             shared: Arc::clone(&shared),
             parent_flow: None,
             stacks,
-            job_id,
+            job_id: root_job_id.clone(),
             inputs,
             block_status: block_status_tx.clone(),
             node_value_store: Some(node_value_store),
             nodes,
             timeout: None,
             inputs_def_patch: None,
-            parent_scope: RuntimeScope {
-                session_id: shared.session_id.clone(),
-                pkg_name: None,
-                path: workspace.clone(),
-                data_dir: project_data.to_string_lossy().to_string(),
-                pkg_root: pkg_data_root.to_path_buf(),
-                node_id: None,
-                enable_layer: in_layer,
-                is_inject: false,
-            },
-            scope: RuntimeScope {
-                session_id: shared.session_id.clone(),
-                pkg_name: None,
-                path: workspace.clone(),
-                pkg_root: pkg_data_root.to_path_buf(),
-                data_dir: project_data.to_string_lossy().to_string(),
-                node_id: None,
-                enable_layer: in_layer,
-                is_inject: false,
-            },
+            parent_scope: root_scope.clone(),
+            scope: root_scope.clone(),
             slot_blocks: None,
-            path_finder,
+            path_finder: path_finder.clone(),
         }
     });
 
+    let block_status_tx_clone = block_status_tx.clone();
     let signal_handler = tokio::task::spawn(async move {
         let mut sigint = signal(SignalKind::interrupt()).unwrap();
         let mut sigterm = signal(SignalKind::terminate()).unwrap();
         tokio::select! {
             _ = sigint.recv() => {
                 log_error!("Received SIGINT");
-                block_status_tx.error(SESSION_CANCEL_INFO.to_owned());
+                block_status_tx_clone.error(SESSION_CANCEL_INFO.to_owned());
             }
             _ = sigterm.recv() => {
                 log_error!("Received SIGTERM");
-                block_status_tx.error(SESSION_CANCEL_INFO.to_owned());
+                block_status_tx_clone.error(SESSION_CANCEL_INFO.to_owned());
             }
         }
     });
 
     let mut result_error: Option<String> = None;
+    let mut addition_running_jobs = HashSet::new();
     while let Some(status) = block_status_rx.recv().await {
         match status {
             block_status::Status::Outputs { .. } => {}
             block_status::Status::Output { .. } => {}
-            block_status::Status::Request { .. } => {}
+            block_status::Status::Request(request) => match request {
+                BlockRequest::RunBlock(request) => {
+                    let res = parse_run_block_request(
+                        &request,
+                        &mut block_reader,
+                        &mut path_finder,
+                        shared.clone(),
+                        root_scope.clone(),
+                    );
+                    match res {
+                        Ok(response) => match response {
+                            RunBlockSuccessResponse::Task {
+                                task_block,
+                                inputs,
+                                scope,
+                                request_stack,
+                                job_id,
+                                node_id,
+                            } => {
+                                if let Some(_) = run_task_block(RunTaskBlockArgs {
+                                    task_block,
+                                    shared: shared.clone(),
+                                    parent_flow: None,
+                                    stacks: request_stack.stack(
+                                        root_job_id.clone(),
+                                        block_path.to_owned(),
+                                        node_id.clone(),
+                                    ),
+                                    job_id: job_id.clone(),
+                                    inputs: Some(inputs),
+                                    block_status: block_status_tx.clone(),
+                                    scope,
+                                    timeout: None,
+                                    inputs_def_patch: None,
+                                }) {
+                                    addition_running_jobs.insert(job_id);
+                                }
+                            }
+                            RunBlockSuccessResponse::Flow {
+                                flow_block,
+                                inputs,
+                                scope,
+                                request_stack,
+                                job_id,
+                                node_id,
+                            } => {
+                                if let Some(_) = run_flow(RunFlowArgs {
+                                    flow_block,
+                                    shared: shared.clone(),
+                                    stacks: request_stack.stack(
+                                        root_job_id.clone(),
+                                        block_path.to_owned(),
+                                        node_id.clone(),
+                                    ),
+                                    flow_job_id: job_id.clone(),
+                                    inputs: Some(inputs),
+                                    node_value_store: NodeInputValues::new(false),
+                                    parent_block_status: block_status_tx.clone(),
+                                    nodes: None,
+                                    parent_scope: root_scope.clone(),
+                                    scope,
+                                    slot_blocks: default::Default::default(),
+                                    path_finder: path_finder.clone(),
+                                }) {
+                                    addition_running_jobs.insert(job_id);
+                                }
+                            }
+                        },
+                        Err(err) => {
+                            let msg =
+                                format!("Run block failed: {}. Block: {}", err, request.block);
+                            tracing::warn!("{}", msg);
+                            shared.scheduler_tx.respond_block_request(
+                                &shared.session_id,
+                                BlockResponseParams {
+                                    session_id: shared.session_id.clone(),
+                                    job_id: request.job_id.clone(),
+                                    error: Some(msg),
+                                    result: None,
+                                    request_id: request.request_id,
+                                },
+                            );
+                        }
+                    }
+                }
+                BlockRequest::QueryBlock(req) => {
+                    let res = parse_query_block_request(&req, &mut block_reader, &mut path_finder);
+                    let QueryBlockRequest {
+                        session_id,
+                        job_id,
+                        request_id,
+                        ..
+                    } = req;
+                    match res {
+                        Ok(json) => {
+                            shared.scheduler_tx.respond_block_request(
+                                &session_id,
+                                BlockResponseParams {
+                                    session_id: session_id.clone(),
+                                    job_id: job_id.clone(),
+                                    error: None,
+                                    result: Some(json),
+                                    request_id,
+                                },
+                            );
+                        }
+                        Err(err) => {
+                            tracing::warn!("{}", err);
+                            shared.scheduler_tx.respond_block_request(
+                                &session_id,
+                                BlockResponseParams {
+                                    session_id: session_id.clone(),
+                                    job_id: job_id.clone(),
+                                    result: None,
+                                    error: Some(err),
+                                    request_id,
+                                },
+                            );
+                        }
+                    }
+                }
+                BlockRequest::QueryDownstream {
+                    request_id, job_id, ..
+                } => {
+                    let res = parse_node_downstream(None, &HashMap::new(), &None, &None);
+                    match res {
+                        Ok(json) => {
+                            shared.scheduler_tx.respond_block_request(
+                                &shared.session_id,
+                                BlockResponseParams {
+                                    session_id: shared.session_id.clone(),
+                                    job_id: job_id.clone(),
+                                    error: None,
+                                    result: Some(json),
+                                    request_id,
+                                },
+                            );
+                        }
+                        Err(err) => {
+                            tracing::warn!("Query downstream failed: {}.", err,);
+                            shared.scheduler_tx.respond_block_request(
+                                &shared.session_id,
+                                BlockResponseParams {
+                                    session_id: shared.session_id.clone(),
+                                    job_id: job_id.clone(),
+                                    result: None,
+                                    error: Some(err),
+                                    request_id,
+                                },
+                            );
+                        }
+                    }
+                }
+            },
             block_status::Status::Progress { .. } => {}
-            block_status::Status::Done { error, .. } => {
+            block_status::Status::Done { error, job_id, .. } => {
+                if job_id != root_job_id {
+                    if addition_running_jobs.remove(&job_id) {
+                        continue;
+                    }
+                }
+
                 if let Some(err) = error {
                     result_error = Some(err);
+                    break;
                 }
-                break;
+                if addition_running_jobs.is_empty() {
+                    break;
+                }
             }
             block_status::Status::Error { error } => {
+                // it should never happen now
+                tracing::warn!("this should never happen: {}", error);
                 result_error = Some(error);
                 break;
             }
