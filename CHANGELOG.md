@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.30.9 (2025-08-11)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* refactor: extract block request to individual fn by @leavesster in https://github.com/oomol/oocana-rust/pull/318
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.30.8...v0.30.9
+
 ## 0.30.8 (2025-08-07)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
