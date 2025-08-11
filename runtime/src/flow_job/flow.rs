@@ -1,4 +1,3 @@
-use serde_json::json;
 use std::{
     collections::{HashMap, HashSet},
     default,
@@ -28,8 +27,7 @@ use utils::output::OutputValue;
 
 use job::{BlockInputs, BlockJobStacks, JobId, RuntimeScope};
 use manifest_meta::{
-    BlockResolver, BlockScope, HandleName, HandleTo, InputHandle, Node, NodeId, OutputHandle, Slot,
-    SubflowBlock,
+    BlockResolver, BlockScope, HandleTo, InputHandle, Node, NodeId, Slot, SubflowBlock,
 };
 
 use super::node_input_values;
