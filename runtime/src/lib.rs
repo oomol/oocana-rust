@@ -172,6 +172,17 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
         inputs = Some(pass_through_inputs);
     }
 
+    let root_scope = RuntimeScope {
+        session_id: shared.session_id.clone(),
+        pkg_name: None,
+        path: workspace.clone(),
+        data_dir: project_data.to_string_lossy().to_string(),
+        pkg_root: pkg_data_root.to_path_buf(),
+        node_id: None,
+        enable_layer: in_layer,
+        is_inject: false,
+    };
+
     let handle = block_job::run_block({
         block_job::RunBlockArgs {
             block,
@@ -185,26 +196,8 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
             nodes,
             timeout: None,
             inputs_def_patch: None,
-            parent_scope: RuntimeScope {
-                session_id: shared.session_id.clone(),
-                pkg_name: None,
-                path: workspace.clone(),
-                data_dir: project_data.to_string_lossy().to_string(),
-                pkg_root: pkg_data_root.to_path_buf(),
-                node_id: None,
-                enable_layer: in_layer,
-                is_inject: false,
-            },
-            scope: RuntimeScope {
-                session_id: shared.session_id.clone(),
-                pkg_name: None,
-                path: workspace.clone(),
-                pkg_root: pkg_data_root.to_path_buf(),
-                data_dir: project_data.to_string_lossy().to_string(),
-                node_id: None,
-                enable_layer: in_layer,
-                is_inject: false,
-            },
+            parent_scope: root_scope.clone(),
+            scope: root_scope.clone(),
             slot_blocks: None,
             path_finder,
         }
