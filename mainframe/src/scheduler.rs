@@ -33,6 +33,7 @@ pub struct RunBlockRequest {
     pub session_id: SessionId,
     pub job_id: JobId,
     pub block: String, // format: `self::<block>` / `<package>::<block>`
+    /// new job's job_id
     pub block_job_id: String,
     pub payload: serde_json::Value,
     pub strict: Option<bool>,
