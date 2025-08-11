@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.30.10 (2025-08-11)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* feat: support block request when run block by @leavesster in https://github.com/oomol/oocana-rust/pull/320
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.30.9...v0.30.10
+
 ## 0.30.9 (2025-08-11)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
