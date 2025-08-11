@@ -67,10 +67,10 @@ pub fn parse_run_block_request(
     let validate_fn = |inputs_def: &Option<InputHandles>,
                        inputs: &HashMap<HandleName, Arc<OutputValue>>|
      -> HashMap<HandleName, String> {
-        if !strict.unwrap_or(false) {
-            return HashMap::new();
+        if *strict {
+            return block_job::validate_inputs(inputs_def, inputs);
         }
-        block_job::validate_inputs(inputs_def, inputs)
+        HashMap::new()
     };
 
     let mut values = payload

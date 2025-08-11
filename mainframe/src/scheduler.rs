@@ -36,7 +36,8 @@ pub struct RunBlockRequest {
     /// new job's job_id
     pub block_job_id: String,
     pub payload: serde_json::Value,
-    pub strict: Option<bool>,
+    #[serde(default)]
+    pub strict: bool,
     pub stacks: Vec<BlockJobStackLevel>,
     pub request_id: String,
 }
