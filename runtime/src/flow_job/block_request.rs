@@ -195,7 +195,7 @@ pub fn parse_run_block_request(
                         pkg_root: scope.pkg_root.clone(),
                         path: task_block.package_path.clone().unwrap_or_else(|| {
                             // if package path is not set, use flow shared scope package path
-                            warn!("can find block package path, this should never happen");
+                            warn!("cannot find block package path, this should never happen");
                             scope.path.clone()
                         }),
                         node_id: None,
