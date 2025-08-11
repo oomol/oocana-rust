@@ -61,7 +61,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
     let mut block_reader = block_reader;
 
     let mut block =
-        match read_flow_or_block(block_name, &mut block_reader, &mut path_finder.clone()) {
+        match read_flow_or_block(block_name, &mut block_reader, &mut path_finder) {
             Ok(block) => block,
             Err(err) => {
                 log_error!("Failed to read block: {}", err);
