@@ -42,7 +42,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
         shared,
         block_name,
         block_reader,
-        path_finder,
+        mut path_finder,
         job_id,
         nodes,
         inputs,
@@ -60,23 +60,22 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
 
     let mut block_reader = block_reader;
 
-    let mut block =
-        match read_flow_or_block(block_name, &mut block_reader, &mut path_finder) {
-            Ok(block) => block,
-            Err(err) => {
-                log_error!("Failed to read block: {}", err);
-                // 解析文件失败时，不会运行任何 block。汇报一次 session 开始结束。
-                // 错误信息会输出在 stderr 同时 exit code 会以非零状态输出。
-                shared.reporter.session_started(block_name, partial, cache);
-                shared.reporter.session_finished(
-                    block_name,
-                    &Some(format!("Failed to read block {:?}", err)),
-                    partial,
-                    cache,
-                );
-                return Err(err);
-            }
-        };
+    let mut block = match read_flow_or_block(block_name, &mut block_reader, &mut path_finder) {
+        Ok(block) => block,
+        Err(err) => {
+            log_error!("Failed to read block: {}", err);
+            // 解析文件失败时，不会运行任何 block。汇报一次 session 开始结束。
+            // 错误信息会输出在 stderr 同时 exit code 会以非零状态输出。
+            shared.reporter.session_started(block_name, partial, cache);
+            shared.reporter.session_finished(
+                block_name,
+                &Some(format!("Failed to read block {:?}", err)),
+                partial,
+                cache,
+            );
+            return Err(err);
+        }
+    };
 
     let block_path = block
         .path_str()
