@@ -486,7 +486,8 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                 }
                             },
                             Err(err) => {
-                                let msg = format!("Failed to run block: {}", err);
+                                let msg =
+                                    format!("Run block failed: {}. Block: {}", err, request.block);
                                 tracing::warn!("{}", msg);
                                 scheduler_tx.respond_block_request(
                                     &flow_shared.shared.session_id,
@@ -572,7 +573,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                 );
                             }
                             Err(err) => {
-                                tracing::warn!("{}", err);
+                                tracing::warn!("Query downstream failed: {}.", err,);
                                 scheduler_tx.respond_block_request(
                                     &session_id,
                                     BlockResponseParams {

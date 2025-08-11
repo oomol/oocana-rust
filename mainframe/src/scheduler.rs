@@ -56,6 +56,7 @@ pub enum BlockRequest {
     QueryBlock(QueryBlockRequest),
     QueryDownstream {
         session_id: SessionId,
+        /// the job is reference to the block who launched this block request.
         job_id: JobId,
         /// None means return all handle outputs
         outputs: Option<Vec<HandleName>>,

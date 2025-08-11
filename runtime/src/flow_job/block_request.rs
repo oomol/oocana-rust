@@ -179,7 +179,7 @@ pub fn parse_run_block_request(
             let invalid_inputs = validate_fn(&task_block.inputs_def, &inputs_values);
 
             if !invalid_inputs.is_empty() {
-                let mut msg = "run block api has some invalid inputs:".to_string();
+                let mut msg = format!("Task block {} has some invalid inputs:", block);
                 for (handle, error) in invalid_inputs {
                     msg += format!("\n{}: {}", handle, error).as_str();
                 }
@@ -263,7 +263,7 @@ pub fn parse_run_block_request(
 
             if !missing_inputs.is_empty() {
                 let msg = format!(
-                    "subflow block {} inputs missing these input handles: {:?}",
+                    "Subflow block {} inputs missing these input handles: {:?}",
                     block, missing_inputs
                 );
                 return Err(msg);
@@ -272,7 +272,7 @@ pub fn parse_run_block_request(
             let invalid_inputs = validate_fn(&subflow_block.inputs_def, &input_values);
 
             if !invalid_inputs.is_empty() {
-                let mut msg = "run block api has some invalid inputs:".to_string();
+                let mut msg = format!("Subflow block {} has some invalid inputs:", block);
                 for (handle, error) in invalid_inputs {
                     msg += format!("\n{}: {}", handle, error).as_str();
                 }
@@ -289,7 +289,7 @@ pub fn parse_run_block_request(
             });
         }
         _ => {
-            let msg = format!("block not found for run block request: {}", block);
+            let msg = format!("{} is not subflow or task block.", block);
             return Err(msg);
         }
     }
@@ -300,11 +300,9 @@ pub fn parse_query_block_request(
     block_resolver: &mut BlockResolver,
     flow_path_finder: &mut path_finder::BlockPathFinder,
 ) -> Result<serde_json::Value, String> {
-    let QueryBlockRequest { block, .. } = request;
+    let result = read_flow_or_block(&request.block, block_resolver, flow_path_finder);
 
-    let block_result = read_flow_or_block(&block, block_resolver, flow_path_finder);
-
-    match block_result {
+    match result {
         Ok(block) => match block {
             manifest_meta::Block::Task(task_block) => {
                 #[derive(serde::Serialize)]
@@ -366,11 +364,14 @@ pub fn parse_query_block_request(
                 }
             }
             _ => {
-                return Err(format!("block not found for block or subflow"));
+                return Err(format!("{} is not subflow or task block.", request.block));
             }
         },
         Err(_) => {
-            return Err(format!("Failed to find {} for block or subflow", block));
+            return Err(format!(
+                "Failed to find {} for block or subflow",
+                request.block
+            ));
         }
     }
 }
@@ -383,7 +384,7 @@ pub fn parse_node_downstream(
 ) -> Result<serde_json::Value, String> {
     let query_node = match query_node {
         Some(node) => node,
-        None => return Err("Query node is None".to_string()),
+        None => return Err("don't have relative node".to_string()),
     };
 
     #[derive(serde::Serialize)]
