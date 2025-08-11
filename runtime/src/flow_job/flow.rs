@@ -1,4 +1,3 @@
-use manifest_reader::path_finder::{calculate_block_value_type, BlockValueType};
 use serde_json::json;
 use std::{
     collections::{HashMap, HashSet},
@@ -9,11 +8,9 @@ use std::{
 use uuid::Uuid;
 
 use crate::{
-    block_job::{
-        self, fulfill_nullable_and_default, run_block, run_task_block, BlockJobHandle,
-        RunBlockArgs, RunTaskBlockArgs,
-    },
+    block_job::{run_block, run_task_block, BlockJobHandle, RunBlockArgs, RunTaskBlockArgs},
     block_status::{self, BlockStatusTx},
+    flow_job::block_request::{parse_run_block_request, RunBlockSuccessResponse},
     shared::Shared,
 };
 use mainframe::{
@@ -405,393 +402,96 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                     }
                 }
                 block_status::Status::Request(request) => match request {
-                    BlockRequest::RunBlock(scheduler::RunBlockRequest {
-                        block,
-                        job_id,
-                        block_job_id: new_job_id,
-                        payload,
-                        request_id,
-                        strict,
-                        stacks,
-                        ..
-                    }) => {
-                        let result =
-                            read_flow_or_block(&block, &mut block_resolver, &mut flow_path_finder);
-
-                        if result.is_err() {
-                            let msg = format!("Failed to read block or subflow: {}", block);
-                            tracing::warn!("{}", msg);
-                            scheduler_tx.respond_block_request(
-                                &flow_shared.shared.session_id,
-                                scheduler::BlockResponseParams {
-                                    session_id: flow_shared.shared.session_id.clone(),
-                                    job_id: job_id.clone(),
-                                    error: Some(msg),
-                                    result: None,
-                                    request_id,
-                                },
-                            );
-                            continue;
-                        }
-
-                        let result_block = result.unwrap();
-
-                        let mut block_stack = BlockJobStacks::new();
-                        for s in stacks.iter() {
-                            block_stack = block_stack.stack(
-                                s.flow_job_id.clone(),
-                                s.flow.clone(),
-                                s.node_id.clone(),
-                            );
-                        }
-
-                        let validate_fn = |inputs_def: &Option<InputHandles>,
-                                           inputs: &HashMap<HandleName, Arc<OutputValue>>|
-                         -> HashMap<HandleName, String> {
-                            if !strict.unwrap_or(false) {
-                                return HashMap::new();
-                            }
-                            block_job::validate_inputs(inputs_def, inputs)
-                        };
-
-                        let mut values = payload
-                            .as_object()
-                            .and_then(|obj| obj.get("inputs"))
-                            .and_then(|v| v.as_object())
-                            .map(|obj| {
-                                obj.iter()
-                                    .map(|(k, v)| (k.clone(), v.clone()))
-                                    .collect::<HashMap<String, serde_json::Value>>()
-                            })
-                            .unwrap_or_default();
-
-                        match result_block {
-                            manifest_meta::Block::Task(task_block) => {
-                                let additional_inputs_def: HashMap<HandleName, InputHandle> =
-                                    payload
-                                        .as_object()
-                                        .and_then(|obj| obj.get("additional_inputs_def"))
-                                        .and_then(|v| v.as_array())
-                                        .map(|obj| {
-                                            obj.iter()
-                                                .filter_map(|v| {
-                                                    serde_json::from_value::<InputHandle>(v.clone())
-                                                        .ok()
-                                                })
-                                                .map(|input| {
-                                                    (
-                                                        input.handle.to_owned(),
-                                                        InputHandle {
-                                                            remember: false,
-                                                            is_additional: true,
-                                                            ..input
-                                                        },
-                                                    )
-                                                })
-                                                .collect::<HashMap<HandleName, InputHandle>>()
-                                        })
-                                        .unwrap_or_default();
-
-                                let additional_outputs_def: HashMap<HandleName, OutputHandle> =
-                                    payload
-                                        .as_object()
-                                        .and_then(|obj| obj.get("additional_outputs_def"))
-                                        .and_then(|v| v.as_array())
-                                        .map(|obj| {
-                                            obj.iter()
-                                                .filter_map(|v| {
-                                                    serde_json::from_value::<OutputHandle>(
-                                                        v.clone(),
-                                                    )
-                                                    .ok()
-                                                })
-                                                .map(|output| {
-                                                    (
-                                                        output.handle.to_owned(),
-                                                        OutputHandle {
-                                                            is_additional: true,
-                                                            ..output
-                                                        },
-                                                    )
-                                                })
-                                                .collect::<HashMap<HandleName, OutputHandle>>()
-                                        })
-                                        .unwrap_or_default();
-
-                                let mut task_inner = (*task_block).clone();
-                                task_inner.inputs_def =
-                                    task_inner.inputs_def.map(|mut inputs_def| {
-                                        inputs_def.extend(additional_inputs_def);
-                                        inputs_def
-                                    });
-
-                                task_inner.outputs_def =
-                                    task_inner.outputs_def.map(|mut outputs_def| {
-                                        outputs_def.extend(additional_outputs_def);
-                                        outputs_def
-                                    });
-
-                                let task_block = Arc::new(task_inner);
-
-                                fulfill_nullable_and_default(&mut values, &task_block.inputs_def);
-
-                                let inputs_values: HashMap<HandleName, Arc<OutputValue>> = values
-                                    .into_iter()
-                                    .map(|(handle, value)| {
-                                        (
-                                            HandleName::new(handle),
-                                            Arc::new(OutputValue {
-                                                value,
-                                                is_json_serializable: true,
-                                            }),
-                                        )
-                                    })
-                                    .collect();
-
-                                let missing_inputs = task_block
-                                    .inputs_def
-                                    .as_ref()
-                                    .map(|inputs_def| {
-                                        inputs_def
-                                            .iter()
-                                            .filter_map(|(handle, _)| {
-                                                (!inputs_values.contains_key(handle))
-                                                    .then_some(handle.clone())
-                                            })
-                                            .collect::<Vec<_>>()
-                                    })
-                                    .unwrap_or_default();
-
-                                if !missing_inputs.is_empty() {
-                                    let msg = format!(
-                                        "Task block {} inputs missing these input handles: {:?}",
-                                        block, missing_inputs
-                                    );
-                                    tracing::warn!("{}", msg);
-                                    scheduler_tx.respond_block_request(
-                                        &flow_shared.shared.session_id,
-                                        scheduler::BlockResponseParams {
-                                            session_id: flow_shared.shared.session_id.clone(),
-                                            job_id: job_id.clone(),
-                                            error: Some(msg),
-                                            result: None,
-                                            request_id,
-                                        },
-                                    );
-                                    continue;
-                                }
-
-                                let invalid_inputs =
-                                    validate_fn(&task_block.inputs_def, &inputs_values);
-
-                                if !invalid_inputs.is_empty() {
-                                    let mut msg =
-                                        "run block api has some invalid inputs:".to_string();
-                                    for (handle, error) in invalid_inputs {
-                                        msg += format!("\n{}: {}", handle, error).as_str();
-                                    }
-                                    tracing::warn!("{}", msg);
-                                    scheduler_tx.respond_block_request(
-                                        &flow_shared.shared.session_id,
-                                        scheduler::BlockResponseParams {
-                                            session_id: flow_shared.shared.session_id.clone(),
-                                            job_id: job_id.clone(),
-                                            error: Some(msg),
-                                            result: None,
-                                            request_id,
-                                        },
-                                    );
-                                    continue;
-                                }
-
-                                let block_scope = match calculate_block_value_type(&block) {
-                                    BlockValueType::Pkg { pkg_name, .. } => {
-                                        RuntimeScope {
-                                        session_id: flow_shared.shared.session_id.clone(),
-                                        pkg_name: Some(pkg_name.clone()),
-                                        data_dir: flow_shared.scope.pkg_root.join(pkg_name)
-                                            .to_string_lossy()
-                                            .to_string(),
-                                        pkg_root: flow_shared.scope.pkg_root.clone(),
-                                        path: task_block
-                                            .package_path
-                                            .clone()
-                                            .unwrap_or_else(|| {
-                                                // if package path is not set, use flow shared scope package path
-                                                warn!("can find block package path, this should never happen");
-                                                flow_shared.scope.path.clone()
-                                            }),
-                                        node_id: None,
-                                        is_inject: false,
-                                        enable_layer: layer::feature_enabled(),
-                                    }
-                                    }
-                                    _ => flow_shared.scope.clone(),
-                                };
-
-                                tracing::info!("run block request for task block: {}", block);
-
-                                if let Some(handle) = run_task_block(RunTaskBlockArgs {
+                    BlockRequest::RunBlock(request) => {
+                        let res = parse_run_block_request(
+                            &request,
+                            &mut block_resolver,
+                            &mut flow_path_finder,
+                            flow_shared.shared.clone(),
+                            flow_shared.scope.clone(),
+                        );
+                        match res {
+                            Ok(response) => match response {
+                                RunBlockSuccessResponse::Task {
                                     task_block,
-                                    shared: Arc::clone(&flow_shared.shared),
-                                    parent_flow: Some(flow_shared.flow_block.clone()),
-                                    stacks: block_stack.stack(
-                                        flow_shared.job_id.to_owned(),
-                                        flow_shared.flow_block.path_str.to_owned(),
-                                        NodeId::from(format!("run_block::{}", block)),
-                                    ),
-                                    job_id: new_job_id.clone().into(),
-                                    inputs: Some(inputs_values),
-                                    block_status: run_flow_ctx.block_status.clone(),
-                                    scope: block_scope,
-                                    timeout: None,
-                                    inputs_def_patch: None,
-                                }) {
-                                    run_flow_ctx.jobs.insert(
-                                        new_job_id.into(),
-                                        BlockInFlowJobHandle {
-                                            node_id: NodeId::from(format!("run_block::{}", block)),
-                                            _job: handle,
-                                        },
-                                    );
-                                }
-                            }
-                            manifest_meta::Block::Flow(subflow_block) => {
-                                let flow_scope = match calculate_block_value_type(&block) {
-                                    BlockValueType::Pkg { pkg_name, .. } => {
-                                        RuntimeScope  {
-                                            session_id: flow_shared.shared.session_id.clone(),
-                                            pkg_name: Some(pkg_name.clone()),
-                                            data_dir: flow_shared.scope.pkg_root.join(pkg_name)
-                                                .to_string_lossy()
-                                                .to_string(),
-                                            pkg_root: flow_shared.scope.pkg_root.clone(),
-                                            path: subflow_block.package_path.clone().unwrap_or_else(|| {
-                                                warn!("can find subflow package path, this should never happen");
-                                                flow_shared.scope.path.clone()
-                                            }),
-                                            node_id: None,
-                                            is_inject: false,
-                                            enable_layer: layer::feature_enabled(),
-                                        }
+                                    inputs,
+                                    scope,
+                                    request_stack,
+                                    job_id,
+                                    node_id,
+                                } => {
+                                    if let Some(handle) = run_task_block(RunTaskBlockArgs {
+                                        task_block,
+                                        shared: flow_shared.shared.clone(),
+                                        parent_flow: Some(flow_shared.flow_block.clone()),
+                                        stacks: request_stack.stack(
+                                            flow_shared.job_id.to_owned(),
+                                            flow_shared.flow_block.path_str.to_owned(),
+                                            node_id.clone(),
+                                        ),
+                                        job_id: job_id.clone(),
+                                        inputs: Some(inputs),
+                                        block_status: run_flow_ctx.block_status.clone(),
+                                        scope,
+                                        timeout: None,
+                                        inputs_def_patch: None,
+                                    }) {
+                                        run_flow_ctx.jobs.insert(
+                                            job_id.to_owned(),
+                                            BlockInFlowJobHandle {
+                                                node_id,
+                                                _job: handle,
+                                            },
+                                        );
                                     }
-                                    _ => flow_shared.scope.clone(),
-                                };
-
-                                fulfill_nullable_and_default(
-                                    &mut values,
-                                    &subflow_block.inputs_def,
-                                );
-
-                                let input_values: HashMap<HandleName, Arc<OutputValue>> = values
-                                    .into_iter()
-                                    .map(|(handle, value)| {
-                                        (
-                                            HandleName::new(handle),
-                                            Arc::new(OutputValue {
-                                                value,
-                                                is_json_serializable: true,
-                                            }),
-                                        )
-                                    })
-                                    .collect();
-
-                                let missing_inputs = subflow_block
-                                    .inputs_def
-                                    .as_ref()
-                                    .map(|inputs_def| {
-                                        inputs_def
-                                            .iter()
-                                            .filter_map(|(handle, _)| {
-                                                (!input_values.contains_key(handle))
-                                                    .then_some(handle.clone())
-                                            })
-                                            .collect::<Vec<_>>()
-                                    })
-                                    .unwrap_or_default();
-
-                                if !missing_inputs.is_empty() {
-                                    let msg = format!(
-                                        "subflow block {} inputs missing these input handles: {:?}",
-                                        block, missing_inputs
-                                    );
-                                    tracing::warn!("{}", msg);
-                                    scheduler_tx.respond_block_request(
-                                        &flow_shared.shared.session_id,
-                                        scheduler::BlockResponseParams {
-                                            session_id: flow_shared.shared.session_id.clone(),
-                                            job_id: job_id.clone(),
-                                            error: Some(msg),
-                                            result: None,
-                                            request_id,
-                                        },
-                                    );
-                                    continue;
                                 }
-
-                                let invalid_inputs =
-                                    validate_fn(&subflow_block.inputs_def, &input_values);
-
-                                if !invalid_inputs.is_empty() {
-                                    let mut msg =
-                                        "run block api has some invalid inputs:".to_string();
-                                    for (handle, error) in invalid_inputs {
-                                        msg += format!("\n{}: {}", handle, error).as_str();
+                                RunBlockSuccessResponse::Flow {
+                                    flow_block,
+                                    inputs,
+                                    scope,
+                                    request_stack,
+                                    job_id,
+                                    node_id,
+                                } => {
+                                    if let Some(handle) = run_flow(RunFlowArgs {
+                                        flow_block,
+                                        shared: flow_shared.shared.clone(),
+                                        stacks: request_stack.stack(
+                                            flow_shared.job_id.to_owned(),
+                                            flow_shared.flow_block.path_str.to_owned(),
+                                            node_id.clone(),
+                                        ),
+                                        flow_job_id: job_id.clone(),
+                                        inputs: Some(inputs),
+                                        node_value_store: NodeInputValues::new(false),
+                                        parent_block_status: run_flow_ctx.block_status.clone(),
+                                        nodes: None,
+                                        parent_scope: flow_shared.scope.clone(),
+                                        scope,
+                                        slot_blocks: default::Default::default(),
+                                        path_finder: flow_shared.path_finder.clone(),
+                                    }) {
+                                        run_flow_ctx.jobs.insert(
+                                            job_id.to_owned(),
+                                            BlockInFlowJobHandle {
+                                                node_id,
+                                                _job: handle,
+                                            },
+                                        );
                                     }
-                                    tracing::warn!("{}", msg);
-                                    scheduler_tx.respond_block_request(
-                                        &flow_shared.shared.session_id,
-                                        scheduler::BlockResponseParams {
-                                            session_id: flow_shared.shared.session_id.clone(),
-                                            job_id: job_id.clone(),
-                                            error: Some(msg),
-                                            result: None,
-                                            request_id,
-                                        },
-                                    );
-                                    continue;
                                 }
-
-                                tracing::info!("run block request for subflow block: {}", block);
-                                if let Some(handle) = run_flow(RunFlowArgs {
-                                    flow_block: subflow_block,
-                                    shared: Arc::clone(&flow_shared.shared),
-                                    stacks: block_stack.stack(
-                                        flow_shared.job_id.to_owned(),
-                                        flow_shared.flow_block.path_str.to_owned(),
-                                        NodeId::from(format!("run_block::{}", block)),
-                                    ),
-                                    flow_job_id: new_job_id.clone().into(),
-                                    inputs: Some(input_values),
-                                    node_value_store: NodeInputValues::new(false),
-                                    parent_block_status: run_flow_ctx.block_status.clone(),
-                                    nodes: None,
-                                    parent_scope: flow_shared.scope.clone(),
-                                    scope: flow_scope,
-                                    slot_blocks: default::Default::default(),
-                                    path_finder: flow_shared.path_finder.clone(),
-                                }) {
-                                    run_flow_ctx.jobs.insert(
-                                        new_job_id.into(),
-                                        BlockInFlowJobHandle {
-                                            node_id: NodeId::from(format!("run_block::{}", block)),
-                                            _job: handle,
-                                        },
-                                    );
-                                }
-                            }
-                            _ => {
-                                let msg =
-                                    format!("block not found for run block request: {}", block);
+                            },
+                            Err(err) => {
+                                let msg = format!("Failed to run block: {}", err);
                                 tracing::warn!("{}", msg);
                                 scheduler_tx.respond_block_request(
                                     &flow_shared.shared.session_id,
                                     scheduler::BlockResponseParams {
                                         session_id: flow_shared.shared.session_id.clone(),
-                                        job_id: job_id.clone(),
+                                        job_id: request.job_id.clone(),
                                         error: Some(msg),
                                         result: None,
-                                        request_id,
+                                        request_id: request.request_id,
                                     },
                                 );
                             }
