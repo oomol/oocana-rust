@@ -3,8 +3,8 @@ use std::{collections::HashMap, sync::Arc};
 use job::{BlockJobStacks, JobId, RuntimeScope};
 use mainframe::scheduler::{QueryBlockRequest, RunBlockRequest};
 use manifest_meta::{
-    read_flow_or_block, BlockResolver, HandleName, InputHandle, InputHandles, NodeId, OutputHandle,
-    OutputHandles, SubflowBlock, TaskBlock,
+    read_flow_or_block, BlockResolver, HandleName, HandleTo, InputHandle, InputHandles, Node,
+    NodeId, OutputHandle, OutputHandles, SubflowBlock, TaskBlock,
 };
 use manifest_reader::path_finder::{self, calculate_block_value_type, BlockValueType};
 use tracing::warn;
@@ -372,5 +372,99 @@ pub fn parse_query_block_request(
         Err(_) => {
             return Err(format!("Failed to find {} for block or subflow", block));
         }
+    }
+}
+
+pub fn parse_node_downstream(
+    query_node: Option<&Node>,
+    nodes: &HashMap<NodeId, Node>,
+    query_output_handles: &Option<Vec<HandleName>>,
+    outputs_def: &Option<OutputHandles>,
+) -> Result<serde_json::Value, String> {
+    let query_node = match query_node {
+        Some(node) => node,
+        None => return Err("Query node is None".to_string()),
+    };
+
+    #[derive(serde::Serialize)]
+    struct FlowDownstream {
+        output_handle: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        output_handle_def: Option<OutputHandle>,
+    }
+
+    #[derive(serde::Serialize)]
+    struct NodeDownstream {
+        node_id: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        description: Option<String>,
+        input_handle: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        input_handle_def: Option<InputHandle>,
+    }
+
+    #[derive(serde::Serialize, Default)]
+    struct Downstream {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        to_flow: Option<Vec<FlowDownstream>>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        to_node: Option<Vec<NodeDownstream>>,
+    }
+
+    let mut downstream: HashMap<HandleName, Downstream> = HashMap::new();
+    if let Some(tos) = query_node.to() {
+        for (handle, tos) in tos {
+            if query_output_handles
+                .as_ref()
+                .is_none_or(|o| o.contains(handle))
+            {
+                for to in tos {
+                    match to {
+                        HandleTo::ToFlowOutput { output_handle, .. } => {
+                            let flow_downstream = downstream
+                                .entry(handle.clone())
+                                .or_default()
+                                .to_flow
+                                .get_or_insert_with(Vec::new);
+                            flow_downstream.push(FlowDownstream {
+                                output_handle: output_handle.to_string(),
+                                output_handle_def: outputs_def
+                                    .as_ref()
+                                    .and_then(|def| def.get(output_handle))
+                                    .cloned(),
+                            });
+                        }
+                        HandleTo::ToNodeInput {
+                            node_id,
+                            input_handle,
+                            ..
+                        } => {
+                            let node_downstream = downstream
+                                .entry(handle.clone())
+                                .or_default()
+                                .to_node
+                                .get_or_insert_with(Vec::new);
+                            node_downstream.push(NodeDownstream {
+                                node_id: node_id.to_string(),
+                                description: nodes.get(node_id).and_then(|n| n.description()),
+                                input_handle: input_handle.to_string(),
+                                input_handle_def: nodes
+                                    .get(node_id)
+                                    .and_then(|n| n.inputs_def())
+                                    .as_ref()
+                                    .and_then(|inputs_def| inputs_def.get(input_handle))
+                                    .cloned(),
+                            });
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    let res = serde_json::to_value(downstream);
+    match res {
+        Ok(value) => Ok(value),
+        Err(e) => Err(format!("Failed to serialize downstream: {}", e)),
     }
 }
