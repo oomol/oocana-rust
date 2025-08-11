@@ -1,10 +1,10 @@
 use std::{collections::HashMap, sync::Arc};
 
 use job::{BlockJobStacks, JobId, RuntimeScope};
-use mainframe::scheduler::RunBlockRequest;
+use mainframe::scheduler::{QueryBlockRequest, RunBlockRequest};
 use manifest_meta::{
     read_flow_or_block, BlockResolver, HandleName, InputHandle, InputHandles, NodeId, OutputHandle,
-    SubflowBlock, TaskBlock,
+    OutputHandles, SubflowBlock, TaskBlock,
 };
 use manifest_reader::path_finder::{self, calculate_block_value_type, BlockValueType};
 use tracing::warn;
@@ -291,6 +291,86 @@ pub fn parse_run_block_request(
         _ => {
             let msg = format!("block not found for run block request: {}", block);
             return Err(msg);
+        }
+    }
+}
+
+pub fn parse_query_block_request(
+    request: &QueryBlockRequest,
+    block_resolver: &mut BlockResolver,
+    flow_path_finder: &mut path_finder::BlockPathFinder,
+) -> Result<serde_json::Value, String> {
+    let QueryBlockRequest { block, .. } = request;
+
+    let block_result = read_flow_or_block(&block, block_resolver, flow_path_finder);
+
+    match block_result {
+        Ok(block) => match block {
+            manifest_meta::Block::Task(task_block) => {
+                #[derive(serde::Serialize)]
+                struct TaskBlockMetadata {
+                    pub r#type: String,
+                    #[serde(skip_serializing_if = "Option::is_none")]
+                    pub description: Option<String>,
+                    #[serde(skip_serializing_if = "Option::is_none")]
+                    pub inputs_def: Option<InputHandles>,
+                    #[serde(skip_serializing_if = "Option::is_none")]
+                    pub outputs_def: Option<OutputHandles>,
+                    pub additional_inputs: bool,
+                    pub additional_outputs: bool,
+                }
+
+                let metadata = TaskBlockMetadata {
+                    r#type: "task".to_string(),
+                    description: task_block.description.clone(),
+                    inputs_def: task_block.inputs_def.clone(),
+                    outputs_def: task_block.outputs_def.clone(),
+                    additional_inputs: task_block.additional_inputs,
+                    additional_outputs: task_block.additional_outputs,
+                };
+                let json = serde_json::to_value(&metadata);
+                if let Ok(json) = json {
+                    return Ok(json);
+                } else {
+                    return Err(format!("Failed to serialize task block metadata to JSON"));
+                }
+            }
+            manifest_meta::Block::Flow(subflow_block) => {
+                #[derive(serde::Serialize)]
+                struct SubflowMetadata {
+                    r#type: String,
+                    #[serde(skip_serializing_if = "Option::is_none")]
+                    description: Option<String>,
+                    #[serde(skip_serializing_if = "Option::is_none")]
+                    inputs_def: Option<InputHandles>,
+                    #[serde(skip_serializing_if = "Option::is_none")]
+                    outputs_def: Option<OutputHandles>,
+                    has_slot: bool,
+                }
+
+                let metadata = SubflowMetadata {
+                    r#type: "subflow".to_string(),
+                    description: subflow_block.description.clone(),
+                    inputs_def: subflow_block.inputs_def.clone(),
+                    outputs_def: subflow_block.outputs_def.clone(),
+                    has_slot: subflow_block.has_slot(),
+                };
+
+                let json = serde_json::to_value(&metadata);
+                if let Ok(json) = json {
+                    return Ok(json);
+                } else {
+                    return Err(format!(
+                        "Failed to serialize subflow block metadata to JSON"
+                    ));
+                }
+            }
+            _ => {
+                return Err(format!("block not found for block or subflow"));
+            }
+        },
+        Err(_) => {
+            return Err(format!("Failed to find {} for block or subflow", block));
         }
     }
 }
