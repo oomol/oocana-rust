@@ -56,7 +56,11 @@ impl ReporterRxImpl for ReporterRx {
     }
 }
 
-pub async fn connect(addr: &SocketAddr, session_id: SessionId) -> (ReporterTx, ReporterRx) {
+pub async fn connect(
+    addr: &SocketAddr,
+    session_id: SessionId,
+    send_to_console: bool,
+) -> (ReporterTx, ReporterRx) {
     let mut options = MqttOptions::new(
         format!("oocana-reporter-{}", session_id),
         addr.ip().to_string(),
@@ -64,8 +68,13 @@ pub async fn connect(addr: &SocketAddr, session_id: SessionId) -> (ReporterTx, R
     );
     options.set_max_packet_size(268435456, 268435456);
     options.set_keep_alive(Duration::from_secs(60));
+
     let (shutdown_tx, shutdown_rx) = watch::channel(());
     let (tx, rx) = AsyncClient::new(options, 50);
+
+    if send_to_console {
+        tx.subscribe("report", QoS::AtLeastOnce).await.unwrap();
+    }
 
     (
         ReporterTx { tx, shutdown_tx },

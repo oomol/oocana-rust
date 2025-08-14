@@ -86,6 +86,8 @@ enum Commands {
         bind_path_file: Option<String>,
         #[arg(help = "dry run, if true, oocana will not execute the flow, just print all parsed parameters", long)]
         dry_run: bool,
+        #[arg(help = "If true, oocana will console report message to console")]
+        report_to_console: bool,
     },
     Cache {
         #[command(subcommand)]
@@ -162,7 +164,7 @@ pub fn cli_match() -> Result<()> {
     let app_config = utils::config::load_config(Some(&cli.config))?;
     debug!("config {:?} command args: {command:#?} in version: {VERSION}", cli.config);
     match command {
-        Commands::Run { block, broker, search_paths, session, reporter, debug, wait_for_client, use_cache, nodes, nodes_inputs, inputs, exclude_packages, default_package, bind_paths, session_dir: session_path, retain_env_keys, env_file, bind_path_file, verbose: _verbose, temp_root, dry_run, pkg_data_root, project_data } => {
+        Commands::Run { block, broker, search_paths, session, reporter, debug, wait_for_client, use_cache, nodes, nodes_inputs, inputs, exclude_packages, default_package, bind_paths, session_dir: session_path, retain_env_keys, env_file, bind_path_file, verbose: _verbose, temp_root, dry_run, pkg_data_root, project_data, report_to_console } => {
 
             let bind_paths = load_bind_paths(bind_paths, bind_path_file);
             let search_paths = parse_search_paths(search_paths);
@@ -208,6 +210,7 @@ pub fn cli_match() -> Result<()> {
                 temp_root: temp_root.to_owned(),
                 project_data: &PathBuf::from(project_data),
                 pkg_data_root: &PathBuf::from(pkg_data_root),
+                report_to_console: report_to_console.to_owned(),
             })?
         },
         Commands::Cache { action } => {

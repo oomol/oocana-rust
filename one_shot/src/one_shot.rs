@@ -93,6 +93,7 @@ pub struct BlockArgs<'a> {
     pub temp_root: String,
     pub project_data: &'a PathBuf,
     pub pkg_data_root: &'a PathBuf,
+    pub report_to_console: bool,
 }
 
 async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
@@ -117,6 +118,7 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
         temp_root,
         project_data,
         pkg_data_root,
+        report_to_console,
     } = block_args;
     let session_id = SessionId::new(session);
     tracing::info!("Session start with session id: {}", session_id);
@@ -262,7 +264,8 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
 
     let (reporter_tx, reporter_rx) = if reporter_enable {
         let (_reporter_impl_tx, _reporter_impl_rx) =
-            mainframe_mqtt::reporter::connect(&addr, session_id.to_owned()).await;
+            mainframe_mqtt::reporter::connect(&addr, session_id.to_owned(), report_to_console)
+                .await;
         mainframe::reporter::create(
             session_id.to_owned(),
             Some(_reporter_impl_tx),
