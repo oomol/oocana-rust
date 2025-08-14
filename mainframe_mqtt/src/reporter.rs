@@ -1,3 +1,4 @@
+use job::SessionId;
 use std::{net::SocketAddr, time::Duration};
 use tokio::sync::watch;
 
@@ -9,7 +10,6 @@ use mainframe::{
     MessageData,
 };
 use tracing::{error, info};
-use uuid::Uuid;
 
 pub struct ReporterTx {
     tx: AsyncClient,
@@ -56,9 +56,9 @@ impl ReporterRxImpl for ReporterRx {
     }
 }
 
-pub async fn connect(addr: &SocketAddr) -> (ReporterTx, ReporterRx) {
+pub async fn connect(addr: &SocketAddr, session_id: SessionId) -> (ReporterTx, ReporterRx) {
     let mut options = MqttOptions::new(
-        format!("oocana-reporter-{}", Uuid::new_v4()),
+        format!("oocana-reporter-{}", session_id),
         addr.ip().to_string(),
         addr.port(),
     );

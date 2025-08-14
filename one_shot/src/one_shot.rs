@@ -261,7 +261,8 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
     let scheduler_handle = scheduler_rx.event_loop();
 
     let (reporter_tx, reporter_rx) = if reporter_enable {
-        let (_reporter_impl_tx, _reporter_impl_rx) = mainframe_mqtt::reporter::connect(&addr).await;
+        let (_reporter_impl_tx, _reporter_impl_rx) =
+            mainframe_mqtt::reporter::connect(&addr, session_id.to_owned()).await;
         mainframe::reporter::create(
             session_id.to_owned(),
             Some(_reporter_impl_tx),
