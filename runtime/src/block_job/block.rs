@@ -119,7 +119,7 @@ pub enum JobParams {
     },
 }
 
-pub fn execute_job(args: JobParams) -> Option<BlockJobHandle> {
+pub fn run_job(args: JobParams) -> Option<BlockJobHandle> {
     match args {
         JobParams::Flow {
             flow_block,
@@ -199,91 +199,6 @@ pub fn execute_job(args: JobParams) -> Option<BlockJobHandle> {
                     result: None,
                     finish_at: ReporterMessage::now(),
                 });
-            None
-        }
-    }
-}
-
-pub fn run_block(block_args: RunBlockArgs) -> Option<BlockJobHandle> {
-    let RunBlockArgs {
-        block,
-        shared,
-        parent_flow,
-        stacks,
-        job_id,
-        inputs,
-        block_status,
-        node_value_store,
-        nodes,
-        timeout,
-        parent_scope,
-        scope,
-        inputs_def_patch,
-        slot_blocks,
-        path_finder,
-    } = block_args;
-
-    match block {
-        // block.oo.yaml type flow_block || flow.oo.yaml
-        Block::Flow(flow_block) => flow_job::run_flow({
-            flow_job::RunFlowArgs {
-                flow_block,
-                shared,
-                stacks,
-                flow_job_id: job_id,
-                inputs,
-                parent_block_status: block_status,
-                nodes,
-                parent_scope,
-                node_value_store: node_value_store.unwrap_or(NodeInputValues::new(false)),
-                scope,
-                slot_blocks: slot_blocks.unwrap_or_default(),
-                path_finder,
-            }
-        }),
-        // block.oo.yaml type task_block
-        Block::Task(task_block) => task_job::run_task_block(task_job::RunTaskBlockArgs {
-            task_block,
-            shared,
-            parent_flow,
-            stacks,
-            job_id,
-            inputs,
-            block_status,
-            scope,
-            timeout,
-            inputs_def_patch,
-        }),
-        Block::Service(service_block) => {
-            service_job::run_service_block(service_job::RunServiceBlockArgs {
-                service_block,
-                shared,
-                stacks,
-                job_id,
-                inputs,
-                block_status,
-                injection_store: parent_flow.as_ref().and_then(|f| f.injection_store.clone()),
-                parent_flow,
-                scope,
-                inputs_def_patch,
-            })
-        }
-        Block::Slot(slot_block) => {
-            shared
-                .reporter
-                .send(mainframe::reporter::ReporterMessage::BlockFinished {
-                    session_id: &shared.session_id,
-                    job_id: &job_id,
-                    block_path: &slot_block
-                        .path
-                        .as_ref()
-                        .map(|path| path.to_string_lossy().to_string()),
-                    stacks: stacks.vec(),
-                    error: Some("Cannot run Slot Block directly".to_string()),
-                    result: None,
-                    finish_at: ReporterMessage::now(),
-                });
-
             None
         }
     }

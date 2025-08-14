@@ -7,7 +7,7 @@ use std::{
 use uuid::Uuid;
 
 use crate::{
-    block_job::{run_block, run_task_block, BlockJobHandle, RunBlockArgs, RunTaskBlockArgs},
+    block_job::{run_job, run_task_block, BlockJobHandle, RunBlockArgs, RunTaskBlockArgs},
     block_status::{self, BlockStatusTx},
     flow_job::block_request::{
         parse_node_downstream, parse_query_block_request, parse_run_block_request,
@@ -1026,7 +1026,7 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
         },
     };
 
-    let handle = run_block({
+    let handle = run_job({
         RunBlockArgs {
             block,
             shared: Arc::clone(&shared.shared),

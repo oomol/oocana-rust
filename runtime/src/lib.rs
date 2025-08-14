@@ -191,7 +191,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
         is_inject: false,
     };
 
-    let handle = block_job::run_block({
+    let handle = block_job::run_job({
         block_job::RunBlockArgs {
             block,
             shared: Arc::clone(&shared),
