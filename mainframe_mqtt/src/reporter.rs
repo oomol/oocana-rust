@@ -1,9 +1,10 @@
 use job::SessionId;
 use std::{net::SocketAddr, time::Duration};
 use tokio::sync::watch;
+use utils::logger::STDOUT_TARGET;
 
 use async_trait::async_trait;
-use rumqttc::{AsyncClient, EventLoop, MqttOptions, QoS};
+use rumqttc::{AsyncClient, Event, EventLoop, Incoming, MqttOptions, QoS};
 
 use mainframe::{
     reporter::{ReporterRxImpl, ReporterTxImpl},
@@ -46,8 +47,16 @@ impl ReporterRxImpl for ReporterRx {
                         break;
                     }
                     result = self.rx.poll() => {
-                        if let Err(e) = result {
-                            error!("Cannot connect Oocana Reporter to broker. error: {:?}", e);
+                        match result {
+                            Ok(Event::Incoming(Incoming::Publish(publish))) => {
+                                let payload = publish.payload;
+                                let payload_str = String::from_utf8_lossy(&payload);
+                                info!(target:STDOUT_TARGET, "{}", payload_str);
+                            }
+                            Ok(_) => {}
+                            Err(e) => {
+                                error!("Error in reporter event loop: {}", e);
+                            }
                         }
                     }
                 }
