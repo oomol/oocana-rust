@@ -86,7 +86,7 @@ enum Commands {
         bind_path_file: Option<String>,
         #[arg(help = "dry run, if true, oocana will not execute the flow, just print all parsed parameters", long)]
         dry_run: bool,
-        #[arg(help = "If true, oocana will console report message to console")]
+        #[arg(help = "If true, oocana will console report message to console", long)]
         report_to_console: bool,
     },
     Cache {
