@@ -1,15 +1,16 @@
+use job::SessionId;
 use std::{net::SocketAddr, time::Duration};
 use tokio::sync::watch;
+use utils::logger::STDOUT_TARGET;
 
 use async_trait::async_trait;
-use rumqttc::{AsyncClient, EventLoop, MqttOptions, QoS};
+use rumqttc::{AsyncClient, Event, EventLoop, Incoming, MqttOptions, QoS};
 
 use mainframe::{
     reporter::{ReporterRxImpl, ReporterTxImpl},
     MessageData,
 };
 use tracing::{error, info};
-use uuid::Uuid;
 
 pub struct ReporterTx {
     tx: AsyncClient,
@@ -34,6 +35,7 @@ impl ReporterTxImpl for ReporterTx {
 pub struct ReporterRx {
     rx: EventLoop,
     shutdown_rx: watch::Receiver<()>,
+    session_id: String,
 }
 
 impl ReporterRxImpl for ReporterRx {
@@ -46,8 +48,18 @@ impl ReporterRxImpl for ReporterRx {
                         break;
                     }
                     result = self.rx.poll() => {
-                        if let Err(e) = result {
-                            error!("Cannot connect Oocana Reporter to broker. error: {:?}", e);
+                        match result {
+                            Ok(Event::Incoming(Incoming::Publish(publish))) => {
+                                let payload = publish.payload;
+                                let payload_str = String::from_utf8_lossy(&payload);
+                                if payload_str.contains(self.session_id.as_str()) {
+                                    info!(target: STDOUT_TARGET, "{}", payload_str);
+                                }
+                            }
+                            Ok(_) => {}
+                            Err(e) => {
+                                error!("Error in reporter event loop: {}", e);
+                            }
                         }
                     }
                 }
@@ -56,19 +68,34 @@ impl ReporterRxImpl for ReporterRx {
     }
 }
 
-pub async fn connect(addr: &SocketAddr) -> (ReporterTx, ReporterRx) {
+pub async fn connect(
+    addr: &SocketAddr,
+    session_id: SessionId,
+    forward_to_console: bool,
+) -> (ReporterTx, ReporterRx) {
     let mut options = MqttOptions::new(
-        format!("oocana-reporter-{}", Uuid::new_v4()),
+        format!("oocana-reporter-{}", session_id),
         addr.ip().to_string(),
         addr.port(),
     );
     options.set_max_packet_size(268435456, 268435456);
     options.set_keep_alive(Duration::from_secs(60));
+
     let (shutdown_tx, shutdown_rx) = watch::channel(());
     let (tx, rx) = AsyncClient::new(options, 50);
 
+    if forward_to_console {
+        if let Err(e) = tx.subscribe("report", QoS::AtLeastOnce).await {
+            error!("Failed to subscribe to 'report': {}", e);
+        }
+    }
+
     (
         ReporterTx { tx, shutdown_tx },
-        ReporterRx { rx, shutdown_rx },
+        ReporterRx {
+            rx,
+            shutdown_rx,
+            session_id: session_id.to_string(),
+        },
     )
 }

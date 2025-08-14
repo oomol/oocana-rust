@@ -23,7 +23,7 @@
                     "kind": "bin"
                 }
             },
-            "args": ["run", "${workspaceFolder}/examples", "--reporter"],
+            "args": ["run", "${workspaceFolder}/examples/base", "--reporter"],
             "cwd": "${workspaceFolder}"
         }
     ]
