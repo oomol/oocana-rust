@@ -114,12 +114,12 @@ pub fn cli_match() -> Result<()> {
     let command = &cli.command;
     
     let _guard = match command {
-        Commands::Run { session, verbose, .. } => {
+        Commands::Run { session, verbose, report_to_console, .. } => {
             utils::logger::setup_logging(LogParams {
                 sub_dir: Some(format!("sessions/{session}")),
                 log_name: "oocana",
                 output_to_console: *verbose,
-                capture_stdout_stderr_target: false,
+                capture_stdout_stderr_target: *report_to_console,
             })?
         },
         Commands::PackageLayer { action } => {
