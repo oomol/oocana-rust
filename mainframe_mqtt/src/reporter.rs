@@ -68,7 +68,7 @@ impl ReporterRxImpl for ReporterRx {
 pub async fn connect(
     addr: &SocketAddr,
     session_id: SessionId,
-    send_to_console: bool,
+    forward_to_console: bool,
 ) -> (ReporterTx, ReporterRx) {
     let mut options = MqttOptions::new(
         format!("oocana-reporter-{}", session_id),
@@ -81,7 +81,7 @@ pub async fn connect(
     let (shutdown_tx, shutdown_rx) = watch::channel(());
     let (tx, rx) = AsyncClient::new(options, 50);
 
-    if send_to_console {
+    if forward_to_console {
         if let Err(e) = tx.subscribe("report", QoS::AtLeastOnce).await {
             error!("Failed to subscribe to 'report': {}", e);
         }
