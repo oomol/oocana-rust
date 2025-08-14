@@ -82,7 +82,9 @@ pub async fn connect(
     let (tx, rx) = AsyncClient::new(options, 50);
 
     if send_to_console {
-        tx.subscribe("report", QoS::AtLeastOnce).await.unwrap();
+        if let Err(e) = tx.subscribe("report", QoS::AtLeastOnce).await {
+            error!("Failed to subscribe to 'report': {}", e);
+        }
     }
 
     (
