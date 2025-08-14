@@ -35,6 +35,7 @@ impl ReporterTxImpl for ReporterTx {
 pub struct ReporterRx {
     rx: EventLoop,
     shutdown_rx: watch::Receiver<()>,
+    session_id: String,
 }
 
 impl ReporterRxImpl for ReporterRx {
@@ -51,7 +52,9 @@ impl ReporterRxImpl for ReporterRx {
                             Ok(Event::Incoming(Incoming::Publish(publish))) => {
                                 let payload = publish.payload;
                                 let payload_str = String::from_utf8_lossy(&payload);
-                                info!(target:STDOUT_TARGET, "{}", payload_str);
+                                if payload_str.contains(self.session_id.as_str()) {
+                                    info!(target: STDOUT_TARGET, "{}", payload_str);
+                                }
                             }
                             Ok(_) => {}
                             Err(e) => {
@@ -89,6 +92,10 @@ pub async fn connect(
 
     (
         ReporterTx { tx, shutdown_tx },
-        ReporterRx { rx, shutdown_rx },
+        ReporterRx {
+            rx,
+            shutdown_rx,
+            session_id: session_id.to_string(),
+        },
     )
 }
