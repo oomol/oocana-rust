@@ -52,6 +52,7 @@ pub enum JobParams {
         common: CommonJobParameters,
     },
     Slot {
+        #[allow(dead_code)]
         slot_block: Arc<SlotBlock>,
         common: CommonJobParameters,
     },
