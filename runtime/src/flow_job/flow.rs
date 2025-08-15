@@ -1029,7 +1029,11 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
 
     let common_job_params = CommonJobParameters {
         shared: shared.shared.clone(),
-        stacks: shared.stacks.clone(),
+        stacks: shared.stacks.stack(
+            shared.job_id.to_owned(),
+            shared.flow_block.path_str.to_owned(),
+            node.node_id().to_owned(),
+        ),
         job_id: job_id.clone(),
         inputs: ctx.node_input_values.take(node),
         block_status: ctx.block_status.clone(),
@@ -1040,8 +1044,8 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
         Block::Task(task_block) => JobParams::Task {
             task_block: task_block.clone(),
             parent_flow: Some(shared.flow_block.clone()),
-            timeout: None,
-            inputs_def_patch: None,
+            timeout: node.timeout(),
+            inputs_def_patch: node.inputs_def_patch(),
             common: common_job_params,
         },
         Block::Flow(flow_block) => JobParams::Flow {
@@ -1049,20 +1053,23 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
             nodes: None,
             parent_scope: shared.scope.clone(),
             node_value_store: NodeInputValues::new(false),
-            slot_blocks: None,
+            slot_blocks: match node {
+                Node::Flow(n) => n.slots.clone(),
+                _ => None,
+            },
             path_finder: shared.path_finder.clone(),
             common: common_job_params,
         },
         Block::Service(service_block) => JobParams::Service {
             service_block: service_block.clone(),
             parent_flow: Some(shared.flow_block.clone()),
-            inputs_def_patch: None,
+            inputs_def_patch: node.inputs_def_patch(),
             shared: common_job_params,
         },
         Block::Slot(slot_block) => JobParams::Slot {
             slot_block: slot_block.clone(),
             common: common_job_params,
-            inputs_def_patch: None,
+            inputs_def_patch: node.inputs_def_patch(),
         },
     };
 
