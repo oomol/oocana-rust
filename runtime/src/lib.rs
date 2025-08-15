@@ -548,13 +548,13 @@ pub fn find_upstream(
 
     match block {
         Block::Flow(flow) => {
-            let args = block_job::FindUpstreamArgs {
+            let args = flow_job::UpstreamArgs {
                 flow_block: flow,
                 use_cache,
                 nodes: nodes.map(|nodes| nodes.into_iter().map(NodeId::new).collect()),
             };
 
-            Ok(block_job::find_upstream(args))
+            Ok(flow_job::find_upstream(args))
         }
         _ => {
             log_error!("Block is not a flow block: {}", block_path);
