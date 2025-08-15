@@ -974,7 +974,7 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
         node.block()
     };
 
-    let scope = if matches!(node, Node::Slot(_)) {
+    let block_scope = if matches!(node, Node::Slot(_)) {
         shared
             .slot_blocks
             .get(node.node_id())
@@ -984,7 +984,7 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
         node.scope()
     };
 
-    let package_scope = match scope {
+    let runtime_scope = match block_scope {
         BlockScope::Package {
             name,
             path,
@@ -1037,7 +1037,7 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
         job_id: job_id.clone(),
         inputs: ctx.node_input_values.take(node),
         block_status: ctx.block_status.clone(),
-        scope: package_scope,
+        scope: runtime_scope,
     };
 
     let job_params = match block {
@@ -1072,6 +1072,7 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
             inputs_def_patch: node.inputs_def_patch(),
         },
     };
+    tracing::info!("run node {} as job {job_id}", node.node_id());
 
     if let Some(handle) = run_job(job_params) {
         ctx.jobs.insert(
