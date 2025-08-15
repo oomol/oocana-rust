@@ -43,7 +43,7 @@ impl Drop for TaskJobHandle {
     }
 }
 
-pub struct RunTaskBlockArgs {
+pub struct TaskJobParameters {
     pub task_block: Arc<TaskBlock>,
     pub inputs_def: Option<InputHandles>, // block's inputs def missing some node added inputs,
     pub outputs_def: Option<OutputHandles>, // block's outputs def will miss additional outputs added on node
@@ -58,8 +58,8 @@ pub struct RunTaskBlockArgs {
     pub inputs_def_patch: Option<InputDefPatchMap>,
 }
 
-pub fn run_task_block(args: RunTaskBlockArgs) -> Option<BlockJobHandle> {
-    let RunTaskBlockArgs {
+pub fn execute_task_job(params: TaskJobParameters) -> Option<BlockJobHandle> {
+    let TaskJobParameters {
         task_block,
         inputs_def,
         outputs_def,
@@ -72,7 +72,7 @@ pub fn run_task_block(args: RunTaskBlockArgs) -> Option<BlockJobHandle> {
         scope,
         timeout,
         inputs_def_patch,
-    } = args;
+    } = params;
     let reporter = Arc::new(shared.reporter.block(
         job_id.to_owned(),
         task_block.path_str.clone(),
