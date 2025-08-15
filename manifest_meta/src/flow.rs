@@ -923,11 +923,11 @@ impl SubflowBlock {
                         running_scope = BlockScope::default();
                     }
 
-                    let mut merged_inputs_def =
+                    let mut node_inputs_def =
                         if task.additional_inputs && task_node.inputs_def.is_some() {
                             let mut inputs_def = task.inputs_def.clone().unwrap_or_default();
-                            if let Some(node_addition_inputs) = task_node.inputs_def.as_ref() {
-                                for input in node_addition_inputs.iter() {
+                            if let Some(node_additional_inputs) = task_node.inputs_def.as_ref() {
+                                for input in node_additional_inputs.iter() {
                                     inputs_def.entry(input.handle.to_owned()).or_insert_with(
                                         || InputHandle {
                                             is_additional: true,
@@ -948,8 +948,8 @@ impl SubflowBlock {
                     let merged_outputs_def =
                         if task.additional_outputs && task.outputs_def.is_some() {
                             let mut outputs_def = task.outputs_def.clone().unwrap_or_default();
-                            if let Some(node_addition_outputs) = task_node.outputs_def.as_ref() {
-                                for output in node_addition_outputs.iter() {
+                            if let Some(node_additional_outputs) = task_node.outputs_def.as_ref() {
+                                for output in node_additional_outputs.iter() {
                                     outputs_def.entry(output.handle.to_owned()).or_insert_with(
                                         || OutputHandle {
                                             is_additional: true,
@@ -964,7 +964,7 @@ impl SubflowBlock {
                         };
 
                     let inputs = generate_node_inputs(
-                        &merged_inputs_def,
+                        &node_inputs_def,
                         &from,
                         &task_node.inputs_from,
                         &inputs_def_patch,
