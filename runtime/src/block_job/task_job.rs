@@ -1,6 +1,8 @@
 use mainframe::reporter::BlockReporterTx;
 use mainframe::scheduler::{self, ExecutorParams, SchedulerTx};
-use manifest_meta::{HandleName, InputDefPatchMap, SubflowBlock, TaskBlock, TaskBlockExecutor};
+use manifest_meta::{
+    HandleName, InputDefPatchMap, InputHandles, SubflowBlock, TaskBlock, TaskBlockExecutor,
+};
 use manifest_reader::manifest::SpawnOptions;
 
 use std::collections::HashMap;
@@ -42,6 +44,7 @@ impl Drop for TaskJobHandle {
 
 pub struct RunTaskBlockArgs {
     pub task_block: Arc<TaskBlock>,
+    pub inputs_def: Option<InputHandles>, // block's inputs def missing some node added inputs,
     pub shared: Arc<Shared>,
     pub parent_flow: Option<Arc<SubflowBlock>>,
     pub stacks: BlockJobStacks,
@@ -56,6 +59,7 @@ pub struct RunTaskBlockArgs {
 pub fn run_task_block(args: RunTaskBlockArgs) -> Option<BlockJobHandle> {
     let RunTaskBlockArgs {
         task_block,
+        inputs_def,
         shared,
         parent_flow,
         stacks,
@@ -94,7 +98,7 @@ pub fn run_task_block(args: RunTaskBlockArgs) -> Option<BlockJobHandle> {
         scheduler_tx: shared.scheduler_tx.clone(),
         inputs: inputs.clone(),
         outputs_def: task_block.outputs_def.clone(),
-        inputs_def: task_block.inputs_def.clone(),
+        inputs_def,
         block_status: block_status.clone(),
         reporter: Arc::clone(&reporter),
         executor: Some(task_block.executor.clone()),

@@ -6,7 +6,7 @@ use std::{
 use job::{BlockInputs, BlockJobStacks, JobId, RuntimeScope};
 use mainframe::reporter::ReporterMessage;
 use manifest_meta::{
-    InputDefPatchMap, NodeId, ServiceBlock, Slot, SlotBlock, SubflowBlock, TaskBlock,
+    InputDefPatchMap, InputHandles, NodeId, ServiceBlock, Slot, SlotBlock, SubflowBlock, TaskBlock,
 };
 
 use crate::{
@@ -37,6 +37,7 @@ pub enum JobParams {
     },
     Task {
         task_block: Arc<TaskBlock>,
+        inputs_def: Option<InputHandles>, // block's inputs def will miss additional inputs added on node
         parent_flow: Option<Arc<SubflowBlock>>,
         timeout: Option<u64>,
         inputs_def_patch: Option<InputDefPatchMap>,
@@ -83,9 +84,11 @@ pub fn run_job(args: JobParams) -> Option<BlockJobHandle> {
             parent_flow,
             timeout,
             inputs_def_patch,
+            inputs_def,
             common,
         } => crate::block_job::run_task_block(crate::block_job::RunTaskBlockArgs {
             task_block,
+            inputs_def,
             shared: common.shared,
             parent_flow,
             stacks: common.stacks,
