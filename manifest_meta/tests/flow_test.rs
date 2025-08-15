@@ -169,28 +169,24 @@ mod tests {
         {
             assert!(matches!(node3, manifest_meta::Node::Task(_)));
             if let manifest_meta::Node::Task(task_node) = node3 {
-                let node_additional_in = task_node
-                    .inputs
-                    .get(&HandleName::new("additional_in".to_owned()));
+                let additional_in_handle = HandleName::new("additional_in".to_owned());
+
+                let node_additional_in = task_node.inputs.get(&additional_in_handle);
                 assert!(node_additional_in.is_some());
                 let additional_inputs = node_additional_in.unwrap();
                 assert!(additional_inputs.def.is_additional);
 
-                let block_additional_in = task_node
-                    .task
-                    .inputs_def
-                    .as_ref()
-                    .unwrap()
-                    .get(&HandleName::new("additional_in".to_owned()));
+                let block_additional_in = node3
+                    .inputs_def()
+                    .and_then(|def| def.get(&additional_in_handle).cloned());
                 assert!(block_additional_in.is_some());
                 assert!(block_additional_in.unwrap().is_additional);
 
-                let block_additional_out = task_node
-                    .task
-                    .outputs_def
-                    .as_ref()
-                    .unwrap()
-                    .get(&HandleName::new("additional_out".to_owned()));
+                let additional_out_handle = HandleName::new("additional_out".to_owned());
+
+                let block_additional_out = node3
+                    .outputs_def()
+                    .and_then(|def| def.get(&additional_out_handle).cloned());
                 assert!(block_additional_out.is_some());
                 assert!(block_additional_out.unwrap().is_additional);
             }
@@ -236,12 +232,9 @@ mod tests {
             assert!(matches!(node2, manifest_meta::Node::Task(_)));
             if let manifest_meta::Node::Task(task_node) = node2 {
                 let input_handle = HandleName::new("in".to_owned());
-                let input = task_node
-                    .task
-                    .inputs_def
-                    .as_ref()
-                    .unwrap()
-                    .get(&input_handle)
+                let input = node2
+                    .inputs_def()
+                    .and_then(|def| def.get(&input_handle).cloned())
                     .unwrap();
                 assert!(input._deserialize_from_cache);
 
