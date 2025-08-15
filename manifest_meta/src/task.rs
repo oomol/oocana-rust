@@ -10,9 +10,8 @@ pub struct TaskBlock {
     pub executor: TaskBlockExecutor,
     pub inputs_def: Option<InputHandles>,
     pub outputs_def: Option<OutputHandles>,
-    /// block.oo.[yml|yaml] 的路径；如果是 inline block，这个字段为空。
+    // None means this task block is inline script block
     pub path: Option<PathBuf>,
-    pub path_str: Option<String>,
     pub additional_inputs: bool,
     pub additional_outputs: bool,
     // TODO: package_path is not reliable, it should be removed. use block type instead.
@@ -24,9 +23,8 @@ impl TaskBlock {
         self.executor.entry()
     }
 
-    // script 小脚本，首先是 TaskNodeBlock File 类型。但是这里没办法自己判断。
     fn is_script_block(&self) -> bool {
-        self.executor.is_script()
+        self.path.is_none()
     }
 
     pub fn block_dir(&self) -> Option<PathBuf> {
@@ -39,6 +37,12 @@ impl TaskBlock {
         } else {
             None
         }
+    }
+
+    pub fn path_str(&self) -> Option<String> {
+        self.path
+            .as_ref()
+            .map(|path| path.to_string_lossy().to_string())
     }
 }
 
@@ -62,7 +66,6 @@ impl TaskBlock {
             inputs_def,
             description,
             outputs_def,
-            path_str: path.as_ref().map(|path| path.to_string_lossy().to_string()),
             path,
             package_path: package,
             additional_inputs,

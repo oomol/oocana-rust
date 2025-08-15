@@ -88,10 +88,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
         }
     };
 
-    let block_path = block
-        .path_str()
-        .map(|p| p.to_owned())
-        .unwrap_or_else(|| block_name.to_string());
+    let block_path = block.path_str().unwrap_or_else(|| block_name.to_string());
 
     shared.reporter.session_started(&block_path, partial, cache);
 
@@ -102,17 +99,6 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
         .or_else(|| current_dir().ok());
 
     let workspace = scope_workspace.expect("workspace not found");
-
-    let flow_cache_path = if let Some(path) = block.path_str() {
-        get_flow_cache_path(path)
-    } else {
-        None
-    };
-
-    let node_value_store = match (shared.use_cache, flow_cache_path) {
-        (true, Some(cache_path)) => NodeInputValues::recover_from(cache_path, true),
-        _ => NodeInputValues::new(true),
-    };
 
     if let Some(patch_value_str) = nodes_inputs {
         let merge_inputs_value = serde_json::from_str::<MergeInputsValue>(&patch_value_str)
@@ -213,15 +199,21 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
             inputs_def_patch: None,
             common: common_job_params,
         },
-        Block::Flow(flow_block) => JobParams::Flow {
-            flow_block: flow_block.clone(),
-            nodes,
-            parent_scope: root_scope.clone(),
-            node_value_store,
-            slot_blocks: None,
-            path_finder: path_finder.clone(),
-            common: common_job_params,
-        },
+        Block::Flow(flow_block) => {
+            let flow_cache_path = get_flow_cache_path(&flow_block.path_str);
+            JobParams::Flow {
+                flow_block: flow_block.clone(),
+                nodes,
+                parent_scope: root_scope.clone(),
+                node_value_store: match (shared.use_cache, flow_cache_path) {
+                    (true, Some(cache_path)) => NodeInputValues::recover_from(cache_path, true),
+                    _ => NodeInputValues::new(true),
+                },
+                slot_blocks: None,
+                path_finder: path_finder.clone(),
+                common: common_job_params,
+            }
+        }
         Block::Service(service_block) => JobParams::Service {
             service_block: service_block.clone(),
             parent_flow: None,
@@ -542,10 +534,7 @@ pub fn find_upstream(
         }
     };
 
-    let block_path = block
-        .path_str()
-        .map(|p| p.to_owned())
-        .unwrap_or_else(|| block_name.to_string());
+    let block_path = block.path_str().unwrap_or_else(|| block_name.to_string());
 
     match block {
         Block::Flow(flow) => {
