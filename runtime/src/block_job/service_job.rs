@@ -27,7 +27,7 @@ impl Drop for ServiceJobHandle {
     }
 }
 
-pub struct RunServiceBlockArgs {
+pub struct ServiceJobParameters {
     pub service_block: Arc<ServiceBlock>,
     pub shared: Arc<Shared>,
     pub stacks: BlockJobStacks,
@@ -40,8 +40,8 @@ pub struct RunServiceBlockArgs {
     pub inputs_def_patch: Option<InputDefPatchMap>,
 }
 
-pub fn run_service_block(args: RunServiceBlockArgs) -> Option<BlockJobHandle> {
-    let RunServiceBlockArgs {
+pub fn execute_service_job(params: ServiceJobParameters) -> Option<BlockJobHandle> {
+    let ServiceJobParameters {
         service_block,
         shared,
         stacks,
@@ -52,7 +52,7 @@ pub fn run_service_block(args: RunServiceBlockArgs) -> Option<BlockJobHandle> {
         scope,
         parent_flow,
         inputs_def_patch,
-    } = args;
+    } = params;
     let reporter = Arc::new(
         shared
             .reporter

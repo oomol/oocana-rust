@@ -57,8 +57,8 @@ pub enum JobParams {
     },
 }
 
-pub fn run_job(args: JobParams) -> Option<BlockJobHandle> {
-    match args {
+pub fn run_job(params: JobParams) -> Option<BlockJobHandle> {
+    match params {
         JobParams::Flow {
             flow_block,
             nodes,
@@ -67,7 +67,7 @@ pub fn run_job(args: JobParams) -> Option<BlockJobHandle> {
             slot_blocks,
             path_finder,
             common,
-        } => flow_job::run_flow(flow_job::RunFlowArgs {
+        } => flow_job::execute_flow_job(flow_job::FlowJobParameters {
             flow_block,
             shared: common.shared,
             stacks: common.stacks,
@@ -89,7 +89,7 @@ pub fn run_job(args: JobParams) -> Option<BlockJobHandle> {
             inputs_def,
             outputs_def,
             common,
-        } => crate::block_job::run_task_block(crate::block_job::RunTaskBlockArgs {
+        } => crate::block_job::execute_task_job(crate::block_job::TaskJobParameters {
             task_block,
             inputs_def,
             outputs_def,
@@ -108,7 +108,7 @@ pub fn run_job(args: JobParams) -> Option<BlockJobHandle> {
             parent_flow,
             inputs_def_patch,
             common,
-        } => crate::block_job::run_service_block(crate::block_job::RunServiceBlockArgs {
+        } => crate::block_job::execute_service_job(crate::block_job::ServiceJobParameters {
             service_block,
             shared: common.shared,
             stacks: common.stacks,

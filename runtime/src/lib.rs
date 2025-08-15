@@ -22,10 +22,11 @@ use manifest_meta::{read_flow_or_block, Block, BlockResolver, MergeInputsValue, 
 use utils::error::Result;
 
 use crate::{
-    block_job::{run_task_block, RunTaskBlockArgs},
+    block_job::{execute_task_job, TaskJobParameters},
     flow_job::{
-        flow::get_flow_cache_path, parse_node_downstream, parse_query_block_request,
-        parse_run_block_request, run_flow, NodeInputValues, RunBlockSuccessResponse, RunFlowArgs,
+        execute_flow_job, flow::get_flow_cache_path, parse_node_downstream,
+        parse_query_block_request, parse_run_block_request, FlowJobParameters, NodeInputValues,
+        RunBlockSuccessResponse,
     },
     run::{run_job, CommonJobParameters, JobParams},
 };
@@ -278,7 +279,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
                                 job_id,
                                 node_id,
                             } => {
-                                if let Some(_) = run_task_block(RunTaskBlockArgs {
+                                if let Some(_) = execute_task_job(TaskJobParameters {
                                     inputs_def,
                                     outputs_def,
                                     task_block,
@@ -307,7 +308,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
                                 job_id,
                                 node_id,
                             } => {
-                                if let Some(_) = run_flow(RunFlowArgs {
+                                if let Some(_) = execute_flow_job(FlowJobParameters {
                                     flow_block,
                                     shared: shared.clone(),
                                     stacks: request_stack.stack(
@@ -548,13 +549,13 @@ pub fn find_upstream(
 
     match block {
         Block::Flow(flow) => {
-            let args = block_job::FindUpstreamArgs {
+            let args = flow_job::UpstreamArgs {
                 flow_block: flow,
                 use_cache,
                 nodes: nodes.map(|nodes| nodes.into_iter().map(NodeId::new).collect()),
             };
 
-            Ok(block_job::find_upstream(args))
+            Ok(flow_job::find_upstream(args))
         }
         _ => {
             log_error!("Block is not a flow block: {}", block_path);

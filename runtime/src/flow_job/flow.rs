@@ -7,7 +7,7 @@ use std::{
 use uuid::Uuid;
 
 use crate::{
-    block_job::{run_task_block, BlockJobHandle, RunTaskBlockArgs},
+    block_job::{execute_task_job, BlockJobHandle, TaskJobParameters},
     block_status::{self, BlockStatusTx},
     flow_job::block_request::{
         parse_node_downstream, parse_query_block_request, parse_run_block_request,
@@ -78,7 +78,7 @@ struct NodeQueue {
     pub pending: HashSet<JobId>, // JobId 本身不会使用，只是用来判断 pending 的数量
 }
 
-pub struct RunFlowArgs {
+pub struct FlowJobParameters {
     pub flow_block: Arc<SubflowBlock>,
     pub shared: Arc<Shared>,
     pub stacks: BlockJobStacks,
@@ -120,8 +120,8 @@ pub fn find_upstream(upstream_args: UpstreamArgs) -> (Vec<String>, Vec<String>, 
     (node_will_run, waiting_nodes, upstream_nodes)
 }
 
-pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
-    let RunFlowArgs {
+pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle> {
+    let FlowJobParameters {
         flow_block,
         shared,
         stacks,
@@ -134,7 +134,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
         scope,
         parent_scope,
         path_finder,
-    } = flow_args;
+    } = params;
 
     let reporter = Arc::new(shared.reporter.flow(
         flow_job_id.to_owned(),
@@ -425,7 +425,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                     job_id,
                                     node_id,
                                 } => {
-                                    if let Some(handle) = run_task_block(RunTaskBlockArgs {
+                                    if let Some(handle) = execute_task_job(TaskJobParameters {
                                         task_block,
                                         inputs_def,
                                         outputs_def,
@@ -460,7 +460,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                     job_id,
                                     node_id,
                                 } => {
-                                    if let Some(handle) = run_flow(RunFlowArgs {
+                                    if let Some(handle) = execute_flow_job(FlowJobParameters {
                                         flow_block,
                                         shared: flow_shared.shared.clone(),
                                         stacks: request_stack.stack(
