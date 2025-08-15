@@ -539,7 +539,6 @@ impl SubflowBlock {
                                                     continue;
                                                 }
 
-
                                                 let handle_input_from = slotflow_provider
                                                     .inputs_from
                                                     .as_ref()
@@ -984,13 +983,6 @@ impl SubflowBlock {
                         }
                     }
 
-                    let mut task_inner = (*task).clone();
-                    task_inner.outputs_def = merged_outputs_def;
-                    task_inner.inputs_def = merged_inputs_def.clone();
-                    // TODO: this behavior change task's outputs_def, this task is a new task.
-                    //       maybe we should refactor this later.
-                    let task = Arc::new(task_inner);
-
                     new_nodes.insert(
                         task_node.node_id.to_owned(),
                         Node::Task(TaskNode {
@@ -1001,6 +993,7 @@ impl SubflowBlock {
                             scope: running_scope,
                             task,
                             inputs,
+                            outputs_def: merged_outputs_def,
                             concurrency: task_node.concurrency,
                             progress_weight: task_node.progress_weight,
                         }),

@@ -1,7 +1,8 @@
 use mainframe::reporter::BlockReporterTx;
 use mainframe::scheduler::{self, ExecutorParams, SchedulerTx};
 use manifest_meta::{
-    HandleName, InputDefPatchMap, InputHandles, SubflowBlock, TaskBlock, TaskBlockExecutor,
+    HandleName, InputDefPatchMap, InputHandles, OutputHandles, SubflowBlock, TaskBlock,
+    TaskBlockExecutor,
 };
 use manifest_reader::manifest::SpawnOptions;
 
@@ -45,6 +46,7 @@ impl Drop for TaskJobHandle {
 pub struct RunTaskBlockArgs {
     pub task_block: Arc<TaskBlock>,
     pub inputs_def: Option<InputHandles>, // block's inputs def missing some node added inputs,
+    pub outputs_def: Option<OutputHandles>, // block's outputs def will miss additional outputs added on node
     pub shared: Arc<Shared>,
     pub parent_flow: Option<Arc<SubflowBlock>>,
     pub stacks: BlockJobStacks,
@@ -60,6 +62,7 @@ pub fn run_task_block(args: RunTaskBlockArgs) -> Option<BlockJobHandle> {
     let RunTaskBlockArgs {
         task_block,
         inputs_def,
+        outputs_def,
         shared,
         parent_flow,
         stacks,
@@ -97,7 +100,7 @@ pub fn run_task_block(args: RunTaskBlockArgs) -> Option<BlockJobHandle> {
         stacks: stacks.clone(),
         scheduler_tx: shared.scheduler_tx.clone(),
         inputs: inputs.clone(),
-        outputs_def: task_block.outputs_def.clone(),
+        outputs_def: outputs_def.clone(),
         inputs_def,
         block_status: block_status.clone(),
         reporter: Arc::clone(&reporter),
@@ -244,6 +247,7 @@ pub fn run_task_block(args: RunTaskBlockArgs) -> Option<BlockJobHandle> {
                 parent_flow: parent_flow.as_ref(),
                 job_id: &job_id,
                 scheduler_tx: shared.scheduler_tx.clone(),
+                outputs_def: &outputs_def,
                 scope: &scope,
                 stacks,
             });
@@ -291,6 +295,7 @@ fn block_dir(
 struct ExecutorArgs<'a> {
     task_block: &'a TaskBlock,
     executor: &'a TaskBlockExecutor,
+    outputs_def: &'a Option<OutputHandles>,
     parent_flow: Option<&'a Arc<SubflowBlock>>,
     job_id: &'a JobId,
     scope: &'a RuntimeScope,
@@ -305,6 +310,7 @@ fn send_to_executor(args: ExecutorArgs) {
         parent_flow,
         job_id,
         scheduler_tx,
+        outputs_def,
         scope,
         stacks,
     } = args;
@@ -315,7 +321,7 @@ fn send_to_executor(args: ExecutorArgs) {
         stacks: stacks.vec(),
         dir,
         executor,
-        outputs: &task_block.outputs_def,
+        outputs: outputs_def,
         scope,
         injection_store: &parent_flow.as_ref().and_then(|f| f.injection_store.clone()),
         flow: &parent_flow.as_ref().map(|f| f.path_str.clone()),

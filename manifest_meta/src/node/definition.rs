@@ -11,6 +11,7 @@ use super::subflow::SubflowNode;
 
 extend_node_common_field!(TaskNode {
     task: Arc<TaskBlock>,
+    outputs_def: Option<OutputHandles>,
     scope: BlockScope,
 });
 
@@ -99,7 +100,8 @@ impl Node {
 
     pub fn outputs_def(&self) -> Option<&OutputHandles> {
         match self {
-            Self::Task(task) => task.task.outputs_def.as_ref(),
+            Self::Task(task) => task.outputs_def.as_ref(),
+            // TODO: change to node outputs_def instead of block's
             Self::Flow(flow) => flow.flow.outputs_def.as_ref(),
             Self::Slot(slot) => slot.slot.outputs_def.as_ref(),
             Self::Service(service) => service.block.outputs_def.as_ref(),

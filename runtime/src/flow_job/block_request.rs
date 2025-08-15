@@ -28,6 +28,7 @@ pub enum RunBlockSuccessResponse {
         task_block: Arc<TaskBlock>,
         inputs: HashMap<HandleName, Arc<OutputValue>>,
         inputs_def: Option<InputHandles>,
+        outputs_def: Option<OutputHandles>,
         scope: RuntimeScope,
         request_stack: BlockJobStacks,
         job_id: JobId,
@@ -135,12 +136,11 @@ pub fn parse_run_block_request(
             });
             task_inner.inputs_def = task_job_inputs_def.clone();
 
-            task_inner.outputs_def = task_inner.outputs_def.map(|mut outputs_def| {
+            let task_job_outputs_def = task_inner.outputs_def.map(|mut outputs_def| {
                 outputs_def.extend(additional_outputs_def);
                 outputs_def
             });
 
-            let task_block = Arc::new(task_inner);
             fulfill_nullable_and_default(&mut values, &task_job_inputs_def);
 
             let inputs_values: HashMap<HandleName, Arc<OutputValue>> = values
@@ -211,6 +211,7 @@ pub fn parse_run_block_request(
                 task_block,
                 inputs: inputs_values,
                 inputs_def: task_job_inputs_def,
+                outputs_def: task_job_outputs_def,
                 scope: block_scope,
                 job_id: block_job_id.to_owned().into(),
                 request_stack: block_stack,
