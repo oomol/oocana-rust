@@ -88,10 +88,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
         }
     };
 
-    let block_path = block
-        .path_str()
-        .map(|p| p.to_owned())
-        .unwrap_or_else(|| block_name.to_string());
+    let block_path = block.path_str().unwrap_or_else(|| block_name.to_string());
 
     shared.reporter.session_started(&block_path, partial, cache);
 
@@ -537,10 +534,7 @@ pub fn find_upstream(
         }
     };
 
-    let block_path = block
-        .path_str()
-        .map(|p| p.to_owned())
-        .unwrap_or_else(|| block_name.to_string());
+    let block_path = block.path_str().unwrap_or_else(|| block_name.to_string());
 
     match block {
         Block::Flow(flow) => {
