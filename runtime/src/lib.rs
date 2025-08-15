@@ -223,7 +223,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
             service_block: service_block.clone(),
             parent_flow: None,
             inputs_def_patch: None,
-            shared: common_job_params,
+            common: common_job_params,
         },
         Block::Slot(slot_block) => JobParams::Slot {
             slot_block: slot_block.clone(),

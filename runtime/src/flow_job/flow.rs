@@ -1064,7 +1064,7 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
             service_block: service_block.clone(),
             parent_flow: Some(shared.flow_block.clone()),
             inputs_def_patch: node.inputs_def_patch(),
-            shared: common_job_params,
+            common: common_job_params,
         },
         Block::Slot(slot_block) => JobParams::Slot {
             slot_block: slot_block.clone(),

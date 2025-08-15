@@ -46,7 +46,7 @@ pub enum JobParams {
         service_block: Arc<ServiceBlock>,
         parent_flow: Option<Arc<SubflowBlock>>,
         inputs_def_patch: Option<InputDefPatchMap>,
-        shared: CommonJobParameters,
+        common: CommonJobParameters,
     },
     Slot {
         slot_block: Arc<SlotBlock>,
@@ -101,7 +101,7 @@ pub fn run_job(args: JobParams) -> Option<BlockJobHandle> {
             service_block,
             parent_flow,
             inputs_def_patch,
-            shared: common,
+            common,
         } => crate::block_job::run_service_block(crate::block_job::RunServiceBlockArgs {
             service_block,
             shared: common.shared,
