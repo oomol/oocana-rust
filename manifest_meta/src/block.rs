@@ -13,11 +13,11 @@ pub enum Block {
 }
 
 impl Block {
-    pub fn path_str(&self) -> Option<&String> {
+    pub fn path_str(&self) -> Option<String> {
         match self {
-            Block::Task(task) => task.path_str.as_ref(),
-            Block::Flow(flow) => Some(&flow.path_str),
-            Block::Slot(slot) => slot.path_str.as_ref(),
+            Block::Task(task) => task.path_str(),
+            Block::Flow(flow) => Some(flow.path_str.clone()),
+            Block::Slot(_) => None,
             Block::Service(_) => None,
         }
     }
