@@ -129,12 +129,10 @@ pub fn parse_run_block_request(
                 })
                 .unwrap_or_default();
 
-            let mut task_inner = (*task_block).clone();
             let task_job_inputs_def = task_inner.inputs_def.map(|mut inputs_def| {
                 inputs_def.extend(additional_inputs_def);
                 inputs_def
             });
-            task_inner.inputs_def = task_job_inputs_def.clone();
 
             let task_job_outputs_def = task_inner.outputs_def.map(|mut outputs_def| {
                 outputs_def.extend(additional_outputs_def);
