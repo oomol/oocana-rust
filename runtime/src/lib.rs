@@ -228,7 +228,6 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
         Block::Slot(slot_block) => JobParams::Slot {
             slot_block: slot_block.clone(),
             common: common_job_params,
-            inputs_def_patch: None,
         },
     };
 

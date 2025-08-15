@@ -50,7 +50,6 @@ pub enum JobParams {
     },
     Slot {
         slot_block: Arc<SlotBlock>,
-        inputs_def_patch: Option<InputDefPatchMap>,
         common: CommonJobParameters,
     },
 }

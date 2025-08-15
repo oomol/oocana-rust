@@ -1069,7 +1069,6 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
         Block::Slot(slot_block) => JobParams::Slot {
             slot_block: slot_block.clone(),
             common: common_job_params,
-            inputs_def_patch: node.inputs_def_patch(),
         },
     };
     tracing::info!("run node {} as job {job_id}", node.node_id());
