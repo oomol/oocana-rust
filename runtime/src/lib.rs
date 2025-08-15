@@ -2,6 +2,7 @@ mod block_job;
 pub mod block_status;
 pub mod delay_abort;
 mod flow_job;
+mod run;
 pub mod shared;
 use mainframe::scheduler::{BlockRequest, BlockResponseParams, QueryBlockRequest};
 use manifest_reader::path_finder::BlockPathFinder;
@@ -26,6 +27,7 @@ use crate::{
         flow::get_flow_cache_path, parse_node_downstream, parse_query_block_request,
         parse_run_block_request, run_flow, NodeInputValues, RunBlockSuccessResponse, RunFlowArgs,
     },
+    run::{run_job, CommonJobParameters, JobParams},
 };
 
 const SESSION_CANCEL_INFO: &str = "Cancelled";
@@ -51,7 +53,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
         block_name,
         block_reader,
         mut path_finder,
-        job_id,
+        job_id: param_job_id,
         nodes,
         inputs,
         nodes_inputs,
@@ -61,7 +63,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
         in_layer,
     } = args;
     let (block_status_tx, block_status_rx) = block_status::create();
-    let root_job_id = job_id.unwrap_or_else(JobId::random);
+    let root_job_id = param_job_id.unwrap_or_else(JobId::random);
     let stacks = BlockJobStacks::new();
     let partial = nodes.is_some();
     let cache = shared.use_cache;
@@ -191,25 +193,45 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
         is_inject: false,
     };
 
-    let handle = block_job::run_block({
-        block_job::RunBlockArgs {
-            block,
-            shared: Arc::clone(&shared),
+    let common_job_params = CommonJobParameters {
+        shared: shared.clone(),
+        stacks: stacks.clone(),
+        job_id: root_job_id.clone(),
+        inputs,
+        block_status: block_status_tx.clone(),
+        scope: root_scope.clone(),
+    };
+
+    let job_params = match block {
+        Block::Task(task_block) => JobParams::Task {
+            task_block: task_block.clone(),
             parent_flow: None,
-            stacks,
-            job_id: root_job_id.clone(),
-            inputs,
-            block_status: block_status_tx.clone(),
-            node_value_store: Some(node_value_store),
-            nodes,
             timeout: None,
             inputs_def_patch: None,
+            common: common_job_params,
+        },
+        Block::Flow(flow_block) => JobParams::Flow {
+            flow_block: flow_block.clone(),
+            nodes,
             parent_scope: root_scope.clone(),
-            scope: root_scope.clone(),
+            node_value_store,
             slot_blocks: None,
             path_finder: path_finder.clone(),
-        }
-    });
+            common: common_job_params,
+        },
+        Block::Service(service_block) => JobParams::Service {
+            service_block: service_block.clone(),
+            parent_flow: None,
+            inputs_def_patch: None,
+            common: common_job_params,
+        },
+        Block::Slot(slot_block) => JobParams::Slot {
+            slot_block: slot_block.clone(),
+            common: common_job_params,
+        },
+    };
+
+    let handle = run_job(job_params);
 
     let block_status_tx_clone = block_status_tx.clone();
     let signal_handler = tokio::task::spawn(async move {
