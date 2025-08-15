@@ -75,7 +75,7 @@ pub fn execute_task_job(params: TaskJobParameters) -> Option<BlockJobHandle> {
     } = params;
     let reporter = Arc::new(shared.reporter.block(
         job_id.to_owned(),
-        task_block.path_str.clone(),
+        task_block.path_str(),
         stacks.clone(),
     ));
 
@@ -96,7 +96,7 @@ pub fn execute_task_job(params: TaskJobParameters) -> Option<BlockJobHandle> {
 
     let worker_listener_handle = listen_to_worker(ListenerArgs {
         job_id: job_id.to_owned(),
-        block_path: task_block.path_str.clone(),
+        block_path: task_block.path_str(),
         stacks: stacks.clone(),
         scheduler_tx: shared.scheduler_tx.clone(),
         inputs: inputs.clone(),
@@ -185,7 +185,8 @@ pub fn execute_task_job(params: TaskJobParameters) -> Option<BlockJobHandle> {
                         if status_code != 0 {
                             let msg = format!(
                                 "Task block '{:?}' exited with code {}",
-                                task_block.path_str, status_code
+                                task_block.path_str(),
+                                status_code
                             );
                             shared_clone.scheduler_tx.send_block_event(
                                 scheduler::ReceiveMessage::BlockFinished {
