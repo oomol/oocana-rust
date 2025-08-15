@@ -7,12 +7,13 @@ use std::{
 use uuid::Uuid;
 
 use crate::{
-    block_job::{run_job, run_task_block, BlockJobHandle, RunBlockArgs, RunTaskBlockArgs},
+    block_job::{run_task_block, BlockJobHandle, RunTaskBlockArgs},
     block_status::{self, BlockStatusTx},
     flow_job::block_request::{
         parse_node_downstream, parse_query_block_request, parse_run_block_request,
         RunBlockSuccessResponse,
     },
+    run::{run_job, CommonJobParameters, JobParams},
     shared::Shared,
 };
 use mainframe::{
@@ -27,7 +28,7 @@ use utils::output::OutputValue;
 
 use job::{BlockInputs, BlockJobStacks, JobId, RuntimeScope};
 use manifest_meta::{
-    BlockResolver, BlockScope, HandleTo, InputHandle, Node, NodeId, Slot, SubflowBlock,
+    Block, BlockResolver, BlockScope, HandleTo, InputHandle, Node, NodeId, Slot, SubflowBlock,
 };
 
 use super::node_input_values;
@@ -1026,36 +1027,46 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
         },
     };
 
-    let handle = run_job({
-        RunBlockArgs {
-            block,
-            shared: Arc::clone(&shared.shared),
-            parent_flow: Some(Arc::clone(&shared.flow_block)),
-            stacks: shared.stacks.stack(
-                shared.job_id.to_owned(),
-                shared.flow_block.path_str.to_owned(),
-                node.node_id().to_owned(),
-            ),
-            node_value_store: None,
-            job_id: job_id.to_owned(),
-            inputs: ctx.node_input_values.take(node),
-            block_status: ctx.block_status.clone(),
+    let common_job_params = CommonJobParameters {
+        shared: shared.shared.clone(),
+        stacks: shared.stacks.clone(),
+        job_id: job_id.clone(),
+        inputs: ctx.node_input_values.take(node),
+        block_status: ctx.block_status.clone(),
+        scope: package_scope,
+    };
+
+    let job_params = match block {
+        Block::Task(task_block) => JobParams::Task {
+            task_block: task_block.clone(),
+            parent_flow: Some(shared.flow_block.clone()),
+            timeout: None,
+            inputs_def_patch: None,
+            common: common_job_params,
+        },
+        Block::Flow(flow_block) => JobParams::Flow {
+            flow_block: flow_block.clone(),
             nodes: None,
             parent_scope: shared.scope.clone(),
-            scope: package_scope,
-            timeout: node.timeout(),
-            slot_blocks: match node {
-                Node::Flow(n) => n.slots.clone(),
-                _ => None,
-            },
-            inputs_def_patch: node.inputs_def_patch(),
+            node_value_store: NodeInputValues::new(false),
+            slot_blocks: None,
             path_finder: shared.path_finder.clone(),
-        }
-    });
+            common: common_job_params,
+        },
+        Block::Service(service_block) => JobParams::Service {
+            service_block: service_block.clone(),
+            parent_flow: Some(shared.flow_block.clone()),
+            inputs_def_patch: None,
+            shared: common_job_params,
+        },
+        Block::Slot(slot_block) => JobParams::Slot {
+            slot_block: slot_block.clone(),
+            common: common_job_params,
+            inputs_def_patch: None,
+        },
+    };
 
-    tracing::info!("run node {} as job {job_id}", node.node_id());
-
-    if let Some(handle) = handle {
+    if let Some(handle) = run_job(job_params) {
         ctx.jobs.insert(
             job_id,
             BlockInFlowJobHandle {
