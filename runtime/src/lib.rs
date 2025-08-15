@@ -2,6 +2,7 @@ mod block_job;
 pub mod block_status;
 pub mod delay_abort;
 mod flow_job;
+mod run;
 pub mod shared;
 use mainframe::scheduler::{BlockRequest, BlockResponseParams, QueryBlockRequest};
 use manifest_reader::path_finder::BlockPathFinder;
@@ -26,6 +27,7 @@ use crate::{
         flow::get_flow_cache_path, parse_node_downstream, parse_query_block_request,
         parse_run_block_request, run_flow, NodeInputValues, RunBlockSuccessResponse, RunFlowArgs,
     },
+    run::{run_job, CommonJobParameters, JobParams},
 };
 
 const SESSION_CANCEL_INFO: &str = "Cancelled";
