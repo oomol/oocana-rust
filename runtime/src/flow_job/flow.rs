@@ -418,6 +418,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                 RunBlockSuccessResponse::Task {
                                     task_block,
                                     inputs,
+                                    inputs_def,
                                     scope,
                                     request_stack,
                                     job_id,
@@ -425,6 +426,7 @@ pub fn run_flow(mut flow_args: RunFlowArgs) -> Option<BlockJobHandle> {
                                 } => {
                                     if let Some(handle) = run_task_block(RunTaskBlockArgs {
                                         task_block,
+                                        inputs_def,
                                         shared: flow_shared.shared.clone(),
                                         parent_flow: Some(flow_shared.flow_block.clone()),
                                         stacks: request_stack.stack(
@@ -1042,6 +1044,7 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
 
     let job_params = match block {
         Block::Task(task_block) => JobParams::Task {
+            inputs_def: node.inputs_def(),
             task_block: task_block.clone(),
             parent_flow: Some(shared.flow_block.clone()),
             timeout: node.timeout(),
