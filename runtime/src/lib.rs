@@ -204,6 +204,8 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
 
     let job_params = match block {
         Block::Task(task_block) => JobParams::Task {
+            inputs_def: task_block.inputs_def.clone(),
+            outputs_def: task_block.outputs_def.clone(),
             task_block: task_block.clone(),
             parent_flow: None,
             timeout: None,
@@ -269,12 +271,16 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
                             RunBlockSuccessResponse::Task {
                                 task_block,
                                 inputs,
+                                inputs_def,
+                                outputs_def,
                                 scope,
                                 request_stack,
                                 job_id,
                                 node_id,
                             } => {
                                 if let Some(_) = run_task_block(RunTaskBlockArgs {
+                                    inputs_def,
+                                    outputs_def,
                                     task_block,
                                     shared: shared.clone(),
                                     parent_flow: None,

@@ -539,7 +539,6 @@ impl SubflowBlock {
                                                     continue;
                                                 }
 
-
                                                 let handle_input_from = slotflow_provider
                                                     .inputs_from
                                                     .as_ref()
@@ -722,7 +721,7 @@ impl SubflowBlock {
                         }
                     }
 
-                    let mut inputs_def = if !addition_subflow_inputs_def.is_empty() {
+                    let node_inputs_def = if !addition_subflow_inputs_def.is_empty() {
                         let mut merged_inputs_def = subflow_inputs_def.clone().unwrap_or_default();
                         for (handle, input) in addition_subflow_inputs_def.iter() {
                             if !merged_inputs_def.contains_key(handle) {
@@ -747,22 +746,12 @@ impl SubflowBlock {
                         Some(subflow_inputs_from)
                     };
                     let inputs = generate_node_inputs(
-                        &inputs_def,
+                        &node_inputs_def,
                         &from,
                         &subflow_inputs_from_op,
                         &subflow_inputs_def_patch,
                         &subflow_node.node_id,
                     );
-
-                    // #254
-                    for (input_handle, input) in &inputs {
-                        if input.serialize_for_cache {
-                            inputs_def
-                                .as_mut()
-                                .and_then(|def| def.get_mut(input_handle))
-                                .map(|input_def| input_def._deserialize_from_cache = true);
-                        }
-                    }
 
                     new_nodes.insert(
                         subflow_node.node_id.to_owned(),
@@ -789,29 +778,16 @@ impl SubflowBlock {
                         service_node.service.to_owned(),
                         &mut path_finder,
                     )?;
-                    let mut inputs_def = service.inputs_def.clone();
                     let inputs_def_patch = get_inputs_def_patch(&service_node.inputs_from);
                     let from = connections.node_inputs_froms.remove(&service_node.node_id);
 
                     let inputs = generate_node_inputs(
-                        &inputs_def,
+                        &service.inputs_def,
                         &from,
                         &service_node.inputs_from,
                         &inputs_def_patch,
                         &service_node.node_id,
                     );
-
-                    // #254
-                    for (input_handle, input) in &inputs {
-                        if input.serialize_for_cache {
-                            inputs_def
-                                .as_mut()
-                                .and_then(|def| def.get_mut(input_handle))
-                                .map(|input_def| {
-                                    input_def._deserialize_from_cache = true;
-                                });
-                        }
-                    }
 
                     new_nodes.insert(
                         service_node.node_id.to_owned(),
@@ -924,11 +900,11 @@ impl SubflowBlock {
                         running_scope = BlockScope::default();
                     }
 
-                    let mut merged_inputs_def =
+                    let node_inputs_def =
                         if task.additional_inputs && task_node.inputs_def.is_some() {
                             let mut inputs_def = task.inputs_def.clone().unwrap_or_default();
-                            if let Some(node_addition_inputs) = task_node.inputs_def.as_ref() {
-                                for input in node_addition_inputs.iter() {
+                            if let Some(node_additional_inputs) = task_node.inputs_def.as_ref() {
+                                for input in node_additional_inputs.iter() {
                                     inputs_def.entry(input.handle.to_owned()).or_insert_with(
                                         || InputHandle {
                                             is_additional: true,
@@ -949,8 +925,8 @@ impl SubflowBlock {
                     let merged_outputs_def =
                         if task.additional_outputs && task.outputs_def.is_some() {
                             let mut outputs_def = task.outputs_def.clone().unwrap_or_default();
-                            if let Some(node_addition_outputs) = task_node.outputs_def.as_ref() {
-                                for output in node_addition_outputs.iter() {
+                            if let Some(node_additional_outputs) = task_node.outputs_def.as_ref() {
+                                for output in node_additional_outputs.iter() {
                                     outputs_def.entry(output.handle.to_owned()).or_insert_with(
                                         || OutputHandle {
                                             is_additional: true,
@@ -965,31 +941,12 @@ impl SubflowBlock {
                         };
 
                     let inputs = generate_node_inputs(
-                        &merged_inputs_def,
+                        &node_inputs_def,
                         &from,
                         &task_node.inputs_from,
                         &inputs_def_patch,
                         &task_node.node_id,
                     );
-
-                    // #254
-                    for (input_handle, input) in &inputs {
-                        if input.serialize_for_cache {
-                            merged_inputs_def
-                                .as_mut()
-                                .and_then(|def| def.get_mut(input_handle))
-                                .map(|input_def| {
-                                    input_def._deserialize_from_cache = true;
-                                });
-                        }
-                    }
-
-                    let mut task_inner = (*task).clone();
-                    task_inner.outputs_def = merged_outputs_def;
-                    task_inner.inputs_def = merged_inputs_def.clone();
-                    // TODO: this behavior change task's outputs_def, this task is a new task.
-                    //       maybe we should refactor this later.
-                    let task = Arc::new(task_inner);
 
                     new_nodes.insert(
                         task_node.node_id.to_owned(),
@@ -1001,6 +958,7 @@ impl SubflowBlock {
                             scope: running_scope,
                             task,
                             inputs,
+                            outputs_def: merged_outputs_def,
                             concurrency: task_node.concurrency,
                             progress_weight: task_node.progress_weight,
                         }),
@@ -1008,7 +966,7 @@ impl SubflowBlock {
                 }
                 manifest::Node::Slot(slot_node) => {
                     let slot = block_resolver.resolve_slot_node_block(slot_node.slot.to_owned())?;
-                    let mut inputs_def = slot.as_ref().inputs_def.clone();
+                    let inputs_def = slot.as_ref().inputs_def.clone();
                     let inputs_def_patch = get_inputs_def_patch(&slot_node.inputs_from);
 
                     let from = connections.node_inputs_froms.remove(&slot_node.node_id);
@@ -1019,18 +977,6 @@ impl SubflowBlock {
                         &inputs_def_patch,
                         &slot_node.node_id,
                     );
-
-                    // #254
-                    for (input_handle, input) in &inputs {
-                        if input.serialize_for_cache {
-                            inputs_def
-                                .as_mut()
-                                .and_then(|def| def.get_mut(input_handle))
-                                .map(|input_def| {
-                                    input_def._deserialize_from_cache = true;
-                                });
-                        }
-                    }
 
                     new_nodes.insert(
                         slot_node.node_id.to_owned(),
