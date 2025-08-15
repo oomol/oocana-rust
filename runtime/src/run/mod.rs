@@ -120,21 +120,14 @@ pub fn run_job(params: JobParams) -> Option<BlockJobHandle> {
             scope: common.scope,
             inputs_def_patch,
         }),
-        JobParams::Slot {
-            slot_block,
-            common: shared,
-            ..
-        } => {
+        JobParams::Slot { common: shared, .. } => {
             shared
                 .shared
                 .reporter
                 .send(mainframe::reporter::ReporterMessage::BlockFinished {
                     session_id: &shared.shared.session_id,
                     job_id: &shared.job_id,
-                    block_path: &slot_block
-                        .path
-                        .as_ref()
-                        .map(|path| path.to_string_lossy().to_string()),
+                    block_path: &None,
                     stacks: shared.stacks.vec(),
                     error: Some("Cannot run Slot Block directly".to_string()),
                     result: None,

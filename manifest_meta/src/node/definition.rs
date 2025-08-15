@@ -202,7 +202,7 @@ impl Node {
         match self {
             Self::Task(task) => task.task.package_path.clone(),
             Self::Flow(flow) => flow.flow.package_path.clone(),
-            Self::Slot(slot) => slot.slot.package_path.clone(),
+            Self::Slot(_) => None,
             Self::Service(service) => service.block.package_path.clone(),
         }
     }

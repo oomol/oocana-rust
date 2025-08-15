@@ -78,7 +78,7 @@ impl BlockResolver {
     ) -> Result<Arc<SlotBlock>> {
         match slot_node_block {
             manifest::SlotNodeBlock::Inline(block) => {
-                let slot_block = SlotBlock::from_manifest(block, None, None);
+                let slot_block = SlotBlock::from_manifest(block);
                 Ok(Arc::new(slot_block))
             }
         }
