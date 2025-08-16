@@ -4,7 +4,7 @@ use tracing::warn;
 
 use manifest_meta::{Node, NodeId, SubflowBlock};
 
-use crate::flow_job::flow::get_flow_cache_path;
+use crate::flow_job::get_flow_cache_path;
 
 use super::node_input_values;
 use super::run_to_node::RunToNode;

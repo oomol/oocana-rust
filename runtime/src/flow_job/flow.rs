@@ -1,10 +1,8 @@
 use std::{
     collections::{HashMap, HashSet},
     default,
-    path::PathBuf,
     sync::Arc,
 };
-use uuid::Uuid;
 
 use crate::{
     block_job::{execute_task_job, BlockJobHandle, TaskJobParameters},
@@ -14,6 +12,7 @@ use crate::{
             parse_node_downstream, parse_query_block_request, parse_run_block_request,
             RunBlockSuccessResponse,
         },
+        cache::save_flow_cache,
         find_upstream_nodes,
     },
     run::{run_job, CommonJobParameters, JobParams},
@@ -35,7 +34,7 @@ use manifest_meta::{
 };
 
 use super::node_input_values;
-use node_input_values::{CacheMetaMap, CacheMetaMapExt, NodeInputValues};
+use node_input_values::NodeInputValues;
 
 pub struct FlowJobHandle {
     // TODO: Remove this field
@@ -972,37 +971,4 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
 
 fn is_finish(ctx: &RunFlowContext) -> bool {
     ctx.jobs.is_empty()
-}
-
-pub fn get_flow_cache_path(flow: &str) -> Option<PathBuf> {
-    utils::cache::cache_meta_file_path().and_then(|path| {
-        CacheMetaMap::load(path)
-            .ok()
-            .and_then(|meta| meta.get(flow).map(|cache_path| cache_path.into()))
-    })
-}
-
-fn save_flow_cache(node_input_values: &NodeInputValues, flow: &str) {
-    if let Some(cache_path) = get_flow_cache_path(flow) {
-        if let Err(e) = node_input_values.save_cache(cache_path) {
-            warn!("failed to save cache: {}", e);
-        }
-    } else if let Some(meta_path) = utils::cache::cache_meta_file_path() {
-        let cache_path = utils::cache::cache_dir()
-            .unwrap_or(std::env::temp_dir())
-            .join(Uuid::new_v4().to_string() + ".json");
-
-        if let Err(e) = node_input_values.save_cache(cache_path.clone()) {
-            warn!("failed to save cache: {}", e);
-            return;
-        }
-
-        let mut meta = CacheMetaMap::load(meta_path.clone()).unwrap_or_default();
-        if let Some(path) = cache_path.to_str() {
-            meta.insert(flow.to_owned(), path.to_string());
-            if let Err(e) = meta.save(meta_path) {
-                warn!("failed to save cache meta: {}", e);
-            }
-        }
-    }
 }
