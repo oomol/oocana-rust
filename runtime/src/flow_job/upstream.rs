@@ -23,7 +23,7 @@ pub fn find_upstream(params: UpstreamParameters) -> (Vec<String>, Vec<String>, V
         nodes,
     } = params;
 
-    let mut node_input_values = if use_cache & get_flow_cache_path(&flow_block.path_str).is_some() {
+    let mut node_input_values = if use_cache && get_flow_cache_path(&flow_block.path_str).is_some() {
         NodeInputValues::recover_from(get_flow_cache_path(&flow_block.path_str).unwrap(), false)
     } else {
         NodeInputValues::new(false)
