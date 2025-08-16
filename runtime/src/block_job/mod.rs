@@ -7,4 +7,4 @@ mod task_job;
 pub use input::{fulfill_nullable_and_default, validate_inputs};
 pub use job_handle::BlockJobHandle;
 pub use service_job::{execute_service_job, ServiceJobParameters};
-pub use task_job::{execute_task_job, TaskJobParameters};
+pub use task_job::{block_dir, execute_task_job, TaskJobParameters};

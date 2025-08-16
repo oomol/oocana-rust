@@ -87,7 +87,7 @@ pub fn execute_service_job(params: ServiceJobParameters) -> Option<BlockJobHandl
         }),
         block_dir: service_dir(&service_block),
         injection_store,
-        flow: parent_flow.as_ref().map(|f| f.path_str.clone()),
+        flow_path: parent_flow.as_ref().map(|f| f.path_str.clone()),
         inputs_def_patch,
     });
 
@@ -162,6 +162,6 @@ fn send_to_service(
         options: &service_executor_option,
         outputs: &service_block.outputs_def,
         scope,
-        flow: &flow,
+        flow_path: &flow,
     })
 }

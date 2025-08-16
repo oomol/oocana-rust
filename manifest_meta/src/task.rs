@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{path::PathBuf, sync::Arc};
 
 use manifest_reader::manifest::{self, InputHandles, OutputHandles};
 
@@ -7,7 +7,7 @@ use crate::TaskBlockExecutor;
 #[derive(Debug, Clone)]
 pub struct TaskBlock {
     pub description: Option<String>,
-    pub executor: TaskBlockExecutor,
+    pub executor: Arc<TaskBlockExecutor>,
     pub inputs_def: Option<InputHandles>,
     pub outputs_def: Option<OutputHandles>,
     // None means this task block is inline script block

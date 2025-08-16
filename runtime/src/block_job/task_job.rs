@@ -44,30 +44,36 @@ impl Drop for TaskJobHandle {
 }
 
 pub struct TaskJobParameters {
-    pub task_block: Arc<TaskBlock>,
+    pub executor: Arc<TaskBlockExecutor>,
+    pub block_path: Option<String>,
     pub inputs_def: Option<InputHandles>, // block's inputs def missing some node added inputs,
     pub outputs_def: Option<OutputHandles>, // block's outputs def will miss additional outputs added on node
     pub shared: Arc<Shared>,
-    pub parent_flow: Option<Arc<SubflowBlock>>,
     pub stacks: BlockJobStacks,
     pub job_id: JobId,
     pub inputs: Option<BlockInputs>,
     pub block_status: BlockStatusTx,
     pub scope: RuntimeScope,
     pub timeout: Option<u64>,
+    pub injection_store: Option<manifest_meta::InjectionStore>,
+    pub flow_path: Option<String>,
+    pub dir: String,
     pub inputs_def_patch: Option<InputDefPatchMap>,
 }
 
 pub fn execute_task_job(params: TaskJobParameters) -> Option<BlockJobHandle> {
     let TaskJobParameters {
-        task_block,
+        executor,
+        block_path,
         inputs_def,
         outputs_def,
         shared,
-        parent_flow,
         stacks,
         job_id,
         inputs,
+        dir: block_dir,
+        injection_store,
+        flow_path,
         block_status,
         scope,
         timeout,
@@ -75,7 +81,7 @@ pub fn execute_task_job(params: TaskJobParameters) -> Option<BlockJobHandle> {
     } = params;
     let reporter = Arc::new(shared.reporter.block(
         job_id.to_owned(),
-        task_block.path_str(),
+        block_path.clone(),
         stacks.clone(),
     ));
 
@@ -96,7 +102,7 @@ pub fn execute_task_job(params: TaskJobParameters) -> Option<BlockJobHandle> {
 
     let worker_listener_handle = listen_to_worker(ListenerParameters {
         job_id: job_id.to_owned(),
-        block_path: task_block.path_str(),
+        block_path: block_path.clone(),
         stacks: stacks.clone(),
         scheduler_tx: shared.scheduler_tx.clone(),
         inputs: inputs.clone(),
@@ -104,21 +110,20 @@ pub fn execute_task_job(params: TaskJobParameters) -> Option<BlockJobHandle> {
         inputs_def,
         block_status: block_status.clone(),
         reporter: Arc::clone(&reporter),
-        executor: Some(task_block.executor.clone()),
+        executor: Some(executor.clone()),
         service: None,
-        block_dir: block_dir(&task_block, parent_flow.as_ref(), Some(&scope)),
+        block_dir: block_dir.clone(),
         scope: scope.clone(),
-        injection_store: parent_flow.as_ref().and_then(|f| f.injection_store.clone()),
-        flow: parent_flow.as_ref().map(|f| f.path_str.clone()),
+        injection_store: injection_store.clone(),
+        flow_path: flow_path.clone(),
         inputs_def_patch,
     });
 
-    match task_block.executor.clone() {
+    match executor.as_ref() {
         TaskBlockExecutor::Rust(e) => {
             let execute_result = spawn(
-                &task_block,
                 &e.options,
-                parent_flow.as_ref(),
+                &block_dir,
                 &shared.address,
                 &shared.session_id,
                 &job_id,
@@ -155,13 +160,7 @@ pub fn execute_task_job(params: TaskJobParameters) -> Option<BlockJobHandle> {
             }
         }
         TaskBlockExecutor::Shell(_) => {
-            let execute_result = spawn_shell(
-                &task_block,
-                parent_flow.as_ref(),
-                inputs,
-                &shared.session_id,
-                &job_id,
-            );
+            let execute_result = spawn_shell(&block_dir, inputs, &shared.session_id, &job_id);
 
             match execute_result {
                 Ok(mut child) => {
@@ -185,8 +184,7 @@ pub fn execute_task_job(params: TaskJobParameters) -> Option<BlockJobHandle> {
                         if status_code != 0 {
                             let msg = format!(
                                 "Task block '{:?}' exited with code {}",
-                                task_block.path_str(),
-                                status_code
+                                block_path, status_code
                             );
                             shared_clone.scheduler_tx.send_block_event(
                                 scheduler::ReceiveMessage::BlockFinished {
@@ -242,15 +240,16 @@ pub fn execute_task_job(params: TaskJobParameters) -> Option<BlockJobHandle> {
             }
         }
         _ => {
-            send_to_executor(ExecutorArgs {
-                task_block: &task_block,
-                executor: &task_block.executor,
-                parent_flow: parent_flow.as_ref(),
-                job_id: &job_id,
-                scheduler_tx: shared.scheduler_tx.clone(),
-                outputs_def: &outputs_def,
+            shared.scheduler_tx.send_to_executor(ExecutorParams {
+                executor_name: executor.name(),
+                job_id: job_id.to_owned(),
+                stacks: stacks.vec(),
+                dir: block_dir.clone(),
+                executor: &executor,
+                outputs: &outputs_def,
                 scope: &scope,
-                stacks,
+                injection_store: &injection_store,
+                flow_path: &flow_path,
             });
 
             spawn_handles.push(worker_listener_handle);
@@ -268,7 +267,7 @@ pub fn execute_task_job(params: TaskJobParameters) -> Option<BlockJobHandle> {
     }
 }
 
-fn block_dir(
+pub fn block_dir(
     task_block: &TaskBlock,
     parent_flow: Option<&Arc<SubflowBlock>>,
     scope: Option<&RuntimeScope>,
@@ -293,45 +292,8 @@ fn block_dir(
     }
 }
 
-struct ExecutorArgs<'a> {
-    task_block: &'a TaskBlock,
-    executor: &'a TaskBlockExecutor,
-    outputs_def: &'a Option<OutputHandles>,
-    parent_flow: Option<&'a Arc<SubflowBlock>>,
-    job_id: &'a JobId,
-    scope: &'a RuntimeScope,
-    scheduler_tx: SchedulerTx,
-    stacks: BlockJobStacks,
-}
-
-fn send_to_executor(args: ExecutorArgs) {
-    let ExecutorArgs {
-        task_block,
-        executor,
-        parent_flow,
-        job_id,
-        scheduler_tx,
-        outputs_def,
-        scope,
-        stacks,
-    } = args;
-    let dir = block_dir(task_block, parent_flow, Some(scope));
-    scheduler_tx.send_to_executor(ExecutorParams {
-        executor_name: executor.name(),
-        job_id: job_id.to_owned(),
-        stacks: stacks.vec(),
-        dir,
-        executor,
-        outputs: outputs_def,
-        scope,
-        injection_store: &parent_flow.as_ref().and_then(|f| f.injection_store.clone()),
-        flow: &parent_flow.as_ref().map(|f| f.path_str.clone()),
-    })
-}
-
 fn spawn_shell(
-    task_block: &TaskBlock,
-    parent_flow: Option<&Arc<SubflowBlock>>,
+    dir: &str,
     inputs: Option<BlockInputs>,
     session_id: &SessionId,
     job_id: &JobId,
@@ -342,14 +304,12 @@ fn spawn_shell(
 
     let arg = get_string_value_from_inputs(&inputs, "command");
 
-    let block_dir = block_dir(task_block, parent_flow, None);
-
     // 用户设置 cwd 在这里的意义不大，造成的问题反而可能更多，考虑去掉。
     let cwd = match get_string_value_from_inputs(&inputs, "cwd") {
         Some(cwd) => {
             let path = std::path::Path::new(&cwd);
             if path.is_relative() {
-                std::path::Path::new(&block_dir)
+                std::path::Path::new(&dir)
                     .join(path)
                     .to_str()
                     .unwrap()
@@ -358,7 +318,7 @@ fn spawn_shell(
                 cwd
             }
         }
-        None => block_dir,
+        None => dir.to_owned(),
     };
 
     let env_strings = get_string_value_from_inputs(&inputs, "envs");
@@ -433,9 +393,8 @@ fn get_string_value_from_inputs(inputs: &Option<BlockInputs>, key: &str) -> Opti
 }
 
 fn spawn(
-    task_block: &TaskBlock,
     spawn_options: &SpawnOptions,
-    parent_flow: Option<&Arc<SubflowBlock>>,
+    dir: &str,
     address: &str,
     session_id: &SessionId,
     job_id: &JobId,
@@ -459,8 +418,7 @@ fn spawn(
     // Execute the command
     let mut command = process::Command::new(&spawn_options.bin);
 
-    let block_dir = block_dir(task_block, parent_flow, None);
-    command.current_dir(block_dir);
+    command.current_dir(dir);
 
     command
         .args(args)

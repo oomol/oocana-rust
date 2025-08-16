@@ -63,7 +63,7 @@ pub struct InjectionParams<'a> {
     pub package_path: &'a str,
     pub package_version: &'a str,
     pub scripts: &'a Vec<String>,
-    pub flow: &'a str,
+    pub flow_path: &'a str,
 }
 
 fn create_runtime_layer_from_package_layer(layer: &PackageLayer) -> Result<RuntimeLayer> {
@@ -169,11 +169,11 @@ impl RuntimeLayer {
             package_path,
             package_version,
             scripts,
-            flow,
+            flow_path,
         } = params;
 
         let injection_layer_name =
-            if let Some(injection_layer) = get_injection_layer(flow, package_path) {
+            if let Some(injection_layer) = get_injection_layer(flow_path, package_path) {
                 if injection_layer.package_version == package_version
                     && injection_layer.is_equal_scripts(scripts.clone())
                 {
@@ -185,7 +185,7 @@ impl RuntimeLayer {
                 } else {
                     delete_layer(&injection_layer.layer_name)?;
                     let new_injection_layer = InjectionLayer::new(
-                        flow.to_owned(),
+                        flow_path.to_owned(),
                         scripts.clone(),
                         package_path.to_owned(),
                         package_version.to_owned(),
@@ -199,7 +199,7 @@ impl RuntimeLayer {
                 }
             } else {
                 let new_injection_layer = InjectionLayer::new(
-                    flow.to_owned(),
+                    flow_path.to_owned(),
                     scripts.clone(),
                     package_path.to_owned(),
                     package_version.to_owned(),
