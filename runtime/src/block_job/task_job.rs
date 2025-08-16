@@ -94,6 +94,8 @@ pub fn execute_task_job(params: TaskJobParameters) -> Option<BlockJobHandle> {
         spawn_handles.push(timeout_handle);
     }
 
+    let block_dir = block_dir(&task_block, parent_flow.as_ref(), Some(&scope));
+
     let worker_listener_handle = listen_to_worker(ListenerParameters {
         job_id: job_id.to_owned(),
         block_path: task_block.path_str(),
@@ -106,7 +108,7 @@ pub fn execute_task_job(params: TaskJobParameters) -> Option<BlockJobHandle> {
         reporter: Arc::clone(&reporter),
         executor: Some(task_block.executor.clone()),
         service: None,
-        block_dir: block_dir(&task_block, parent_flow.as_ref(), Some(&scope)),
+        block_dir: block_dir.clone(),
         scope: scope.clone(),
         injection_store: parent_flow.as_ref().and_then(|f| f.injection_store.clone()),
         flow: parent_flow.as_ref().map(|f| f.path_str.clone()),
@@ -242,15 +244,16 @@ pub fn execute_task_job(params: TaskJobParameters) -> Option<BlockJobHandle> {
             }
         }
         _ => {
-            send_to_executor(ExecutorArgs {
-                task_block: &task_block,
+            shared.scheduler_tx.send_to_executor(ExecutorParams {
+                executor_name: task_block.executor.name(),
+                job_id: job_id.to_owned(),
+                stacks: stacks.vec(),
+                dir: block_dir.clone(),
                 executor: &task_block.executor,
-                parent_flow: parent_flow.as_ref(),
-                job_id: &job_id,
-                scheduler_tx: shared.scheduler_tx.clone(),
-                outputs_def: &outputs_def,
+                outputs: &outputs_def,
                 scope: &scope,
-                stacks,
+                injection_store: &parent_flow.as_ref().and_then(|f| f.injection_store.clone()),
+                flow: &parent_flow.as_ref().map(|f| f.path_str.clone()),
             });
 
             spawn_handles.push(worker_listener_handle);
@@ -291,42 +294,6 @@ fn block_dir(
             })
             .unwrap_or(".".to_owned())
     }
-}
-
-struct ExecutorArgs<'a> {
-    task_block: &'a TaskBlock,
-    executor: &'a TaskBlockExecutor,
-    outputs_def: &'a Option<OutputHandles>,
-    parent_flow: Option<&'a Arc<SubflowBlock>>,
-    job_id: &'a JobId,
-    scope: &'a RuntimeScope,
-    scheduler_tx: SchedulerTx,
-    stacks: BlockJobStacks,
-}
-
-fn send_to_executor(args: ExecutorArgs) {
-    let ExecutorArgs {
-        task_block,
-        executor,
-        parent_flow,
-        job_id,
-        scheduler_tx,
-        outputs_def,
-        scope,
-        stacks,
-    } = args;
-    let dir = block_dir(task_block, parent_flow, Some(scope));
-    scheduler_tx.send_to_executor(ExecutorParams {
-        executor_name: executor.name(),
-        job_id: job_id.to_owned(),
-        stacks: stacks.vec(),
-        dir,
-        executor,
-        outputs: outputs_def,
-        scope,
-        injection_store: &parent_flow.as_ref().and_then(|f| f.injection_store.clone()),
-        flow: &parent_flow.as_ref().map(|f| f.path_str.clone()),
-    })
 }
 
 fn spawn_shell(
