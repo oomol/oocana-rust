@@ -538,7 +538,7 @@ pub fn find_upstream(
 
     match block {
         Block::Flow(flow) => {
-            let args = flow_job::UpstreamArgs {
+            let args = flow_job::UpstreamParameters {
                 flow_block: flow,
                 use_cache,
                 nodes: nodes.map(|nodes| nodes.into_iter().map(NodeId::new).collect()),
