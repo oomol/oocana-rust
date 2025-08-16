@@ -19,7 +19,7 @@ use utils::error::Result;
 use utils::path::to_absolute;
 
 use super::job_handle::BlockJobHandle;
-use super::listener::{listen_to_worker, ListenerArgs};
+use super::listener::{listen_to_worker, ListenerParameters};
 
 pub struct TaskJobHandle {
     pub job_id: JobId,
@@ -94,7 +94,7 @@ pub fn execute_task_job(params: TaskJobParameters) -> Option<BlockJobHandle> {
         spawn_handles.push(timeout_handle);
     }
 
-    let worker_listener_handle = listen_to_worker(ListenerArgs {
+    let worker_listener_handle = listen_to_worker(ListenerParameters {
         job_id: job_id.to_owned(),
         block_path: task_block.path_str(),
         stacks: stacks.clone(),

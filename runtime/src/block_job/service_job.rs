@@ -7,7 +7,7 @@ use manifest_meta::{
 };
 
 use super::job_handle::BlockJobHandle;
-use super::listener::{listen_to_worker, ListenerArgs, ServiceExecutorPayload};
+use super::listener::{listen_to_worker, ListenerParameters, ServiceExecutorPayload};
 use crate::{block_status::BlockStatusTx, shared::Shared};
 
 pub struct ServiceJobHandle {
@@ -61,7 +61,7 @@ pub fn execute_service_job(params: ServiceJobParameters) -> Option<BlockJobHandl
 
     reporter.started(&inputs);
     let service_options = service_executor_options(&service_block);
-    let worker_listener_handle = listen_to_worker(ListenerArgs {
+    let worker_listener_handle = listen_to_worker(ListenerParameters {
         job_id: job_id.to_owned(),
         block_path: None,
         stacks: stacks.clone(),
