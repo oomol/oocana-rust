@@ -1,6 +1,6 @@
 [package]
 name = "oocana_sdk"
-version = "0.30.10"
+version = "0.30.11"
 authors = ["CRIMX <straybugs@gmail.com>"]
 description = "Oocana runner SDK in Rust"
 edition = "2021"
