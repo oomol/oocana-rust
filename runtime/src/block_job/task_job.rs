@@ -48,13 +48,15 @@ pub struct TaskJobParameters {
     pub inputs_def: Option<InputHandles>, // block's inputs def missing some node added inputs,
     pub outputs_def: Option<OutputHandles>, // block's outputs def will miss additional outputs added on node
     pub shared: Arc<Shared>,
-    pub parent_flow: Option<Arc<SubflowBlock>>,
     pub stacks: BlockJobStacks,
     pub job_id: JobId,
     pub inputs: Option<BlockInputs>,
     pub block_status: BlockStatusTx,
     pub scope: RuntimeScope,
     pub timeout: Option<u64>,
+    pub injection_store: Option<manifest_meta::InjectionStore>,
+    pub flow_path: Option<String>,
+    pub dir: String,
     pub inputs_def_patch: Option<InputDefPatchMap>,
 }
 
@@ -64,10 +66,12 @@ pub fn execute_task_job(params: TaskJobParameters) -> Option<BlockJobHandle> {
         inputs_def,
         outputs_def,
         shared,
-        parent_flow,
         stacks,
         job_id,
         inputs,
+        dir: block_dir,
+        injection_store,
+        flow_path,
         block_status,
         scope,
         timeout,
@@ -94,8 +98,6 @@ pub fn execute_task_job(params: TaskJobParameters) -> Option<BlockJobHandle> {
         spawn_handles.push(timeout_handle);
     }
 
-    let block_dir = block_dir(&task_block, parent_flow.as_ref(), Some(&scope));
-
     let worker_listener_handle = listen_to_worker(ListenerParameters {
         job_id: job_id.to_owned(),
         block_path: task_block.path_str(),
@@ -110,8 +112,8 @@ pub fn execute_task_job(params: TaskJobParameters) -> Option<BlockJobHandle> {
         service: None,
         block_dir: block_dir.clone(),
         scope: scope.clone(),
-        injection_store: parent_flow.as_ref().and_then(|f| f.injection_store.clone()),
-        flow_path: parent_flow.as_ref().map(|f| f.path_str.clone()),
+        injection_store: injection_store.clone(),
+        flow_path: flow_path.clone(),
         inputs_def_patch,
     });
 
@@ -245,8 +247,8 @@ pub fn execute_task_job(params: TaskJobParameters) -> Option<BlockJobHandle> {
                 executor: &task_block.executor,
                 outputs: &outputs_def,
                 scope: &scope,
-                injection_store: &parent_flow.as_ref().and_then(|f| f.injection_store.clone()),
-                flow_path: &parent_flow.as_ref().map(|f| f.path_str.clone()),
+                injection_store: &injection_store,
+                flow_path: &flow_path,
             });
 
             spawn_handles.push(worker_listener_handle);
@@ -264,7 +266,7 @@ pub fn execute_task_job(params: TaskJobParameters) -> Option<BlockJobHandle> {
     }
 }
 
-fn block_dir(
+pub fn block_dir(
     task_block: &TaskBlock,
     parent_flow: Option<&Arc<SubflowBlock>>,
     scope: Option<&RuntimeScope>,

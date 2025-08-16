@@ -273,14 +273,16 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
                                 if let Some(_) = execute_task_job(TaskJobParameters {
                                     inputs_def,
                                     outputs_def,
+                                    dir: block_job::block_dir(&task_block, None, Some(&scope)),
                                     task_block,
                                     shared: shared.clone(),
-                                    parent_flow: None,
                                     stacks: request_stack.stack(
                                         root_job_id.clone(),
                                         block_path.to_owned(),
                                         node_id.clone(),
                                     ),
+                                    flow_path: None,
+                                    injection_store: None,
                                     job_id: job_id.clone(),
                                     inputs: Some(inputs),
                                     block_status: block_status_tx.clone(),

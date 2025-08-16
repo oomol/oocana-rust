@@ -11,7 +11,7 @@ use manifest_meta::{
 };
 
 use crate::{
-    block_job::BlockJobHandle,
+    block_job::{self, BlockJobHandle},
     block_status::BlockStatusTx,
     flow_job::{self, NodeInputValues},
     shared::Shared,
@@ -91,11 +91,13 @@ pub fn run_job(params: JobParams) -> Option<BlockJobHandle> {
             outputs_def,
             common,
         } => crate::block_job::execute_task_job(crate::block_job::TaskJobParameters {
-            task_block,
+            task_block: task_block.clone(),
             inputs_def,
             outputs_def,
             shared: common.shared,
-            parent_flow,
+            flow_path: parent_flow.as_ref().map(|f| f.path_str.clone()),
+            injection_store: parent_flow.as_ref().and_then(|f| f.injection_store.clone()),
+            dir: block_job::block_dir(&task_block, parent_flow.as_ref(), Some(&common.scope)),
             stacks: common.stacks,
             job_id: common.job_id,
             inputs: common.inputs,

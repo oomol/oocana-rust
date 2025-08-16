@@ -5,7 +5,7 @@ use std::{
 };
 
 use crate::{
-    block_job::{execute_task_job, BlockJobHandle, TaskJobParameters},
+    block_job::{self, execute_task_job, BlockJobHandle, TaskJobParameters},
     block_status::{self, BlockStatusTx},
     flow_job::{
         block_request::{
@@ -399,17 +399,27 @@ pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle>
                                     job_id,
                                     node_id,
                                 } => {
+                                    let block_dir = block_job::block_dir(
+                                        &task_block,
+                                        Some(&flow_shared.flow_block),
+                                        Some(&scope),
+                                    );
                                     if let Some(handle) = execute_task_job(TaskJobParameters {
                                         task_block,
                                         inputs_def,
                                         outputs_def,
                                         shared: flow_shared.shared.clone(),
-                                        parent_flow: Some(flow_shared.flow_block.clone()),
                                         stacks: request_stack.stack(
                                             flow_shared.job_id.to_owned(),
                                             flow_shared.flow_block.path_str.to_owned(),
                                             node_id.clone(),
                                         ),
+                                        injection_store: flow_shared
+                                            .flow_block
+                                            .injection_store
+                                            .clone(),
+                                        flow_path: Some(flow_shared.flow_block.path_str.clone()),
+                                        dir: block_dir,
                                         job_id: job_id.clone(),
                                         inputs: Some(inputs),
                                         block_status: run_flow_ctx.block_status.clone(),
