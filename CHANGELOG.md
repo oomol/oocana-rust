@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.30.11 (2025-08-16)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* feat: support forward report message to console by @leavesster in https://github.com/oomol/oocana-rust/pull/322
+* refactor: use enum to separate run function's parameters by @leavesster in https://github.com/oomol/oocana-rust/pull/324
+* refactor: pass inputs_def and outputs_def separately to support more flexible logic by @leavesster in https://github.com/oomol/oocana-rust/pull/325
+* refactor: fn name by @leavesster in https://github.com/oomol/oocana-rust/pull/326
+* refactor: reduce block option field by @leavesster in https://github.com/oomol/oocana-rust/pull/327
+* refactor: improve runtime mod by @leavesster in https://github.com/oomol/oocana-rust/pull/328
+* refactor: separate task job's parameter to more atomic by @leavesster in https://github.com/oomol/oocana-rust/pull/329
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.30.10...v0.30.11
+
 ## 0.30.10 (2025-08-11)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
