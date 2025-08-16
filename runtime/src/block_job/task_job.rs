@@ -18,7 +18,7 @@ use job::{BlockInputs, BlockJobStacks, JobId, RuntimeScope, SessionId};
 use utils::error::Result;
 use utils::path::to_absolute;
 
-use super::block::BlockJobHandle;
+use super::job_handle::BlockJobHandle;
 use super::listener::{listen_to_worker, ListenerArgs};
 
 pub struct TaskJobHandle {

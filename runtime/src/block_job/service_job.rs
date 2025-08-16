@@ -6,7 +6,7 @@ use manifest_meta::{
     InjectionStore, InputDefPatchMap, ServiceBlock, ServiceExecutorOptions, SubflowBlock,
 };
 
-use super::block::BlockJobHandle;
+use super::job_handle::BlockJobHandle;
 use super::listener::{listen_to_worker, ListenerArgs, ServiceExecutorPayload};
 use crate::{block_status::BlockStatusTx, shared::Shared};
 
