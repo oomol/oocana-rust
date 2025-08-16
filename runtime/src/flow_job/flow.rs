@@ -405,7 +405,8 @@ pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle>
                                         Some(&scope),
                                     );
                                     if let Some(handle) = execute_task_job(TaskJobParameters {
-                                        task_block,
+                                        executor: task_block.executor.clone(),
+                                        block_path: task_block.path_str(),
                                         inputs_def,
                                         outputs_def,
                                         shared: flow_shared.shared.clone(),

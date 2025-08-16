@@ -44,7 +44,8 @@ impl Drop for TaskJobHandle {
 }
 
 pub struct TaskJobParameters {
-    pub task_block: Arc<TaskBlock>,
+    pub executor: Arc<TaskBlockExecutor>,
+    pub block_path: Option<String>,
     pub inputs_def: Option<InputHandles>, // block's inputs def missing some node added inputs,
     pub outputs_def: Option<OutputHandles>, // block's outputs def will miss additional outputs added on node
     pub shared: Arc<Shared>,
@@ -62,7 +63,8 @@ pub struct TaskJobParameters {
 
 pub fn execute_task_job(params: TaskJobParameters) -> Option<BlockJobHandle> {
     let TaskJobParameters {
-        task_block,
+        executor,
+        block_path,
         inputs_def,
         outputs_def,
         shared,
@@ -79,7 +81,7 @@ pub fn execute_task_job(params: TaskJobParameters) -> Option<BlockJobHandle> {
     } = params;
     let reporter = Arc::new(shared.reporter.block(
         job_id.to_owned(),
-        task_block.path_str(),
+        block_path.clone(),
         stacks.clone(),
     ));
 
@@ -100,7 +102,7 @@ pub fn execute_task_job(params: TaskJobParameters) -> Option<BlockJobHandle> {
 
     let worker_listener_handle = listen_to_worker(ListenerParameters {
         job_id: job_id.to_owned(),
-        block_path: task_block.path_str(),
+        block_path: block_path.clone(),
         stacks: stacks.clone(),
         scheduler_tx: shared.scheduler_tx.clone(),
         inputs: inputs.clone(),
@@ -108,7 +110,7 @@ pub fn execute_task_job(params: TaskJobParameters) -> Option<BlockJobHandle> {
         inputs_def,
         block_status: block_status.clone(),
         reporter: Arc::clone(&reporter),
-        executor: Some(task_block.executor.clone()),
+        executor: Some(executor.clone()),
         service: None,
         block_dir: block_dir.clone(),
         scope: scope.clone(),
@@ -117,7 +119,7 @@ pub fn execute_task_job(params: TaskJobParameters) -> Option<BlockJobHandle> {
         inputs_def_patch,
     });
 
-    match task_block.executor.clone() {
+    match executor.as_ref() {
         TaskBlockExecutor::Rust(e) => {
             let execute_result = spawn(
                 &e.options,
@@ -182,8 +184,7 @@ pub fn execute_task_job(params: TaskJobParameters) -> Option<BlockJobHandle> {
                         if status_code != 0 {
                             let msg = format!(
                                 "Task block '{:?}' exited with code {}",
-                                task_block.path_str(),
-                                status_code
+                                block_path, status_code
                             );
                             shared_clone.scheduler_tx.send_block_event(
                                 scheduler::ReceiveMessage::BlockFinished {
@@ -240,11 +241,11 @@ pub fn execute_task_job(params: TaskJobParameters) -> Option<BlockJobHandle> {
         }
         _ => {
             shared.scheduler_tx.send_to_executor(ExecutorParams {
-                executor_name: task_block.executor.name(),
+                executor_name: executor.name(),
                 job_id: job_id.to_owned(),
                 stacks: stacks.vec(),
                 dir: block_dir.clone(),
-                executor: &task_block.executor,
+                executor: &executor,
                 outputs: &outputs_def,
                 scope: &scope,
                 injection_store: &injection_store,

@@ -91,7 +91,8 @@ pub fn run_job(params: JobParams) -> Option<BlockJobHandle> {
             outputs_def,
             common,
         } => crate::block_job::execute_task_job(crate::block_job::TaskJobParameters {
-            task_block: task_block.clone(),
+            executor: task_block.executor.clone(),
+            block_path: task_block.path_str(),
             inputs_def,
             outputs_def,
             shared: common.shared,

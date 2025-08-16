@@ -35,7 +35,7 @@ pub struct ListenerParameters {
     pub inputs_def_patch: Option<InputDefPatchMap>,
     pub block_status: BlockStatusTx,
     pub reporter: Arc<BlockReporterTx>,
-    pub executor: Option<TaskBlockExecutor>,
+    pub executor: Option<Arc<TaskBlockExecutor>>,
     pub service: Option<ServiceExecutorPayload>,
     pub block_dir: String,
     pub scope: RuntimeScope,
@@ -104,7 +104,7 @@ pub fn listen_to_worker(params: ListenerParameters) -> tokio::task::JoinHandle<(
 
     scheduler_tx.register_subscriber(job_id.to_owned(), job_tx);
     tokio::spawn(async move {
-        let run_block = |executor: Option<&TaskBlockExecutor>,
+        let run_block = |executor: Option<&Arc<TaskBlockExecutor>>,
                          service: Option<&ServiceExecutorPayload>| {
             if let Some(executor) = executor {
                 scheduler_tx.send_to_executor(ExecutorParams {
@@ -112,7 +112,7 @@ pub fn listen_to_worker(params: ListenerParameters) -> tokio::task::JoinHandle<(
                     job_id: job_id.to_owned(),
                     stacks: stacks.vec(),
                     dir: block_dir.to_owned(),
-                    executor,
+                    executor: &executor,
                     outputs: &outputs_def,
                     scope: &scope,
                     injection_store: &injection_store,
