@@ -324,7 +324,7 @@ enum SchedulerCommand {
         executor: TaskBlockExecutor,
         injection_store: Option<InjectionStore>,
         scope: RuntimeScope,
-        flow: Option<String>,
+        flow_path: Option<String>,
     },
     ExecuteServiceBlock {
         job_id: JobId,
@@ -336,7 +336,7 @@ enum SchedulerCommand {
         outputs: Option<OutputHandles>,
         scope: RuntimeScope,
         service_hash: String,
-        flow: Option<String>,
+        flow_path: Option<String>,
     },
     ExecutorExit {
         executor: String,
@@ -402,7 +402,7 @@ pub struct ExecutorParams<'a> {
     pub outputs: &'a Option<OutputHandles>,
     pub scope: &'a RuntimeScope,
     pub injection_store: &'a Option<InjectionStore>,
-    pub flow: &'a Option<String>,
+    pub flow_path: &'a Option<String>,
 }
 
 pub struct ServiceParams<'a> {
@@ -414,7 +414,7 @@ pub struct ServiceParams<'a> {
     pub options: &'a ServiceExecutorOptions,
     pub outputs: &'a Option<OutputHandles>,
     pub scope: &'a RuntimeScope,
-    pub flow: &'a Option<String>,
+    pub flow_path: &'a Option<String>,
 }
 
 pub struct ExecutorCheckResult {
@@ -426,7 +426,7 @@ pub struct ExecutorCheckParams<'a> {
     pub executor_name: &'a str,
     pub scope: &'a RuntimeScope,
     pub injection_store: &'a Option<InjectionStore>,
-    pub flow: &'a Option<String>,
+    pub flow_path: &'a Option<String>,
     pub executor_payload: &'a ExecutorParameters,
     pub executor_map: Arc<RwLock<HashMap<String, ExecutorState>>>,
 }
@@ -524,7 +524,7 @@ impl SchedulerTx {
             outputs,
             scope,
             injection_store,
-            flow,
+            flow_path,
         } = params;
 
         let scope = self.calculate_scope(scope);
@@ -538,7 +538,7 @@ impl SchedulerTx {
                 outputs: outputs.clone(),
                 executor: executor.clone(),
                 injection_store: injection_store.clone(),
-                flow: flow.clone(),
+                flow_path: flow_path.clone(),
             })
             .unwrap();
     }
@@ -553,7 +553,7 @@ impl SchedulerTx {
             options,
             outputs,
             scope,
-            flow,
+            flow_path,
         } = params;
 
         let scope = self.calculate_scope(scope);
@@ -569,7 +569,7 @@ impl SchedulerTx {
                 stacks: stacks.clone(),
                 outputs: outputs.clone(),
                 service_hash: calculate_short_hash(&dir, 16),
-                flow: flow.clone(),
+                flow_path: flow_path.clone(),
             })
             .unwrap();
     }
@@ -940,7 +940,7 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
         injection_store,
         executor_map,
         executor_payload,
-        flow,
+        flow_path,
     } = params;
 
     let executor_map_name = generate_executor_map_name(executor_name, scope);
@@ -1039,7 +1039,7 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
                     package_version: &meta.package_version,
                     package_path: &path_str,
                     scripts: &scripts,
-                    flow: flow.as_ref().unwrap_or(&"".to_string()),
+                    flow_path: flow_path.as_ref().unwrap_or(&"".to_string()),
                 });
 
                 if let Err(e) = result {
@@ -1184,7 +1184,7 @@ where
                         stacks,
                         outputs,
                         service_hash,
-                        flow,
+                        flow_path,
                     }) => {
                         let result = query_executor_state(ExecutorCheckParams {
                             executor_name: &executor_name,
@@ -1192,7 +1192,7 @@ where
                             injection_store: &None,
                             executor_payload: &executor_payload,
                             executor_map: executor_map.clone(),
-                            flow: &flow,
+                            flow_path: &flow_path,
                         });
 
                         if let Err(e) = result {
@@ -1266,7 +1266,7 @@ where
                         outputs,
                         executor,
                         injection_store,
-                        flow,
+                        flow_path,
                     }) => {
                         let result = query_executor_state(ExecutorCheckParams {
                             executor_name: &executor_name,
@@ -1274,7 +1274,7 @@ where
                             injection_store: &injection_store,
                             executor_payload: &executor_payload,
                             executor_map: executor_map.clone(),
-                            flow: &flow,
+                            flow_path: &flow_path,
                         });
 
                         if let Err(e) = result {

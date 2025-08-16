@@ -7,7 +7,7 @@ use utils::error::Result;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct InjectionLayer {
-    pub flow: String,
+    pub flow_path: String,
     pub scripts: Vec<String>,
     pub package_path: String,
     pub package_version: String,
@@ -18,7 +18,10 @@ static INJECTION_LAYER_PREFIX: &str = "injection";
 
 impl InjectionLayer {
     pub fn new(
-        flow: String, scripts: Vec<String>, package_path: String, package_version: String,
+        flow_path: String,
+        scripts: Vec<String>,
+        package_path: String,
+        package_version: String,
     ) -> Self {
         let injection_layer_name = random_name(INJECTION_LAYER_PREFIX);
 
@@ -26,7 +29,7 @@ impl InjectionLayer {
         let _ = create_layer(&injection_layer_name);
 
         InjectionLayer {
-            flow,
+            flow_path,
             scripts,
             package_path,
             package_version,
@@ -46,7 +49,7 @@ impl InjectionLayer {
     pub fn save_to_store(&self) -> Result<()> {
         let file = injection_store_path()?;
         let mut store = load_injection_store()?;
-        let key = self.flow.clone();
+        let key = self.flow_path.clone();
         let entry = store.flow_injection.entry(key).or_insert(HashMap::new());
         entry.insert(self.package_path.clone(), self.clone());
         let f =

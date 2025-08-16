@@ -111,7 +111,7 @@ pub fn execute_task_job(params: TaskJobParameters) -> Option<BlockJobHandle> {
         block_dir: block_dir.clone(),
         scope: scope.clone(),
         injection_store: parent_flow.as_ref().and_then(|f| f.injection_store.clone()),
-        flow: parent_flow.as_ref().map(|f| f.path_str.clone()),
+        flow_path: parent_flow.as_ref().map(|f| f.path_str.clone()),
         inputs_def_patch,
     });
 
@@ -246,7 +246,7 @@ pub fn execute_task_job(params: TaskJobParameters) -> Option<BlockJobHandle> {
                 outputs: &outputs_def,
                 scope: &scope,
                 injection_store: &parent_flow.as_ref().and_then(|f| f.injection_store.clone()),
-                flow: &parent_flow.as_ref().map(|f| f.path_str.clone()),
+                flow_path: &parent_flow.as_ref().map(|f| f.path_str.clone()),
             });
 
             spawn_handles.push(worker_listener_handle);

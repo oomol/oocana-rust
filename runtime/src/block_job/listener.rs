@@ -40,7 +40,7 @@ pub struct ListenerParameters {
     pub block_dir: String,
     pub scope: RuntimeScope,
     pub injection_store: Option<InjectionStore>,
-    pub flow: Option<String>,
+    pub flow_path: Option<String>,
 }
 
 fn is_json_serializable(
@@ -95,7 +95,7 @@ pub fn listen_to_worker(params: ListenerParameters) -> tokio::task::JoinHandle<(
         block_dir,
         scope,
         injection_store,
-        flow,
+        flow_path,
     } = params;
 
     let block_scope = scheduler_tx.calculate_scope(&scope);
@@ -116,7 +116,7 @@ pub fn listen_to_worker(params: ListenerParameters) -> tokio::task::JoinHandle<(
                     outputs: &outputs_def,
                     scope: &scope,
                     injection_store: &injection_store,
-                    flow: &flow,
+                    flow_path: &flow_path,
                 });
             } else if let Some(service) = service {
                 scheduler_tx.send_to_service(ServiceParams {
@@ -128,7 +128,7 @@ pub fn listen_to_worker(params: ListenerParameters) -> tokio::task::JoinHandle<(
                     options: &service.options,
                     outputs: &outputs_def,
                     scope: &scope,
-                    flow: &flow,
+                    flow_path: &flow_path,
                 });
             }
         };
