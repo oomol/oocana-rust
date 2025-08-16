@@ -1,17 +1,19 @@
 use std::{
     collections::{HashMap, HashSet},
     default,
-    path::PathBuf,
     sync::Arc,
 };
-use uuid::Uuid;
 
 use crate::{
     block_job::{execute_task_job, BlockJobHandle, TaskJobParameters},
     block_status::{self, BlockStatusTx},
-    flow_job::block_request::{
-        parse_node_downstream, parse_query_block_request, parse_run_block_request,
-        RunBlockSuccessResponse,
+    flow_job::{
+        block_request::{
+            parse_node_downstream, parse_query_block_request, parse_run_block_request,
+            RunBlockSuccessResponse,
+        },
+        cache::save_flow_cache,
+        find_upstream_nodes,
     },
     run::{run_job, CommonJobParameters, JobParams},
     shared::Shared,
@@ -32,9 +34,8 @@ use manifest_meta::{
 };
 
 use super::node_input_values;
-use node_input_values::{CacheMetaMap, CacheMetaMapExt, NodeInputValues};
+use node_input_values::NodeInputValues;
 
-use super::run_to_node::RunToNode;
 pub struct FlowJobHandle {
     // TODO: Remove this field
     #[allow(dead_code)]
@@ -91,33 +92,6 @@ pub struct FlowJobParameters {
     pub scope: RuntimeScope,
     pub slot_blocks: HashMap<NodeId, Slot>,
     pub path_finder: manifest_reader::path_finder::BlockPathFinder,
-}
-
-pub struct UpstreamArgs {
-    pub flow_block: Arc<SubflowBlock>,
-    pub use_cache: bool,
-    pub nodes: Option<HashSet<NodeId>>,
-}
-
-pub fn find_upstream(upstream_args: UpstreamArgs) -> (Vec<String>, Vec<String>, Vec<String>) {
-    let UpstreamArgs {
-        flow_block,
-        use_cache,
-        nodes,
-    } = upstream_args;
-
-    let mut node_input_values = if use_cache & get_flow_cache_path(&flow_block.path_str).is_some() {
-        NodeInputValues::recover_from(get_flow_cache_path(&flow_block.path_str).unwrap(), false)
-    } else {
-        NodeInputValues::new(false)
-    };
-
-    let (node_will_run, waiting_nodes, upstream_nodes) = find_upstream_nodes(
-        &nodes.unwrap_or_default(),
-        &flow_block,
-        &mut node_input_values,
-    );
-    (node_will_run, waiting_nodes, upstream_nodes)
 }
 
 pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle> {
@@ -749,103 +723,6 @@ fn run_pending_node(job_id: JobId, flow_shared: &FlowShared, run_flow_ctx: &mut 
     }
 }
 
-/// 第一个是可以直接 run 的节点(会包含部分可以直接跑的 origin_nodes）
-/// 第二个是等待的节点 nodes（不包含 origin_nodes）
-/// 第三个是所有的上游 nodes（不包含 origin_nodes）
-fn find_upstream_nodes(
-    origin_nodes: &HashSet<NodeId>,
-    flow_block: &SubflowBlock,
-    node_input_values: &mut NodeInputValues,
-) -> (Vec<String>, Vec<String>, Vec<String>) {
-    let (node_not_found, out_of_side_nodes, node_can_run_directly) =
-        calc_nodes(origin_nodes, flow_block, node_input_values);
-    // 两部分：
-    // 1. nodes 中可以直接 run 的
-    // 2. nodes 中的依赖节点中可以直接 run 的节点
-    let mut nodes_will_run = node_can_run_directly
-        .iter()
-        .map(|node| node.node_id().to_owned().into())
-        .collect::<Vec<String>>();
-
-    if !node_not_found.is_empty() {
-        let not_found_message = node_not_found
-            .iter()
-            .map(|node_id| node_id.to_string())
-            .collect::<Vec<String>>()
-            .join(",");
-        warn!("some nodes are not found: {}", not_found_message);
-    }
-
-    let mut waiting_nodes = Vec::new();
-    let mut upstream_nodes = Vec::new();
-    for node_id in out_of_side_nodes {
-        if let Some(node) = flow_block.nodes.get(&node_id) {
-            upstream_nodes.push(node.node_id().to_owned().into());
-            if node_input_values.is_node_fulfill(node) {
-                nodes_will_run.push(node.node_id().to_owned().into()); // will run outside node
-            } else {
-                waiting_nodes.push(node.node_id().to_string());
-            }
-        }
-    }
-
-    (nodes_will_run, waiting_nodes, upstream_nodes)
-}
-
-fn calc_nodes<'a>(
-    nodes: &HashSet<NodeId>,
-    flow_block: &'a SubflowBlock,
-    node_input_values: &mut NodeInputValues,
-) -> (HashSet<NodeId>, HashSet<NodeId>, Vec<&'a Node>) {
-    let mut node_id_not_found = HashSet::new();
-    let mut dep_node_id_outside_list = HashSet::new();
-    let mut node_will_run = Vec::new();
-
-    for node_id in nodes {
-        if let Some(node) = flow_block.nodes.get(node_id) {
-            let n = RunToNode::new(
-                flow_block,
-                Some(node_id.to_owned()),
-                Some(node_input_values),
-            );
-
-            let nodes_without_self = nodes
-                .iter()
-                .filter(|id| *id != node_id)
-                .map(|id| id.to_owned())
-                .collect();
-
-            let is_fulfill = node_input_values.is_node_fulfill(node);
-
-            // 如果有依赖的节点在 nodes 列表中，删除在 input value 中的数据，让列表中的依赖节点，来触发该 node 的运行
-            if n.has_deps_in(&nodes_without_self) {
-                let dep_in_nodes: HashSet<NodeId> = n
-                    .find_intersection_nodes(&nodes_without_self)
-                    .iter()
-                    .map(|id| id.to_owned())
-                    .collect();
-
-                node_input_values.remove_input_values(node, &dep_in_nodes);
-            }
-
-            if node_input_values.is_node_fulfill(node) {
-                node_will_run.push(node);
-            } else if !is_fulfill && n.should_run_nodes.is_some() {
-                // TODO: 性能优化
-                n.should_run_nodes.unwrap().iter().for_each(|node_id| {
-                    if !nodes.contains(node_id) {
-                        dep_node_id_outside_list.insert(node_id.to_owned());
-                    }
-                });
-            }
-        } else {
-            node_id_not_found.insert(node_id.to_owned());
-        }
-    }
-
-    (node_id_not_found, dep_node_id_outside_list, node_will_run)
-}
-
 fn produce_new_value(
     value: &Arc<OutputValue>,
     handle_tos: &Vec<HandleTo>,
@@ -1094,37 +971,4 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
 
 fn is_finish(ctx: &RunFlowContext) -> bool {
     ctx.jobs.is_empty()
-}
-
-pub fn get_flow_cache_path(flow: &str) -> Option<PathBuf> {
-    utils::cache::cache_meta_file_path().and_then(|path| {
-        CacheMetaMap::load(path)
-            .ok()
-            .and_then(|meta| meta.get(flow).map(|cache_path| cache_path.into()))
-    })
-}
-
-fn save_flow_cache(node_input_values: &NodeInputValues, flow: &str) {
-    if let Some(cache_path) = get_flow_cache_path(flow) {
-        if let Err(e) = node_input_values.save_cache(cache_path) {
-            warn!("failed to save cache: {}", e);
-        }
-    } else if let Some(meta_path) = utils::cache::cache_meta_file_path() {
-        let cache_path = utils::cache::cache_dir()
-            .unwrap_or(std::env::temp_dir())
-            .join(Uuid::new_v4().to_string() + ".json");
-
-        if let Err(e) = node_input_values.save_cache(cache_path.clone()) {
-            warn!("failed to save cache: {}", e);
-            return;
-        }
-
-        let mut meta = CacheMetaMap::load(meta_path.clone()).unwrap_or_default();
-        if let Some(path) = cache_path.to_str() {
-            meta.insert(flow.to_owned(), path.to_string());
-            if let Err(e) = meta.save(meta_path) {
-                warn!("failed to save cache meta: {}", e);
-            }
-        }
-    }
 }

@@ -24,7 +24,7 @@ pub struct ServiceExecutorPayload {
     pub executor_name: String,
 }
 
-pub struct ListenerArgs {
+pub struct ListenerParameters {
     pub job_id: JobId,
     pub block_path: Option<String>,
     pub stacks: BlockJobStacks,
@@ -78,8 +78,8 @@ fn is_json_serializable(
         .unwrap_or(true)
 }
 
-pub fn listen_to_worker(args: ListenerArgs) -> tokio::task::JoinHandle<()> {
-    let ListenerArgs {
+pub fn listen_to_worker(params: ListenerParameters) -> tokio::task::JoinHandle<()> {
+    let ListenerParameters {
         job_id,
         block_path,
         stacks,
@@ -96,7 +96,7 @@ pub fn listen_to_worker(args: ListenerArgs) -> tokio::task::JoinHandle<()> {
         scope,
         injection_store,
         flow,
-    } = args;
+    } = params;
 
     let block_scope = scheduler_tx.calculate_scope(&scope);
 
