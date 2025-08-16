@@ -118,9 +118,8 @@ pub fn execute_task_job(params: TaskJobParameters) -> Option<BlockJobHandle> {
     match task_block.executor.clone() {
         TaskBlockExecutor::Rust(e) => {
             let execute_result = spawn(
-                &task_block,
                 &e.options,
-                parent_flow.as_ref(),
+                &block_dir,
                 &shared.address,
                 &shared.session_id,
                 &job_id,
@@ -157,13 +156,7 @@ pub fn execute_task_job(params: TaskJobParameters) -> Option<BlockJobHandle> {
             }
         }
         TaskBlockExecutor::Shell(_) => {
-            let execute_result = spawn_shell(
-                &task_block,
-                parent_flow.as_ref(),
-                inputs,
-                &shared.session_id,
-                &job_id,
-            );
+            let execute_result = spawn_shell(&block_dir, inputs, &shared.session_id, &job_id);
 
             match execute_result {
                 Ok(mut child) => {
@@ -297,8 +290,7 @@ fn block_dir(
 }
 
 fn spawn_shell(
-    task_block: &TaskBlock,
-    parent_flow: Option<&Arc<SubflowBlock>>,
+    dir: &str,
     inputs: Option<BlockInputs>,
     session_id: &SessionId,
     job_id: &JobId,
@@ -309,14 +301,12 @@ fn spawn_shell(
 
     let arg = get_string_value_from_inputs(&inputs, "command");
 
-    let block_dir = block_dir(task_block, parent_flow, None);
-
     // 用户设置 cwd 在这里的意义不大，造成的问题反而可能更多，考虑去掉。
     let cwd = match get_string_value_from_inputs(&inputs, "cwd") {
         Some(cwd) => {
             let path = std::path::Path::new(&cwd);
             if path.is_relative() {
-                std::path::Path::new(&block_dir)
+                std::path::Path::new(&dir)
                     .join(path)
                     .to_str()
                     .unwrap()
@@ -325,7 +315,7 @@ fn spawn_shell(
                 cwd
             }
         }
-        None => block_dir,
+        None => dir.to_owned(),
     };
 
     let env_strings = get_string_value_from_inputs(&inputs, "envs");
@@ -400,9 +390,8 @@ fn get_string_value_from_inputs(inputs: &Option<BlockInputs>, key: &str) -> Opti
 }
 
 fn spawn(
-    task_block: &TaskBlock,
     spawn_options: &SpawnOptions,
-    parent_flow: Option<&Arc<SubflowBlock>>,
+    dir: &str,
     address: &str,
     session_id: &SessionId,
     job_id: &JobId,
@@ -426,8 +415,7 @@ fn spawn(
     // Execute the command
     let mut command = process::Command::new(&spawn_options.bin);
 
-    let block_dir = block_dir(task_block, parent_flow, None);
-    command.current_dir(block_dir);
+    command.current_dir(dir);
 
     command
         .args(args)
