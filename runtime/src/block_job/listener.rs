@@ -326,7 +326,24 @@ pub fn listen_to_worker(params: ListenerParameters) -> tokio::task::JoinHandle<(
                     reporter.error(&error);
                 }
                 scheduler::ReceiveMessage::BlockRequest(request) => {
-                    block_status.run_request(request);
+                    // Handle block preview request
+                    if let scheduler::BlockRequest::Preview {
+                        session_id,
+                        job_id,
+                        payload,
+                        request_id,
+                    } = request
+                    {
+                        reporter.preview(&payload);
+                        block_status.run_request(scheduler::BlockRequest::Preview {
+                            job_id,
+                            payload,
+                            request_id,
+                            session_id,
+                        });
+                    } else {
+                        block_status.run_request(request);
+                    }
                 }
             }
         }

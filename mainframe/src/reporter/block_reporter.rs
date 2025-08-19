@@ -82,6 +82,17 @@ impl BlockReporterTx {
         });
     }
 
+    pub fn preview(&self, payload: &serde_json::Value) {
+        self.tx.send(ReporterMessage::BlockPreview {
+            session_id: &self.tx.session_id,
+            job_id: &self.job_id,
+            block_path: &self.block_path,
+            stacks: self.stacks.vec(),
+            payload,
+            node_id: None,
+        });
+    }
+
     pub fn error(&self, error: &str) {
         self.tx.send(ReporterMessage::BlockError {
             session_id: &self.tx.session_id,

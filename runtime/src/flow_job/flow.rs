@@ -575,6 +575,35 @@ pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle>
                             }
                         }
                     }
+                    BlockRequest::Preview {
+                        job_id,
+                        payload,
+                        request_id,
+                        session_id,
+                    } => {
+                        let node_id = run_flow_ctx
+                            .jobs
+                            .get(&job_id)
+                            .map(|job| job.node_id.to_owned());
+                        if let Some(node_id) = &node_id {
+                            if flow_shared
+                                .flow_block
+                                .forward_previews
+                                .as_ref()
+                                .map_or(false, |p| p.contains(node_id))
+                            {
+                                reporter.forward_previews(node_id.clone(), &payload);
+                                run_flow_ctx
+                                    .block_status
+                                    .run_request(BlockRequest::Preview {
+                                        job_id,
+                                        payload,
+                                        request_id,
+                                        session_id,
+                                    });
+                            }
+                        }
+                    }
                 },
                 block_status::Status::Done {
                     job_id,
