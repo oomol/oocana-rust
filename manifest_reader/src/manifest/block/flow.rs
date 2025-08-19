@@ -4,7 +4,7 @@ use serde::Deserialize;
 
 use crate::manifest::{
     block::handle::{MiddleInputHandle, MiddleOutputHandle},
-    Node, NodeInputFrom,
+    Node, NodeId, NodeInputFrom,
 };
 
 use super::{
@@ -21,6 +21,7 @@ pub struct TmpSubflowBlock {
     pub inputs_def: Option<Vec<MiddleInputHandle>>,
     pub outputs_def: Option<Vec<MiddleOutputHandle>>,
     pub injection: Option<HashMap<String, String>>,
+    pub forward_previews: Option<Vec<NodeId>>,
 }
 
 impl From<TmpSubflowBlock> for SubflowBlock {
@@ -46,6 +47,7 @@ impl From<TmpSubflowBlock> for SubflowBlock {
                     .collect()
             })),
             injection: tmp.injection,
+            forward_previews: tmp.forward_previews,
         }
     }
 }
@@ -59,4 +61,5 @@ pub struct SubflowBlock {
     pub inputs_def: Option<InputHandles>,
     pub outputs_def: Option<OutputHandles>,
     pub injection: Option<HashMap<String, String>>,
+    pub forward_previews: Option<Vec<NodeId>>,
 }

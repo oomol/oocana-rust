@@ -70,6 +70,7 @@ pub struct SubflowBlock {
     pub flow_outputs_froms: HandlesFroms,
     pub package_path: Option<PathBuf>,
     pub injection_store: Option<InjectionStore>,
+    pub forward_previews: Option<Vec<NodeId>>,
 }
 
 #[derive(Hash, PartialEq, Eq, Debug)]
@@ -287,6 +288,7 @@ impl SubflowBlock {
             outputs_def,
             outputs_from,
             injection: scripts,
+            forward_previews,
         } = manifest;
 
         // filter out ignored value nodes
@@ -1081,6 +1083,7 @@ impl SubflowBlock {
             } else {
                 Some(injection)
             },
+            forward_previews,
         })
     }
 
