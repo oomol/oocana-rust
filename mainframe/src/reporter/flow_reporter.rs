@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use super::{ReporterMessage, ReporterTx};
 use job::{BlockInputs, BlockJobStacks, JobId};
+use manifest_meta::NodeId;
 use utils::output::OutputValue;
 
 pub struct FlowReporterTx {
@@ -112,6 +113,19 @@ impl FlowReporterTx {
                 mid_nodes: mid,
                 start_nodes: start,
                 end_nodes: end,
+            });
+        }
+    }
+
+    pub fn forward_previews(&self, node_id: NodeId, payload: &serde_json::Value) {
+        if matches!(self.flow_type, FlowType::Subflow | FlowType::SlotFlow) {
+            self.tx.send(ReporterMessage::BlockPreview {
+                session_id: &self.tx.session_id,
+                job_id: &self.job_id,
+                block_path: &self.path,
+                stacks: self.stacks.vec(),
+                payload,
+                node_id: Some(node_id),
             });
         }
     }

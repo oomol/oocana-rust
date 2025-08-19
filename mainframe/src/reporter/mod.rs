@@ -11,7 +11,7 @@ use utils::output::OutputValue;
 
 use crate::MessageData;
 use job::{BlockInputs, BlockJobStackLevel, BlockJobStacks, JobId, SessionId};
-use manifest_meta::JsonValue;
+use manifest_meta::{JsonValue, NodeId};
 
 mod block_reporter;
 mod flow_reporter;
@@ -155,6 +155,16 @@ pub enum ReporterMessage<'a> {
         block_path: &'a Option<String>,
         stacks: &'a Vec<BlockJobStackLevel>,
         outputs: &'a HashMap<String, JsonValue>,
+    },
+    BlockPreview {
+        session_id: &'a str,
+        job_id: &'a str,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        block_path: &'a Option<String>,
+        stacks: &'a Vec<BlockJobStackLevel>,
+        payload: &'a serde_json::Value,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        node_id: Option<NodeId>, // None means it's a block reporter, flow reporter will set this field.
     },
     BlockLog {
         session_id: &'a str,
