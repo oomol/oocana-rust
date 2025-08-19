@@ -63,6 +63,12 @@ pub enum BlockRequest {
         outputs: Option<Vec<HandleName>>,
         request_id: String,
     },
+    Preview {
+        job_id: JobId,
+        payload: serde_json::Value,
+        request_id: String,
+        session_id: SessionId,
+    },
 }
 
 impl BlockRequest {
@@ -71,6 +77,7 @@ impl BlockRequest {
             BlockRequest::RunBlock(request) => &request.session_id,
             BlockRequest::QueryBlock(request) => &request.session_id,
             BlockRequest::QueryDownstream { session_id, .. } => session_id,
+            BlockRequest::Preview { session_id, .. } => session_id,
         }
     }
 
@@ -79,6 +86,7 @@ impl BlockRequest {
             BlockRequest::RunBlock(request) => &request.job_id,
             BlockRequest::QueryBlock(request) => &request.job_id,
             BlockRequest::QueryDownstream { job_id, .. } => job_id,
+            BlockRequest::Preview { job_id, .. } => job_id,
         }
     }
 
@@ -88,6 +96,7 @@ impl BlockRequest {
             BlockRequest::RunBlock(request) => &request.request_id,
             BlockRequest::QueryBlock(request) => &request.request_id,
             BlockRequest::QueryDownstream { request_id, .. } => request_id,
+            BlockRequest::Preview { request_id, .. } => request_id,
         }
     }
 }
