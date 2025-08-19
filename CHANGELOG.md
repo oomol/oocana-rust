@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.30.12 (2025-08-19)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* feat: implement subflow preview forward logic by @leavesster in https://github.com/oomol/oocana-rust/pull/330
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.30.11...v0.30.12
+
 ## 0.30.11 (2025-08-16)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
