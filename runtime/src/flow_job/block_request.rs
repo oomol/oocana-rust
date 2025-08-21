@@ -483,10 +483,10 @@ pub async fn parse_oauth_request(
     payload: &Value,
     vault_client: &vault::VaultClient,
 ) -> Result<vault::VaultValue> {
-    let vault_id: String = payload
-        .get("vault_id")
-        .and_then(|v| v.as_str())
-        .map(|s| s.to_string())
-        .unwrap_or_default();
-    vault_client.fetch(&vault_id).await
+    let vault_id = payload.as_str();
+    if let Some(vault_id) = vault_id {
+        vault_client.fetch(&vault_id).await
+    } else {
+        Err("Vault ID is not a string".into())
+    }
 }
