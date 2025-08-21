@@ -13,7 +13,7 @@ use crate::{
             RunBlockSuccessResponse,
         },
         cache::save_flow_cache,
-        find_upstream_nodes,
+        find_upstream_nodes, parse_oauth_request,
     },
     run::{run_job, CommonJobParameters, JobParams},
     shared::Shared,
@@ -79,7 +79,7 @@ struct NodeQueue {
     pub pending: HashSet<JobId>, // JobId 本身不会使用，只是用来判断 pending 的数量
 }
 
-pub struct FlowJobParameters {
+pub struct FlowJobParameters<'a> {
     pub flow_block: Arc<SubflowBlock>,
     pub shared: Arc<Shared>,
     pub stacks: BlockJobStacks,
@@ -92,6 +92,7 @@ pub struct FlowJobParameters {
     pub scope: RuntimeScope,
     pub slot_blocks: HashMap<NodeId, Slot>,
     pub path_finder: manifest_reader::path_finder::BlockPathFinder,
+    pub vault_client: &'a Option<vault::VaultClient>,
 }
 
 pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle> {
@@ -108,6 +109,7 @@ pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle>
         scope,
         parent_scope,
         path_finder,
+        vault_client,
     } = params;
 
     let reporter = Arc::new(shared.reporter.flow(
@@ -602,6 +604,56 @@ pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle>
                                         session_id,
                                     });
                             }
+                        }
+                    }
+                    BlockRequest::OAuth {
+                        session_id,
+                        job_id,
+                        payload,
+                        request_id,
+                    } => {
+                        if let Some(vault_client) = vault_client {
+                            let result = parse_oauth_request(&payload, &vault_client).await;
+                            match result {
+                                Ok(res) => {
+                                    let json = serde_json::to_value(res).unwrap_or_default();
+                                    shared.scheduler_tx.respond_block_request(
+                                        &shared.session_id,
+                                        BlockResponseParams {
+                                            session_id: shared.session_id.clone(),
+                                            job_id: job_id.clone(),
+                                            error: None,
+                                            result: Some(json),
+                                            request_id,
+                                        },
+                                    );
+                                }
+                                Err(err) => {
+                                    tracing::warn!("OAuth request failed: {}.", err);
+                                    shared.scheduler_tx.respond_block_request(
+                                        &shared.session_id,
+                                        BlockResponseParams {
+                                            session_id: shared.session_id.clone(),
+                                            job_id: job_id.clone(),
+                                            result: None,
+                                            error: Some(err.to_string()),
+                                            request_id,
+                                        },
+                                    );
+                                }
+                            }
+                        } else {
+                            tracing::warn!("OAuth request received but no vault client available.");
+                            shared.scheduler_tx.respond_block_request(
+                                &shared.session_id,
+                                BlockResponseParams {
+                                    session_id: shared.session_id.clone(),
+                                    job_id: job_id.clone(),
+                                    error: Some("Vault client is not available.".to_string()),
+                                    result: None,
+                                    request_id,
+                                },
+                            );
                         }
                     }
                 },
