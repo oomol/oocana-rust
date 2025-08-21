@@ -92,7 +92,7 @@ impl VaultClient {
     ///     ).with_max_retries(5)
     ///      .with_timeout_secs(10);
     ///     
-    ///     let value = client.fetch("vault-id".to_string()).await?;
+    ///     let value = client.fetch("vault-id").await?;
     ///     println!("{:?}", value);
     ///     Ok(())
     /// }
