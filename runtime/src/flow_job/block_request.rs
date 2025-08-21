@@ -488,5 +488,5 @@ pub async fn parse_oauth_request(
         .and_then(|v| v.as_str())
         .map(|s| s.to_string())
         .unwrap_or_default();
-    return vault_client.fetch(&vault_id).await;
+    vault_client.fetch(&vault_id).await
 }
