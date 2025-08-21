@@ -466,7 +466,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
                                 request_id,
                             },
                         );
-                        continue;
+                        
                     }
                 }
             },
