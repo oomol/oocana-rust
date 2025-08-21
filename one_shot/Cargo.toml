@@ -21,4 +21,4 @@ tracing = "0.1.40"
 tokio = { version = "1.44.2", features = ["full"] }
 path-clean = "1.0.1"
 flume = { version = "0.11.0", default-features = false, features = ["async"] }
-vault = { version = "0.30.12", path = "../vault" }
+vault = { path = "../vault" }
