@@ -26,7 +26,7 @@ pub struct CommonJobParameters {
     pub scope: RuntimeScope,
 }
 
-pub enum JobParams<'a> {
+pub enum JobParams {
     Flow {
         flow_block: Arc<SubflowBlock>,
         nodes: Option<HashSet<NodeId>>,
@@ -35,7 +35,7 @@ pub enum JobParams<'a> {
         slot_blocks: Option<HashMap<NodeId, Slot>>,
         path_finder: manifest_reader::path_finder::BlockPathFinder,
         common: CommonJobParameters,
-        vault_client: &'a Option<vault::VaultClient>,
+        vault_client: Arc<Option<vault::VaultClient>>,
     },
     Task {
         task_block: Arc<TaskBlock>,

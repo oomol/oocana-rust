@@ -47,7 +47,7 @@ pub struct RunArgs<'a> {
     pub project_data: &'a PathBuf,
     pub pkg_data_root: &'a PathBuf,
     pub in_layer: bool,
-    pub vault_client: &'a Option<VaultClient>,
+    pub vault_client: Option<VaultClient>,
 }
 
 pub async fn run(args: RunArgs<'_>) -> Result<()> {
@@ -71,6 +71,8 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
     let stacks = BlockJobStacks::new();
     let partial = nodes.is_some();
     let cache = shared.use_cache;
+
+    let vault_client = Arc::new(vault_client);
 
     let mut block_reader = block_reader;
 
@@ -215,7 +217,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
                 slot_blocks: None,
                 path_finder: path_finder.clone(),
                 common: common_job_params,
-                vault_client: &vault_client,
+                vault_client: vault_client.clone(),
             }
         }
         Block::Service(service_block) => JobParams::Service {
@@ -315,7 +317,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
                                         block_path.to_owned(),
                                         node_id.clone(),
                                     ),
-                                    vault_client: &vault_client,
+                                    vault_client: vault_client.clone(),
                                     flow_job_id: job_id.clone(),
                                     inputs: Some(inputs),
                                     node_value_store: NodeInputValues::new(false),
@@ -422,8 +424,8 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
                     job_id,
                     ..
                 } => {
-                    if let Some(vault_client) = vault_client {
-                        let result = parse_oauth_request(&payload, &vault_client).await;
+                    if let Some(vault_client) = &*vault_client {
+                        let result = parse_oauth_request(&payload, vault_client).await;
                         match result {
                             Ok(res) => {
                                 let json = serde_json::to_value(res).unwrap_or_default();

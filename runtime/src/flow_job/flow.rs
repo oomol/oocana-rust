@@ -63,6 +63,7 @@ struct FlowShared {
     scope: RuntimeScope,
     slot_blocks: HashMap<NodeId, Slot>,
     path_finder: manifest_reader::path_finder::BlockPathFinder,
+    vault_client: Arc<Option<vault::VaultClient>>,
 }
 
 struct RunFlowContext {
@@ -79,7 +80,7 @@ struct NodeQueue {
     pub pending: HashSet<JobId>, // JobId 本身不会使用，只是用来判断 pending 的数量
 }
 
-pub struct FlowJobParameters<'a> {
+pub struct FlowJobParameters {
     pub flow_block: Arc<SubflowBlock>,
     pub shared: Arc<Shared>,
     pub stacks: BlockJobStacks,
@@ -92,7 +93,7 @@ pub struct FlowJobParameters<'a> {
     pub scope: RuntimeScope,
     pub slot_blocks: HashMap<NodeId, Slot>,
     pub path_finder: manifest_reader::path_finder::BlockPathFinder,
-    pub vault_client: &'a Option<vault::VaultClient>,
+    pub vault_client: Arc<Option<vault::VaultClient>>,
 }
 
 pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle> {
@@ -183,6 +184,7 @@ pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle>
         slot_blocks,
         parent_scope,
         path_finder: path_finder.subflow(flow_path),
+        vault_client: vault_client.clone(),
     };
 
     if let Some(ref origin_nodes) = nodes {
@@ -308,6 +310,7 @@ pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle>
     let scheduler_tx = flow_shared.shared.scheduler_tx.clone();
     let mut block_resolver = BlockResolver::new();
     let mut flow_path_finder = flow_shared.path_finder.clone();
+    let vault_client = flow_shared.vault_client.clone();
     let spawn_handle = tokio::spawn(async move {
         while let Some(status) = block_status_rx.recv().await {
             match status {
@@ -464,6 +467,7 @@ pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle>
                                         scope,
                                         slot_blocks: default::Default::default(),
                                         path_finder: flow_shared.path_finder.clone(),
+                                        vault_client: flow_shared.vault_client.clone(),
                                     }) {
                                         run_flow_ctx.jobs.insert(
                                             job_id.to_owned(),
@@ -612,15 +616,15 @@ pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle>
                         payload,
                         request_id,
                     } => {
-                        if let Some(vault_client) = vault_client {
-                            let result = parse_oauth_request(&payload, &vault_client).await;
+                        if let Some(vault_client) = &*vault_client {
+                            let result = parse_oauth_request(&payload, vault_client).await;
                             match result {
                                 Ok(res) => {
                                     let json = serde_json::to_value(res).unwrap_or_default();
-                                    shared.scheduler_tx.respond_block_request(
-                                        &shared.session_id,
+                                    scheduler_tx.respond_block_request(
+                                        &session_id,
                                         BlockResponseParams {
-                                            session_id: shared.session_id.clone(),
+                                            session_id: session_id.clone(),
                                             job_id: job_id.clone(),
                                             error: None,
                                             result: Some(json),
@@ -630,10 +634,10 @@ pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle>
                                 }
                                 Err(err) => {
                                     tracing::warn!("OAuth request failed: {}.", err);
-                                    shared.scheduler_tx.respond_block_request(
-                                        &shared.session_id,
+                                    scheduler_tx.respond_block_request(
+                                        &session_id,
                                         BlockResponseParams {
-                                            session_id: shared.session_id.clone(),
+                                            session_id: session_id.clone(),
                                             job_id: job_id.clone(),
                                             result: None,
                                             error: Some(err.to_string()),
@@ -644,10 +648,10 @@ pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle>
                             }
                         } else {
                             tracing::warn!("OAuth request received but no vault client available.");
-                            shared.scheduler_tx.respond_block_request(
-                                &shared.session_id,
+                            scheduler_tx.respond_block_request(
+                                &session_id,
                                 BlockResponseParams {
-                                    session_id: shared.session_id.clone(),
+                                    session_id: session_id.clone(),
                                     job_id: job_id.clone(),
                                     error: Some("Vault client is not available.".to_string()),
                                     result: None,
@@ -1034,6 +1038,7 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
             },
             path_finder: shared.path_finder.clone(),
             common: common_job_params,
+            vault_client: shared.vault_client.clone(),
         },
         Block::Service(service_block) => JobParams::Service {
             service_block: service_block.clone(),
