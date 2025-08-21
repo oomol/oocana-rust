@@ -69,7 +69,7 @@ pub enum BlockRequest {
         request_id: String,
         session_id: SessionId,
     },
-    OAuth {
+    QueryAuth {
         session_id: SessionId,
         job_id: JobId,
         payload: serde_json::Value,
@@ -84,7 +84,7 @@ impl BlockRequest {
             BlockRequest::QueryBlock(request) => &request.session_id,
             BlockRequest::QueryDownstream { session_id, .. } => session_id,
             BlockRequest::Preview { session_id, .. } => session_id,
-            BlockRequest::OAuth { session_id, .. } => session_id,
+            BlockRequest::QueryAuth { session_id, .. } => session_id,
         }
     }
 
@@ -94,7 +94,7 @@ impl BlockRequest {
             BlockRequest::QueryBlock(request) => &request.job_id,
             BlockRequest::QueryDownstream { job_id, .. } => job_id,
             BlockRequest::Preview { job_id, .. } => job_id,
-            BlockRequest::OAuth { job_id, .. } => job_id,
+            BlockRequest::QueryAuth { job_id, .. } => job_id,
         }
     }
 
@@ -105,7 +105,7 @@ impl BlockRequest {
             BlockRequest::QueryBlock(request) => &request.request_id,
             BlockRequest::QueryDownstream { request_id, .. } => request_id,
             BlockRequest::Preview { request_id, .. } => request_id,
-            BlockRequest::OAuth { request_id, .. } => request_id,
+            BlockRequest::QueryAuth { request_id, .. } => request_id,
         }
     }
 }

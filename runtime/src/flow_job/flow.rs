@@ -610,7 +610,7 @@ pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle>
                             }
                         }
                     }
-                    BlockRequest::OAuth {
+                    BlockRequest::QueryAuth {
                         session_id,
                         job_id,
                         payload,

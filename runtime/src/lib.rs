@@ -418,7 +418,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
                     }
                 }
                 BlockRequest::Preview { .. } => {}
-                BlockRequest::OAuth {
+                BlockRequest::QueryAuth {
                     payload,
                     request_id,
                     job_id,
@@ -466,7 +466,6 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
                                 request_id,
                             },
                         );
-                        
                     }
                 }
             },
