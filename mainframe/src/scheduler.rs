@@ -767,7 +767,7 @@ fn spawn_executor(
 
         let log_dir = utils::logger::logger_dir();
         envs.insert(
-            layer::OVMLAYER_LOG_ENV_KEY.to_owned(),
+            utils::env::OVMLAYER_LOG_ENV_KEY.to_owned(),
             log_dir.join(&log_filename).to_string_lossy().to_string(),
         );
 

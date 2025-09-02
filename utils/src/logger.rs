@@ -5,7 +5,7 @@ use std::{
 };
 use tracing::info;
 
-use crate::config;
+use crate::{config, env};
 
 use super::error::Result;
 
@@ -49,6 +49,16 @@ pub fn setup_logging<P: AsRef<Path>>(params: LogParams<P>) -> Result<non_blockin
     }
 
     *LOGGER_DIR.lock().unwrap() = logger_dir.clone();
+
+    // Set OVMLAYER environment variable for ovmlayer logging
+    std::env::set_var(
+        env::OVMLAYER_LOG_ENV_KEY,
+        logger_dir
+            .join("ovmlayer.log")
+            .to_string_lossy()
+            .to_string(),
+    );
+
     let file_path = logger_dir.join(format!("{}.log", log_name));
 
     let f = create_file_with_dirs(&file_path)?;
@@ -129,11 +139,7 @@ fn create_file_with_dirs<P: AsRef<Path>>(file_path: P) -> io::Result<File> {
         fs::create_dir_all(parent)?;
     }
     // File::create(file_path)
-    File::options()
-        
-        .create(true)
-        .append(true)
-        .open(file_path)
+    File::options().create(true).append(true).open(file_path)
 }
 
 #[cfg(test)]

@@ -74,9 +74,9 @@ pub enum LayerAction {
 }
 
 pub fn layer_action(action: &LayerAction) -> Result<()> {
-    if std::env::var(layer::OVMLAYER_LOG_ENV_KEY).is_err() {
+    if std::env::var(utils::env::OVMLAYER_LOG_ENV_KEY).is_err() {
         std::env::set_var(
-            layer::OVMLAYER_LOG_ENV_KEY,
+            utils::env::OVMLAYER_LOG_ENV_KEY,
             utils::logger::logger_dir()
                 .join("ovmlayer.log")
                 .to_string_lossy()
