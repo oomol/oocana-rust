@@ -25,3 +25,5 @@ pub fn load_env_from_file<P: AsRef<Path>>(file_path: &Option<P>) -> HashMap<Stri
         }
     }
 }
+
+pub static OVMLAYER_LOG_ENV_KEY: &str = "OVMLAYER_LOG";

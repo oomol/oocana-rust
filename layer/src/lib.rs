@@ -26,9 +26,6 @@ pub fn feature_enabled() -> bool {
     cli::exec(cmd).is_ok()
 }
 
-// ovmlayer 会根据环境变量来存放日志文件
-pub static OVMLAYER_LOG_ENV_KEY: &str = "OVMLAYER_LOG";
-
 // 自己转换，避免空格。同时这个函数也可以用于其他地方
 pub fn convert_to_script(cmd: &Vec<&str>) -> String {
     let mut exec_string: String = String::from("");
