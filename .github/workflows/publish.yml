@@ -23,7 +23,9 @@ jobs:
         with:
           toolchain: stable
       - name: install cross
-        run: cargo install cross
+        run: |
+          cargo install cross
+          sudo apt update && sudo apt install -y libssl-dev # https://github.com/cross-rs/cross/issues/1690
       - name: build
         run: cross build --release --target ${{ matrix.target }}
       - name: name cli tool
