@@ -214,7 +214,7 @@ pub fn import_package_layer(package_path: &str, from: &str) -> Result<()> {
     let layer_tar = format!("{}/layers.tar", from);
     import_layer(&layer_tar)?;
 
-    // TODO: refactor package sturct, make package always in fixed path
+    // TODO: refactor package struct, make package always in fixed path
     if source_dir != package_path {
         // because layer's path is relative to package path , is not a fixed path.
         // so we need to copy the every thing to the new package path.
