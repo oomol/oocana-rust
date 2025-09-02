@@ -9,7 +9,6 @@ edition = "2021"
 layer = { path = "../layer" }
 utils = { path = "../utils" }
 job = { path = "../job"}
-vault = { path = "../vault" }
 mainframe = { path = "../mainframe"}
 manifest_meta = { path = "../manifest_meta"}
 manifest_reader = { path = "../manifest_reader"}
