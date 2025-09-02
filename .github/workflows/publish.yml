@@ -32,19 +32,28 @@ jobs:
           targets: ${{ matrix.target }}
       - name: install dependencies
         run: |
-          sudo apt update && sudo apt install -y pkg-config libssl-dev
+          sudo apt update && sudo apt install -y pkg-config libssl-dev musl-tools
           if [[ "${{ matrix.target }}" == *"aarch64"* ]]; then
             sudo apt install -y gcc-aarch64-linux-gnu libc6-dev-arm64-cross
+          fi
+          if [[ "${{ matrix.target }}" == *"musl"* ]]; then
+            sudo apt install -y musl-dev
           fi
       - name: build
         run: cargo build --release --target ${{ matrix.target }}
         env:
+          OPENSSL_STATIC: 1
+          OPENSSL_LIB_DIR: /usr/lib/x86_64-linux-gnu
+          OPENSSL_INCLUDE_DIR: /usr/include/openssl
           CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
           CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER: aarch64-linux-gnu-gcc
+          CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER: musl-gcc
           CC_aarch64_unknown_linux_gnu: aarch64-linux-gnu-gcc
           CXX_aarch64_unknown_linux_gnu: aarch64-linux-gnu-g++
           CC_aarch64_unknown_linux_musl: aarch64-linux-gnu-gcc
           CXX_aarch64_unknown_linux_musl: aarch64-linux-gnu-g++
+          CC_x86_64_unknown_linux_musl: musl-gcc
+          CXX_x86_64_unknown_linux_musl: musl-gcc
       - name: name cli tool
         run: |
           mv target/${{ matrix.target }}/release/oocana oocana-cli-${{ matrix.target }}
