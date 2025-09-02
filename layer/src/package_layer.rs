@@ -231,10 +231,19 @@ pub fn import_package_layer(package_path: &str, from: &str) -> Result<()> {
                 PathBuf::from(&layer_path).join(package_path.trim_start_matches('/'));
 
             if old_path_in_layer.exists() {
+                // sudo is required, because the layer dir is owned by root
                 if let Some(parent) = new_path_in_layer.parent() {
-                    std::fs::create_dir_all(parent)?;
+                    let mut cmd = std::process::Command::new("sudo");
+                    cmd.arg("mkdir")
+                        .arg("-p")
+                        .arg(parent.to_string_lossy().as_ref());
+                    exec(cmd)?;
                 }
-                std::fs::rename(&old_path_in_layer, &new_path_in_layer)?;
+                let mut cmd = std::process::Command::new("sudo");
+                cmd.arg("mv")
+                    .arg(old_path_in_layer.to_string_lossy().as_ref())
+                    .arg(new_path_in_layer.to_string_lossy().as_ref());
+                exec(cmd)?;
             }
         }
     }
