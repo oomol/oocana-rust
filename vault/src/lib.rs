@@ -15,10 +15,8 @@ const BEARER_PREFIX: &str = "Bearer";
 /// Lightweight structure specifically for extracting the value field
 #[derive(Debug, Deserialize)]
 struct VaultValueOnly {
-    value: VaultValue,
+    value: HashMap<String, String>,
 }
-
-pub type VaultValue = HashMap<String, String>;
 
 #[derive(Debug, Clone)]
 pub struct VaultClient {
@@ -92,12 +90,12 @@ impl VaultClient {
     ///     ).with_max_retries(5)
     ///      .with_timeout_secs(10);
     ///     
-    ///     let value = client.fetch("vault-id").await?;
+    ///     let value = client.fetch("vault-id".to_string()).await?;
     ///     println!("{:?}", value);
     ///     Ok(())
     /// }
     /// ```
-    pub async fn fetch(&self, id: &str) -> Result<VaultValue> {
+    pub async fn fetch(&self, id: String) -> Result<HashMap<String, String>> {
         let start_time = Instant::now();
         let url = format!("{}/v1/vaultlet/{}", self.domain, id);
 
@@ -176,7 +174,7 @@ fn log_request_duration(id: &str, start_time: Instant, status: &str) {
     }
 }
 
-async fn parse_vaultlet_response(resp: reqwest::Response) -> Result<VaultValue> {
+async fn parse_vaultlet_response(resp: reqwest::Response) -> Result<HashMap<String, String>> {
     let vault_data: VaultValueOnly = resp
         .json()
         .await
@@ -251,7 +249,7 @@ mod tests {
 
         let client = VaultClient::new(mock_server.uri(), "api-test-key".to_string());
 
-        let result = client.fetch("test-id").await;
+        let result = client.fetch("test-id".to_string()).await;
         assert!(result.is_ok());
 
         assert_eq!(result.unwrap(), expected_value);
@@ -274,7 +272,7 @@ mod tests {
         let client = VaultClient::new(mock_server.uri(), "api-test-key".to_string());
 
         // Test client error (should not retry)
-        let result = client.fetch("non-existent").await;
+        let result = client.fetch("non-existent".to_string()).await;
         assert!(result.is_err());
 
         let error_msg = result.unwrap_err().to_string();
@@ -302,7 +300,7 @@ mod tests {
         let client = VaultClient::new(mock_server.uri(), "api-test-key".to_string());
 
         // Test server error (should retry and eventually fail)
-        let result = client.fetch("server-error").await;
+        let result = client.fetch("server-error".to_string()).await;
         assert!(result.is_err());
 
         let error_msg = result.unwrap_err().to_string();
@@ -343,7 +341,7 @@ mod tests {
 
         let client = VaultClient::new(mock_server.uri(), "api-test-key".to_string());
 
-        let result = client.fetch("retry-success").await;
+        let result = client.fetch("retry-success".to_string()).await;
         assert!(result.is_ok());
 
         let value = result.unwrap();
@@ -366,7 +364,7 @@ mod tests {
 
         let client = VaultClient::new(mock_server.uri(), "api-test-key".to_string());
 
-        let result = client.fetch("invalid-json").await;
+        let result = client.fetch("invalid-json".to_string()).await;
         assert!(result.is_err());
 
         let error_msg = result.unwrap_err().to_string();
@@ -394,7 +392,7 @@ mod tests {
         let client =
             VaultClient::new(mock_server.uri(), "api-test-key".to_string()).with_timeout_secs(1);
 
-        let result = client.fetch("timeout-test").await;
+        let result = client.fetch("timeout-test".to_string()).await;
         assert!(result.is_err());
 
         let error_msg = result.unwrap_err().to_string();
