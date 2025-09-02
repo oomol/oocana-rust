@@ -214,6 +214,7 @@ pub fn import_package_layer(package_path: &str, from: &str) -> Result<()> {
     let layer_tar = format!("{}/layers.tar", from);
     import_layer(&layer_tar)?;
 
+    // TODO: refactor package sturct, make package always in fixed path
     if source_dir != package_path {
         // because layer's path is relative to package path , is not a fixed path.
         // so we need to copy the every thing to the new package path.
@@ -223,17 +224,18 @@ pub fn import_package_layer(package_path: &str, from: &str) -> Result<()> {
             package_path
         );
         for layer in package.layers() {
-            run_script_unmerge(
-                &vec![layer],
-                &vec![],
-                &None,
-                &format!(
-                    "mkdir -p {} && mv {}/* {}",
-                    package_path, source_dir, package_path
-                ),
-                &HashMap::new(),
-                &None,
-            )?;
+            let layer_path = format!("/opt/ovmlayer/layer_dir/{}", layer);
+            let old_path_in_layer =
+                PathBuf::from(&layer_path).join(source_dir.trim_start_matches('/'));
+            let new_path_in_layer =
+                PathBuf::from(&layer_path).join(package_path.trim_start_matches('/'));
+
+            if old_path_in_layer.exists() {
+                if let Some(parent) = new_path_in_layer.parent() {
+                    std::fs::create_dir_all(parent)?;
+                }
+                std::fs::rename(&old_path_in_layer, &new_path_in_layer)?;
+            }
         }
     }
 
