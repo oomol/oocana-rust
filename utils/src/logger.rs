@@ -50,7 +50,7 @@ pub fn setup_logging<P: AsRef<Path>>(params: LogParams<P>) -> Result<non_blockin
 
     *LOGGER_DIR.lock().unwrap() = logger_dir.clone();
 
-    // set ovmlayer env for ovmlayer log
+    // Set OVMLAYER environment variable for ovmlayer logging
     std::env::set_var(
         env::OVMLAYER_LOG_ENV_KEY,
         logger_dir
