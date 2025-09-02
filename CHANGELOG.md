@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.30.13 (2025-09-02)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* feat: support oauth token by @leavesster in https://github.com/oomol/oocana-rust/pull/332
+* feat: add ovmlayer env for default call by @leavesster in https://github.com/oomol/oocana-rust/pull/336
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.30.12...v0.30.13
+
 ## 0.30.12 (2025-08-19)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
