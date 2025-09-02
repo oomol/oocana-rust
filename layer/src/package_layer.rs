@@ -187,13 +187,13 @@ impl PackageLayer {
     }
 }
 
-pub fn import_package_layer(package_path: &str, from: &str) -> Result<()> {
-    if metadata(from).is_err() {
-        return Err(format!("path not exist: {:?}", from).into());
+pub fn import_package_layer(package_path: &str, export_dir: &str) -> Result<()> {
+    if metadata(export_dir).is_err() {
+        return Err(format!("path not exist: {:?}", export_dir).into());
     }
 
-    let package_file_path = format!("{}/{}", from, PACKAGE_FILENAME);
-    let package_layer_path = format!("{}/{}", from, LAYER_FILENAME);
+    let package_file_path = format!("{}/{}", export_dir, PACKAGE_FILENAME);
+    let package_layer_path = format!("{}/{}", export_dir, LAYER_FILENAME);
 
     if metadata(&package_file_path).is_err() {
         return Err(format!("package.json not exist: {:?}", package_file_path).into());
@@ -211,9 +211,10 @@ pub fn import_package_layer(package_path: &str, from: &str) -> Result<()> {
 
     package.package_path = PathBuf::from(package_path);
 
-    let layer_tar = format!("{}/layers.tar", from);
+    let layer_tar = format!("{}/layers.tar", export_dir);
     import_layer(&layer_tar)?;
 
+    // TODO: refactor package struct, make package always in fixed path
     if source_dir != package_path {
         // because layer's path is relative to package path , is not a fixed path.
         // so we need to copy the every thing to the new package path.
@@ -223,17 +224,27 @@ pub fn import_package_layer(package_path: &str, from: &str) -> Result<()> {
             package_path
         );
         for layer in package.layers() {
-            run_script_unmerge(
-                &vec![layer],
-                &vec![],
-                &None,
-                &format!(
-                    "mkdir -p {} && mv {}/* {}",
-                    package_path, source_dir, package_path
-                ),
-                &HashMap::new(),
-                &None,
-            )?;
+            let layer_path = format!("/opt/ovmlayer/layer_dir/{}", layer);
+            let old_path_in_layer =
+                PathBuf::from(&layer_path).join(source_dir.trim_start_matches('/'));
+            let new_path_in_layer =
+                PathBuf::from(&layer_path).join(package_path.trim_start_matches('/'));
+
+            if old_path_in_layer.exists() {
+                // sudo is required, because the layer dir is owned by root
+                if let Some(parent) = new_path_in_layer.parent() {
+                    let mut cmd = std::process::Command::new("sudo");
+                    cmd.arg("mkdir")
+                        .arg("-p")
+                        .arg(parent.to_string_lossy().as_ref());
+                    exec(cmd)?;
+                }
+                let mut cmd = std::process::Command::new("sudo");
+                cmd.arg("mv")
+                    .arg(old_path_in_layer.to_string_lossy().as_ref())
+                    .arg(new_path_in_layer.to_string_lossy().as_ref());
+                exec(cmd)?;
+            }
         }
     }
 
