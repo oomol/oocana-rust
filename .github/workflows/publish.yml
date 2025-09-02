@@ -20,8 +20,8 @@ jobs:
         target: [
           aarch64-unknown-linux-gnu,
           x86_64-unknown-linux-gnu,
-          # x86_64-unknown-linux-musl,
-          # aarch64-unknown-linux-musl,
+          x86_64-unknown-linux-musl,
+          aarch64-unknown-linux-musl,
         ]
     steps:
       - uses: actions/checkout@v4
@@ -29,12 +29,22 @@ jobs:
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: stable
-      - name: install cross
+          targets: ${{ matrix.target }}
+      - name: install dependencies
         run: |
-          cargo install cross
-          sudo apt update && sudo apt install -y pkg-config libssl-dev # https://github.com/cross-rs/cross/issues/1690
+          sudo apt update && sudo apt install -y pkg-config libssl-dev
+          if [[ "${{ matrix.target }}" == *"aarch64"* ]]; then
+            sudo apt install -y gcc-aarch64-linux-gnu libc6-dev-arm64-cross
+          fi
       - name: build
-        run: cross build --release --target ${{ matrix.target }}
+        run: cargo build --release --target ${{ matrix.target }}
+        env:
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER: aarch64-linux-gnu-gcc
+          CC_aarch64_unknown_linux_gnu: aarch64-linux-gnu-gcc
+          CXX_aarch64_unknown_linux_gnu: aarch64-linux-gnu-g++
+          CC_aarch64_unknown_linux_musl: aarch64-linux-gnu-gcc
+          CXX_aarch64_unknown_linux_musl: aarch64-linux-gnu-g++
       - name: name cli tool
         run: |
           mv target/${{ matrix.target }}/release/oocana oocana-cli-${{ matrix.target }}
