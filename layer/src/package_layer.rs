@@ -187,13 +187,13 @@ impl PackageLayer {
     }
 }
 
-pub fn import_package_layer(package_path: &str, from: &str) -> Result<()> {
-    if metadata(from).is_err() {
-        return Err(format!("path not exist: {:?}", from).into());
+pub fn import_package_layer(package_path: &str, export_dir: &str) -> Result<()> {
+    if metadata(export_dir).is_err() {
+        return Err(format!("path not exist: {:?}", export_dir).into());
     }
 
-    let package_file_path = format!("{}/{}", from, PACKAGE_FILENAME);
-    let package_layer_path = format!("{}/{}", from, LAYER_FILENAME);
+    let package_file_path = format!("{}/{}", export_dir, PACKAGE_FILENAME);
+    let package_layer_path = format!("{}/{}", export_dir, LAYER_FILENAME);
 
     if metadata(&package_file_path).is_err() {
         return Err(format!("package.json not exist: {:?}", package_file_path).into());
@@ -211,7 +211,7 @@ pub fn import_package_layer(package_path: &str, from: &str) -> Result<()> {
 
     package.package_path = PathBuf::from(package_path);
 
-    let layer_tar = format!("{}/layers.tar", from);
+    let layer_tar = format!("{}/layers.tar", export_dir);
     import_layer(&layer_tar)?;
 
     // TODO: refactor package struct, make package always in fixed path
