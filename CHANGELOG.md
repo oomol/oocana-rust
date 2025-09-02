@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.30.14 (2025-09-02)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* feat: revert support oauth token (#332) by @leavesster in https://github.com/oomol/oocana-rust/pull/338
+* fix: mv layer file directly to avoid overlay effect by @leavesster in https://github.com/oomol/oocana-rust/pull/339
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.30.13...v0.30.14
+
 ## 0.30.13 (2025-09-02)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
