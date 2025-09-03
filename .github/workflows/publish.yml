@@ -16,9 +16,9 @@ jobs:
         id: dry-run
         run: |
           if [ "${{github.ref_type}}" == "tag" ]; then
-            echo "result=true" >> $GITHUB_OUTPUT
-          else
             echo "result=false" >> $GITHUB_OUTPUT
+          else
+            echo "result=true" >> $GITHUB_OUTPUT
           fi
   release-ubuntu:
     runs-on: ubuntu-latest
