@@ -483,8 +483,8 @@ pub async fn parse_oauth_request(
     payload: &Value,
     vault_client: &vault::VaultClient,
 ) -> Result<vault::VaultValue> {
-    let vault_id = payload.as_str();
-    if let Some(vault_id) = vault_id {
+    let vault_id_opt = payload.as_str();
+    if let Some(vault_id) = vault_id_opt {
         vault_client.fetch(&vault_id).await
     } else {
         let actual_type = match payload {
