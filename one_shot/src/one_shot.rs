@@ -134,6 +134,14 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
         )
     });
 
+    // TODO: more check
+    let vault_client = if let (Ok(vault_addr), Ok(vault_token)) = (env::var("OOMOL_VAULT_ADDR"), env::var("OOMOL_TOKEN")) {
+        Some(vault::VaultClient::new(vault_addr, vault_token))
+    } else {
+        warn!("Vault client is not configured");
+        None
+    };
+
     let (_scheduler_impl_tx, _scheduler_impl_rx) =
         mainframe_mqtt::scheduler::connect(&addr, session_id.to_owned()).await;
 
@@ -304,6 +312,7 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
         pkg_data_root,
         project_data,
         in_layer: run_in_layer,
+        vault_client,
     })
     .await;
 

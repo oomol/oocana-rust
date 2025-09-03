@@ -35,6 +35,7 @@ pub enum JobParams {
         slot_blocks: Option<HashMap<NodeId, Slot>>,
         path_finder: manifest_reader::path_finder::BlockPathFinder,
         common: CommonJobParameters,
+        vault_client: Arc<Option<vault::VaultClient>>,
     },
     Task {
         task_block: Arc<TaskBlock>,
@@ -68,6 +69,7 @@ pub fn run_job(params: JobParams) -> Option<BlockJobHandle> {
             slot_blocks,
             path_finder,
             common,
+            vault_client,
         } => flow_job::execute_flow_job(flow_job::FlowJobParameters {
             flow_block,
             shared: common.shared,
@@ -81,6 +83,7 @@ pub fn run_job(params: JobParams) -> Option<BlockJobHandle> {
             scope: common.scope,
             slot_blocks: slot_blocks.unwrap_or_default(),
             path_finder,
+            vault_client,
         }),
         JobParams::Task {
             task_block,

@@ -14,6 +14,7 @@ use std::{
     sync::Arc,
 };
 use tokio::signal::unix::{signal, SignalKind};
+use vault::VaultClient;
 
 use tracing::{error as log_error, info, warn};
 
@@ -24,8 +25,9 @@ use utils::error::Result;
 use crate::{
     block_job::{execute_task_job, TaskJobParameters},
     flow_job::{
-        execute_flow_job, get_flow_cache_path, parse_node_downstream, parse_query_block_request,
-        parse_run_block_request, FlowJobParameters, NodeInputValues, RunBlockSuccessResponse,
+        execute_flow_job, get_flow_cache_path, parse_node_downstream, parse_oauth_request,
+        parse_query_block_request, parse_run_block_request, FlowJobParameters, NodeInputValues,
+        RunBlockSuccessResponse,
     },
     run::{run_job, CommonJobParameters, JobParams},
 };
@@ -45,6 +47,7 @@ pub struct RunArgs<'a> {
     pub project_data: &'a PathBuf,
     pub pkg_data_root: &'a PathBuf,
     pub in_layer: bool,
+    pub vault_client: Option<VaultClient>,
 }
 
 pub async fn run(args: RunArgs<'_>) -> Result<()> {
@@ -61,12 +64,15 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
         project_data,
         pkg_data_root,
         in_layer,
+        vault_client,
     } = args;
     let (block_status_tx, block_status_rx) = block_status::create();
     let root_job_id = param_job_id.unwrap_or_else(JobId::random);
     let stacks = BlockJobStacks::new();
     let partial = nodes.is_some();
     let cache = shared.use_cache;
+
+    let vault_client = Arc::new(vault_client);
 
     let mut block_reader = block_reader;
 
@@ -211,6 +217,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
                 slot_blocks: None,
                 path_finder: path_finder.clone(),
                 common: common_job_params,
+                vault_client: vault_client.clone(),
             }
         }
         Block::Service(service_block) => JobParams::Service {
@@ -310,6 +317,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
                                         block_path.to_owned(),
                                         node_id.clone(),
                                     ),
+                                    vault_client: vault_client.clone(),
                                     flow_job_id: job_id.clone(),
                                     inputs: Some(inputs),
                                     node_value_store: NodeInputValues::new(false),
@@ -410,6 +418,56 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
                     }
                 }
                 BlockRequest::Preview { .. } => {}
+                BlockRequest::QueryAuth {
+                    payload,
+                    request_id,
+                    job_id,
+                    ..
+                } => {
+                    if let Some(vault_client) = &*vault_client {
+                        let result = parse_oauth_request(&payload, vault_client).await;
+                        match result {
+                            Ok(res) => {
+                                let json = serde_json::to_value(res).unwrap_or_default();
+                                shared.scheduler_tx.respond_block_request(
+                                    &shared.session_id,
+                                    BlockResponseParams {
+                                        session_id: shared.session_id.clone(),
+                                        job_id: job_id.clone(),
+                                        error: None,
+                                        result: Some(json),
+                                        request_id,
+                                    },
+                                );
+                            }
+                            Err(err) => {
+                                tracing::warn!("OAuth request failed: {}.", err);
+                                shared.scheduler_tx.respond_block_request(
+                                    &shared.session_id,
+                                    BlockResponseParams {
+                                        session_id: shared.session_id.clone(),
+                                        job_id: job_id.clone(),
+                                        result: None,
+                                        error: Some(err.to_string()),
+                                        request_id,
+                                    },
+                                );
+                            }
+                        }
+                    } else {
+                        tracing::warn!("OAuth request received but no vault client available.");
+                        shared.scheduler_tx.respond_block_request(
+                            &shared.session_id,
+                            BlockResponseParams {
+                                session_id: shared.session_id.clone(),
+                                job_id: job_id.clone(),
+                                error: Some("Vault client is not available.".to_string()),
+                                result: None,
+                                request_id,
+                            },
+                        );
+                    }
+                }
             },
             block_status::Status::Progress { .. } => {}
             block_status::Status::Done { error, job_id, .. } => {

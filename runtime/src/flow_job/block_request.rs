@@ -7,7 +7,9 @@ use manifest_meta::{
     NodeId, OutputHandle, OutputHandles, SubflowBlock, TaskBlock,
 };
 use manifest_reader::path_finder::{self, calculate_block_value_type, BlockValueType};
+use serde_json::Value;
 use tracing::warn;
+use utils::error::Result;
 use utils::output::OutputValue;
 
 use crate::{
@@ -474,5 +476,25 @@ pub fn parse_node_downstream(
     match res {
         Ok(value) => Ok(value),
         Err(e) => Err(format!("Failed to serialize downstream: {}", e)),
+    }
+}
+
+pub async fn parse_oauth_request(
+    payload: &Value,
+    vault_client: &vault::VaultClient,
+) -> Result<vault::VaultValue> {
+    let vault_id_opt = payload.as_str();
+    if let Some(vault_id) = vault_id_opt {
+        vault_client.fetch(&vault_id).await
+    } else {
+        let actual_type = match payload {
+            Value::String(_) => "string",
+            Value::Number(_) => "number",
+            Value::Bool(_) => "bool",
+            Value::Array(_) => "array",
+            Value::Object(_) => "object",
+            Value::Null => "null",
+        };
+        Err(format!("Expected vault ID to be a string, got {}", actual_type).into())
     }
 }
