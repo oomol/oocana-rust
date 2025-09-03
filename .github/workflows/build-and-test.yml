@@ -52,7 +52,7 @@ jobs:
         timeout-minutes: 10
         run: cargo test --workspace --exclude layer
       - name: build oocana
-        run: cargo build
+        run: cargo build --release
       - name: upload oocana
         uses: actions/upload-artifact@v4
         with:
