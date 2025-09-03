@@ -135,9 +135,7 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
     });
 
     // TODO: more check
-    let vault_client = if env::var("OOMOL_TOKEN").is_ok() && env::var("OOMOL_VAULT_ADDR").is_ok() {
-        let vault_addr = env::var("OOMOL_VAULT_ADDR").unwrap();
-        let vault_token = env::var("OOMOL_TOKEN").unwrap();
+    let vault_client = if let (Ok(vault_addr), Ok(vault_token)) = (env::var("OOMOL_VAULT_ADDR"), env::var("OOMOL_TOKEN")) {
         Some(vault::VaultClient::new(vault_addr, vault_token))
     } else {
         warn!("Vault client is not configured");
