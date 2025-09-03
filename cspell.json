@@ -26,6 +26,7 @@
     "oomol",
     "ovmlayer",
     "pipefail",
+    "reqwest",
     "rootfs",
     "rpath",
     "rumqttc",
@@ -42,6 +43,7 @@
     "ttlhashmap",
     "unmerge",
     "Unmerging",
+    "wiremock",
     "zstd"
   ],
   "ignorePaths": [
