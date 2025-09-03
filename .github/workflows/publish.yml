@@ -15,7 +15,7 @@ jobs:
       - name: Check for changes
         id: dry-run
         run: |
-          if [ "${{github.ref_type}}" == "tag" ]; then
+          if [ "${{ github.ref_type }}" == "tag" ]; then
             echo "result=false" >> $GITHUB_OUTPUT
           else
             echo "result=true" >> $GITHUB_OUTPUT
