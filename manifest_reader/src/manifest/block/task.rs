@@ -10,6 +10,7 @@ use super::{
 };
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
+#[serde(untagged)]
 enum AdditionalObject {
     Bool(bool),
     Value(serde_json::Value),
