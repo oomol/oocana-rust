@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.30.15 (2025-09-04)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* chore: build release on action by @leavesster in https://github.com/oomol/oocana-rust/pull/341
+* chore: test cross compile on pr by @leavesster in https://github.com/oomol/oocana-rust/pull/343
+* feat: support oauth token (#332) and fix compile by @leavesster in https://github.com/oomol/oocana-rust/pull/342
+* feat: when additional is object , treat as true by @leavesster in https://github.com/oomol/oocana-rust/pull/346
+* chore(deps): upgrade tracing-subscriber by @leavesster in https://github.com/oomol/oocana-rust/pull/345
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.30.14...v0.30.15
+
 ## 0.30.14 (2025-09-02)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
