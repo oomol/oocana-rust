@@ -10,15 +10,22 @@ use super::{
 };
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
+#[serde(untagged)]
+enum AdditionalObject {
+    Bool(bool),
+    Value(serde_json::Value),
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
 struct TmpTaskBlock {
     pub description: Option<String>,
     pub executor: Arc<TaskBlockExecutor>,
     pub inputs_def: Option<Vec<MiddleInputHandle>>,
     pub outputs_def: Option<Vec<MiddleOutputHandle>>,
     #[serde(default)]
-    pub additional_inputs: bool,
+    pub additional_inputs: Option<AdditionalObject>,
     #[serde(default)]
-    pub additional_outputs: bool,
+    pub additional_outputs: Option<AdditionalObject>,
 }
 
 impl From<TmpTaskBlock> for TaskBlock {
@@ -42,8 +49,16 @@ impl From<TmpTaskBlock> for TaskBlock {
                     })
                     .collect()
             })),
-            additional_inputs: tmp.additional_inputs,
-            additional_outputs: tmp.additional_outputs,
+            additional_inputs: match tmp.additional_inputs {
+                Some(AdditionalObject::Bool(b)) => b,
+                Some(AdditionalObject::Value(_)) => true,
+                None => false,
+            },
+            additional_outputs: match tmp.additional_outputs {
+                Some(AdditionalObject::Bool(b)) => b,
+                Some(AdditionalObject::Value(_)) => true,
+                None => false,
+            },
         }
     }
 }
@@ -203,8 +218,8 @@ mod test {
                 is_additional: false,
                 _serialize_for_cache: false,
             })]),
-            additional_inputs: true,
-            additional_outputs: false,
+            additional_inputs: Some(AdditionalObject::Bool(true)),
+            additional_outputs: Some(AdditionalObject::Bool(true)),
         };
 
         let str = serde_json::to_string(&tmp_task_block).unwrap();
@@ -213,34 +228,99 @@ mod test {
 
     #[test]
     fn deserialize_task_block() {
-        let str = r#"{
-            "description": "Test Task",
-            "executor": {
-                "name": "nodejs",
-                "options": {
-                    "entry": "test.js"
-                }
-            },
-            "inputs_def": [{"handle": "input1", "description": "Input 1"}, {"group": "section"}],
-            "outputs_def": [{"handle": "output1", "description": "Output 1"}],
-            "additional_inputs": true,
-            "additional_outputs": false
-        }"#;
+        // Test with both additional_inputs and additional_outputs present
+        {
+            let str = r#"{
+                "description": "Test Task",
+                "executor": {
+                    "name": "nodejs",
+                    "options": {
+                        "entry": "test.js"
+                    }
+                },
+                "inputs_def": [{"handle": "input1", "description": "Input 1"}, {"group": "section"}],
+                "outputs_def": [{"handle": "output1", "description": "Output 1"}],
+                "additional_inputs": true,
+                "additional_outputs": false
+            }"#;
 
-        let result = serde_json::from_str::<TmpTaskBlock>(str);
+            let result = serde_json::from_str::<TaskBlock>(str);
 
-        assert!(
-            result.is_ok(),
-            "Failed to deserialize TmpTaskBlock: {:?}",
-            result.err()
-        );
+            assert!(
+                result.is_ok(),
+                "Failed to deserialize TaskBlock: {:?}",
+                result.err()
+            );
 
-        let tmp_block = result.unwrap();
+            let block = result.unwrap();
 
-        assert_eq!(tmp_block.description, Some("Test Task".to_string()));
-        assert!(matches!(*tmp_block.executor, TaskBlockExecutor::NodeJS(_)));
-        assert!(tmp_block.additional_inputs);
-        assert!(!tmp_block.additional_outputs);
+            assert_eq!(block.description, Some("Test Task".to_string()));
+            assert!(matches!(*block.executor, TaskBlockExecutor::NodeJS(_)));
+            assert_eq!(block.additional_inputs, true);
+            assert_eq!(block.additional_outputs, false);
+        }
+
+        // Test with additional_inputs and additional_outputs as objects
+        {
+            let str = r#"{
+                "description": "Test Task",
+                "executor": {
+                    "name": "nodejs",
+                    "options": {
+                        "entry": "test.js"
+                    }
+                },
+                "inputs_def": [{"handle": "input1", "description": "Input 1"}, {"group": "section"}],
+                "outputs_def": [{"handle": "output1", "description": "Output 1"}],
+                "additional_inputs": {"some_key": "some_value"},
+                "additional_outputs": {"another_key": 123}
+            }"#;
+
+            let result = serde_json::from_str::<TaskBlock>(str);
+
+            assert!(
+                result.is_ok(),
+                "Failed to deserialize TaskBlock: {:?}",
+                result.err()
+            );
+
+            let block = result.unwrap();
+
+            assert_eq!(block.description, Some("Test Task".to_string()));
+            assert!(matches!(*block.executor, TaskBlockExecutor::NodeJS(_)));
+            assert_eq!(block.additional_inputs, true);
+            assert_eq!(block.additional_outputs, true);
+        }
+
+        // Test with neither additional_inputs nor additional_outputs present
+        {
+            let str = r#"{
+                "description": "Test Task",
+                "executor": {
+                    "name": "nodejs",
+                    "options": {
+                        "entry": "test.js"
+                    }
+                },
+                "inputs_def": [{"handle": "input1", "description": "Input 1"}, {"group": "section"}],
+                "outputs_def": [{"handle": "output1", "description": "Output 1"}]
+            }"#;
+
+            let result = serde_json::from_str::<TaskBlock>(str);
+
+            assert!(
+                result.is_ok(),
+                "Failed to deserialize TmpTaskBlock: {:?}",
+                result.err()
+            );
+
+            let block = result.unwrap();
+
+            assert_eq!(block.description, Some("Test Task".to_string()));
+            assert!(matches!(*block.executor, TaskBlockExecutor::NodeJS(_)));
+            assert_eq!(block.additional_inputs, false);
+            assert_eq!(block.additional_outputs, false);
+        }
     }
 
     #[test]
