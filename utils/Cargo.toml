@@ -15,7 +15,7 @@ thiserror = "1.0.30"
 anyhow = { version = "1.0.66", features = ["backtrace"] }
 lazy_static = "1.4.0"
 tracing = "0.1.40"
-tracing-subscriber = {version = "0.3.18", features = ["env-filter"]}
+tracing-subscriber = {version = "0.3.20", features = ["env-filter"]}
 tracing-appender = "0.2.3"
 serde = { version = "1.0.149", features = ["derive", "rc"] }
 serde_json = {version = "1.0.89", features = ["preserve_order"] }
