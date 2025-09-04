@@ -10,15 +10,21 @@ use super::{
 };
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
+enum AdditionalObject {
+    Bool(bool),
+    Value(serde_json::Value),
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
 struct TmpTaskBlock {
     pub description: Option<String>,
     pub executor: Arc<TaskBlockExecutor>,
     pub inputs_def: Option<Vec<MiddleInputHandle>>,
     pub outputs_def: Option<Vec<MiddleOutputHandle>>,
     #[serde(default)]
-    pub additional_inputs: bool,
+    pub additional_inputs: Option<AdditionalObject>,
     #[serde(default)]
-    pub additional_outputs: bool,
+    pub additional_outputs: Option<AdditionalObject>,
 }
 
 impl From<TmpTaskBlock> for TaskBlock {
@@ -42,8 +48,16 @@ impl From<TmpTaskBlock> for TaskBlock {
                     })
                     .collect()
             })),
-            additional_inputs: tmp.additional_inputs,
-            additional_outputs: tmp.additional_outputs,
+            additional_inputs: match tmp.additional_inputs {
+                Some(AdditionalObject::Bool(b)) => b,
+                Some(AdditionalObject::Value(_)) => true,
+                None => false,
+            },
+            additional_outputs: match tmp.additional_outputs {
+                Some(AdditionalObject::Bool(b)) => b,
+                Some(AdditionalObject::Value(_)) => true,
+                None => false,
+            },
         }
     }
 }
