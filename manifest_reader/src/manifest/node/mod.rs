@@ -1,4 +1,5 @@
 mod common;
+mod condition;
 mod definition;
 mod service;
 mod slot;
@@ -8,6 +9,7 @@ mod value;
 
 pub mod input_from;
 pub use self::common::NodeId;
+pub use self::condition::ConditionNode;
 pub use self::definition::Node;
 pub use self::service::ServiceNode;
 pub use self::slot::{SlotNode, SlotNodeBlock};
