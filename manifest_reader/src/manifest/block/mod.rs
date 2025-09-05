@@ -10,4 +10,4 @@ pub use self::handle::{InputHandles, OutputHandles};
 pub use self::service::ServiceBlock;
 pub use self::slot::SlotBlock;
 pub use self::task::{SpawnOptions, TaskBlock, TaskBlockExecutor};
-pub use condition::{ConditionBlock, ConditionExpression, ConditionHandleDef, LogicalOperator};
+pub use condition::{ConditionBlock, ConditionHandleDef, DefaultConditionHandleDef};
