@@ -11,6 +11,7 @@ pub struct ConditionBlock {
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct ConditionExpression {
+    /// this handle is input handle, the input value will be used for comparison
     pub handle: HandleName,
     pub operator: ExpressionOperator,
     pub value: Option<serde_json::Value>,
@@ -19,6 +20,7 @@ pub struct ConditionExpression {
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct ConditionHandleDef {
+    /// the handle is used for output handle name, when condition matches, the flow will go to the handle
     pub handle: HandleName,
     pub description: Option<String>,
     pub logical: Option<LogicalOperator>,
