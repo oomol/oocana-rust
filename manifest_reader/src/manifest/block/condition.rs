@@ -48,8 +48,10 @@ pub enum ExpressionOperator {
     #[serde(rename = "is false")]
     False,
     #[serde(rename = "contains")]
+    /// string contains
     Contains,
     #[serde(rename = "not contains")]
+    /// string not contains
     NotContains,
     #[serde(rename = "is empty")]
     IsEmpty,
@@ -71,6 +73,185 @@ pub enum ExpressionOperator {
     StartsWith,
     #[serde(rename = "ends with")]
     EndsWith,
+}
+
+impl ExpressionOperator {
+    pub fn compare_values(
+        &self,
+        left: &serde_json::Value,
+        right: &Option<serde_json::Value>,
+    ) -> bool {
+        match self {
+            ExpressionOperator::Equal => right.as_ref().map_or(false, |r| left == r),
+            ExpressionOperator::NotEqual => right.as_ref().map_or(false, |r| left != r),
+            ExpressionOperator::GreaterThan => {
+                if let Some(r) = right {
+                    if let (Some(lf), Some(rf)) = (left.as_f64(), r.as_f64()) {
+                        return lf > rf;
+                    }
+                }
+                false
+            }
+            ExpressionOperator::LessThan => {
+                if let Some(r) = right {
+                    if let (Some(lf), Some(rf)) = (left.as_f64(), r.as_f64()) {
+                        return lf < rf;
+                    }
+                }
+                false
+            }
+            ExpressionOperator::GreaterThanOrEqual => {
+                if let Some(r) = right {
+                    if let (Some(lf), Some(rf)) = (left.as_f64(), r.as_f64()) {
+                        return lf >= rf;
+                    }
+                }
+                false
+            }
+            ExpressionOperator::LessThanOrEqual => {
+                if let Some(r) = right {
+                    if let (Some(lf), Some(rf)) = (left.as_f64(), r.as_f64()) {
+                        return lf <= rf;
+                    }
+                }
+                false
+            }
+            ExpressionOperator::Null => left.is_null(),
+            ExpressionOperator::NotNull => !left.is_null(),
+            ExpressionOperator::True => left.as_bool().unwrap_or(false),
+            ExpressionOperator::False => !left.as_bool().unwrap_or(true),
+            ExpressionOperator::Contains => {
+                if let Some(r) = right {
+                    if let Some(ls) = left.as_str() {
+                        if let Some(rs) = r.as_str() {
+                            return ls.contains(rs);
+                        }
+                    } else if let Some(la) = left.as_array() {
+                        return la.contains(r);
+                        // } else if let Some(lo) = left.as_object() {
+                        //     return lo.values().any(|v| v == r);
+                    }
+                }
+                false
+            }
+            ExpressionOperator::NotContains => {
+                if let Some(r) = right {
+                    if let Some(ls) = left.as_str() {
+                        if let Some(rs) = r.as_str() {
+                            return !ls.contains(rs);
+                        }
+                    } else if let Some(la) = left.as_array() {
+                        return !la.contains(r);
+                        // } else if let Some(lo) = left.as_object() {
+                        //     return !lo.values().any(|v| v == r);
+                    }
+                }
+                false
+            }
+            ExpressionOperator::IsEmpty => {
+                if left.is_null() {
+                    return true;
+                }
+                if let Some(s) = left.as_str() {
+                    return s.is_empty();
+                }
+                if let Some(a) = left.as_array() {
+                    return a.is_empty();
+                }
+                if let Some(o) = left.as_object() {
+                    return o.is_empty();
+                }
+                false
+            }
+            ExpressionOperator::IsNotEmpty => {
+                if left.is_null() {
+                    return false;
+                }
+                if let Some(s) = left.as_str() {
+                    return !s.is_empty();
+                }
+                if let Some(a) = left.as_array() {
+                    return !a.is_empty();
+                }
+                if let Some(o) = left.as_object() {
+                    return !o.is_empty();
+                }
+                false
+            }
+            ExpressionOperator::In => {
+                if let Some(r) = right {
+                    if let Some(ra) = r.as_array() {
+                        return ra.contains(left);
+                    }
+                }
+                false
+            }
+            ExpressionOperator::NotIn => {
+                if let Some(r) = right {
+                    if let Some(ra) = r.as_array() {
+                        return !ra.contains(left);
+                    }
+                }
+                false
+            }
+            ExpressionOperator::HasKey => {
+                if let Some(r) = right {
+                    if let Some(rs) = r.as_str() {
+                        if let Some(lo) = left.as_object() {
+                            return lo.contains_key(rs);
+                        }
+                    }
+                }
+                false
+            }
+            ExpressionOperator::NotHasKey => {
+                if let Some(r) = right {
+                    if let Some(rs) = r.as_str() {
+                        if let Some(lo) = left.as_object() {
+                            return !lo.contains_key(rs);
+                        }
+                    }
+                }
+                false
+            }
+            ExpressionOperator::HasValue => {
+                if let Some(r) = right {
+                    if let Some(lo) = left.as_object() {
+                        return lo.values().any(|v| v == r);
+                    }
+                }
+                false
+            }
+            ExpressionOperator::NotHasValue => {
+                if let Some(r) = right {
+                    if let Some(lo) = left.as_object() {
+                        return !lo.values().any(|v| v == r);
+                    }
+                }
+                false
+            }
+            ExpressionOperator::StartsWith => {
+                if let Some(r) = right {
+                    if let Some(ls) = left.as_str() {
+                        if let Some(rs) = r.as_str() {
+                            return ls.starts_with(rs);
+                        }
+                    }
+                }
+                false
+            }
+            ExpressionOperator::EndsWith => {
+                if let Some(r) = right {
+                    if let Some(ls) = left.as_str() {
+                        if let Some(rs) = r.as_str() {
+                            return ls.ends_with(rs);
+                        }
+                    }
+                }
+                false
+            }
+        }
+    }
 }
 
 #[derive(Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -135,4 +316,10 @@ mod tests {
             assert_eq!(op, expected_op, "Mismatched operator for: {}", json_op);
         }
     }
+
+    // #[test]
+    // fn test_expression_operator() {
+    //     // equal
+    //     {}
+    // }
 }
