@@ -318,10 +318,4 @@ mod tests {
             assert_eq!(op, expected_op, "Mismatched operator for: {}", json_op);
         }
     }
-
-    // #[test]
-    // fn test_expression_operator() {
-    //     // equal
-    //     {}
-    // }
 }
