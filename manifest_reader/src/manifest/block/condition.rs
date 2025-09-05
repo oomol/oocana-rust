@@ -6,7 +6,7 @@ use crate::manifest::HandleName;
 pub struct ConditionBlock {
     pub description: Option<String>,
     pub cases: Option<Vec<ConditionHandleDef>>,
-    pub default: Option<ConditionHandleDef>,
+    pub default: Option<DefaultConditionHandleDef>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -25,6 +25,13 @@ pub struct ConditionHandleDef {
     pub description: Option<String>,
     pub logical: Option<LogicalOperator>,
     pub expressions: Vec<ConditionExpression>,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct DefaultConditionHandleDef {
+    /// the handle is used for output handle name
+    pub handle: HandleName,
+    pub description: Option<String>,
 }
 
 #[derive(Deserialize, Debug, Clone, PartialEq, Eq)]
