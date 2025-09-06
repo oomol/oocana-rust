@@ -1,0 +1,6 @@
+type: task_block
+executor:
+  name: rust
+inputs_def:
+  - handle: input
+    type: integer

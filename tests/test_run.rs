@@ -76,6 +76,19 @@ fn run_flow_with_absence_input() {
         .success();
 }
 
+// these test can not be test more strict like which is end node.
+#[test]
+fn condition_test() {
+    Command::cargo_bin("oocana")
+        .unwrap()
+        .args(["run", "examples/condition"])
+        .stdin(Stdio::null())
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .assert()
+        .success();
+}
+
 #[test]
 fn version_pkg_test() {
     Command::cargo_bin("oocana")
