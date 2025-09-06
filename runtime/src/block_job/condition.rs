@@ -30,6 +30,9 @@ pub fn execute_condition_job(params: ConditionJobParameters) -> Option<BlockJobH
         output_def,
     } = params;
 
+    let reporter = Arc::new(shared.reporter.block(job_id.to_owned(), None, stacks));
+    reporter.started(&inputs);
+
     let inputs_values = if let Some(inputs) = inputs.clone() {
         let mut map = HashMap::new();
         for (k, v) in inputs.iter() {
@@ -43,6 +46,7 @@ pub fn execute_condition_job(params: ConditionJobParameters) -> Option<BlockJobH
     let output_handle = condition_block.evaluate(&inputs_values);
     if output_handle.is_none() {
         block_status.finish(job_id.clone(), None, None);
+        reporter.finished(None, None);
         return None;
     }
     let output_handle = output_handle.unwrap();
@@ -58,7 +62,13 @@ pub fn execute_condition_job(params: ConditionJobParameters) -> Option<BlockJobH
 
     if let Some(output) = output_value {
         let result = HashMap::from([(output_handle, output)]);
-        block_status.finish(job_id.clone(), Some(result), None);
+        block_status.finish(job_id.clone(), Some(result.clone()), None);
+
+        let result_map = result
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.value.clone()))
+            .collect();
+        reporter.finished(Some(result_map), None);
     }
 
     return None;
