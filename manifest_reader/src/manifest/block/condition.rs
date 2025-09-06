@@ -308,6 +308,78 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_condition_block() {
+        let json = r#"
+        {
+            "description": "Test condition block",
+            "cases": [
+                {
+                    "handle": "handle1",
+                    "description": "First case",
+                    "logical": "AND",
+                    "expressions": [
+                        {
+                            "input_handle": "input1",
+                            "operator": "==",
+                            "value": 10,
+                            "description": "Check if input1 equals 10"
+                        },
+                        {
+                            "input_handle": "input2",
+                            "operator": ">",
+                            "value": 5,
+                            "description": "Check if input2 is greater than 5"
+                        }
+                    ]
+                },
+                {
+                    "handle": "handle2",
+                    "description": "Second case",
+                    "logical": "OR",
+                    "expressions": [
+                        {
+                            "input_handle": "input3",
+                            "operator": "is null",
+                            "description": "Check if input3 is null"
+                        },
+                        {
+                            "input_handle": "input4",
+                            "operator": "<=",
+                            "value": 20,
+                            "description": "Check if input4 is less than or equal to 20"
+                        }
+                    ]
+                }
+            ],
+            "default": {
+                "handle": "default_handle",
+                "description": "Default case"
+            }
+        }
+        "#;
+
+        let condition_block: ConditionBlock = serde_json::from_str(json).unwrap();
+        assert_eq!(condition_block.description.unwrap(), "Test condition block");
+        assert!(condition_block.cases.is_some());
+        assert!(condition_block.default.is_some());
+
+        let cases = condition_block.cases.unwrap();
+        assert_eq!(cases.len(), 2);
+        assert_eq!(cases[0].handle, "handle1".into());
+        assert_eq!(cases[0].logical.clone().unwrap(), LogicalOperator::And);
+        assert_eq!(cases[0].expressions.len(), 2);
+        assert_eq!(cases[0].expressions[0].input_handle, "input1".into());
+        assert_eq!(cases[0].expressions[0].operator, ExpressionOperator::Equal);
+        assert_eq!(
+            cases[0].expressions[0].value.as_ref().unwrap(),
+            &serde_json::Value::from(10)
+        );
+
+        let default_case = condition_block.default.unwrap();
+        assert_eq!(default_case.handle, "default_handle".into());
+    }
+
+    #[test]
     fn test_logical_operator_deserialize() {
         let json_and = r#""AND""#;
         let op_and: LogicalOperator = serde_json::from_str(json_and).unwrap();
