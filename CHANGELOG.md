@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.30.16 (2025-09-06)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* feat: implement inline condition block by @leavesster in https://github.com/oomol/oocana-rust/pull/347
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.30.15...v0.30.16
+
 ## 0.30.15 (2025-09-04)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
