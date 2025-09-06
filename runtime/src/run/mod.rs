@@ -57,6 +57,11 @@ pub enum JobParams {
         slot_block: Arc<SlotBlock>,
         common: CommonJobParameters,
     },
+    Condition {
+        condition_block: Arc<manifest_meta::ConditionBlock>,
+        output_def: Option<manifest_meta::OutputHandle>,
+        common: CommonJobParameters,
+    },
 }
 
 pub fn run_job(params: JobParams) -> Option<BlockJobHandle> {
@@ -142,5 +147,19 @@ pub fn run_job(params: JobParams) -> Option<BlockJobHandle> {
                 });
             None
         }
+        JobParams::Condition {
+            condition_block,
+            common,
+            output_def,
+        } => crate::block_job::execute_condition_job(crate::block_job::ConditionJobParameters {
+            condition_block: condition_block,
+            shared: common.shared,
+            stacks: common.stacks,
+            job_id: common.job_id,
+            inputs: common.inputs,
+            block_status: common.block_status,
+            scope: common.scope,
+            output_def,
+        }),
     }
 }
