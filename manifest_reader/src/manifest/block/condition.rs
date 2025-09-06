@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use serde::Deserialize;
 
 use crate::manifest::HandleName;
@@ -25,6 +27,36 @@ pub struct ConditionHandleDef {
     pub description: Option<String>,
     pub logical: Option<LogicalOperator>,
     pub expressions: Vec<ConditionExpression>,
+}
+
+impl ConditionHandleDef {
+    pub fn is_match(&self, input_map: &HashMap<HandleName, serde_json::Value>) -> bool {
+        let mut result = true;
+        for expr in &self.expressions {
+            let input_value = input_map.get(&expr.handle);
+            let left = if let Some(v) = input_value {
+                v
+            } else {
+                &serde_json::Value::Null
+            };
+            let expr_result = expr.operator.compare_values(left, &expr.value);
+            match self.logical {
+                Some(LogicalOperator::And) => {
+                    result = result && expr_result;
+                    if !result {
+                        return false;
+                    }
+                }
+                Some(LogicalOperator::Or) | None => {
+                    result = result || expr_result;
+                    if result {
+                        return true;
+                    }
+                }
+            }
+        }
+        result
+    }
 }
 
 #[derive(Deserialize, Debug, Clone)]
