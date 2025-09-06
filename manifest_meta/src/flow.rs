@@ -1008,7 +1008,7 @@ impl SubflowBlock {
                     );
                     let conditions = condition_node.conditions.clone();
                     let output_def = condition_node.inputs_def.as_ref().and_then(|inputs_def| {
-                        if inputs_def.len() < 1 {
+                        if inputs_def.is_empty() {
                             tracing::warn!(
                                 "condition node can only have one output, but got {}",
                                 inputs_def.len()
