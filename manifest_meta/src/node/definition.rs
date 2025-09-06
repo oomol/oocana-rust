@@ -118,7 +118,6 @@ impl Node {
             Self::Flow(flow) => flow.flow.outputs_def.as_ref(),
             Self::Slot(slot) => slot.slot.outputs_def.as_ref(),
             Self::Service(service) => service.block.outputs_def.as_ref(),
-            // TODO: condition node outputs def
             Self::Condition(_) => None,
         }
     }

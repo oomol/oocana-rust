@@ -999,8 +999,13 @@ impl SubflowBlock {
                     let from = connections
                         .node_inputs_froms
                         .remove(&condition_node.node_id);
+                    let inputs_def_map = condition_node.inputs_def.as_ref().map(|defs| {
+                        defs.iter()
+                            .map(|d| (d.handle.to_owned(), d.clone()))
+                            .collect::<HashMap<HandleName, InputHandle>>()
+                    });
                     let inputs = generate_node_inputs(
-                        &None,
+                        &inputs_def_map,
                         &from,
                         &condition_node.inputs_from,
                         &None,
