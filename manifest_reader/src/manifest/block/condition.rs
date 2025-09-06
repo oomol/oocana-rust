@@ -14,7 +14,7 @@ pub struct ConditionBlock {
 #[derive(Deserialize, Debug, Clone)]
 pub struct ConditionExpression {
     /// this handle is input handle, the input value will be used for comparison
-    pub handle: HandleName,
+    pub input_handle: HandleName,
     pub operator: ExpressionOperator,
     pub value: Option<serde_json::Value>,
     pub description: Option<String>,
@@ -33,7 +33,7 @@ impl ConditionHandleDef {
     pub fn is_match(&self, input_map: &HashMap<HandleName, serde_json::Value>) -> bool {
         let mut result = true;
         for expr in &self.expressions {
-            let input_value = input_map.get(&expr.handle);
+            let input_value = input_map.get(&expr.input_handle);
             let left = if let Some(v) = input_value {
                 v
             } else {
