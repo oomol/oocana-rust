@@ -57,7 +57,6 @@ pub fn execute_condition_job(params: ConditionJobParameters) -> Option<BlockJobH
     });
 
     if let Some(output) = output_value {
-        // TODO: fix output handle name
         let result = HashMap::from([(output_handle, output)]);
         block_status.finish(job_id.clone(), Some(result), None);
     }
