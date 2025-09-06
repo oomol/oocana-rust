@@ -29,6 +29,9 @@ pub use flow::{
     generate_runtime_handle_name, InjectionStore, InjectionTarget, MergeInputsValue, SubflowBlock,
 };
 
+mod condition;
+pub use condition::ConditionBlock;
+
 mod slot;
 pub use slot::SlotBlock;
 
