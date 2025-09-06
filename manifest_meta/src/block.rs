@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use manifest_reader::manifest::InputHandles;
 
-use crate::{ServiceBlock, SlotBlock, SubflowBlock, TaskBlock};
+use crate::{condition::ConditionBlock, ServiceBlock, SlotBlock, SubflowBlock, TaskBlock};
 
 #[derive(Debug, Clone)]
 pub enum Block {
@@ -10,6 +10,7 @@ pub enum Block {
     Flow(Arc<SubflowBlock>),
     Slot(Arc<SlotBlock>),
     Service(Arc<ServiceBlock>),
+    Condition(Arc<ConditionBlock>),
 }
 
 impl Block {
@@ -19,6 +20,7 @@ impl Block {
             Block::Flow(flow) => Some(flow.path_str.clone()),
             Block::Slot(_) => None,
             Block::Service(_) => None,
+            Block::Condition(_) => None,
         }
     }
 
@@ -28,6 +30,7 @@ impl Block {
             Block::Flow(flow) => flow.inputs_def.as_ref(),
             Block::Slot(slot) => slot.inputs_def.as_ref(),
             Block::Service(service) => service.inputs_def.as_ref(),
+            Block::Condition(_) => None,
         }
     }
 
@@ -38,6 +41,7 @@ impl Block {
             Block::Flow(_) => "Flow/Subflow Block",
             Block::Slot(_) => "Slot Block",
             Block::Service(_) => "Service Block",
+            Block::Condition(_) => "Condition Block",
         }
     }
 }

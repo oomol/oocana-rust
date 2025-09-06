@@ -1,7 +1,8 @@
 use std::{collections::HashMap, path::PathBuf, sync::Arc};
 
-use manifest_reader::manifest::{InputHandles, OutputHandles};
+use manifest_reader::manifest::{InputHandles, OutputHandle, OutputHandles};
 
+use crate::condition::ConditionBlock;
 use crate::{scope::BlockScope, Block, HandleName, NodeId, ServiceBlock, SlotBlock, TaskBlock};
 
 use crate::extend_node_common_field;
@@ -23,12 +24,18 @@ extend_node_common_field!(SlotNode {
     slot: Arc<SlotBlock>,
 });
 
+extend_node_common_field!(ConditionNode {
+    conditions: Arc<ConditionBlock>,
+    output_def: Option<OutputHandle>
+});
+
 #[derive(Debug, Clone)]
 pub enum Node {
     Task(TaskNode),
     Flow(SubflowNode),
     Slot(SlotNode),
     Service(ServiceNode),
+    Condition(ConditionNode),
 }
 
 impl Node {
@@ -38,6 +45,7 @@ impl Node {
             Self::Flow(flow) => flow.description.clone(),
             Self::Slot(slot) => slot.description.clone(),
             Self::Service(service) => service.description.clone(),
+            Self::Condition(condition) => condition.description.clone(),
         }
     }
     pub fn node_id(&self) -> &NodeId {
@@ -46,6 +54,7 @@ impl Node {
             Self::Flow(flow) => &flow.node_id,
             Self::Slot(slot) => &slot.node_id,
             Self::Service(service) => &service.node_id,
+            Self::Condition(condition) => &condition.node_id,
         }
     }
 
@@ -55,6 +64,7 @@ impl Node {
             Self::Flow(flow) => flow.concurrency,
             Self::Slot(slot) => slot.concurrency,
             Self::Service(service) => service.concurrency,
+            Self::Condition(condition) => condition.concurrency,
         }
     }
 
@@ -64,6 +74,7 @@ impl Node {
             Self::Flow(flow) => flow.progress_weight,
             Self::Slot(slot) => slot.progress_weight,
             Self::Service(service) => service.progress_weight,
+            Self::Condition(_) => 0.0,
         }
     }
 
@@ -73,6 +84,7 @@ impl Node {
             Self::Flow(flow) => Block::Flow(Arc::clone(&flow.flow)),
             Self::Slot(slot) => Block::Slot(Arc::clone(&slot.slot)),
             Self::Service(service) => Block::Service(Arc::clone(&service.block)),
+            Self::Condition(condition) => Block::Condition(Arc::clone(&condition.conditions)),
         }
     }
 
@@ -82,6 +94,7 @@ impl Node {
             Self::Flow(flow) => flow.to.as_ref(),
             Self::Slot(slot) => slot.to.as_ref(),
             Self::Service(service) => service.to.as_ref(),
+            Self::Condition(condition) => condition.to.as_ref(),
         }
     }
 
@@ -105,6 +118,7 @@ impl Node {
             Self::Flow(flow) => flow.flow.outputs_def.as_ref(),
             Self::Slot(slot) => slot.slot.outputs_def.as_ref(),
             Self::Service(service) => service.block.outputs_def.as_ref(),
+            Self::Condition(_) => None,
         }
     }
 
@@ -114,6 +128,7 @@ impl Node {
             Self::Flow(flow) => &flow.inputs,
             Self::Slot(slot) => &slot.inputs,
             Self::Service(service) => &service.inputs,
+            Self::Condition(condition) => &condition.inputs,
         }
     }
 
@@ -164,6 +179,7 @@ impl Node {
                 }
                 service.block = Arc::new(service_inner);
             }
+            Self::Condition(_) => { /* Condition node has no outputs def yet */ }
         }
     }
 
@@ -173,6 +189,7 @@ impl Node {
             Self::Flow(flow) => flow.inputs = inputs,
             Self::Slot(slot) => slot.inputs = inputs,
             Self::Service(service) => service.inputs = inputs,
+            Self::Condition(condition) => condition.inputs = inputs,
         }
     }
 
@@ -204,6 +221,7 @@ impl Node {
             Self::Flow(flow) => flow.flow.package_path.clone(),
             Self::Slot(_) => None,
             Self::Service(service) => service.block.package_path.clone(),
+            Self::Condition(_) => None,
         }
     }
 
@@ -213,6 +231,7 @@ impl Node {
             Self::Flow(flow) => flow.timeout,
             Self::Slot(slot) => slot.timeout,
             Self::Service(service) => service.timeout,
+            Self::Condition(condition) => condition.timeout,
         }
     }
 
@@ -222,6 +241,7 @@ impl Node {
             Self::Flow(flow) => flow.scope.clone(),
             Self::Slot(_) => BlockScope::Slot {},
             Self::Service(_) => BlockScope::default(),
+            Self::Condition(_) => BlockScope::default(),
         }
     }
 }

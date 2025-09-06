@@ -15,6 +15,7 @@ use manifest_reader::{
 };
 
 use crate::{
+    condition::ConditionBlock,
     node::{
         common::NodeInput,
         subflow::{Slot, SubflowSlot, TaskSlot},
@@ -28,7 +29,7 @@ use utils::error::Result;
 use crate::{
     block_resolver::{package_path, BlockResolver},
     connections::Connections,
-    node::{ServiceNode, TaskNode},
+    node::{ConditionNode, ServiceNode, TaskNode},
     HandlesFroms, HandlesTos, Node, NodeId, SlotNode, SubflowNode,
 };
 
@@ -991,6 +992,56 @@ impl SubflowBlock {
                             inputs,
                             concurrency: slot_node.concurrency,
                             progress_weight: slot_node.progress_weight,
+                        }),
+                    );
+                }
+                manifest::Node::Condition(condition_node) => {
+                    let from = connections
+                        .node_inputs_froms
+                        .remove(&condition_node.node_id);
+                    let inputs_def_map = condition_node.inputs_def.as_ref().map(|defs| {
+                        defs.iter()
+                            .map(|d| (d.handle.to_owned(), d.clone()))
+                            .collect::<HashMap<HandleName, InputHandle>>()
+                    });
+                    let inputs = generate_node_inputs(
+                        &inputs_def_map,
+                        &from,
+                        &condition_node.inputs_from,
+                        &None,
+                        &condition_node.node_id,
+                    );
+                    let conditions = condition_node.conditions.clone();
+                    let output_def = condition_node.inputs_def.as_ref().and_then(|inputs_def| {
+                        if inputs_def.is_empty() {
+                            tracing::warn!(
+                                "condition node can only have one output, but got {}",
+                                inputs_def.len()
+                            );
+                            return None;
+                        }
+                        inputs_def.first().map(|input| OutputHandle {
+                            handle: input.handle.clone(),
+                            description: input.description.clone(),
+                            is_additional: false,
+                            json_schema: input.json_schema.clone(),
+                            nullable: input.nullable,
+                            kind: input.kind.clone(),
+                            _serialize_for_cache: false,
+                        })
+                    });
+                    new_nodes.insert(
+                        condition_node.node_id.to_owned(),
+                        Node::Condition(ConditionNode {
+                            description: condition_node.description.clone(),
+                            to: connections.node_outputs_tos.remove(&condition_node.node_id),
+                            node_id: condition_node.node_id.to_owned(),
+                            timeout: condition_node.timeout,
+                            output_def,
+                            inputs,
+                            conditions: Arc::new(ConditionBlock::from_manifest(conditions)),
+                            concurrency: condition_node.concurrency,
+                            progress_weight: condition_node.progress_weight,
                         }),
                     );
                 }

@@ -1050,6 +1050,17 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
             slot_block: slot_block.clone(),
             common: common_job_params,
         },
+        Block::Condition(condition_block) => {
+            let output_def = match node {
+                Node::Condition(n) => n.output_def.clone(),
+                _ => None,
+            };
+            JobParams::Condition {
+                condition_block: condition_block.clone(),
+                output_def,
+                common: common_job_params,
+            }
+        }
     };
     tracing::info!("run node {} as job {job_id}", node.node_id());
 

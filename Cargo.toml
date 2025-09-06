@@ -30,6 +30,8 @@ members = [
     "examples/self_block/blocks/blk_d",
     "examples/concurrency/blk_a",
     "examples/concurrency/pkg_a/blocks/blk-b",
+    "examples/condition/start",
+    "examples/condition/end",
     "examples/flows/pkg/pkg_v-0.1.0/blocks/blk-b",
     "layer",
     "vault",

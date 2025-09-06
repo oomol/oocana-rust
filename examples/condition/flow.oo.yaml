@@ -1,0 +1,60 @@
+nodes:
+  - node_id: condition1
+    inputs_def:
+      - handle: input1
+        type: integer
+      - handle: input2
+        type: integer
+    conditions:
+      cases:
+        - handle: case1
+          logical: AND
+          expressions:
+            - input_handle: input1
+              operator: "=="
+              value: 10
+            - input_handle: input2
+              operator: ">"
+              value: 5
+        - handle: case2
+          logical: OR
+          expressions:
+            - input_handle: input1
+              operator: "is null"
+            - input_handle: input2
+              operator: "<="
+              value: 20
+      default:
+        handle: default_handle
+    inputs_from:
+      - handle: input1
+        from_node:
+          - node_id: start
+            output_handle: output1
+      - handle: input2
+        from_node:
+          - node_id: start
+            output_handle: output2
+  - node_id: start
+    task: start
+  - node_id: case1_block
+    task: end
+    inputs_from:
+      - handle: input
+        from_node:
+          - node_id: condition1
+            output_handle: case1
+  - node_id: case2_block
+    task: end
+    inputs_from:
+      - handle: input
+        from_node:
+          - node_id: condition1
+            output_handle: case2
+  - node_id: default_block
+    task: end
+    inputs_from:
+      - handle: input
+        from_node:  
+          - node_id: condition1
+            output_handle: default_handle

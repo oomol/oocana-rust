@@ -5,6 +5,7 @@ mod service;
 
 pub use self::block::handle::{HandleName, InputHandle, OutputHandle};
 
+pub use self::block::{ConditionBlock, ConditionHandleDef, DefaultConditionHandleDef};
 pub use self::block::{InputHandles, OutputHandles};
 pub use self::block::{ServiceBlock, SlotBlock, SubflowBlock, TaskBlock};
 pub use self::block::{SpawnOptions, TaskBlockExecutor};

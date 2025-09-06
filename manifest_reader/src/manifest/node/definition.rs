@@ -1,3 +1,5 @@
+use crate::manifest::node::ConditionNode;
+
 use super::common::{default_concurrency, NodeId};
 use super::input_from::NodeInputFrom;
 use super::service::ServiceNode;
@@ -14,6 +16,7 @@ pub enum Node {
     Subflow(SubflowNode),
     Slot(SlotNode),
     Service(ServiceNode),
+    Condition(ConditionNode),
     Value(ValueNode),
 }
 
@@ -24,6 +27,7 @@ impl Node {
             Node::Subflow(subflow) => &subflow.node_id,
             Node::Slot(slot) => &slot.node_id,
             Node::Service(service) => &service.node_id,
+            Node::Condition(condition) => &condition.node_id,
             Node::Value(value) => &value.node_id,
         }
     }
@@ -34,6 +38,7 @@ impl Node {
             Node::Subflow(subflow) => subflow.concurrency,
             Node::Slot(slot) => slot.concurrency,
             Node::Service(service) => service.concurrency,
+            Node::Condition(condition) => condition.concurrency,
             Node::Value(_value) => default_concurrency(),
         }
     }
@@ -43,6 +48,7 @@ impl Node {
             Node::Subflow(subflow) => subflow.inputs_from.as_ref(),
             Node::Slot(slot) => slot.inputs_from.as_ref(),
             Node::Service(service) => service.inputs_from.as_ref(),
+            Node::Condition(condition) => condition.inputs_from.as_ref(),
             Node::Value(_) => None,
         }
     }
@@ -52,6 +58,7 @@ impl Node {
             Node::Subflow(subflow) => subflow.ignore,
             Node::Slot(slot) => slot.ignore,
             Node::Service(service) => service.ignore,
+            Node::Condition(condition) => condition.ignore,
             Node::Value(value) => value.ignore,
         }
     }
@@ -65,6 +72,7 @@ impl Node {
             Node::Subflow(_) => false,
             Node::Slot(_) => false,
             Node::Service(_) => false,
+            Node::Condition(_) => false,
             Node::Value(_) => false,
         }
     }

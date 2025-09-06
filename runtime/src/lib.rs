@@ -230,6 +230,11 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
             slot_block: slot_block.clone(),
             common: common_job_params,
         },
+        Block::Condition(condition_block) => JobParams::Condition {
+            condition_block: condition_block.clone(),
+            common: common_job_params,
+            output_def: None,
+        },
     };
 
     let handle = run_job(job_params);
