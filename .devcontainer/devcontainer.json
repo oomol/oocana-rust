@@ -39,6 +39,11 @@
 			"type": "volume"
 		},
 		{
+			"source": "oocana-rust-shell-history",
+			"target": "/root/commandhistory",
+			"type": "volume"
+		},
+		{
 			"source": "${localEnv:HOME}/oomol/ovmlayer",
 			"target": "/workspaces/ovmlayer",
 			"type": "bind"
