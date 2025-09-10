@@ -31,7 +31,7 @@ pub struct ConditionHandleDef {
 
 impl ConditionHandleDef {
     pub fn is_match(&self, input_map: &HashMap<HandleName, serde_json::Value>) -> bool {
-        let mut result = true;
+        let mut result = false;
         for expr in &self.expressions {
             let input_value = input_map.get(&expr.input_handle);
             let left = if let Some(v) = input_value {
@@ -42,8 +42,9 @@ impl ConditionHandleDef {
             let expr_result = expr.operator.compare_values(left, &expr.value);
             match self.logical {
                 Some(LogicalOperator::And) => {
-                    result = result && expr_result;
-                    if !result {
+                    if expr_result {
+                        result = true;
+                    } else {
                         return false;
                     }
                 }
@@ -308,7 +309,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_condition_block() {
+    fn test_condition_and_exp() {
         let json = r#"
         {
             "description": "Test condition block",
@@ -320,33 +321,15 @@ mod tests {
                     "expressions": [
                         {
                             "input_handle": "input1",
-                            "operator": "==",
+                            "operator": "<",
                             "value": 10,
-                            "description": "Check if input1 equals 10"
+                            "description": "Check if input1 is less than 10"
                         },
                         {
-                            "input_handle": "input2",
+                            "input_handle": "input1",
                             "operator": ">",
                             "value": 5,
-                            "description": "Check if input2 is greater than 5"
-                        }
-                    ]
-                },
-                {
-                    "handle": "handle2",
-                    "description": "Second case",
-                    "logical": "OR",
-                    "expressions": [
-                        {
-                            "input_handle": "input3",
-                            "operator": "is null",
-                            "description": "Check if input3 is null"
-                        },
-                        {
-                            "input_handle": "input4",
-                            "operator": "<=",
-                            "value": 20,
-                            "description": "Check if input4 is less than or equal to 20"
+                            "description": "Check if input1 is greater than 5"
                         }
                     ]
                 }
@@ -363,20 +346,72 @@ mod tests {
         assert!(condition_block.cases.is_some());
         assert!(condition_block.default.is_some());
 
-        let cases = condition_block.cases.unwrap();
-        assert_eq!(cases.len(), 2);
-        assert_eq!(cases[0].handle, "handle1".into());
-        assert_eq!(cases[0].logical.clone().unwrap(), LogicalOperator::And);
-        assert_eq!(cases[0].expressions.len(), 2);
-        assert_eq!(cases[0].expressions[0].input_handle, "input1".into());
-        assert_eq!(cases[0].expressions[0].operator, ExpressionOperator::Equal);
-        assert_eq!(
-            cases[0].expressions[0].value.as_ref().unwrap(),
-            &serde_json::Value::from(10)
-        );
+        let first_case = &condition_block.cases.as_ref().unwrap()[0];
 
-        let default_case = condition_block.default.unwrap();
-        assert_eq!(default_case.handle, "default_handle".into());
+        let result = first_case.is_match(&HashMap::from([(
+            HandleName::from("input1"),
+            serde_json::Value::Number(serde_json::Number::from(8)),
+        )]));
+        assert_eq!(result, true);
+
+        let result = first_case.is_match(&HashMap::from([(
+            HandleName::from("input1"),
+            serde_json::Value::Number(serde_json::Number::from(0)),
+        )]));
+        assert_eq!(result, false);
+
+        let result = first_case.is_match(&HashMap::from([(
+            HandleName::from("input1"),
+            serde_json::Value::Number(serde_json::Number::from(11)),
+        )]));
+        assert_eq!(result, false);
+    }
+
+    #[test]
+    fn test_condition_one_case_one_exp() {
+        let json = r#"
+        {
+            "description": "Test condition block",
+            "cases": [
+                {
+                    "handle": "handle1",
+                    "description": "First case",
+                    "logical": "OR",
+                    "expressions": [
+                        {
+                            "input_handle": "input1",
+                            "operator": ">",
+                            "value": 0,
+                            "description": "Check if input1 is greater than 0"
+                        }
+                    ]
+                }
+            ],
+            "default": {
+                "handle": "default_handle",
+                "description": "Default case"
+            }
+        }
+        "#;
+
+        let condition_block: ConditionBlock = serde_json::from_str(json).unwrap();
+        assert_eq!(condition_block.description.unwrap(), "Test condition block");
+        assert!(condition_block.cases.is_some());
+        assert!(condition_block.default.is_some());
+
+        let first_case = &condition_block.cases.as_ref().unwrap()[0];
+
+        let result = first_case.is_match(&HashMap::from([(
+            HandleName::from("input1"),
+            serde_json::Value::Number(serde_json::Number::from(0)),
+        )]));
+        assert_eq!(result, false);
+
+        let result = first_case.is_match(&HashMap::from([(
+            HandleName::from("input1"),
+            serde_json::Value::Number(serde_json::Number::from(5)),
+        )]));
+        assert_eq!(result, true);
     }
 
     #[test]
