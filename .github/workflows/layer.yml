@@ -27,6 +27,7 @@ jobs:
         with:
           paths: |
             - "**"
+            - "!.devcontainer/**"
             - "!.github/**"
             - ".github/workflows/layer.yml"
             - ".github/workflows/oocana-node.yml"

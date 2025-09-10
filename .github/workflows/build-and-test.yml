@@ -29,6 +29,7 @@ jobs:
             - '!**.md'
             - '!.vscode/*'
             - '!.github/**'
+            - "!.devcontainer/**"
             - ".github/workflows/oocana-node.yml"
             - ".github/workflows/oocana-python.yml"
             - '.github/workflows/build-and-test.yml'
