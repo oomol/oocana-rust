@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.30.18 (2025-09-10)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* fix: default bool should be false by @leavesster in https://github.com/oomol/oocana-rust/pull/351
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.30.17...v0.30.18
+
 ## 0.30.17 (2025-09-10)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
