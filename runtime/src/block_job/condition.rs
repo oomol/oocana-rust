@@ -14,9 +14,12 @@ pub struct ConditionJobParameters {
     pub job_id: JobId,
     pub inputs: Option<BlockInputs>,
     pub block_status: BlockStatusTx,
+    #[allow(dead_code)]
     pub scope: RuntimeScope,
     pub output_def: Option<manifest_meta::OutputHandle>,
 }
+
+pub struct ConditionJobHandle {}
 
 pub fn execute_condition_job(params: ConditionJobParameters) -> Option<BlockJobHandle> {
     let ConditionJobParameters {
@@ -71,5 +74,8 @@ pub fn execute_condition_job(params: ConditionJobParameters) -> Option<BlockJobH
         reporter.finished(Some(result_map), None);
     }
 
-    return None;
+    Some(BlockJobHandle::new(
+        job_id.to_owned(),
+        ConditionJobHandle {},
+    ))
 }
