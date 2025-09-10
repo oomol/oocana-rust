@@ -42,8 +42,9 @@ impl ConditionHandleDef {
             let expr_result = expr.operator.compare_values(left, &expr.value);
             match self.logical {
                 Some(LogicalOperator::And) => {
-                    result = result && expr_result;
-                    if !result {
+                    if expr_result {
+                        result = true;
+                    } else {
                         return false;
                     }
                 }
