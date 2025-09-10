@@ -31,7 +31,7 @@ pub struct ConditionHandleDef {
 
 impl ConditionHandleDef {
     pub fn is_match(&self, input_map: &HashMap<HandleName, serde_json::Value>) -> bool {
-        let mut result = true;
+        let mut result = false;
         for expr in &self.expressions {
             let input_value = input_map.get(&expr.input_handle);
             let left = if let Some(v) = input_value {
