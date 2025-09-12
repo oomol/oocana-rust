@@ -58,6 +58,7 @@ pub fn execute_condition_job(params: ConditionJobParameters) -> Option<BlockJobH
     }
     let output_handle = output_handle.unwrap();
 
+    // TODO: consider refactoring this, check output def and struct output_handle with output_def's related value
     let output_value = inputs.as_ref().and_then(|inputs| {
         let handle = output_def.map(|o| o.handle);
         if let Some(handle) = handle {
@@ -76,6 +77,9 @@ pub fn execute_condition_job(params: ConditionJobParameters) -> Option<BlockJobH
             .map(|(k, v)| (k.to_string(), v.value.clone()))
             .collect();
         reporter.finished(Some(result_map), None);
+    } else {
+        block_status.finish(job_id.clone(), None, None);
+        reporter.finished(None, None);
     }
 
     Some(BlockJobHandle::new(
