@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.30.19 (2025-09-12)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* chore: fix devcontainer shell history problem by @leavesster in https://github.com/oomol/oocana-rust/pull/353
+* fix: condition still need report finish event when no inputs by @leavesster in https://github.com/oomol/oocana-rust/pull/354
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.30.18...v0.30.19
+
 ## 0.30.18 (2025-09-10)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
