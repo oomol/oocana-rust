@@ -174,6 +174,7 @@ pub fn run_script_unmerge(
                         Err(Error::from(format!("{script} failed {output:?}")))
                     }
                 }
+                // TODO: when error, pass stdout and stderr message to error message.
                 Err(e) => {
                     unmerge(merge_point)?;
                     Err(Error::from(format!("{script} result error: {e:?}")))
