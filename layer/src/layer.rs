@@ -139,23 +139,43 @@ pub fn run_script_unmerge(
 
     match child {
         Ok(mut child) => {
+            use std::collections::VecDeque;
+            use std::sync::{Arc, Mutex};
+            let stdout_lines = Arc::new(Mutex::new(VecDeque::new()));
+            let stderr_lines = Arc::new(Mutex::new(VecDeque::new()));
+
+            let stdout_lines_clone = Arc::clone(&stdout_lines);
             let stdout_handler = child.stdout.take().map(|stdout| {
                 thread::spawn(move || {
                     let reader = std::io::BufReader::new(stdout).lines();
                     for line in reader.map_while(Result::ok) {
                         tracing::info!(target: STDOUT_TARGET, "{}", line);
+                        let mut lines =
+                            stdout_lines_clone.lock().unwrap_or_else(|p| p.into_inner());
+                        lines.push_back(line);
+                        if lines.len() > 100 {
+                            lines.pop_front();
+                        }
                     }
                 })
             });
 
+            let stderr_lines_clone = Arc::clone(&stderr_lines);
             let stderr_handler = child.stderr.take().map(|stderr| {
                 thread::spawn(move || {
                     let reader = std::io::BufReader::new(stderr).lines();
                     for line in reader.map_while(Result::ok) {
                         tracing::info!(target: STDERR_TARGET, "{}", line);
+                        let mut lines =
+                            stderr_lines_clone.lock().unwrap_or_else(|p| p.into_inner());
+                        lines.push_back(line);
+                        if lines.len() > 100 {
+                            lines.pop_front();
+                        }
                     }
                 })
             });
+
             let result = child.wait();
             if let Some(handler) = stdout_handler {
                 drop(handler);
@@ -164,6 +184,21 @@ pub fn run_script_unmerge(
                 drop(handler);
             }
 
+            let stdout_last: Vec<String> = stdout_lines
+                .lock()
+                .unwrap_or_else(|p| p.into_inner())
+                .iter()
+                .cloned()
+                .collect();
+            let stderr_last: Vec<String> = stderr_lines
+                .lock()
+                .unwrap_or_else(|p| p.into_inner())
+                .iter()
+                .cloned()
+                .collect();
+            let stdout_str = stdout_last.join("\n");
+            let stderr_str = stderr_last.join("\n");
+
             match result {
                 Ok(output) => {
                     if output.success() {
@@ -171,12 +206,16 @@ pub fn run_script_unmerge(
                         Ok(())
                     } else {
                         unmerge(merge_point)?;
-                        Err(Error::from(format!("{script} failed {output:?}")))
+                        Err(Error::from(format!(
+                            "{script} failed {output:?}\n---stdout(last 100 lines)---\n{stdout_str}\n---stderr(last 100 lines)---\n{stderr_str}"
+                        )))
                     }
                 }
                 Err(e) => {
                     unmerge(merge_point)?;
-                    Err(Error::from(format!("{script} result error: {e:?}")))
+                    Err(Error::from(format!(
+                        "{script} result error: {e:?}\n---stdout(last 100 lines)---\n{stdout_str}\n---stderr(last 100 lines)---\n{stderr_str}"
+                    )))
                 }
             }
         }

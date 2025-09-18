@@ -196,11 +196,11 @@ pub fn import_package_layer(package_path: &str, export_dir: &str) -> Result<()> 
     let package_layer_path = format!("{}/{}", export_dir, LAYER_FILENAME);
 
     if metadata(&package_file_path).is_err() {
-        return Err(format!("package.json not exist: {:?}", package_file_path).into());
+        return Err(format!("package-layer.json not exist: {:?}", package_file_path).into());
     }
 
     if metadata(&package_layer_path).is_err() {
-        return Err(format!("package.layers.json not exist: {:?}", package_layer_path).into());
+        return Err(format!("layers.json not exist: {:?}", package_layer_path).into());
     }
 
     let package_file = File::open(&package_file_path)?;
