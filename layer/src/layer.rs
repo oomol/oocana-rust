@@ -176,10 +176,10 @@ pub fn run_script_unmerge(
 
             let result = child.wait();
             if let Some(handler) = stdout_handler {
-                let _ = handler.join();
+                drop(handler);
             }
             if let Some(handler) = stderr_handler {
-                let _ = handler.join();
+                drop(handler);
             }
 
             let stdout_last: Vec<String> = stdout_lines.lock().unwrap().iter().cloned().collect();
