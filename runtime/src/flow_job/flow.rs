@@ -599,14 +599,14 @@ pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle>
                                 .map_or(false, |p| p.contains(node_id))
                             {
                                 reporter.forward_previews(node_id.clone(), &payload);
-                                run_flow_ctx
-                                    .block_status
-                                    .run_request(BlockRequest::Preview {
+                                run_flow_ctx.parent_block_status.run_request(
+                                    BlockRequest::Preview {
                                         job_id,
                                         payload,
                                         request_id,
                                         session_id,
-                                    });
+                                    },
+                                );
                             }
                         }
                     }
