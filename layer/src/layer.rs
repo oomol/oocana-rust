@@ -139,9 +139,10 @@ pub fn run_script_unmerge(
 
     match child {
         Ok(mut child) => {
+            use std::collections::VecDeque;
             use std::sync::{Arc, Mutex};
-            let stdout_lines = Arc::new(Mutex::new(Vec::new()));
-            let stderr_lines = Arc::new(Mutex::new(Vec::new()));
+            let stdout_lines = Arc::new(Mutex::new(VecDeque::new()));
+            let stderr_lines = Arc::new(Mutex::new(VecDeque::new()));
 
             let stdout_lines_clone = Arc::clone(&stdout_lines);
             let stdout_handler = child.stdout.take().map(|stdout| {
@@ -150,9 +151,9 @@ pub fn run_script_unmerge(
                     for line in reader.map_while(Result::ok) {
                         tracing::info!(target: STDOUT_TARGET, "{}", line);
                         let mut lines = stdout_lines_clone.lock().unwrap();
-                        lines.push(line);
+                        lines.push_back(line);
                         if lines.len() > 100 {
-                            lines.remove(0);
+                            lines.pop_front();
                         }
                     }
                 })
@@ -165,9 +166,9 @@ pub fn run_script_unmerge(
                     for line in reader.map_while(Result::ok) {
                         tracing::info!(target: STDERR_TARGET, "{}", line);
                         let mut lines = stderr_lines_clone.lock().unwrap();
-                        lines.push(line);
+                        lines.push_back(line);
                         if lines.len() > 100 {
-                            lines.remove(0);
+                            lines.pop_front();
                         }
                     }
                 })
@@ -181,8 +182,8 @@ pub fn run_script_unmerge(
                 let _ = handler.join();
             }
 
-            let stdout_last = stdout_lines.lock().unwrap().clone();
-            let stderr_last = stderr_lines.lock().unwrap().clone();
+            let stdout_last: Vec<String> = stdout_lines.lock().unwrap().iter().cloned().collect();
+            let stderr_last: Vec<String> = stderr_lines.lock().unwrap().iter().cloned().collect();
             let stdout_str = stdout_last.join("\n");
             let stderr_str = stderr_last.join("\n");
 
