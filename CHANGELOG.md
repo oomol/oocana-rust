@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.30.20 (2025-09-18)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* fix: preview report recursively by @leavesster in https://github.com/oomol/oocana-rust/pull/356
+* chore: improve layer error message by @leavesster in https://github.com/oomol/oocana-rust/pull/357
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.30.19...v0.30.20
+
 ## 0.30.19 (2025-09-12)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
