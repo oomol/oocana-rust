@@ -150,7 +150,8 @@ pub fn run_script_unmerge(
                     let reader = std::io::BufReader::new(stdout).lines();
                     for line in reader.map_while(Result::ok) {
                         tracing::info!(target: STDOUT_TARGET, "{}", line);
-                        let mut lines = stdout_lines_clone.lock().unwrap();
+                        let mut lines =
+                            stdout_lines_clone.lock().unwrap_or_else(|p| p.into_inner());
                         lines.push_back(line);
                         if lines.len() > 100 {
                             lines.pop_front();
@@ -165,7 +166,8 @@ pub fn run_script_unmerge(
                     let reader = std::io::BufReader::new(stderr).lines();
                     for line in reader.map_while(Result::ok) {
                         tracing::info!(target: STDERR_TARGET, "{}", line);
-                        let mut lines = stderr_lines_clone.lock().unwrap();
+                        let mut lines =
+                            stderr_lines_clone.lock().unwrap_or_else(|p| p.into_inner());
                         lines.push_back(line);
                         if lines.len() > 100 {
                             lines.pop_front();
@@ -182,8 +184,18 @@ pub fn run_script_unmerge(
                 drop(handler);
             }
 
-            let stdout_last: Vec<String> = stdout_lines.lock().unwrap().iter().cloned().collect();
-            let stderr_last: Vec<String> = stderr_lines.lock().unwrap().iter().cloned().collect();
+            let stdout_last: Vec<String> = stdout_lines
+                .lock()
+                .unwrap_or_else(|p| p.into_inner())
+                .iter()
+                .cloned()
+                .collect();
+            let stderr_last: Vec<String> = stderr_lines
+                .lock()
+                .unwrap_or_else(|p| p.into_inner())
+                .iter()
+                .cloned()
+                .collect();
             let stdout_str = stdout_last.join("\n");
             let stderr_str = stderr_last.join("\n");
 
