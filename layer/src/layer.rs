@@ -139,30 +139,52 @@ pub fn run_script_unmerge(
 
     match child {
         Ok(mut child) => {
+            use std::sync::{Arc, Mutex};
+            let stdout_lines = Arc::new(Mutex::new(Vec::new()));
+            let stderr_lines = Arc::new(Mutex::new(Vec::new()));
+
+            let stdout_lines_clone = Arc::clone(&stdout_lines);
             let stdout_handler = child.stdout.take().map(|stdout| {
                 thread::spawn(move || {
                     let reader = std::io::BufReader::new(stdout).lines();
                     for line in reader.map_while(Result::ok) {
                         tracing::info!(target: STDOUT_TARGET, "{}", line);
+                        let mut lines = stdout_lines_clone.lock().unwrap();
+                        lines.push(line);
+                        if lines.len() > 100 {
+                            lines.remove(0);
+                        }
                     }
                 })
             });
 
+            let stderr_lines_clone = Arc::clone(&stderr_lines);
             let stderr_handler = child.stderr.take().map(|stderr| {
                 thread::spawn(move || {
                     let reader = std::io::BufReader::new(stderr).lines();
                     for line in reader.map_while(Result::ok) {
                         tracing::info!(target: STDERR_TARGET, "{}", line);
+                        let mut lines = stderr_lines_clone.lock().unwrap();
+                        lines.push(line);
+                        if lines.len() > 100 {
+                            lines.remove(0);
+                        }
                     }
                 })
             });
+
             let result = child.wait();
             if let Some(handler) = stdout_handler {
-                drop(handler);
+                let _ = handler.join();
             }
             if let Some(handler) = stderr_handler {
-                drop(handler);
+                let _ = handler.join();
             }
+
+            let stdout_last = stdout_lines.lock().unwrap().clone();
+            let stderr_last = stderr_lines.lock().unwrap().clone();
+            let stdout_str = stdout_last.join("\n");
+            let stderr_str = stderr_last.join("\n");
 
             match result {
                 Ok(output) => {
@@ -171,13 +193,16 @@ pub fn run_script_unmerge(
                         Ok(())
                     } else {
                         unmerge(merge_point)?;
-                        Err(Error::from(format!("{script} failed {output:?}")))
+                        Err(Error::from(format!(
+                            "{script} failed {output:?}\n---stdout(last 100 lines)---\n{stdout_str}\n---stderr(last 100 lines)---\n{stderr_str}"
+                        )))
                     }
                 }
-                // TODO: when error, pass stdout and stderr message to error message.
                 Err(e) => {
                     unmerge(merge_point)?;
-                    Err(Error::from(format!("{script} result error: {e:?}")))
+                    Err(Error::from(format!(
+                        "{script} result error: {e:?}\n---stdout(last 100 lines)---\n{stdout_str}\n---stderr(last 100 lines)---\n{stderr_str}"
+                    )))
                 }
             }
         }
