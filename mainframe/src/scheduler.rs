@@ -75,6 +75,13 @@ pub enum BlockRequest {
         payload: serde_json::Value,
         request_id: String,
     },
+    UpdateNodeWeight {
+        session_id: SessionId,
+        job_id: JobId,
+        node_id: NodeId,
+        weight: f32,
+        request_id: String,
+    },
 }
 
 impl BlockRequest {
@@ -85,6 +92,7 @@ impl BlockRequest {
             BlockRequest::QueryDownstream { session_id, .. } => session_id,
             BlockRequest::Preview { session_id, .. } => session_id,
             BlockRequest::QueryAuth { session_id, .. } => session_id,
+            BlockRequest::UpdateNodeWeight { session_id, .. } => session_id,
         }
     }
 
@@ -95,6 +103,7 @@ impl BlockRequest {
             BlockRequest::QueryDownstream { job_id, .. } => job_id,
             BlockRequest::Preview { job_id, .. } => job_id,
             BlockRequest::QueryAuth { job_id, .. } => job_id,
+            BlockRequest::UpdateNodeWeight { job_id, .. } => job_id,
         }
     }
 
@@ -106,6 +115,7 @@ impl BlockRequest {
             BlockRequest::QueryDownstream { request_id, .. } => request_id,
             BlockRequest::Preview { request_id, .. } => request_id,
             BlockRequest::QueryAuth { request_id, .. } => request_id,
+            BlockRequest::UpdateNodeWeight { request_id, .. } => request_id,
         }
     }
 }

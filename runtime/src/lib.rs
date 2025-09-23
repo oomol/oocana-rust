@@ -473,6 +473,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
                         );
                     }
                 }
+                BlockRequest::UpdateNodeWeight { .. } => {}
             },
             block_status::Status::Progress { .. } => {}
             block_status::Status::Done { error, job_id, .. } => {
