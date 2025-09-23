@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.30.21 (2025-09-23)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* feat: support dynamic weight by @leavesster in https://github.com/oomol/oocana-rust/pull/359
+* fix: dynamic weight edge case by @leavesster in https://github.com/oomol/oocana-rust/pull/361
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.30.20...v0.30.21
+
 ## 0.30.20 (2025-09-18)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
