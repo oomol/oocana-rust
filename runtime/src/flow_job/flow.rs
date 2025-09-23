@@ -716,7 +716,7 @@ pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle>
                             if let Some(node_weight_progress) = node_weight_progress {
                                 if success_done {
                                     if let Some(flow_progress) =
-                                        update_node_progress(100.0, node_weight_progress)
+                                        update_node_progress(100.0, node_weight_progress, false)
                                     {
                                         run_flow_ctx
                                             .parent_block_status
