@@ -265,7 +265,6 @@ pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle>
     }
 
     let mut estimation_node_progress_store = HashMap::new();
-    let mut total_weight = 0.0;
     for (node_id, node) in flow_shared.flow_block.nodes.iter() {
         estimation_node_progress_store.insert(
             node_id.clone(),
@@ -274,46 +273,56 @@ pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle>
                 weight: node.progress_weight(),
             },
         );
-        total_weight += node.progress_weight();
     }
-    let mut estimation_progress_sum = 0.0; // 0.0 ~ 100.0
-
-    let mut update_node_progress = move |progress: f32,
-                                         estimation_node_progress: &mut EstimationNodeProgress,
-                                         force_update: bool|
-          -> Option<f32> {
-        if (estimation_node_progress.weight == 0.0
-            || estimation_node_progress.progress >= 100.0
-            || (progress - estimation_node_progress.progress).abs() < f32::EPSILON)
-            && !force_update
-        {
-            return None;
-        }
-
-        let new_progress = f32::max(estimation_node_progress.progress, progress).clamp(0.0, 100.0);
-
-        let old_weight_progress =
-            estimation_node_progress.progress * estimation_node_progress.weight;
-
-        estimation_node_progress.progress = new_progress;
-        let new_weight_progress = new_progress * estimation_node_progress.weight;
-
-        estimation_progress_sum += new_weight_progress - old_weight_progress;
-
-        let estimation_flow_progress = if total_weight > 0.0 {
-            estimation_progress_sum / total_weight
-        } else {
-            return None;
-        };
-        // we calculate the estimation flow progress by node finish, but node can run multiple times, leave it to 95% at most.
-        Some(estimation_flow_progress.clamp(0.0, 95.0))
-    };
 
     let scheduler_tx = flow_shared.shared.scheduler_tx.clone();
     let mut block_resolver = BlockResolver::new();
     let mut flow_path_finder = flow_shared.path_finder.clone();
     let vault_client = flow_shared.vault_client.clone();
     let spawn_handle = tokio::spawn(async move {
+        // Initialize progress tracking variables inside the async task
+        let mut total_weight = 0.0;
+        for node in flow_shared.flow_block.nodes.values() {
+            total_weight += node.progress_weight();
+        }
+        let mut estimation_progress_sum = 0.0; // 0.0 ~ 100.0
+
+        // Helper function to update node progress
+        fn update_node_progress_fn(
+            progress: f32,
+            estimation_node_progress: &mut EstimationNodeProgress,
+            force_update: bool,
+            estimation_progress_sum: &mut f32,
+            total_weight: f32,
+        ) -> Option<f32> {
+            if (estimation_node_progress.weight == 0.0
+                || estimation_node_progress.progress >= 100.0
+                || (progress - estimation_node_progress.progress).abs() < f32::EPSILON)
+                && !force_update
+            {
+                return None;
+            }
+
+            let new_progress =
+                f32::max(estimation_node_progress.progress, progress).clamp(0.0, 100.0);
+
+            let old_weight_progress =
+                estimation_node_progress.progress * estimation_node_progress.weight;
+
+            estimation_node_progress.progress = new_progress;
+            let new_weight_progress = new_progress * estimation_node_progress.weight;
+
+            *estimation_progress_sum += new_weight_progress - old_weight_progress;
+
+            let estimation_flow_progress = if total_weight > 0.0 {
+                *estimation_progress_sum / total_weight
+            } else {
+                return None;
+            };
+            // we calculate the estimation flow progress by node finish, but node can run multiple times, leave it to 95% at most.
+            Some(estimation_flow_progress.clamp(0.0, 95.0))
+        }
+
         while let Some(status) = block_status_rx.recv().await {
             match status {
                 block_status::Status::Output {
@@ -348,9 +357,13 @@ pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle>
                                 estimation_node_progress_store.get_mut(&job.node_id);
 
                             if let Some(node_weight_progress) = node_weight_progress {
-                                if let Some(flow_progress) =
-                                    update_node_progress(progress, node_weight_progress, false)
-                                {
+                                if let Some(flow_progress) = update_node_progress_fn(
+                                    progress,
+                                    node_weight_progress,
+                                    false,
+                                    &mut estimation_progress_sum,
+                                    total_weight,
+                                ) {
                                     run_flow_ctx
                                         .parent_block_status
                                         .progress(flow_shared.job_id.to_owned(), flow_progress);
@@ -673,12 +686,17 @@ pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle>
                             estimation_node_progress_store.get_mut(&node_id)
                         {
                             total_weight += weight - estimation_node_progress.weight;
+                            estimation_progress_sum = estimation_progress_sum
+                                - (estimation_node_progress.progress * estimation_node_progress.weight)
+                                + (estimation_node_progress.progress * weight);
                             estimation_node_progress.weight = weight;
                             // after weight changed, we need recalculate the flow progress
-                            if let Some(flow_progress) = update_node_progress(
+                            if let Some(flow_progress) = update_node_progress_fn(
                                 estimation_node_progress.progress,
                                 estimation_node_progress,
                                 true,
+                                &mut estimation_progress_sum,
+                                total_weight,
                             ) {
                                 run_flow_ctx
                                     .parent_block_status
@@ -715,9 +733,13 @@ pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle>
 
                             if let Some(node_weight_progress) = node_weight_progress {
                                 if success_done {
-                                    if let Some(flow_progress) =
-                                        update_node_progress(100.0, node_weight_progress, false)
-                                    {
+                                    if let Some(flow_progress) = update_node_progress_fn(
+                                        100.0,
+                                        node_weight_progress,
+                                        false,
+                                        &mut estimation_progress_sum,
+                                        total_weight,
+                                    ) {
                                         run_flow_ctx
                                             .parent_block_status
                                             .progress(flow_shared.job_id.to_owned(), flow_progress);
