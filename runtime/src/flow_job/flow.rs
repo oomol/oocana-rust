@@ -662,6 +662,42 @@ pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle>
                             );
                         }
                     }
+                    BlockRequest::UpdateNodeWeight {
+                        session_id,
+                        job_id,
+                        node_id,
+                        weight,
+                        request_id,
+                    } => {
+                        if let Some(estimation_node_progress) =
+                            estimation_node_progress_store.get_mut(&node_id)
+                        {
+                            total_weight = total_weight - estimation_node_progress.weight + weight;
+                            estimation_node_progress.weight = weight;
+                            // after weight changed, we need recalculate the flow progress
+                            if let Some(flow_progress) = update_node_progress(
+                                estimation_node_progress.progress,
+                                estimation_node_progress,
+                                true,
+                            ) {
+                                run_flow_ctx
+                                    .parent_block_status
+                                    .progress(flow_shared.job_id.to_owned(), flow_progress);
+                                reporter.progress(flow_progress);
+                            }
+                        }
+
+                        scheduler_tx.respond_block_request(
+                            &session_id,
+                            BlockResponseParams {
+                                session_id: session_id.clone(),
+                                job_id: job_id.clone(),
+                                error: None,
+                                result: None,
+                                request_id,
+                            },
+                        );
+                    }
                 },
                 block_status::Status::Done {
                     job_id,
