@@ -686,8 +686,9 @@ pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle>
                             estimation_node_progress_store.get_mut(&node_id)
                         {
                             total_weight += weight - estimation_node_progress.weight;
-                            estimation_progress_sum += estimation_node_progress.progress
-                                * (weight - estimation_node_progress.weight);
+                            estimation_progress_sum = estimation_progress_sum
+                                - (estimation_node_progress.progress * estimation_node_progress.weight)
+                                + (estimation_node_progress.progress * weight);
                             estimation_node_progress.weight = weight;
                             // after weight changed, we need recalculate the flow progress
                             if let Some(flow_progress) = update_node_progress_fn(
