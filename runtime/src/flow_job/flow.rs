@@ -279,11 +279,13 @@ pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle>
     let mut estimation_progress_sum = 0.0; // 0.0 ~ 100.0
 
     let mut update_node_progress = move |progress: f32,
-                                         estimation_node_progress: &mut EstimationNodeProgress|
+                                         estimation_node_progress: &mut EstimationNodeProgress,
+                                         force_update: bool|
           -> Option<f32> {
-        if estimation_node_progress.weight == 0.0
+        if (estimation_node_progress.weight == 0.0
             || estimation_node_progress.progress >= 100.0
-            || (progress - estimation_node_progress.progress).abs() < f32::EPSILON
+            || (progress - estimation_node_progress.progress).abs() < f32::EPSILON)
+            && !force_update
         {
             return None;
         }
@@ -347,7 +349,7 @@ pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle>
 
                             if let Some(node_weight_progress) = node_weight_progress {
                                 if let Some(flow_progress) =
-                                    update_node_progress(progress, node_weight_progress)
+                                    update_node_progress(progress, node_weight_progress, false)
                                 {
                                     run_flow_ctx
                                         .parent_block_status
