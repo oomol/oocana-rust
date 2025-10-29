@@ -803,7 +803,7 @@ pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle>
                         );
 
                         let error_stack = if let Some(detail) = &error_detail {
-                            [flow_shared.stacks.vec().to_vec(), detail.stack.to_owned()].concat()
+                            [flow_shared.stacks.vec().clone(), detail.stack.to_owned()].concat()
                         } else {
                             let error_stack = flow_shared.stacks.stack(
                                 flow_shared.job_id.to_owned(),
