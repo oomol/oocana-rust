@@ -52,7 +52,7 @@ pub fn execute_condition_job(params: ConditionJobParameters) -> Option<BlockJobH
 
     let output_handle = condition_block.evaluate(&inputs_values);
     if output_handle.is_none() {
-        block_status.finish(job_id.clone(), None, None);
+        block_status.finish(job_id.clone(), None, None, None);
         reporter.finished(None, None);
         return None;
     }
@@ -70,7 +70,7 @@ pub fn execute_condition_job(params: ConditionJobParameters) -> Option<BlockJobH
 
     if let Some(output) = output_value {
         let result = HashMap::from([(output_handle, output)]);
-        block_status.finish(job_id.clone(), Some(result.clone()), None);
+        block_status.finish(job_id.clone(), Some(result.clone()), None, None);
 
         let result_map = result
             .iter()
@@ -78,7 +78,7 @@ pub fn execute_condition_job(params: ConditionJobParameters) -> Option<BlockJobH
             .collect();
         reporter.finished(Some(result_map), None);
     } else {
-        block_status.finish(job_id.clone(), None, None);
+        block_status.finish(job_id.clone(), None, None, None);
         reporter.finished(None, None);
     }
 

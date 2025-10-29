@@ -19,6 +19,13 @@ pub use block_reporter::BlockReporterTx;
 pub use flow_reporter::FlowReporterTx;
 
 #[derive(Serialize, Debug, Clone)]
+pub struct ErrorDetail {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub message: Option<String>,
+    pub stack: Vec<BlockJobStackLevel>,
+}
+
+#[derive(Serialize, Debug, Clone)]
 #[serde(tag = "type")]
 pub enum ReporterMessage<'a> {
     SessionStarted {
@@ -34,6 +41,8 @@ pub enum ReporterMessage<'a> {
         path: &'a str,
         #[serde(skip_serializing_if = "Option::is_none")]
         error: &'a Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        _error: &'a Option<ErrorDetail>,
         partial: bool,
         cache: bool,
     },
@@ -50,6 +59,8 @@ pub enum ReporterMessage<'a> {
         flow_path: &'a Option<String>,
         stacks: &'a Vec<BlockJobStackLevel>,
         error: &'a Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        _error: &'a Option<ErrorDetail>,
         finish_at: u128,
     },
     // 使用指定 nodes 时，会通知，有哪些 nodes 会被执行
@@ -84,6 +95,8 @@ pub enum ReporterMessage<'a> {
         block_path: &'a Option<String>,
         stacks: &'a Vec<BlockJobStackLevel>,
         error: &'a Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        _error: &'a Option<ErrorDetail>,
         finish_at: u128,
     },
     SlotflowStarted {
@@ -100,6 +113,8 @@ pub enum ReporterMessage<'a> {
         block_path: &'a Option<String>,
         stacks: &'a Vec<BlockJobStackLevel>,
         error: &'a Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        _error: &'a Option<ErrorDetail>,
         finish_at: u128,
     },
     SlotflowOutput {
@@ -226,12 +241,20 @@ impl ReporterTx {
         });
     }
 
-    pub fn session_finished(&self, path: &str, err: &Option<String>, partial: bool, cache: bool) {
+    pub fn session_finished(
+        &self,
+        path: &str,
+        err: &Option<String>,
+        error_detail: &Option<ErrorDetail>,
+        partial: bool,
+        cache: bool,
+    ) {
         self.send(ReporterMessage::SessionFinished {
             session_id: &self.session_id,
             finish_at: ReporterMessage::now(),
             path,
             error: err,
+            _error: error_detail,
             partial,
             cache,
         });
