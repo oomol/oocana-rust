@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.30.22 (2025-10-29)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* feat: report detail error info by @leavesster in https://github.com/oomol/oocana-rust/pull/363
+* refactor: reduce if by @leavesster in https://github.com/oomol/oocana-rust/pull/365
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.30.21...v0.30.22
+
 ## 0.30.21 (2025-09-23)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
