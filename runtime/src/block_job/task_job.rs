@@ -552,6 +552,6 @@ pub fn timeout_abort(
     tokio::spawn(async move {
         tokio::time::sleep(timeout).await;
         reporter.error(&format!("{} timeout after {:?}", job_id, timeout));
-        block_status.finish(job_id, None, Some("Timeout".to_owned()));
+        block_status.finish(job_id, None, Some("Timeout".to_owned()), None);
     })
 }

@@ -4,6 +4,7 @@ pub mod delay_abort;
 mod flow_job;
 mod run;
 pub mod shared;
+use mainframe::reporter::ErrorDetail;
 use mainframe::scheduler::{BlockRequest, BlockResponseParams, QueryBlockRequest};
 use manifest_reader::path_finder::BlockPathFinder;
 use std::{
@@ -86,6 +87,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
             shared.reporter.session_finished(
                 block_name,
                 &Some(format!("Failed to read block {:?}", err)),
+                &None,
                 partial,
                 cache,
             );
@@ -256,6 +258,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
     });
 
     let mut result_error: Option<String> = None;
+    let mut result_error_detail: Option<ErrorDetail> = None;
     let mut addition_running_jobs = HashSet::new();
     while let Some(status) = block_status_rx.recv().await {
         match status {
@@ -476,11 +479,20 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
                 BlockRequest::UpdateNodeWeight { .. } => {}
             },
             block_status::Status::Progress { .. } => {}
-            block_status::Status::Done { error, job_id, .. } => {
+            block_status::Status::Done {
+                error,
+                job_id,
+                error_detail,
+                ..
+            } => {
                 if job_id != root_job_id {
                     if addition_running_jobs.remove(&job_id) {
                         continue;
                     }
+                }
+
+                if let Some(stack) = error_detail {
+                    result_error_detail = Some(stack);
                 }
 
                 if let Some(err) = error {
@@ -501,9 +513,13 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
     }
 
     signal_handler.abort();
-    shared
-        .reporter
-        .session_finished(&block_path, &result_error, partial, cache);
+    shared.reporter.session_finished(
+        &block_path,
+        &result_error,
+        &result_error_detail,
+        partial,
+        cache,
+    );
     info!(
         "session finished: {}. error: {:?}",
         block_path, result_error

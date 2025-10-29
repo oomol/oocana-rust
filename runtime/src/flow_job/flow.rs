@@ -19,7 +19,7 @@ use crate::{
     shared::Shared,
 };
 use mainframe::{
-    reporter::FlowReporterTx,
+    reporter::{ErrorDetail, FlowReporterTx},
     scheduler::{
         self, BlockRequest, BlockResponseParams, OutputOptions, QueryBlockRequest, ToFlowOutput,
         ToNodeInput,
@@ -722,6 +722,7 @@ pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle>
                     job_id,
                     result,
                     error,
+                    error_detail,
                 } => {
                     run_pending_node(job_id.to_owned(), &flow_shared, &mut run_flow_ctx);
 
@@ -793,26 +794,52 @@ pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle>
 
                         run_flow_ctx.jobs.clear();
 
-                        // add error node stack
-                        let error_stack = format!(
+                        let node_message = format!(
                             "{} failed",
                             node_id
+                                .clone()
                                 .map(|n| format!("[node id: {n}]"))
                                 .unwrap_or_else(|| format!("job_id: {}", job_id)),
                         );
-                        reporter.done(&Some(error_stack.clone()));
+
+                        let error_stack = if let Some(detail) = &error_detail {
+                            [flow_shared.stacks.vec().to_vec(), detail.stack.to_owned()].concat()
+                        } else {
+                            let error_stack = flow_shared.stacks.stack(
+                                flow_shared.job_id.to_owned(),
+                                flow_shared.flow_block.path_str.to_owned(),
+                                node_id.unwrap_or_else(|| NodeId::from("unknown_node".to_string())),
+                            );
+                            error_stack.vec().to_owned()
+                        };
+
+                        reporter.done(
+                            &Some(node_message.clone()),
+                            &Some(ErrorDetail {
+                                message: None, // hide message here to avoid log duplication
+                                stack: error_stack.clone(),
+                            }),
+                        );
 
                         if flow_shared.stacks.is_root() {
                             run_flow_ctx.parent_block_status.finish(
                                 flow_shared.job_id.to_owned(),
                                 None,
                                 Some(format!("flow {} failed.", flow_shared.flow_block.path_str)),
+                                Some(ErrorDetail {
+                                    message: Some(err),
+                                    stack: error_stack,
+                                }),
                             );
                         } else {
                             run_flow_ctx.parent_block_status.finish(
                                 flow_shared.job_id.to_owned(),
                                 None,
-                                Some(err),
+                                Some(err.clone()),
+                                Some(ErrorDetail {
+                                    message: Some(err),
+                                    stack: error_stack,
+                                }),
                             );
                         }
                         break;
@@ -850,9 +877,9 @@ fn remove_job_and_is_finished(job_id: &JobId, run_flow_ctx: &mut RunFlowContext)
 }
 
 fn flow_success(shared: &FlowShared, ctx: &RunFlowContext, reporter: &FlowReporterTx) {
-    reporter.done(&None);
+    reporter.done(&None, &None);
     ctx.parent_block_status
-        .finish(shared.job_id.to_owned(), None, None);
+        .finish(shared.job_id.to_owned(), None, None, None);
     save_flow_cache(&ctx.node_input_values, &shared.flow_block.path_str);
 }
 
