@@ -491,12 +491,9 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
                     }
                 }
 
-                if let Some(stack) = error_detail {
-                    result_error_detail = Some(stack);
-                }
-
                 if let Some(err) = error {
                     result_error = Some(err);
+                    result_error_detail = error_detail;
                     break;
                 }
                 if addition_running_jobs.is_empty() {
