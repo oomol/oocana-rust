@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use crate::reporter::ErrorDetail;
+
 use super::{ReporterMessage, ReporterTx};
 use job::{BlockInputs, BlockJobStacks, JobId};
 use manifest_meta::NodeId;
@@ -130,7 +132,7 @@ impl FlowReporterTx {
         }
     }
 
-    pub fn done(&self, error: &Option<String>) {
+    pub fn done(&self, error: &Option<String>, error_detail: &Option<ErrorDetail>) {
         match self.flow_type {
             FlowType::Subflow => self.tx.send(ReporterMessage::SubflowBlockFinished {
                 session_id: &self.tx.session_id,
@@ -138,6 +140,7 @@ impl FlowReporterTx {
                 block_path: &self.path,
                 stacks: self.stacks.vec(),
                 error,
+                _error: error_detail,
                 finish_at: ReporterMessage::now(),
             }),
             FlowType::Flow => self.tx.send(ReporterMessage::FlowFinished {
@@ -146,6 +149,7 @@ impl FlowReporterTx {
                 flow_path: &self.path,
                 stacks: self.stacks.vec(),
                 error,
+                _error: error_detail,
                 finish_at: ReporterMessage::now(),
             }),
             FlowType::SlotFlow => self.tx.send(ReporterMessage::SlotflowFinished {
@@ -154,6 +158,7 @@ impl FlowReporterTx {
                 block_path: &self.path,
                 stacks: self.stacks.vec(),
                 error,
+                _error: error_detail,
                 finish_at: ReporterMessage::now(),
             }),
         }

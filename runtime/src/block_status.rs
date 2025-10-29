@@ -2,7 +2,10 @@ use std::{collections::HashMap, sync::Arc};
 
 use flume::{Receiver, Sender};
 use job::JobId;
-use mainframe::scheduler::{BlockRequest, OutputOptions};
+use mainframe::{
+    reporter::ErrorDetail,
+    scheduler::{BlockRequest, OutputOptions},
+};
 use utils::output::OutputValue;
 
 use manifest_meta::HandleName;
@@ -27,6 +30,7 @@ pub enum Status {
         job_id: JobId,
         result: Option<HashMap<HandleName, Arc<OutputValue>>>,
         error: Option<String>,
+        error_detail: Option<ErrorDetail>,
     },
     Error {
         error: String,
@@ -69,12 +73,14 @@ impl BlockStatusTx {
         job_id: JobId,
         result: Option<HashMap<HandleName, Arc<OutputValue>>>,
         error: Option<String>,
+        error_detail: Option<ErrorDetail>,
     ) {
         self.tx
             .send(Status::Done {
                 job_id,
                 result,
                 error,
+                error_detail,
             })
             .unwrap();
     }
