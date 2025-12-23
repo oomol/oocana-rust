@@ -19,6 +19,7 @@
     "mknod",
     "mosquitto",
     "MQTT",
+    "noninteractive",
     "nonrecursive",
     "omvlayer",
     "oneshot",
