@@ -75,13 +75,15 @@ pub enum LayerAction {
 
 pub fn layer_action(action: &LayerAction) -> Result<()> {
     if std::env::var(utils::env::OVMLAYER_LOG_ENV_KEY).is_err() {
-        std::env::set_var(
-            utils::env::OVMLAYER_LOG_ENV_KEY,
-            utils::logger::logger_dir()
-                .join("ovmlayer.log")
-                .to_string_lossy()
-                .to_string(),
-        );
+        unsafe {
+            std::env::set_var(
+                utils::env::OVMLAYER_LOG_ENV_KEY,
+                utils::logger::logger_dir()
+                    .join("ovmlayer.log")
+                    .to_string_lossy()
+                    .to_string(),
+            );
+        }
     }
 
     if !layer::feature_enabled() {
