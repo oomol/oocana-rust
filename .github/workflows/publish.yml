@@ -166,4 +166,4 @@ jobs:
     if: ${{ (github.repository_owner == 'oomol') && (needs.dry-run.outputs.dry-run == 'false') }}
     steps:
       - run: |
-          curl -X POST -H "Content-Type: application/json" https://github-package-event-worker.cloud-c35.workers.dev/renovate --data '{"repos": [{"owner": "oomol", "repo": "oocana-node", "workflow_id": "renovate.yml"}]}'
+          curl --fail-with-body -X POST -H "Content-Type: application/json" https://github-webhook-worker.cloud-c35.workers.dev/renovate --data '{"repos": [{"owner": "oomol", "repo": "oocana-node", "workflow_id": "renovate.yml"}]}'
