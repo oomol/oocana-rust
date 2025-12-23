@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.30.23 (2025-12-23)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* feat: support noninteractive cli by @leavesster in https://github.com/oomol/oocana-rust/pull/366
+* refactor: pr 366 by @leavesster in https://github.com/oomol/oocana-rust/pull/368
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.30.22...v0.30.23
+
 ## 0.30.22 (2025-10-29)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
