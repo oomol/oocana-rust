@@ -241,6 +241,11 @@ pub fn run_cmd(
         options.push("--env".to_string());
         options.push(format!("{}={}", env_key, env_value));
     }
+
+    // always set DEBIAN_FRONTEND=noninteractive to avoid some interactive dialog in apt-get install.
+    options.push("--env".to_string());
+    options.push("DEBIAN_FRONTEND=noninteractive".to_string());
+
     if let Some(env_file) = env_file {
         options.push(format!("--env-file={}", env_file));
     }
