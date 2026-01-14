@@ -21,6 +21,12 @@ pub fn oocana_dir() -> Option<PathBuf> {
 }
 
 pub fn registry_store_file() -> Option<PathBuf> {
+    if let Ok(val) = std::env::var("OOMOL_REGISTRY_STORE_FILE") {
+        if !val.is_empty() {
+            return Some(PathBuf::from(val));
+        }
+    }
+
     let global_config = GLOBAL_CONFIG.lock().unwrap();
     Some(PathBuf::from(
         global_config.global.registry_store_file.clone(),
