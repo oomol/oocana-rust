@@ -14,17 +14,18 @@ pub fn to_absolute(p: &Path) -> String {
 
 pub fn expand_home<P: AsRef<Path>>(path: P) -> String {
     let path = path.as_ref();
-    if path.starts_with("~") || path.starts_with("$HOME") {
+    let s = path.to_string_lossy();
+    const HOME_VAR: &str = "$HOME";
+    if s.starts_with('~') || s.starts_with(HOME_VAR) {
         if let Some(home) = home_dir() {
-            let stripped_path = if path.starts_with("~") {
-                path.strip_prefix("~").unwrap()
+            let rest = if s.starts_with('~') {
+                &s[1..]
             } else {
-                path.strip_prefix("$HOME").unwrap()
+                &s[HOME_VAR.len()..]
             };
-            return home.join(stripped_path).to_string_lossy().to_string();
+            let rest = rest.trim_start_matches(|c| c == '/' || c == '\\');
+            return home.join(rest).to_string_lossy().to_string();
         }
-        path.to_string_lossy().to_string()
-    } else {
-        path.to_string_lossy().to_string()
     }
+    s.to_string()
 }
