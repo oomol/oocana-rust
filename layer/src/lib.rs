@@ -6,6 +6,7 @@ mod layer_settings;
 mod ovmlayer;
 mod package_layer;
 mod package_store;
+mod registry_layer_store;
 mod runtime_layer;
 
 use std::process::Command;
