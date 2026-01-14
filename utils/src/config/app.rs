@@ -7,6 +7,7 @@ use std::sync::Mutex;
 
 use dirs::home_dir;
 
+use crate::path::expand_home;
 use super::{global_config::GlobalConfig, run_config::RunConfig};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -33,25 +34,21 @@ pub fn load_config<P: AsRef<Path>>(file: Option<P>) -> Result<AppConfig, String>
         }
     };
 
-    let config_path = if p.starts_with("~") || p.starts_with("$HOME") {
-        let home = home_dir().ok_or_else(|| "Failed to get home dir".to_string())?;
-        let stripped_path = if p.starts_with("~") {
-            p.strip_prefix("~").unwrap()
-        } else {
-            p.strip_prefix("$HOME").unwrap()
-        };
-        let mut home_path = home;
-        home_path.push(stripped_path);
-        home_path
-    } else if p.is_absolute() {
+    let config_path = if p.is_absolute() {
         p
-    } else if p.is_relative() {
-        let mut current_dir =
-            std::env::current_dir().map_err(|e| format!("Failed to get current dir: {:?}", e))?;
-        current_dir.push(&p);
-        current_dir
     } else {
-        p
+        // 先展开 ~ 和 $HOME
+        let expanded = PathBuf::from(expand_home(&p));
+
+        // 如果展开后还是相对路径，拼接当前目录
+        if expanded.is_relative() {
+            let mut current_dir = std::env::current_dir()
+                .map_err(|e| format!("Failed to get current dir: {:?}", e))?;
+            current_dir.push(expanded);
+            current_dir
+        } else {
+            expanded
+        }
     };
 
     // TODO: use config set_default to set default value
