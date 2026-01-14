@@ -10,8 +10,6 @@ use std::fs::File;
 use std::path::Path;
 use utils::{config, error::Result};
 
-static REGISTRY_STORE: &str = "registry_store.json";
-
 struct Defer<F: FnOnce()>(Option<F>);
 impl<F: FnOnce()> Drop for Defer<F> {
     fn drop(&mut self) {
@@ -187,11 +185,11 @@ pub fn list_registry_layers() -> Result<Vec<PackageLayer>> {
 }
 
 fn registry_store_file(write: bool) -> Result<File> {
-    let dir = config::store_dir().ok_or("Failed to get home dir")?;
+    let file_path = config::registry_store_file().ok_or("Failed to get registry store file path")?;
 
-    std::fs::create_dir_all(&dir).map_err(|e| format!("Failed to create dir: {:?}", e))?;
-
-    let file_path = dir.join(REGISTRY_STORE);
+    if let Some(dir) = file_path.parent() {
+        std::fs::create_dir_all(dir).map_err(|e| format!("Failed to create dir: {:?}", e))?;
+    }
 
     if !file_path.exists() {
         let f = File::create(&file_path).map_err(|e| format!("Failed to create file: {:?}", e))?;
@@ -229,8 +227,8 @@ pub fn load_registry_store() -> Result<RegistryLayerStore> {
 
     let store: RegistryLayerStore = serde_json::from_reader(reader).map_err(|e| {
         format!(
-            "Failed to deserialize registry store from {}: {:?}",
-            REGISTRY_STORE, e
+            "Failed to deserialize registry store: {:?}",
+            e
         )
     })?;
 

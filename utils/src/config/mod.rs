@@ -20,6 +20,13 @@ pub fn oocana_dir() -> Option<PathBuf> {
     Some(PathBuf::from(global_config.global.oocana_dir.clone()))
 }
 
+pub fn registry_store_file() -> Option<PathBuf> {
+    let global_config = GLOBAL_CONFIG.lock().unwrap();
+    Some(PathBuf::from(
+        global_config.global.registry_store_file.clone(),
+    ))
+}
+
 pub fn search_paths() -> Option<Vec<String>> {
     let global_config = GLOBAL_CONFIG.lock().unwrap();
     global_config.global.search_paths.clone()
