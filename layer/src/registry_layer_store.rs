@@ -265,7 +265,7 @@ pub fn get_registry_layer(package_name: &str, version: &str) -> Result<Option<Pa
 /// **IMPORTANT: This is a WRITE operation. Only ONE process can call registry write functions
 /// at the same time.**
 ///
-/// See [`get_or_create_registry_layer`] for detailed concurrency requirements.
+/// See module-level documentation for detailed concurrency requirements.
 ///
 /// # Behavior
 ///
@@ -347,7 +347,7 @@ pub fn load_registry_store() -> Result<RegistryLayerStore> {
 /// **IMPORTANT: This is a WRITE operation. Only ONE process can call registry write functions
 /// at the same time.**
 ///
-/// See [`get_or_create_registry_layer`] for detailed concurrency requirements.
+/// See module-level documentation for detailed concurrency requirements.
 ///
 /// # Implementation
 ///
