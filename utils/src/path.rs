@@ -3,13 +3,21 @@ use std::path::Path;
 
 pub fn to_absolute(p: &Path) -> String {
     if p.is_absolute() {
-        p.to_string_lossy().to_string()
-    } else {
-        match p.canonicalize() {
-            Ok(p) => p.to_string_lossy().to_string(),
-            Err(_) => p.to_string_lossy().to_string(),
-        }
+        return p.to_string_lossy().to_string();
     }
+
+    // Try canonicalize first (resolves symlinks and makes absolute)
+    if let Ok(canonical) = p.canonicalize() {
+        return canonical.to_string_lossy().to_string();
+    }
+
+    // Fallback: manually join with current_dir
+    if let Ok(cwd) = std::env::current_dir() {
+        return cwd.join(p).to_string_lossy().to_string();
+    }
+
+    // Last resort: return original path (should rarely happen)
+    p.to_string_lossy().to_string()
 }
 
 pub fn expand_home<P: AsRef<Path>>(path: P) -> String {
