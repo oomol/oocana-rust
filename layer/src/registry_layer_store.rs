@@ -9,17 +9,9 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::env;
 use std::fs::File;
+use std::io::{Seek, Write};
 use std::path::Path;
 use utils::{config, error::Result};
-
-struct Defer<F: FnOnce()>(Option<F>);
-impl<F: FnOnce()> Drop for Defer<F> {
-    fn drop(&mut self) {
-        if let Some(f) = self.0.take() {
-            f();
-        }
-    }
-}
 
 /// Generate registry key from package_name and version.
 /// Format: `package_name@version`
@@ -81,11 +73,8 @@ pub fn get_or_create_registry_layer<P: AsRef<Path>>(
         .and_then(|scripts| scripts.bootstrap);
 
     // Open file for read-write and hold exclusive lock for entire operation
-    let f = registry_store_file(true)?;
+    let mut f = registry_store_file(true)?;
     FileExt::lock_exclusive(&f).map_err(|e| format!("Failed to lock file: {:?}", e))?;
-    let _defer = Defer(Some(|| {
-        let _ = FileExt::unlock(&f);
-    }));
 
     // Load the store under exclusive lock
     let reader = std::io::BufReader::new(&f);
@@ -97,6 +86,8 @@ pub fn get_or_create_registry_layer<P: AsRef<Path>>(
         if p.version.as_deref() == Some(version) {
             let validation_result = p.validate();
             if validation_result.is_ok() {
+                // Unlock before returning
+                let _ = FileExt::unlock(&f);
                 return Ok(p.clone());
             }
             // Invalid layer, will recreate
@@ -125,10 +116,17 @@ pub fn get_or_create_registry_layer<P: AsRef<Path>>(
     // Truncate and rewrite the file
     f.set_len(0)
         .map_err(|e| format!("Failed to truncate registry store file: {:?}", e))?;
+    f.seek(std::io::SeekFrom::Start(0))
+        .map_err(|e| format!("Failed to seek to start: {:?}", e))?;
 
-    let writer = std::io::BufWriter::new(&f);
-    serde_json::to_writer_pretty(writer, &store)
+    let mut writer = std::io::BufWriter::new(&f);
+    serde_json::to_writer_pretty(&mut writer, &store)
         .map_err(|e| format!("Failed to serialize: {:?}", e))?;
+    writer.flush()
+        .map_err(|e| format!("Failed to flush writer: {:?}", e))?;
+
+    // Unlock the file
+    FileExt::unlock(&f).map_err(|e| format!("Failed to unlock file: {:?}", e))?;
 
     Ok(layer)
 }
@@ -254,17 +252,16 @@ pub fn load_registry_store() -> Result<RegistryLayerStore> {
 
     FileExt::lock_shared(&f).map_err(|e| format!("Failed to lock file: {:?}", e))?;
 
-    let _defer = Defer(Some(|| {
-        FileExt::unlock(&f)
-            .map_err(|e| format!("Failed to unlock file: {:?}", e))
-            .unwrap();
-    }));
-
     let reader = std::io::BufReader::new(&f);
     let store: RegistryLayerStore = serde_json::from_reader(reader)
-        .map_err(|e| format!("Failed to deserialize registry store: {:?}", e))?;
+        .map_err(|e| {
+            // Unlock on error
+            let _ = FileExt::unlock(&f);
+            format!("Failed to deserialize registry store: {:?}", e)
+        })?;
 
-    drop(_defer);
+    // Unlock after successful read
+    FileExt::unlock(&f).map_err(|e| format!("Failed to unlock file: {:?}", e))?;
 
     // TODO: Implement migration logic when version changes
     if store.version != env!("CARGO_PKG_VERSION") {
@@ -284,7 +281,7 @@ pub fn load_registry_store() -> Result<RegistryLayerStore> {
 /// - If `f` is Some: caller must already hold exclusive lock, this function will NOT lock
 /// - If `f` is None: this function will open and lock the file exclusively
 pub fn save_registry_store(store: &RegistryLayerStore, f: Option<File>) -> Result<()> {
-    let (f, should_unlock) = match f {
+    let (mut f, should_unlock) = match f {
         Some(file) => {
             // Caller already holds the lock
             (file, false)
@@ -299,11 +296,15 @@ pub fn save_registry_store(store: &RegistryLayerStore, f: Option<File>) -> Resul
 
     f.set_len(0)
         .map_err(|e| format!("Failed to truncate registry store file: {:?}", e))?;
+    f.seek(std::io::SeekFrom::Start(0))
+        .map_err(|e| format!("Failed to seek to start: {:?}", e))?;
 
-    let writer = std::io::BufWriter::new(&f);
+    let mut writer = std::io::BufWriter::new(&f);
 
-    serde_json::to_writer_pretty(writer, store)
+    serde_json::to_writer_pretty(&mut writer, store)
         .map_err(|e| format!("Failed to serialize: {:?}", e))?;
+    writer.flush()
+        .map_err(|e| format!("Failed to flush writer: {:?}", e))?;
 
     if should_unlock {
         FileExt::unlock(&f).map_err(|e| format!("Failed to unlock file: {:?}", e))?;
