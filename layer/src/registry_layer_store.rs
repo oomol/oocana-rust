@@ -165,12 +165,7 @@ pub fn delete_registry_layer(package_name: &str, version: &str) -> Result<()> {
 
 pub fn list_registry_layers() -> Result<Vec<PackageLayer>> {
     let store = load_registry_store()?;
-    let mut layers = vec![];
-    for (_, p) in store.packages.iter() {
-        layers.push(p.clone());
-    }
-
-    Ok(layers)
+    Ok(store.packages.into_values().collect())
 }
 
 fn registry_store_file(write: bool) -> Result<File> {
