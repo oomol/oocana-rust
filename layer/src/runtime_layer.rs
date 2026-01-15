@@ -6,6 +6,9 @@ use crate::layer::{
 use crate::ovmlayer::{self, BindPath};
 use crate::package_layer::{PackageLayer, CACHE_DIR};
 use crate::package_store::get_or_create_package_layer;
+use crate::registry_layer_store::get_or_create_registry_layer;
+use manifest_reader::path_finder::find_package_file;
+use manifest_reader::reader::read_package;
 use std::collections::HashMap;
 use std::env::temp_dir;
 use std::fmt::Debug;
@@ -40,8 +43,49 @@ pub fn create_runtime_layer(
     bind_paths: &[BindPath],
     envs: &HashMap<String, String>,
     env_file: &Option<String>,
+    package_name: Option<&str>,
+    version: Option<&str>,
 ) -> Result<RuntimeLayer> {
-    match get_or_create_package_layer(package, bind_paths, envs, env_file) {
+    let layer = match (package_name, version) {
+        (Some(pkg_name), Some(ver)) => {
+            // Try to get package metadata for bootstrap script
+            let bootstrap = find_package_file(package)
+                .and_then(|path| read_package(&path).ok())
+                .and_then(|pkg| pkg.scripts)
+                .and_then(|scripts| scripts.bootstrap);
+
+            match get_or_create_registry_layer(
+                pkg_name, ver, package, bootstrap, bind_paths, envs, env_file,
+            ) {
+                Ok(layer) => {
+                    info!("runtime layer from registry store: {}@{}", pkg_name, ver);
+                    Ok(layer)
+                }
+                Err(e) => {
+                    info!(
+                        "get registry layer failed: {:?}, fallback to package layer",
+                        e
+                    );
+                    match get_or_create_package_layer(package, bind_paths, envs, env_file) {
+                        Ok(layer) => {
+                            info!("runtime layer from package store: {}", package);
+                            Ok(layer)
+                        }
+                        Err(e) => Err(e),
+                    }
+                }
+            }
+        }
+        _ => match get_or_create_package_layer(package, bind_paths, envs, env_file) {
+            Ok(layer) => {
+                info!("runtime layer from package store: {}", package);
+                Ok(layer)
+            }
+            Err(e) => Err(e),
+        },
+    };
+
+    match layer {
         Ok(layer) => match create_runtime_layer_from_package_layer(&layer) {
             Ok(mut runtime_layer) => {
                 runtime_layer.add_bind_paths(bind_paths);

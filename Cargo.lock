@@ -1556,6 +1556,7 @@ dependencies = [
  "job",
  "layer",
  "manifest_meta",
+ "manifest_reader",
  "port_check",
  "rand 0.8.5",
  "serde",

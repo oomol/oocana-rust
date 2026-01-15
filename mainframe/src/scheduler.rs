@@ -1,6 +1,8 @@
 use async_trait::async_trait;
 use flume::{Receiver, Sender};
 use layer::{create_runtime_layer, BindPath, InjectionParams, RuntimeLayer};
+use manifest_reader::path_finder::find_package_file;
+use manifest_reader::reader::read_package;
 use port_check::free_local_ipv4_port_in_range;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -16,8 +18,8 @@ use utils::calculate_short_hash;
 use job::{BlockInputs, BlockJobStackLevel, JobId, RuntimeScope, SessionId};
 
 use manifest_meta::{
-    HandleName, InjectionStore, InputDefPatchMap, InputHandles, JsonValue, NodeId, OutputHandles,
-    ServiceExecutorOptions, TaskBlockExecutor,
+    HandleName, InjectionStore, InjectionTarget, InputDefPatchMap, InputHandles, JsonValue, NodeId,
+    OutputHandles, ServiceExecutorOptions, TaskBlockExecutor,
 };
 use tokio::io::AsyncBufReadExt;
 
@@ -457,6 +459,31 @@ pub struct ExecutorCheckParams<'a> {
     pub flow_path: &'a Option<String>,
     pub executor_payload: &'a ExecutorParameters,
     pub executor_map: Arc<RwLock<HashMap<String, ExecutorState>>>,
+}
+
+fn resolve_package_meta(
+    scope: &RuntimeScope,
+    injection_store: &Option<InjectionStore>,
+) -> (Option<String>, Option<String>) {
+    let package_meta = find_package_file(scope.path()).and_then(|path| read_package(&path).ok());
+
+    let package_name = scope
+        .pkg_name
+        .clone()
+        .or_else(|| package_meta.as_ref().and_then(|meta| meta.name.clone()));
+
+    let package_version = package_meta
+        .as_ref()
+        .and_then(|meta| meta.version.clone())
+        .or_else(|| {
+            injection_store.as_ref().and_then(|store| {
+                store
+                    .get(&InjectionTarget::Package(scope.path().to_owned()))
+                    .map(|meta| meta.package_version.clone())
+            })
+        });
+
+    (package_name, package_version)
 }
 
 fn generate_executor_map_name(executor_name: &str, scope: &RuntimeScope) -> String {
@@ -1051,11 +1078,14 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
         ));
 
         let path_str = pkg.to_string_lossy().to_string();
+        let (package_name, version) = resolve_package_meta(scope, injection_store);
         let mut runtime_layer = create_runtime_layer(
             &path_str,
             &bind_paths,
             &HashMap::default(),
             &executor_payload.env_file,
+            package_name.as_deref(),
+            version.as_deref(),
         )?;
 
         if let Some(store) = injection_store {
