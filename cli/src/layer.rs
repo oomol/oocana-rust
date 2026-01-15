@@ -34,6 +34,35 @@ pub enum LayerAction {
         )]
         env_file: Option<String>,
     },
+    #[command(about = "create registry package layer")]
+    CreateRegistry {
+        #[arg(help = "package name")]
+        package_name: String,
+        #[arg(help = "package version")]
+        version: String,
+        #[arg(help = "package path")]
+        package: String,
+        #[arg(
+            help = "bind paths, format src=<source_path>,dst=<target_path>,rw/ro,recursive/nonrecursive (rw,nonrecursive is default value), accept multiple input. example: --bind-paths src=<source_path>,dst=<target_path>,rw/ro,recursive/nonrecursive --bind-paths src=<source_path>,dst=<target_path>,rw/ro,recursive/nonrecursive",
+            long
+        )]
+        bind_paths: Option<Vec<String>>,
+        #[arg(
+            help = "a file path contains multiple bind paths. The file format is src=<source_path>,dst=<target_path>,rw/ro,recursive/nonrecursive (rw,nonrecursive is default value) line by line, if not provided, it will be found in OOCANA_BIND_PATH_FILE env variable",
+            long
+        )]
+        bind_path_file: Option<String>,
+        #[arg(
+            help = "pass the environment variables(only accept variable name) to layer creation. accept multiple input. example: --retain-env-keys <env> --retain-env-keys <env>",
+            long
+        )]
+        retain_env_keys: Option<Vec<String>>,
+        #[arg(
+            help = ".env file path, when create a layer, these env will pass to this process. The file format is <key>=<value> line by line like traditional env file. if not provided, oocana will search OOCANA_ENV_FILE env variable",
+            long
+        )]
+        env_file: Option<String>,
+    },
     #[command(about = "delete package layer")]
     Delete {
         #[arg(help = "package path")]
@@ -43,6 +72,13 @@ pub enum LayerAction {
     Get {
         #[arg(help = "package path")]
         package: String,
+    },
+    #[command(about = "get registry package layer")]
+    GetRegistry {
+        #[arg(help = "package name")]
+        package_name: String,
+        #[arg(help = "package version")]
+        version: String,
     },
     Scan {
         #[arg(help = "package search path dir which sub directory has package", long)]
@@ -111,12 +147,50 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
 
             layer::get_or_create_package_layer(package, &bind_path_arg, &envs, &env_file)?;
         }
+        LayerAction::CreateRegistry {
+            package_name,
+            version,
+            package,
+            bind_paths,
+            bind_path_file,
+            retain_env_keys,
+            env_file,
+        } => {
+            let bind_path_arg = load_bind_paths(bind_paths, bind_path_file);
+            let envs: HashMap<String, String> = std::env::vars()
+                .filter(|(key, _)| {
+                    key.starts_with("OOMOL_")
+                        || retain_env_keys
+                            .as_ref()
+                            .is_some_and(|list| list.contains(key))
+                })
+                .collect();
+
+            let env_file = find_env_file(env_file);
+
+            layer::get_or_create_registry_layer(
+                package_name,
+                version,
+                package,
+                &bind_path_arg,
+                &envs,
+                &env_file,
+            )?;
+        }
         LayerAction::Delete { package } => {
             layer::delete_package_layer(package)?;
         }
         LayerAction::Get { package } => {
             let status = layer::package_layer_status(package)?;
             info!("package ({package}) status: {status:?}");
+            println!("{status:?}");
+        }
+        LayerAction::GetRegistry {
+            package_name,
+            version,
+        } => {
+            let status = layer::registry_layer_status(package_name, version)?;
+            info!("registry package ({package_name}@{version}) status: {status:?}");
             println!("{status:?}");
         }
         LayerAction::Scan {

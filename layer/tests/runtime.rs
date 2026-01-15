@@ -6,6 +6,8 @@ mod tests {
 
     use ctor::ctor;
     use layer::{convert_to_script, *};
+    use manifest_reader::path_finder::find_package_file;
+    use manifest_reader::reader::read_package;
     use std::path::PathBuf;
     use tracing;
     use tracing_subscriber;
@@ -35,8 +37,17 @@ mod tests {
         let r = get_or_create_package_layer(&d, &vec![], &HashMap::new(), &None);
         assert!(r.is_ok(), "Error: {:?}", r.unwrap_err());
 
-        let runtime_layer =
-            create_runtime_layer(d.to_str().unwrap(), &vec![], &HashMap::new(), &None);
+        let pkg_meta = find_package_file(&d)
+            .and_then(|path| read_package(&path).ok())
+            .expect("package.oo.yaml not found");
+        let runtime_layer = create_runtime_layer(
+            d.to_str().unwrap(),
+            &vec![],
+            &HashMap::new(),
+            &None,
+            pkg_meta.name.as_deref(),
+            pkg_meta.version.as_deref(),
+        );
         assert!(
             runtime_layer.is_ok(),
             "Error: {:?}",

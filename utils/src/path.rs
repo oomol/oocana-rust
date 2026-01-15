@@ -3,28 +3,37 @@ use std::path::Path;
 
 pub fn to_absolute(p: &Path) -> String {
     if p.is_absolute() {
-        p.to_string_lossy().to_string()
-    } else {
-        match p.canonicalize() {
-            Ok(p) => p.to_string_lossy().to_string(),
-            Err(_) => p.to_string_lossy().to_string(),
-        }
+        return p.to_string_lossy().to_string();
     }
+
+    // Try canonicalize first (resolves symlinks and makes absolute)
+    if let Ok(canonical) = p.canonicalize() {
+        return canonical.to_string_lossy().to_string();
+    }
+
+    // Fallback: manually join with current_dir
+    if let Ok(cwd) = std::env::current_dir() {
+        return cwd.join(p).to_string_lossy().to_string();
+    }
+
+    // Last resort: return original path (should rarely happen)
+    p.to_string_lossy().to_string()
 }
 
 pub fn expand_home<P: AsRef<Path>>(path: P) -> String {
     let path = path.as_ref();
-    if path.starts_with("~") || path.starts_with("$HOME") {
+    let s = path.to_string_lossy();
+    const HOME_VAR: &str = "$HOME";
+    if s.starts_with('~') || s.starts_with(HOME_VAR) {
         if let Some(home) = home_dir() {
-            let stripped_path = if path.starts_with("~") {
-                path.strip_prefix("~").unwrap()
+            let rest = if s.starts_with('~') {
+                &s[1..]
             } else {
-                path.strip_prefix("$HOME").unwrap()
+                &s[HOME_VAR.len()..]
             };
-            return home.join(stripped_path).to_string_lossy().to_string();
+            let rest = rest.trim_start_matches(std::path::is_separator);
+            return home.join(rest).to_string_lossy().to_string();
         }
-        path.to_string_lossy().to_string()
-    } else {
-        path.to_string_lossy().to_string()
     }
+    s.to_string()
 }

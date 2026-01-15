@@ -9,6 +9,7 @@ edition = "2021"
 utils = { path = "../utils" }
 job = { path = "../job" }
 layer = { path = "../layer"}
+manifest_reader = { path = "../manifest_reader" }
 manifest_meta = { path = "../manifest_meta" }
 serde = { version = "1.0.149", features = ["derive", "rc"] }
 serde_json = {version = "1.0.89", features = ["preserve_order"] }
