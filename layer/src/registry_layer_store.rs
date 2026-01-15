@@ -230,16 +230,24 @@ pub fn load_registry_store() -> Result<RegistryLayerStore> {
     Ok(store)
 }
 
+/// Save registry store to disk.
+///
+/// # Lock handling
+/// - If `f` is Some: caller must already hold exclusive lock, this function will NOT lock
+/// - If `f` is None: this function will open and lock the file exclusively
 pub fn save_registry_store(store: &RegistryLayerStore, f: Option<File>) -> Result<()> {
-    let file_exist = f.is_some();
-
-    let f = f.unwrap_or(registry_store_file(true)?);
-
-    if file_exist {
-        let _ = FileExt::try_lock_exclusive(&f);
-    } else {
-        FileExt::lock_exclusive(&f).map_err(|e| format!("Failed to lock file: {:?}", e))?;
-    }
+    let (f, should_unlock) = match f {
+        Some(file) => {
+            // Caller already holds the lock
+            (file, false)
+        }
+        None => {
+            // We need to open and lock the file
+            let file = registry_store_file(true)?;
+            FileExt::lock_exclusive(&file).map_err(|e| format!("Failed to lock file: {:?}", e))?;
+            (file, true)
+        }
+    };
 
     f.set_len(0)
         .map_err(|e| format!("Failed to truncate registry store file: {:?}", e))?;
@@ -249,7 +257,9 @@ pub fn save_registry_store(store: &RegistryLayerStore, f: Option<File>) -> Resul
     serde_json::to_writer_pretty(writer, store)
         .map_err(|e| format!("Failed to serialize: {:?}", e))?;
 
-    FileExt::unlock(&f).map_err(|e| format!("Failed to unlock file: {:?}", e))?;
+    if should_unlock {
+        FileExt::unlock(&f).map_err(|e| format!("Failed to unlock file: {:?}", e))?;
+    }
 
     Ok(())
 }
