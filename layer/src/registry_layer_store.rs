@@ -53,7 +53,7 @@ pub fn registry_key(package_name: &str, version: &str) -> String {
 }
 
 const MAX_READ_RETRIES: usize = 5;
-const RETRY_DELAY_MS: u64 = 10;
+const RETRY_DELAY_MS: u64 = 1000;
 
 /// Load registry store with retry mechanism for NFS compatibility.
 /// Retries on read/parse failures to handle transient issues during atomic writes.
