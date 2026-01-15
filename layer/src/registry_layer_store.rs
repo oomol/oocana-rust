@@ -47,15 +47,14 @@ pub fn registry_layer_status(package_name: &str, version: &str) -> Result<Regist
                     p.version
                 );
                 Ok(RegistryLayerStatus::NotInStore)
-            } else if p.validate().is_ok() {
-                Ok(RegistryLayerStatus::Exist)
             } else {
-                tracing::debug!(
-                    "{} layer validation failed: {}",
-                    key,
-                    p.validate().unwrap_err()
-                );
-                Ok(RegistryLayerStatus::NotInStore)
+                match p.validate() {
+                    Ok(_) => Ok(RegistryLayerStatus::Exist),
+                    Err(e) => {
+                        tracing::debug!("{} layer validation failed: {}", key, e);
+                        Ok(RegistryLayerStatus::NotInStore)
+                    }
+                }
             }
         }
         None => Ok(RegistryLayerStatus::NotInStore),
