@@ -1,3 +1,39 @@
+//! Registry layer store management.
+//!
+//! # Concurrency Model
+//!
+//! This module implements a **single-writer, multi-reader** concurrency model optimized for
+//! NFS compatibility:
+//!
+//! ## Write Operations (Single Writer Required)
+//!
+//! Functions that modify the registry store:
+//! - [`get_or_create_registry_layer`]
+//! - [`delete_registry_layer`]
+//! - [`save_registry_store`]
+//!
+//! **Callers MUST ensure only ONE process executes write operations at any time.**
+//! No file locks are used. Concurrent writes will race (last write wins, data loss possible).
+//!
+//! ## Read Operations (Multi-Reader Safe)
+//!
+//! Functions that only read the registry store:
+//! - [`get_registry_layer`]
+//! - [`list_registry_layers`]
+//! - [`registry_layer_status`]
+//! - [`load_registry_store`]
+//!
+//! Multiple processes can safely read concurrently, even while a single writer is active.
+//! Atomic rename ensures readers always see consistent data (never partial writes).
+//!
+//! ## Why No File Locks?
+//!
+//! File locks (flock/fcntl) are unreliable on NFS file systems. Instead, we use:
+//! - **Atomic writes**: write-to-temp + rename (POSIX atomic operation)
+//! - **Retry on read**: handle transient failures during concurrent read/write
+//!
+//! This is simpler, more reliable, and works correctly on NFS.
+
 use crate::layer;
 use crate::ovmlayer::{BindPath, LayerType};
 use crate::package_layer::PackageLayer;
@@ -138,6 +174,28 @@ pub fn registry_layer_status(package_name: &str, version: &str) -> Result<Regist
     }
 }
 
+/// Get or create a registry layer.
+///
+/// # Concurrency Requirements
+///
+/// **IMPORTANT: This function performs write operations and assumes a single-writer model.**
+///
+/// Callers MUST ensure that only ONE process calls this function (or any other registry write
+/// function) at the same time. Concurrent writes from multiple processes will result in a
+/// race condition where the last write wins, potentially losing data.
+///
+/// This design choice prioritizes NFS compatibility and simplicity over multi-writer support.
+///
+/// # Safe Concurrent Usage
+///
+/// - ✅ Multiple processes can READ concurrently (via `get_registry_layer`, `list_registry_layers`)
+/// - ✅ Single process can WRITE while others READ (atomic rename ensures readers see consistent data)
+/// - ❌ Multiple processes MUST NOT WRITE concurrently
+///
+/// Typical usage patterns:
+/// - Single mainframe process manages all registry writes
+/// - CLI tools only read registry data
+/// - If CLI needs to write, ensure mainframe is not running
 pub fn get_or_create_registry_layer<P: AsRef<Path>>(
     package_name: &str,
     version: &str,
@@ -200,6 +258,22 @@ pub fn get_registry_layer(package_name: &str, version: &str) -> Result<Option<Pa
     }
 }
 
+/// Delete a registry layer and its associated OCI layers.
+///
+/// # Concurrency Requirements
+///
+/// **IMPORTANT: This is a WRITE operation. Only ONE process can call registry write functions
+/// at the same time.**
+///
+/// See [`get_or_create_registry_layer`] for detailed concurrency requirements.
+///
+/// # Behavior
+///
+/// - Removes the package entry from the registry store
+/// - Deletes associated OCI layers if they are not shared or in use
+/// - Skips deletion of layers that are:
+///   - Referenced by other packages in the registry
+///   - Currently in use by running containers
 pub fn delete_registry_layer(package_name: &str, version: &str) -> Result<()> {
     let key = registry_key(package_name, version);
     let mut store = load_registry_store()?;
@@ -267,6 +341,20 @@ pub fn load_registry_store() -> Result<RegistryLayerStore> {
 }
 
 /// Save registry store to disk using atomic write.
+///
+/// # Concurrency Requirements
+///
+/// **IMPORTANT: This is a WRITE operation. Only ONE process can call registry write functions
+/// at the same time.**
+///
+/// See [`get_or_create_registry_layer`] for detailed concurrency requirements.
+///
+/// # Implementation
+///
+/// Uses atomic write (write-to-temp + rename) to ensure:
+/// - NFS compatibility (no reliance on file locks)
+/// - Readers never see partial/corrupted data
+/// - Write operation is all-or-nothing
 pub fn save_registry_store(store: &RegistryLayerStore) -> Result<()> {
     save_registry_store_atomic(store)
 }
