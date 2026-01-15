@@ -240,10 +240,35 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
                             continue;
                         }
 
-                        if find_package_file(&path).is_some() {
-                            let status = layer::package_layer_status(&path)?;
-                            tracing::debug!("find package file in {path:?} with status {status:?}");
-                            package_map.insert(path, format!("{status:?}"));
+                        // Check if this is a scope directory (starts with @)
+                        let dir_name = path
+                            .file_name()
+                            .and_then(|n| n.to_str())
+                            .unwrap_or("");
+
+                        if dir_name.starts_with('@') {
+                            // For @scope directories, scan their subdirectories
+                            let scope_entries = std::fs::read_dir(&path)?;
+                            for scope_entry in scope_entries {
+                                let scope_entry = scope_entry?;
+                                let scope_path = scope_entry.path();
+                                if !scope_path.is_dir() {
+                                    continue;
+                                }
+
+                                if find_package_file(&scope_path).is_some() {
+                                    let status = layer::package_layer_status(&scope_path)?;
+                                    tracing::debug!("find package file in {scope_path:?} with status {status:?}");
+                                    package_map.insert(scope_path, format!("{status:?}"));
+                                }
+                            }
+                        } else {
+                            // Regular directories, use original logic
+                            if find_package_file(&path).is_some() {
+                                let status = layer::package_layer_status(&path)?;
+                                tracing::debug!("find package file in {path:?} with status {status:?}");
+                                package_map.insert(path, format!("{status:?}"));
+                            }
                         }
                     }
                 } else {
