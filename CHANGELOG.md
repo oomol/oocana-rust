@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.30.25 (2026-01-15)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* feat: add package name and version to get api by @leavesster in https://github.com/oomol/oocana-rust/pull/372
+* refactor: refactor registry layer store to support nfs and add more strict by @leavesster in https://github.com/oomol/oocana-rust/pull/374
+* feat: enhance package layer scanning to support scoped directories by @leavesster in https://github.com/oomol/oocana-rust/pull/375
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.30.24...v0.30.25
+
 ## 0.30.24 (2026-01-15)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
