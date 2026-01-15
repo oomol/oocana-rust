@@ -44,6 +44,14 @@ pub fn create_runtime_layer(
     package_name: Option<&str>,
     version: Option<&str>,
 ) -> Result<RuntimeLayer> {
+    // Helper to get package layer with logging
+    let get_package_layer = || {
+        get_or_create_package_layer(package, bind_paths, envs, env_file).map(|layer| {
+            info!("runtime layer from package store: {}", package);
+            layer
+        })
+    };
+
     let layer: std::result::Result<PackageLayer, utils::error::Error> =
         match (package_name, version) {
             (Some(pkg_name), Some(ver)) => {
@@ -59,23 +67,11 @@ pub fn create_runtime_layer(
                             "get registry layer failed: {:?}, fallback to package layer",
                             e
                         );
-                        match get_or_create_package_layer(package, bind_paths, envs, env_file) {
-                            Ok(layer) => {
-                                info!("runtime layer from package store: {}", package);
-                                Ok(layer)
-                            }
-                            Err(e) => Err(e),
-                        }
+                        get_package_layer()
                     }
                 }
             }
-            _ => match get_or_create_package_layer(package, bind_paths, envs, env_file) {
-                Ok(layer) => {
-                    info!("runtime layer from package store: {}", package);
-                    Ok(layer)
-                }
-                Err(e) => Err(e),
-            },
+            _ => get_package_layer(),
         };
 
     match layer {
