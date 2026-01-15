@@ -120,30 +120,31 @@ pub fn delete_registry_layer(package_name: &str, version: &str) -> Result<()> {
     let key = registry_key(package_name, version);
     let mut store = load_registry_store()?;
 
+    // Remove the package and collect all its layers
     let pkg_layer = store.packages.remove(&key);
 
     let mut delete_layers = vec![];
-    if let Some(pkg_layer) = pkg_layer {
-        if let Some(layers) = pkg_layer.base_layers {
-            for l in layers {
-                delete_layers.push(l);
-            }
+    if let Some(pkg_layer) = &pkg_layer {
+        // Collect all layers including source_layer
+        if let Some(layers) = &pkg_layer.base_layers {
+            delete_layers.extend(layers.iter().cloned());
         }
-        if let Some(bootstrap_layer) = pkg_layer.bootstrap_layer {
-            delete_layers.push(bootstrap_layer);
+        if let Some(bootstrap_layer) = &pkg_layer.bootstrap_layer {
+            delete_layers.push(bootstrap_layer.clone());
         }
+        delete_layers.push(pkg_layer.source_layer.clone());
     }
 
+    // Collect all layers still referenced by remaining packages
     let mut stored_layers = vec![];
     for (_, p) in store.packages.iter() {
         if let Some(layers) = &p.base_layers {
-            for l in layers {
-                stored_layers.push(l.clone());
-            }
+            stored_layers.extend(layers.iter().cloned());
         }
         if let Some(bootstrap_layer) = &p.bootstrap_layer {
             stored_layers.push(bootstrap_layer.clone());
         }
+        stored_layers.push(p.source_layer.clone());
     }
 
     let used_layers = layer::list_layers(Some(LayerType::UsedLayers))?;
@@ -157,9 +158,7 @@ pub fn delete_registry_layer(package_name: &str, version: &str) -> Result<()> {
         }
     }
 
-    let mut store = load_registry_store()?;
-    store.packages.remove(&key);
-
+    // Save the modified store
     save_registry_store(&store, None)?;
 
     Ok(())
