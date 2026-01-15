@@ -44,36 +44,39 @@ pub fn create_runtime_layer(
     package_name: Option<&str>,
     version: Option<&str>,
 ) -> Result<RuntimeLayer> {
-    let layer = match (package_name, version) {
-        (Some(pkg_name), Some(ver)) => {
-            match get_or_create_registry_layer(pkg_name, ver, package, bind_paths, envs, env_file) {
-                Ok(layer) => {
-                    info!("runtime layer from registry store: {}@{}", pkg_name, ver);
-                    Ok(layer)
-                }
-                Err(e) => {
-                    info!(
-                        "get registry layer failed: {:?}, fallback to package layer",
-                        e
-                    );
-                    match get_or_create_package_layer(package, bind_paths, envs, env_file) {
-                        Ok(layer) => {
-                            info!("runtime layer from package store: {}", package);
-                            Ok(layer)
+    let layer: std::result::Result<PackageLayer, utils::error::Error> =
+        match (package_name, version) {
+            (Some(pkg_name), Some(ver)) => {
+                match get_or_create_registry_layer(
+                    pkg_name, ver, package, bind_paths, envs, env_file,
+                ) {
+                    Ok(layer) => {
+                        info!("runtime layer from registry store: {}@{}", pkg_name, ver);
+                        Ok(layer)
+                    }
+                    Err(e) => {
+                        info!(
+                            "get registry layer failed: {:?}, fallback to package layer",
+                            e
+                        );
+                        match get_or_create_package_layer(package, bind_paths, envs, env_file) {
+                            Ok(layer) => {
+                                info!("runtime layer from package store: {}", package);
+                                Ok(layer)
+                            }
+                            Err(e) => Err(e),
                         }
-                        Err(e) => Err(e),
                     }
                 }
             }
-        }
-        _ => match get_or_create_package_layer(package, bind_paths, envs, env_file) {
-            Ok(layer) => {
-                info!("runtime layer from package store: {}", package);
-                Ok(layer)
-            }
-            Err(e) => Err(e),
-        },
-    };
+            _ => match get_or_create_package_layer(package, bind_paths, envs, env_file) {
+                Ok(layer) => {
+                    info!("runtime layer from package store: {}", package);
+                    Ok(layer)
+                }
+                Err(e) => Err(e),
+            },
+        };
 
     match layer {
         Ok(layer) => match create_runtime_layer_from_package_layer(&layer) {

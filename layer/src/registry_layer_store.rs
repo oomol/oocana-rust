@@ -3,6 +3,8 @@ use crate::ovmlayer::{BindPath, LayerType};
 use crate::package_layer::PackageLayer;
 
 use fs2::FileExt;
+use manifest_reader::path_finder::find_package_file;
+use manifest_reader::reader::read_package;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::env;
@@ -65,7 +67,6 @@ pub fn get_or_create_registry_layer<P: AsRef<Path>>(
     package_name: &str,
     version: &str,
     package_path: P,
-    bootstrap: Option<String>,
     bind_path: &[BindPath],
     envs: &HashMap<String, String>,
     env_file: &Option<String>,
@@ -73,7 +74,23 @@ pub fn get_or_create_registry_layer<P: AsRef<Path>>(
     let key = registry_key(package_name, version);
     let package_path = package_path.as_ref();
 
-    let mut store = load_registry_store()?;
+    // Get package metadata to extract bootstrap
+    let bootstrap = find_package_file(package_path)
+        .and_then(|path| read_package(&path).ok())
+        .and_then(|pkg| pkg.scripts)
+        .and_then(|scripts| scripts.bootstrap);
+
+    // Open file for read-write and hold exclusive lock for entire operation
+    let f = registry_store_file(true)?;
+    FileExt::lock_exclusive(&f).map_err(|e| format!("Failed to lock file: {:?}", e))?;
+    let _defer = Defer(Some(|| {
+        let _ = FileExt::unlock(&f);
+    }));
+
+    // Load the store under exclusive lock
+    let reader = std::io::BufReader::new(&f);
+    let mut store: RegistryLayerStore = serde_json::from_reader(reader)
+        .map_err(|e| format!("Failed to deserialize registry store: {:?}", e))?;
 
     // Check if existing package is valid
     if let Some(p) = store.packages.get(&key) {
@@ -102,9 +119,16 @@ pub fn get_or_create_registry_layer<P: AsRef<Path>>(
         env_file,
     )?;
 
-    // Insert and save
+    // Insert and save while still holding the lock
     store.packages.insert(key, layer.clone());
-    save_registry_store(&store, None)?;
+
+    // Truncate and rewrite the file
+    f.set_len(0)
+        .map_err(|e| format!("Failed to truncate registry store file: {:?}", e))?;
+
+    let writer = std::io::BufWriter::new(&f);
+    serde_json::to_writer_pretty(writer, &store)
+        .map_err(|e| format!("Failed to serialize: {:?}", e))?;
 
     Ok(layer)
 }
@@ -151,18 +175,27 @@ pub fn delete_registry_layer(package_name: &str, version: &str) -> Result<()> {
     }
 
     let used_layers = layer::list_layers(Some(LayerType::UsedLayers))?;
+    let mut delete_errors = vec![];
     for l in delete_layers {
         if stored_layers.contains(&l) {
             tracing::warn!("layer {} is shared, skip delete", l);
         } else if used_layers.contains(&l) {
             tracing::warn!("layer {} is used, skip delete", l);
         } else {
-            layer::delete_layer(&l)?;
+            if let Err(e) = layer::delete_layer(&l) {
+                tracing::error!("Failed to delete layer {}: {:?}", l, e);
+                delete_errors.push((l, e));
+            }
         }
     }
 
-    // Save the modified store
+    // Save the modified store regardless of delete errors
     save_registry_store(&store, None)?;
+
+    // Return error if any deletions failed
+    if !delete_errors.is_empty() {
+        return Err(format!("Failed to delete {} layer(s)", delete_errors.len()).into());
+    }
 
     Ok(())
 }
@@ -204,7 +237,11 @@ fn registry_store_file(write: bool) -> Result<File> {
     }
 
     let f = if write {
-        File::create(&file_path).map_err(|e| format!("Failed to open file: {:?}", e))?
+        std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(&file_path)
+            .map_err(|e| format!("Failed to open file for writing: {:?}", e))?
     } else {
         File::open(&file_path).map_err(|e| format!("Failed to open file: {:?}", e))?
     };
