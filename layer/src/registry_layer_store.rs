@@ -65,20 +65,13 @@ pub fn get_or_create_registry_layer<P: AsRef<Path>>(
     package_name: &str,
     version: &str,
     package_path: P,
+    bootstrap: Option<String>,
     bind_path: &[BindPath],
     envs: &HashMap<String, String>,
     env_file: &Option<String>,
 ) -> Result<PackageLayer> {
-    use manifest_reader::{path_finder::find_package_file, reader::read_package};
-
     let key = registry_key(package_name, version);
     let package_path = package_path.as_ref();
-
-    // Extract bootstrap from package manifest (same as get_or_create_package_layer)
-    let bootstrap = find_package_file(package_path)
-        .and_then(|path| read_package(&path).ok())
-        .and_then(|pkg| pkg.scripts)
-        .and_then(|scripts| scripts.bootstrap);
 
     let mut store = load_registry_store()?;
 
@@ -90,7 +83,11 @@ pub fn get_or_create_registry_layer<P: AsRef<Path>>(
                 return Ok(p.clone());
             }
             // Invalid layer, will recreate
-            tracing::debug!("{} layer validation failed: {:?}, recreating", key, validation_result.unwrap_err());
+            tracing::debug!(
+                "{} layer validation failed: {:?}, recreating",
+                key,
+                validation_result.unwrap_err()
+            );
         }
     }
 
@@ -176,23 +173,34 @@ pub fn list_registry_layers() -> Result<Vec<PackageLayer>> {
 }
 
 fn registry_store_file(write: bool) -> Result<File> {
-    let file_path = config::registry_store_file().ok_or("Failed to get registry store file path")?;
+    let file_path =
+        config::registry_store_file().ok_or("Failed to get registry store file path")?;
 
     if let Some(dir) = file_path.parent() {
         std::fs::create_dir_all(dir).map_err(|e| format!("Failed to create dir: {:?}", e))?;
     }
 
-    if !file_path.exists() {
-        let f = File::create(&file_path).map_err(|e| format!("Failed to create file: {:?}", e))?;
-        FileExt::lock_exclusive(&f).map_err(|e| format!("Failed to lock file: {:?}", e))?;
-        let writer = std::io::BufWriter::new(&f);
-        let store = RegistryLayerStore {
-            version: env!("CARGO_PKG_VERSION").to_string(),
-            packages: HashMap::new(),
-        };
-        serde_json::to_writer(writer, &store)
-            .map_err(|e| format!("Failed to serialize: {:?}", e))?;
-        FileExt::unlock(&f).map_err(|e| format!("Failed to unlock file: {:?}", e))?;
+    // Try to atomically create the file if it doesn't exist
+    match std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&file_path)
+    {
+        Ok(f) => {
+            FileExt::lock_exclusive(&f).map_err(|e| format!("Failed to lock file: {:?}", e))?;
+            let writer = std::io::BufWriter::new(&f);
+            let store = RegistryLayerStore {
+                version: env!("CARGO_PKG_VERSION").to_string(),
+                packages: HashMap::new(),
+            };
+            serde_json::to_writer(writer, &store)
+                .map_err(|e| format!("Failed to serialize: {:?}", e))?;
+            FileExt::unlock(&f).map_err(|e| format!("Failed to unlock file: {:?}", e))?;
+        }
+        Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
+            // File already exists, continue
+        }
+        Err(e) => return Err(format!("Failed to create file: {:?}", e).into()),
     }
 
     let f = if write {
@@ -216,12 +224,8 @@ pub fn load_registry_store() -> Result<RegistryLayerStore> {
     }));
 
     let reader = std::io::BufReader::new(&f);
-    let store: RegistryLayerStore = serde_json::from_reader(reader).map_err(|e| {
-        format!(
-            "Failed to deserialize registry store: {:?}",
-            e
-        )
-    })?;
+    let store: RegistryLayerStore = serde_json::from_reader(reader)
+        .map_err(|e| format!("Failed to deserialize registry store: {:?}", e))?;
 
     drop(_defer);
 
