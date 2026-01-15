@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.30.26 (2026-01-15)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* feat: enhance layer action to read package name and version from metadata if not provided by @leavesster in https://github.com/oomol/oocana-rust/pull/376
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.30.25...v0.30.26
+
 ## 0.30.25 (2026-01-15)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
