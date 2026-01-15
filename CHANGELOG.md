@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.30.24 (2026-01-15)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* chore: Update webhook URL in publish.yml by @leavesster in https://github.com/oomol/oocana-rust/pull/369
+* feat: add registry layer store by @leavesster in https://github.com/oomol/oocana-rust/pull/370
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.30.23...v0.30.24
+
 ## 0.30.23 (2025-12-23)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
