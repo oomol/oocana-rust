@@ -1,8 +1,8 @@
 use std::{net::SocketAddr, time::Duration};
 
 use async_trait::async_trait;
-use tracing::warn;
 use rumqttc::{AsyncClient, Event, EventLoop, Incoming, MqttOptions, QoS};
+use tracing::warn;
 
 use job::{JobId, SessionId};
 use mainframe::{
@@ -48,7 +48,9 @@ impl WorkerRxImpl for WorkerRx {
 }
 
 pub async fn connect(
-    addr: SocketAddr, session_id: SessionId, job_id: JobId,
+    addr: SocketAddr,
+    session_id: SessionId,
+    job_id: JobId,
 ) -> (WorkerTx, WorkerRx) {
     let mut options = MqttOptions::new(
         format!("oocana-worker-{}", &job_id),

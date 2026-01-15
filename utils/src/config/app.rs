@@ -7,8 +7,8 @@ use std::sync::Mutex;
 
 use dirs::home_dir;
 
-use crate::path::expand_home;
 use super::{global_config::GlobalConfig, run_config::RunConfig};
+use crate::path::expand_home;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct AppConfig {

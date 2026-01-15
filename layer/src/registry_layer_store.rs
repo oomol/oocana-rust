@@ -1,15 +1,48 @@
+//! Registry layer store management.
+//!
+//! # Concurrency Model
+//!
+//! This module implements a **single-writer, multi-reader** concurrency model optimized for
+//! NFS compatibility:
+//!
+//! ## Write Operations (Single Writer Required)
+//!
+//! Functions that modify the registry store:
+//! - [`create_registry_layer`]
+//! - [`delete_registry_layer`]
+//! - [`save_registry_store`]
+//!
+//! **Callers MUST ensure only ONE process executes write operations at any time.**
+//! No file locks are used. Concurrent writes will race (last write wins, data loss possible).
+//!
+//! ## Read Operations (Multi-Reader Safe)
+//!
+//! Functions that only read the registry store:
+//! - [`get_registry_layer`]
+//! - [`list_registry_layers`]
+//! - [`registry_layer_status`]
+//! - [`load_registry_store`]
+//!
+//! Multiple processes can safely read concurrently, even while a single writer is active.
+//! Atomic rename ensures readers always see consistent data (never partial writes).
+//!
+//! ## Why No File Locks?
+//!
+//! File locks (flock/fcntl) are unreliable on NFS file systems. Instead, we use:
+//! - **Atomic writes**: write-to-temp + rename (POSIX atomic operation)
+//! - **Retry on read**: handle transient failures during concurrent read/write
+//!
+//! This is simpler, more reliable, and works correctly on NFS.
+
 use crate::layer;
 use crate::ovmlayer::{BindPath, LayerType};
 use crate::package_layer::PackageLayer;
 
-use fs2::FileExt;
 use manifest_reader::path_finder::find_package_file;
 use manifest_reader::reader::read_package;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::env;
-use std::fs::File;
-use std::io::{Seek, Write};
 use std::path::Path;
 use utils::{config, error::Result};
 
@@ -17,6 +50,92 @@ use utils::{config, error::Result};
 /// Format: `package_name@version`
 pub fn registry_key(package_name: &str, version: &str) -> String {
     format!("{}@{}", package_name, version)
+}
+
+const MAX_READ_RETRIES: usize = 5;
+const RETRY_DELAY_MS: u64 = 1000;
+
+/// Load registry store with retry mechanism for NFS compatibility.
+/// Retries on read/parse failures to handle transient issues during atomic writes.
+fn load_registry_store_with_retry() -> Result<RegistryLayerStore> {
+    let file_path = config::registry_store_file()
+        .ok_or("Failed to get registry store file path")?;
+
+    for attempt in 0..MAX_READ_RETRIES {
+        match std::fs::read_to_string(&file_path) {
+            Ok(content) => {
+                match serde_json::from_str::<RegistryLayerStore>(&content) {
+                    Ok(store) => {
+                        // Version check (preserve existing logic)
+                        if store.version != env!("CARGO_PKG_VERSION") {
+                            tracing::warn!(
+                                "Registry store version mismatch: {} != {}, proceeding without migration",
+                                store.version,
+                                env!("CARGO_PKG_VERSION")
+                            );
+                        }
+                        return Ok(store);
+                    }
+                    Err(e) if attempt < MAX_READ_RETRIES - 1 => {
+                        tracing::debug!(
+                            "JSON parse failed (attempt {}): {}, retrying...",
+                            attempt + 1,
+                            e
+                        );
+                        std::thread::sleep(std::time::Duration::from_millis(RETRY_DELAY_MS));
+                        continue;
+                    }
+                    Err(e) => return Err(format!("Failed to parse store: {:?}", e).into()),
+                }
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                // File doesn't exist, initialize new store
+                return Ok(RegistryLayerStore {
+                    version: env!("CARGO_PKG_VERSION").to_string(),
+                    packages: HashMap::new(),
+                });
+            }
+            Err(e) if attempt < MAX_READ_RETRIES - 1 => {
+                tracing::debug!(
+                    "File read failed (attempt {}): {}, retrying...",
+                    attempt + 1,
+                    e
+                );
+                std::thread::sleep(std::time::Duration::from_millis(RETRY_DELAY_MS));
+                continue;
+            }
+            Err(e) => return Err(format!("Failed to read file: {:?}", e).into()),
+        }
+    }
+
+    unreachable!()
+}
+
+/// Atomically save registry store using write-to-temp + rename.
+/// This is NFS-safe and more reliable than file locks.
+fn save_registry_store_atomic(store: &RegistryLayerStore) -> Result<()> {
+    let file_path = config::registry_store_file()
+        .ok_or("Failed to get registry store file path")?;
+
+    // Ensure directory exists
+    if let Some(dir) = file_path.parent() {
+        std::fs::create_dir_all(dir)
+            .map_err(|e| format!("Failed to create dir: {:?}", e))?;
+    }
+
+    // Write to temporary file
+    let temp_path = file_path.with_extension("tmp");
+    let content = serde_json::to_string_pretty(store)
+        .map_err(|e| format!("Failed to serialize: {:?}", e))?;
+
+    std::fs::write(&temp_path, content)
+        .map_err(|e| format!("Failed to write temp file: {:?}", e))?;
+
+    // Atomic rename (readers see either old or new file, never partial)
+    std::fs::rename(&temp_path, &file_path)
+        .map_err(|e| format!("Failed to rename temp file: {:?}", e))?;
+
+    Ok(())
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -55,7 +174,29 @@ pub fn registry_layer_status(package_name: &str, version: &str) -> Result<Regist
     }
 }
 
-pub fn get_or_create_registry_layer<P: AsRef<Path>>(
+/// Create or update a registry layer.
+///
+/// # Concurrency Requirements
+///
+/// **IMPORTANT: This is a WRITE operation. Only ONE process can call registry write functions
+/// at the same time.**
+///
+/// See module-level documentation for detailed concurrency requirements.
+///
+/// # Behavior
+///
+/// - If the layer exists and is valid, returns it
+/// - If the layer is invalid or doesn't exist, creates a new one
+/// - Always writes to the registry store (potential data race if called concurrently)
+///
+/// # Intended Usage
+///
+/// This function should ONLY be called from:
+/// - CLI `create-registry` command
+/// - Explicit package installation workflows
+///
+/// Runtime code should use [`get_registry_layer`] instead.
+pub fn create_registry_layer<P: AsRef<Path>>(
     package_name: &str,
     version: &str,
     package_path: P,
@@ -72,29 +213,19 @@ pub fn get_or_create_registry_layer<P: AsRef<Path>>(
         .and_then(|pkg| pkg.scripts)
         .and_then(|scripts| scripts.bootstrap);
 
-    // Open file for read-write and hold exclusive lock for entire operation
-    let mut f = registry_store_file(true)?;
-    FileExt::lock_exclusive(&f).map_err(|e| format!("Failed to lock file: {:?}", e))?;
-
-    // Load the store under exclusive lock
-    let reader = std::io::BufReader::new(&f);
-    let mut store: RegistryLayerStore = serde_json::from_reader(reader)
-        .map_err(|e| format!("Failed to deserialize registry store: {:?}", e))?;
+    // Load the store with retry mechanism
+    let mut store = load_registry_store()?;
 
     // Check if existing package is valid
     if let Some(p) = store.packages.get(&key) {
         if p.version.as_deref() == Some(version) {
-            let validation_result = p.validate();
-            if validation_result.is_ok() {
-                // Unlock before returning
-                let _ = FileExt::unlock(&f);
+            if p.validate().is_ok() {
                 return Ok(p.clone());
             }
             // Invalid layer, will recreate
             tracing::debug!(
-                "{} layer validation failed: {:?}, recreating",
-                key,
-                validation_result.unwrap_err()
+                "{} layer validation failed, recreating",
+                key
             );
         }
     }
@@ -110,23 +241,9 @@ pub fn get_or_create_registry_layer<P: AsRef<Path>>(
         env_file,
     )?;
 
-    // Insert and save while still holding the lock
+    // Insert and save atomically
     store.packages.insert(key, layer.clone());
-
-    // Truncate and rewrite the file
-    f.set_len(0)
-        .map_err(|e| format!("Failed to truncate registry store file: {:?}", e))?;
-    f.seek(std::io::SeekFrom::Start(0))
-        .map_err(|e| format!("Failed to seek to start: {:?}", e))?;
-
-    let mut writer = std::io::BufWriter::new(&f);
-    serde_json::to_writer_pretty(&mut writer, &store)
-        .map_err(|e| format!("Failed to serialize: {:?}", e))?;
-    writer.flush()
-        .map_err(|e| format!("Failed to flush writer: {:?}", e))?;
-
-    // Unlock the file
-    FileExt::unlock(&f).map_err(|e| format!("Failed to unlock file: {:?}", e))?;
+    save_registry_store_atomic(&store)?;
 
     Ok(layer)
 }
@@ -141,6 +258,22 @@ pub fn get_registry_layer(package_name: &str, version: &str) -> Result<Option<Pa
     }
 }
 
+/// Delete a registry layer and its associated OCI layers.
+///
+/// # Concurrency Requirements
+///
+/// **IMPORTANT: This is a WRITE operation. Only ONE process can call registry write functions
+/// at the same time.**
+///
+/// See module-level documentation for detailed concurrency requirements.
+///
+/// # Behavior
+///
+/// - Removes the package entry from the registry store
+/// - Deletes associated OCI layers if they are not shared or in use
+/// - Skips deletion of layers that are:
+///   - Referenced by other packages in the registry
+///   - Currently in use by running containers
 pub fn delete_registry_layer(package_name: &str, version: &str) -> Result<()> {
     let key = registry_key(package_name, version);
     let mut store = load_registry_store()?;
@@ -188,7 +321,7 @@ pub fn delete_registry_layer(package_name: &str, version: &str) -> Result<()> {
     }
 
     // Save the modified store regardless of delete errors
-    save_registry_store(&store, None)?;
+    save_registry_store(&store)?;
 
     // Return error if any deletions failed
     if !delete_errors.is_empty() {
@@ -203,114 +336,27 @@ pub fn list_registry_layers() -> Result<Vec<PackageLayer>> {
     Ok(store.packages.into_values().collect())
 }
 
-fn registry_store_file(write: bool) -> Result<File> {
-    let file_path =
-        config::registry_store_file().ok_or("Failed to get registry store file path")?;
-
-    if let Some(dir) = file_path.parent() {
-        std::fs::create_dir_all(dir).map_err(|e| format!("Failed to create dir: {:?}", e))?;
-    }
-
-    // Try to atomically create the file if it doesn't exist
-    match std::fs::OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(&file_path)
-    {
-        Ok(f) => {
-            FileExt::lock_exclusive(&f).map_err(|e| format!("Failed to lock file: {:?}", e))?;
-            let writer = std::io::BufWriter::new(&f);
-            let store = RegistryLayerStore {
-                version: env!("CARGO_PKG_VERSION").to_string(),
-                packages: HashMap::new(),
-            };
-            serde_json::to_writer(writer, &store)
-                .map_err(|e| format!("Failed to serialize: {:?}", e))?;
-            FileExt::unlock(&f).map_err(|e| format!("Failed to unlock file: {:?}", e))?;
-        }
-        Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
-            // File already exists, continue
-        }
-        Err(e) => return Err(format!("Failed to create file: {:?}", e).into()),
-    }
-
-    let f = if write {
-        std::fs::OpenOptions::new()
-            .read(true)
-            .write(true)
-            .open(&file_path)
-            .map_err(|e| format!("Failed to open file for writing: {:?}", e))?
-    } else {
-        File::open(&file_path).map_err(|e| format!("Failed to open file: {:?}", e))?
-    };
-
-    Ok(f)
-}
-
 pub fn load_registry_store() -> Result<RegistryLayerStore> {
-    let f = registry_store_file(false)?;
-
-    FileExt::lock_shared(&f).map_err(|e| format!("Failed to lock file: {:?}", e))?;
-
-    let reader = std::io::BufReader::new(&f);
-    let store: RegistryLayerStore = serde_json::from_reader(reader)
-        .map_err(|e| {
-            // Unlock on error
-            let _ = FileExt::unlock(&f);
-            format!("Failed to deserialize registry store: {:?}", e)
-        })?;
-
-    // Unlock after successful read
-    FileExt::unlock(&f).map_err(|e| format!("Failed to unlock file: {:?}", e))?;
-
-    // TODO: Implement migration logic when version changes
-    if store.version != env!("CARGO_PKG_VERSION") {
-        tracing::warn!(
-            "Registry store version mismatch: {} != {}, proceeding without migration",
-            store.version,
-            env!("CARGO_PKG_VERSION")
-        );
-    }
-
-    Ok(store)
+    load_registry_store_with_retry()
 }
 
-/// Save registry store to disk.
+/// Save registry store to disk using atomic write.
 ///
-/// # Lock handling
-/// - If `f` is Some: caller must already hold exclusive lock, this function will NOT lock
-/// - If `f` is None: this function will open and lock the file exclusively
-pub fn save_registry_store(store: &RegistryLayerStore, f: Option<File>) -> Result<()> {
-    let (mut f, should_unlock) = match f {
-        Some(file) => {
-            // Caller already holds the lock
-            (file, false)
-        }
-        None => {
-            // We need to open and lock the file
-            let file = registry_store_file(true)?;
-            FileExt::lock_exclusive(&file).map_err(|e| format!("Failed to lock file: {:?}", e))?;
-            (file, true)
-        }
-    };
-
-    f.set_len(0)
-        .map_err(|e| format!("Failed to truncate registry store file: {:?}", e))?;
-    f.seek(std::io::SeekFrom::Start(0))
-        .map_err(|e| format!("Failed to seek to start: {:?}", e))?;
-
-    let mut writer = std::io::BufWriter::new(&f);
-
-    serde_json::to_writer_pretty(&mut writer, store)
-        .map_err(|e| format!("Failed to serialize: {:?}", e))?;
-    writer.flush()
-        .map_err(|e| format!("Failed to flush writer: {:?}", e))?;
-
-    if should_unlock {
-        FileExt::unlock(&f).map_err(|e| format!("Failed to unlock file: {:?}", e))?;
-    }
-
-    Ok(())
+/// # Concurrency Requirements
+///
+/// **IMPORTANT: This is a WRITE operation. Only ONE process can call registry write functions
+/// at the same time.**
+///
+/// See module-level documentation for detailed concurrency requirements.
+///
+/// # Implementation
+///
+/// Uses atomic write (write-to-temp + rename) to ensure:
+/// - NFS compatibility (no reliance on file locks)
+/// - Readers never see partial/corrupted data
+/// - Write operation is all-or-nothing
+pub fn save_registry_store(store: &RegistryLayerStore) -> Result<()> {
+    save_registry_store_atomic(store)
 }
 
 #[derive(Serialize, Deserialize, Debug)]
