@@ -21,9 +21,11 @@ pub fn oocana_dir() -> Option<PathBuf> {
 }
 
 pub fn registry_store_file() -> Option<PathBuf> {
+    use crate::path::expand_home;
+
     if let Ok(val) = std::env::var("OOMOL_REGISTRY_STORE_FILE") {
         if !val.is_empty() {
-            return Some(PathBuf::from(val));
+            return Some(PathBuf::from(expand_home(&val)));
         }
     }
 
