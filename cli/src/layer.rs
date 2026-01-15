@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use crate::fun::arg::{find_env_file, load_bind_paths};
 use clap::Subcommand;
 use manifest_reader::path_finder::find_package_file;
+use manifest_reader::reader::read_package;
 use std::io::Write;
 use tracing::info;
 use utils::error::{Error, Result};
@@ -191,11 +192,28 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
             package_name,
             version,
         } => {
-            // If registry info provided, try registry layer first with fallback
-            if let (Some(pkg_name), Some(ver)) = (package_name, version) {
-                match layer::registry_layer_status(pkg_name, ver) {
+            // Determine package name and version: use provided args or read from package meta
+            let (pkg_name, ver) = match (package_name, version) {
+                (Some(name), Some(v)) => (Some(name.clone()), Some(v.clone())),
+                _ => {
+                    // Try to read from package meta
+                    if let Some(pkg_file) = find_package_file(package) {
+                        if let Ok(meta) = read_package(&pkg_file) {
+                            (meta.name, meta.version)
+                        } else {
+                            (None, None)
+                        }
+                    } else {
+                        (None, None)
+                    }
+                }
+            };
+
+            // If we have both name and version, try registry layer first
+            if let (Some(ref name), Some(ref ver)) = (&pkg_name, &ver) {
+                match layer::registry_layer_status(name, ver) {
                     Ok(status) => {
-                        info!("registry package ({pkg_name}@{ver}) status: {status:?}");
+                        info!("registry package ({name}@{ver}) status: {status:?}");
                         println!("{status:?}");
                     }
                     Err(e) => {
@@ -210,7 +228,7 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
                     }
                 }
             } else {
-                // No registry info, use package layer directly
+                // No registry info available, use package layer directly
                 let status = layer::package_layer_status(package)?;
                 info!("package ({package}) status: {status:?}");
                 println!("{status:?}");
