@@ -23,7 +23,7 @@ pub fn expand_home<P: AsRef<Path>>(path: P) -> String {
             } else {
                 &s[HOME_VAR.len()..]
             };
-            let rest = rest.trim_start_matches(|c| c == '/' || c == '\\');
+            let rest = rest.trim_start_matches(std::path::is_separator);
             return home.join(rest).to_string_lossy().to_string();
         }
     }
