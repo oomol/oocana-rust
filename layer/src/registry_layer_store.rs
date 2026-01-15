@@ -74,45 +74,36 @@ pub fn get_or_create_registry_layer<P: AsRef<Path>>(
     let key = registry_key(package_name, version);
     let package_path = package_path.as_ref();
 
-    let store = load_registry_store()?;
-    let package = store.packages.get(&key);
+    let mut store = load_registry_store()?;
 
-    match package {
-        Some(p) => {
-            if p.version.as_deref() == Some(version) && p.validate().is_ok() {
-                Ok(p.clone())
-            } else {
-                let layer = PackageLayer::create(
-                    Some(version.to_string()),
-                    None,
-                    bootstrap,
-                    bind_path,
-                    package_path.to_path_buf(),
-                    envs,
-                    env_file,
-                )?;
-                let mut store = load_registry_store()?;
-                store.packages.insert(key, layer.clone());
-                save_registry_store(&store, None)?;
-                Ok(layer)
+    // Check if existing package is valid
+    if let Some(p) = store.packages.get(&key) {
+        if p.version.as_deref() == Some(version) {
+            let validation_result = p.validate();
+            if validation_result.is_ok() {
+                return Ok(p.clone());
             }
-        }
-        None => {
-            let layer = PackageLayer::create(
-                Some(version.to_string()),
-                None,
-                bootstrap,
-                bind_path,
-                package_path.to_path_buf(),
-                envs,
-                env_file,
-            )?;
-            let mut store = load_registry_store()?;
-            store.packages.insert(key, layer.clone());
-            save_registry_store(&store, None)?;
-            Ok(layer)
+            // Invalid layer, will recreate
+            tracing::debug!("{} layer validation failed: {:?}, recreating", key, validation_result.unwrap_err());
         }
     }
+
+    // Create new layer
+    let layer = PackageLayer::create(
+        Some(version.to_string()),
+        None,
+        bootstrap,
+        bind_path,
+        package_path.to_path_buf(),
+        envs,
+        env_file,
+    )?;
+
+    // Insert and save
+    store.packages.insert(key, layer.clone());
+    save_registry_store(&store, None)?;
+
+    Ok(layer)
 }
 
 pub fn get_registry_layer(package_name: &str, version: &str) -> Result<Option<PackageLayer>> {
