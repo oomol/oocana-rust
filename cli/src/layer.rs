@@ -174,7 +174,7 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
 
             let env_file = find_env_file(env_file);
 
-            layer::get_or_create_registry_layer(
+            layer::create_registry_layer(
                 package_name,
                 version,
                 package,

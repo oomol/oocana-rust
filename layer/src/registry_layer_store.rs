@@ -8,7 +8,7 @@
 //! ## Write Operations (Single Writer Required)
 //!
 //! Functions that modify the registry store:
-//! - [`get_or_create_registry_layer`]
+//! - [`create_registry_layer`]
 //! - [`delete_registry_layer`]
 //! - [`save_registry_store`]
 //!
@@ -174,29 +174,29 @@ pub fn registry_layer_status(package_name: &str, version: &str) -> Result<Regist
     }
 }
 
-/// Get or create a registry layer.
+/// Create or update a registry layer.
 ///
 /// # Concurrency Requirements
 ///
-/// **IMPORTANT: This function performs write operations and assumes a single-writer model.**
+/// **IMPORTANT: This is a WRITE operation. Only ONE process can call registry write functions
+/// at the same time.**
 ///
-/// Callers MUST ensure that only ONE process calls this function (or any other registry write
-/// function) at the same time. Concurrent writes from multiple processes will result in a
-/// race condition where the last write wins, potentially losing data.
+/// See module-level documentation for detailed concurrency requirements.
 ///
-/// This design choice prioritizes NFS compatibility and simplicity over multi-writer support.
+/// # Behavior
 ///
-/// # Safe Concurrent Usage
+/// - If the layer exists and is valid, returns it
+/// - If the layer is invalid or doesn't exist, creates a new one
+/// - Always writes to the registry store (potential data race if called concurrently)
 ///
-/// - ✅ Multiple processes can READ concurrently (via `get_registry_layer`, `list_registry_layers`)
-/// - ✅ Single process can WRITE while others READ (atomic rename ensures readers see consistent data)
-/// - ❌ Multiple processes MUST NOT WRITE concurrently
+/// # Intended Usage
 ///
-/// Typical usage patterns:
-/// - Single mainframe process manages all registry writes
-/// - CLI tools only read registry data
-/// - If CLI needs to write, ensure mainframe is not running
-pub fn get_or_create_registry_layer<P: AsRef<Path>>(
+/// This function should ONLY be called from:
+/// - CLI `create-registry` command
+/// - Explicit package installation workflows
+///
+/// Runtime code should use [`get_registry_layer`] instead.
+pub fn create_registry_layer<P: AsRef<Path>>(
     package_name: &str,
     version: &str,
     package_path: P,
