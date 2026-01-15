@@ -16,8 +16,10 @@ pub struct ServiceBlock {
 
 impl ServiceBlock {
     pub fn from_manifest(
-        manifest: manifest::ServiceBlock, service_path: PathBuf,
-        executor: Arc<Option<ServiceExecutorOptions>>, package_path: Option<PathBuf>,
+        manifest: manifest::ServiceBlock,
+        service_path: PathBuf,
+        executor: Arc<Option<ServiceExecutorOptions>>,
+        package_path: Option<PathBuf>,
     ) -> Self {
         let manifest::ServiceBlock {
             name,
@@ -53,7 +55,9 @@ pub struct Service {
 
 impl Service {
     pub fn from_manifest(
-        manifest: manifest::Service, service_path: PathBuf, package_path: Option<PathBuf>,
+        manifest: manifest::Service,
+        service_path: PathBuf,
+        package_path: Option<PathBuf>,
     ) -> Self {
         let manifest::Service { blocks, executor } = manifest;
 

@@ -268,7 +268,9 @@ impl WorkerAbortHandle {
 }
 
 fn parse_scheduler_message(
-    data: MessageData, session_id: &str, job_id: &str,
+    data: MessageData,
+    session_id: &str,
+    job_id: &str,
 ) -> Option<ReceiveMessage> {
     match serde_json::from_slice::<ReceiveMessage>(&data) {
         Ok(msg) => {
@@ -289,7 +291,10 @@ fn parse_scheduler_message(
 }
 
 pub fn create<TT, TR>(
-    session_id: SessionId, job_id: JobId, impl_tx: TT, impl_rx: TR,
+    session_id: SessionId,
+    job_id: JobId,
+    impl_tx: TT,
+    impl_rx: TR,
 ) -> (WorkerTx, WorkerRx<TT, TR>)
 where
     TT: WorkerTxImpl,

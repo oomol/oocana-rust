@@ -4,7 +4,7 @@ use std::{
 };
 
 use serde::{Deserialize, Serialize};
-use utils::{error::Result, config};
+use utils::{config, error::Result};
 
 use crate::injection_layer::InjectionLayer;
 
@@ -54,7 +54,8 @@ pub fn load_injection_store() -> Result<InjectionStore> {
 }
 
 pub fn get_injection_layer<P: AsRef<Path>>(
-    flow_path: P, package_path: &str,
+    flow_path: P,
+    package_path: &str,
 ) -> Option<InjectionLayer> {
     let flow_path = flow_path.as_ref();
     let store = load_injection_store().ok()?;

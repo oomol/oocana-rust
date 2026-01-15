@@ -31,8 +31,7 @@ pub struct Service {
     pub blocks: Option<Vec<ServiceBlock>>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[derive(Default)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
 pub enum StartAt {
     #[serde(rename = "block_start")]
     #[default]
@@ -43,9 +42,7 @@ pub enum StartAt {
     App,
 }
 
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[derive(Default)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
 pub enum StopAt {
     #[serde(rename = "block_end")]
     Block,
@@ -56,7 +53,6 @@ pub enum StopAt {
     App,
     Never,
 }
-
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct TmpServiceExecutorOptions {

@@ -18,8 +18,8 @@ pub use package_store::{
     package_layer_status, PackageLayerStatus,
 };
 pub use registry_layer_store::{
-    delete_registry_layer, get_or_create_registry_layer, get_registry_layer,
-    list_registry_layers, registry_layer_status, RegistryLayerStatus,
+    delete_registry_layer, get_or_create_registry_layer, get_registry_layer, list_registry_layers,
+    registry_layer_status, RegistryLayerStatus,
 };
 pub use runtime_layer::{create_runtime_layer, InjectionParams, RuntimeLayer};
 
