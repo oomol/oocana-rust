@@ -205,7 +205,6 @@ fn registry_store_file(write: bool) -> Result<File> {
 pub fn load_registry_store() -> Result<RegistryLayerStore> {
     let f = registry_store_file(false)?;
 
-    let reader = std::io::BufReader::new(&f);
     FileExt::lock_shared(&f).map_err(|e| format!("Failed to lock file: {:?}", e))?;
 
     let _defer = Defer(Some(|| {
@@ -214,6 +213,7 @@ pub fn load_registry_store() -> Result<RegistryLayerStore> {
             .unwrap();
     }));
 
+    let reader = std::io::BufReader::new(&f);
     let store: RegistryLayerStore = serde_json::from_reader(reader).map_err(|e| {
         format!(
             "Failed to deserialize registry store: {:?}",
@@ -223,8 +223,13 @@ pub fn load_registry_store() -> Result<RegistryLayerStore> {
 
     drop(_defer);
 
-    if store.version == env!("CARGO_PKG_VERSION") {
-        return Ok(store);
+    // TODO: Implement migration logic when version changes
+    if store.version != env!("CARGO_PKG_VERSION") {
+        tracing::warn!(
+            "Registry store version mismatch: {} != {}, proceeding without migration",
+            store.version,
+            env!("CARGO_PKG_VERSION")
+        );
     }
 
     Ok(store)
