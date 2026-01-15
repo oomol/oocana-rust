@@ -72,8 +72,14 @@ pub enum LayerAction {
     Get {
         #[arg(help = "package path")]
         package: String,
+        #[arg(help = "package name for registry layer (optional)", long)]
+        package_name: Option<String>,
+        #[arg(help = "package version for registry layer (optional)", long)]
+        version: Option<String>,
     },
-    #[command(about = "get registry package layer")]
+    #[command(
+        about = "get registry package layer (deprecated: use 'get' with --package-name and --version)"
+    )]
     GetRegistry {
         #[arg(help = "package name")]
         package_name: String,
@@ -180,10 +186,35 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
         LayerAction::Delete { package } => {
             layer::delete_package_layer(package)?;
         }
-        LayerAction::Get { package } => {
-            let status = layer::package_layer_status(package)?;
-            info!("package ({package}) status: {status:?}");
-            println!("{status:?}");
+        LayerAction::Get {
+            package,
+            package_name,
+            version,
+        } => {
+            // If registry info provided, try registry layer first with fallback
+            if let (Some(pkg_name), Some(ver)) = (package_name, version) {
+                match layer::registry_layer_status(pkg_name, ver) {
+                    Ok(status) => {
+                        info!("registry package ({pkg_name}@{ver}) status: {status:?}");
+                        println!("{status:?}");
+                    }
+                    Err(e) => {
+                        // Registry query failed, fallback to package layer
+                        info!(
+                            "get registry layer failed: {:?}, fallback to package layer",
+                            e
+                        );
+                        let status = layer::package_layer_status(package)?;
+                        info!("package ({package}) status: {status:?}");
+                        println!("{status:?}");
+                    }
+                }
+            } else {
+                // No registry info, use package layer directly
+                let status = layer::package_layer_status(package)?;
+                info!("package ({package}) status: {status:?}");
+                println!("{status:?}");
+            }
         }
         LayerAction::GetRegistry {
             package_name,
