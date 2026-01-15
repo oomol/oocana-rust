@@ -172,7 +172,6 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
                 package_name,
                 version,
                 package,
-                None,
                 &bind_path_arg,
                 &envs,
                 &env_file,

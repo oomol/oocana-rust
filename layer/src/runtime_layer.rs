@@ -48,14 +48,8 @@ pub fn create_runtime_layer(
 ) -> Result<RuntimeLayer> {
     let layer = match (package_name, version) {
         (Some(pkg_name), Some(ver)) => {
-            // Try to get package metadata for bootstrap script
-            let bootstrap = find_package_file(package)
-                .and_then(|path| read_package(&path).ok())
-                .and_then(|pkg| pkg.scripts)
-                .and_then(|scripts| scripts.bootstrap);
-
             match get_or_create_registry_layer(
-                pkg_name, ver, package, bootstrap, bind_paths, envs, env_file,
+                pkg_name, ver, package, bind_paths, envs, env_file,
             ) {
                 Ok(layer) => {
                     info!("runtime layer from registry store: {}@{}", pkg_name, ver);

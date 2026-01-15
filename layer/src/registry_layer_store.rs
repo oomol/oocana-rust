@@ -65,13 +65,20 @@ pub fn get_or_create_registry_layer<P: AsRef<Path>>(
     package_name: &str,
     version: &str,
     package_path: P,
-    bootstrap: Option<String>,
     bind_path: &[BindPath],
     envs: &HashMap<String, String>,
     env_file: &Option<String>,
 ) -> Result<PackageLayer> {
+    use manifest_reader::{path_finder::find_package_file, reader::read_package};
+
     let key = registry_key(package_name, version);
     let package_path = package_path.as_ref();
+
+    // Extract bootstrap from package manifest (same as get_or_create_package_layer)
+    let bootstrap = find_package_file(package_path)
+        .and_then(|path| read_package(&path).ok())
+        .and_then(|pkg| pkg.scripts)
+        .and_then(|scripts| scripts.bootstrap);
 
     let mut store = load_registry_store()?;
 
