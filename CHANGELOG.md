@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.30.27 (2026-01-16)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* feat: package-layer list api also list registry layer by @leavesster in https://github.com/oomol/oocana-rust/pull/378
+* fix: get package layer need fallback by @leavesster in https://github.com/oomol/oocana-rust/pull/380
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.30.26...v0.30.27
+
 ## 0.30.26 (2026-01-15)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
