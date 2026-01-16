@@ -347,10 +347,16 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
                 println!("{info}");
             }
 
-            let store = layer::load_registry_store()?;
-            for (key, l) in store.packages {
-                let info = format!("Registry: {}, Path: {:?}", key, l.package_path);
-                println!("{info}");
+            match layer::load_registry_store() {
+                Ok(store) => {
+                    for (key, l) in store.packages {
+                        let info = format!("Registry: {}, Path: {:?}", key, l.package_path);
+                        println!("{info}");
+                    }
+                }
+                Err(e) => {
+                    tracing::warn!("load registry store failed: {e}");
+                }
             }
         }
         LayerAction::DeleteAll {} => {
