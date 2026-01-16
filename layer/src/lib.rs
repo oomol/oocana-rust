@@ -19,11 +19,10 @@ pub use package_store::{
 };
 pub use registry_layer_store::{
     create_registry_layer, delete_registry_layer, get_registry_layer, list_registry_layers,
-    registry_layer_status, RegistryLayerStatus,
+    load_registry_store, registry_layer_status, RegistryLayerStatus, RegistryLayerStore,
 };
 pub use runtime_layer::{create_runtime_layer, InjectionParams, RuntimeLayer};
 
-// TODO: use ovmlayer test api instead of this command
 pub fn feature_enabled() -> bool {
     let mut cmd = Command::new("ovmlayer");
     cmd.arg("test");

@@ -259,10 +259,7 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
                         }
 
                         // Check if this is a scope directory (starts with @)
-                        let dir_name = path
-                            .file_name()
-                            .and_then(|n| n.to_str())
-                            .unwrap_or("");
+                        let dir_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
                         if dir_name.starts_with('@') {
                             // For @scope directories, scan their subdirectories
@@ -284,7 +281,9 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
                             // Regular directories, use original logic
                             if find_package_file(&path).is_some() {
                                 let status = layer::package_layer_status(&path)?;
-                                tracing::debug!("find package file in {path:?} with status {status:?}");
+                                tracing::debug!(
+                                    "find package file in {path:?} with status {status:?}"
+                                );
                                 package_map.insert(path, format!("{status:?}"));
                             }
                         }
@@ -346,6 +345,18 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
             for l in r {
                 let info = format!("Package: {:?}, Version: {:?}", l.package_path, l.version);
                 println!("{info}");
+            }
+
+            match layer::load_registry_store() {
+                Ok(store) => {
+                    for (key, l) in store.packages {
+                        let info = format!("Registry: {}, Path: {:?}", key, l.package_path);
+                        println!("{info}");
+                    }
+                }
+                Err(e) => {
+                    tracing::warn!("load registry store failed: {e}");
+                }
             }
         }
         LayerAction::DeleteAll {} => {
