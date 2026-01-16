@@ -212,8 +212,17 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
             // If we have both name and version, try registry layer first
             if let (Some(ref name), Some(ref ver)) = (&pkg_name, &ver) {
                 match layer::registry_layer_status(name, ver) {
-                    Ok(status) => {
-                        info!("registry package ({name}@{ver}) status: {status:?}");
+                    Ok(layer::RegistryLayerStatus::Exist) => {
+                        info!("registry package ({name}@{ver}) status: Exist");
+                        println!("{:?}", layer::RegistryLayerStatus::Exist);
+                    }
+                    Ok(layer::RegistryLayerStatus::NotInStore) => {
+                        // Registry layer not found, fallback to package layer
+                        info!(
+                            "registry layer ({name}@{ver}) not in store, fallback to package layer"
+                        );
+                        let status = layer::package_layer_status(package)?;
+                        info!("package ({package}) status: {status:?}");
                         println!("{status:?}");
                     }
                     Err(e) => {
