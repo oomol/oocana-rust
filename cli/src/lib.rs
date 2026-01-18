@@ -174,11 +174,14 @@ pub fn cli_match() -> Result<()> {
                 LogParams {
                     sub_dir: Some("package-layer"),
                     log_name: "action",
-                    // create 要将特定 stdout stderr 的 target 输出到控制台。因此两个都要为 true。
-                    output_to_console: matches!(action, layer::LayerAction::Create { .. }),
+                    // create 和 create-registry 要将特定 stdout stderr 的 target 输出到控制台。因此两个都要为 true。
+                    output_to_console: matches!(
+                        action,
+                        layer::LayerAction::Create { .. } | layer::LayerAction::CreateRegistry { .. }
+                    ),
                     capture_stdout_stderr_target: matches!(
                         action,
-                        layer::LayerAction::Create { .. }
+                        layer::LayerAction::Create { .. } | layer::LayerAction::CreateRegistry { .. }
                     ),
                 }
             })?
