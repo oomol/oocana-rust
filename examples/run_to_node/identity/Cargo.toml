@@ -1,6 +1,6 @@
 [package]
 name = "identity"
-version = "0.30.27"
+version = "0.30.28"
 authors = ["CRIMX <straybugs@gmail.com>"]
 description = "output the input value"
 edition = "2021"
