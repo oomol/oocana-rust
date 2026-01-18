@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.30.28 (2026-01-18)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* feat: make create registry output to console by @leavesster in https://github.com/oomol/oocana-rust/pull/381
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.30.27...v0.30.28
+
 ## 0.30.27 (2026-01-16)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
