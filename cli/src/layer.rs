@@ -338,10 +338,8 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
                     layer::import_package_layer(import_package, layer_dir)?;
                 }
                 Ok(layer::PackageLayerStatus::Exist) => {
-                    return Err(Error::from(format!(
-                        "Package layer {:?} already exists",
-                        import_package
-                    )));
+                    info!("Package layer {:?} already exists, skip import", import_package);
+                    println!("Package layer already exists, skipping import.");
                 }
                 Err(e) => {
                     tracing::info!("import package path doesn't exist package file: {:?}. just import package layer.", e);
