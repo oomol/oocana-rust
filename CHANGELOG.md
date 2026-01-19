@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.30.29 (2026-01-19)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* fix: improve import package layer feedback when layer already exists by @leavesster in https://github.com/oomol/oocana-rust/pull/383
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.30.28...v0.30.29
+
 ## 0.30.28 (2026-01-18)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
