@@ -337,6 +337,7 @@ impl Default for PackageLayerStore {
 #[cfg(target_os = "linux")]
 mod tests {
     use super::*;
+    use std::path::PathBuf;
 
     #[test]
     fn test_clean_layers() {
@@ -352,5 +353,94 @@ mod tests {
     fn test_load_package_store() {
         let r = load_package_store();
         assert!(r.is_ok(), "load_package_store failed: {:?}", r.unwrap_err());
+    }
+
+    #[test]
+    fn test_package_layer_store_serialization() {
+        let store = PackageLayerStore::default();
+        let json = serde_json::to_string(&store).expect("serialize failed");
+        let parsed: PackageLayerStore = serde_json::from_str(&json).expect("deserialize failed");
+        assert_eq!(parsed.version, env!("CARGO_PKG_VERSION"));
+        assert!(parsed.packages.is_empty());
+    }
+
+    #[test]
+    fn test_package_layer_store_with_package() {
+        let mut store = PackageLayerStore::default();
+        let layer = PackageLayer {
+            version: Some("1.0.0".to_string()),
+            base_layers: None,
+            source_layer: "test-source".to_string(),
+            bootstrap: None,
+            bootstrap_layer: None,
+            package_path: PathBuf::from("/test/path"),
+        };
+        store
+            .packages
+            .insert("/test/path".to_string(), layer.clone());
+
+        let json = serde_json::to_string_pretty(&store).expect("serialize failed");
+        let parsed: PackageLayerStore = serde_json::from_str(&json).expect("deserialize failed");
+
+        assert_eq!(parsed.packages.len(), 1);
+        let pkg = parsed
+            .packages
+            .get("/test/path")
+            .expect("package not found");
+        assert_eq!(pkg.version, Some("1.0.0".to_string()));
+        assert_eq!(pkg.source_layer, "test-source");
+    }
+
+    #[test]
+    fn test_delete_nonexistent_package() {
+        let nonexistent_path = "/nonexistent/path/to/package";
+        let result = delete_package_layer(nonexistent_path);
+        assert!(result.is_ok(), "Error: {:?}", result.unwrap_err());
+    }
+
+    #[test]
+    fn test_package_layer_status_not_in_store() {
+        let temp_dir = std::env::temp_dir().join("test_package_status");
+        if temp_dir.exists() {
+            std::fs::remove_dir_all(&temp_dir).ok();
+        }
+        std::fs::create_dir_all(&temp_dir).expect("create temp dir failed");
+
+        let package_file = temp_dir.join("package.oo.yaml");
+        std::fs::write(&package_file, "version: 0.0.1\n").expect("write package file failed");
+
+        let result = package_layer_status(&temp_dir);
+        assert!(result.is_ok(), "Error: {:?}", result.unwrap_err());
+        assert_eq!(result.unwrap(), PackageLayerStatus::NotInStore);
+
+        std::fs::remove_dir_all(&temp_dir).ok();
+    }
+
+    #[test]
+    fn test_list_package_layers_empty() {
+        let result = list_package_layers();
+        assert!(result.is_ok(), "Error: {:?}", result.unwrap_err());
+    }
+
+    #[test]
+    fn test_add_import_package() {
+        let layer = PackageLayer {
+            version: Some("1.0.0".to_string()),
+            base_layers: None,
+            source_layer: "import-test-source".to_string(),
+            bootstrap: None,
+            bootstrap_layer: None,
+            package_path: PathBuf::from("/import/test/path"),
+        };
+
+        let result = add_import_package(&layer);
+        assert!(result.is_ok(), "Error: {:?}", result.unwrap_err());
+
+        let store = load_package_store().expect("load store failed");
+        assert!(store.packages.contains_key("/import/test/path"));
+
+        let mut store = load_package_store().expect("load store failed");
+        store.packages.remove("/import/test/path");
+        save_package_store(&store, None).expect("save store failed");
     }
 }
