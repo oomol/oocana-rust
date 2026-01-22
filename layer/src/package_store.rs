@@ -83,42 +83,42 @@ pub fn get_or_create_package_layer<P: AsRef<Path>>(
     let version = pkg.version;
     let bootstrap = pkg.scripts.and_then(|s| s.bootstrap);
     let key = package_path.to_string_lossy().to_string();
+    let package_path_buf = package_path.to_path_buf();
 
-    let mut store = load_package_store()?;
-
-    if let Some(p) = store.packages.get(&key) {
-        if p.version == version && p.validate().is_ok() {
-            return Ok(p.clone());
+    with_package_store(|store| {
+        if let Some(p) = store.packages.get(&key) {
+            if p.version == version && p.validate().is_ok() {
+                return Ok(p.clone());
+            }
         }
-    }
 
-    let layer = PackageLayer::create(
-        version,
-        None,
-        bootstrap,
-        bind_path,
-        package_path.to_path_buf(),
-        envs,
-        env_file,
-    )?;
-    store.packages.insert(key, layer.clone());
-    save_package_store(&store, None)?;
-    Ok(layer)
+        let layer = PackageLayer::create(
+            version,
+            None,
+            bootstrap.clone(),
+            bind_path,
+            package_path_buf.clone(),
+            envs,
+            env_file,
+        )?;
+        store.packages.insert(key.clone(), layer.clone());
+        Ok(layer)
+    })
 }
 
 pub fn delete_package_layer<P: AsRef<Path>>(package_path: P) -> Result<()> {
     let package_path = package_path.as_ref();
-    let mut store = load_package_store()?;
-
     let key = package_path.to_string_lossy().to_string();
-    let pkg_layer = store.packages.remove(key.as_str());
 
+    // 读取当前 store 获取包信息
+    let store = load_package_store()?;
+    let pkg_layer = store.packages.get(&key).cloned();
+
+    // 收集需要删除的 layers
     let mut delete_layers = vec![];
     if let Some(pkg_layer) = pkg_layer {
         if let Some(layers) = pkg_layer.base_layers {
-            for l in layers {
-                delete_layers.push(l);
-            }
+            delete_layers.extend(layers);
         }
         if let Some(bootstrap_layer) = pkg_layer.bootstrap_layer {
             delete_layers.push(bootstrap_layer);
@@ -134,18 +134,20 @@ pub fn delete_package_layer<P: AsRef<Path>>(package_path: P) -> Result<()> {
         }
     }
 
+    // 收集其他包正在使用的 layers（排除当前要删除的包）
     let mut stored_layers = vec![];
-    for (_, p) in store.packages.iter() {
-        if let Some(layers) = &p.base_layers {
-            for l in layers {
-                stored_layers.push(l.clone());
+    for (pkg_key, p) in store.packages.iter() {
+        if pkg_key != &key {
+            if let Some(layers) = &p.base_layers {
+                stored_layers.extend(layers.clone());
             }
-        }
-        if let Some(bootstrap_layer) = &p.bootstrap_layer {
-            stored_layers.push(bootstrap_layer.clone());
+            if let Some(bootstrap_layer) = &p.bootstrap_layer {
+                stored_layers.push(bootstrap_layer.clone());
+            }
         }
     }
 
+    // 删除不被其他包使用的 layers
     let used_layers = layer::list_layers(Some(LayerType::UsedLayers))?;
     for l in delete_layers {
         if stored_layers.contains(&l) {
@@ -157,19 +159,21 @@ pub fn delete_package_layer<P: AsRef<Path>>(package_path: P) -> Result<()> {
         }
     }
 
-    // 重新加载 store 以获取最新状态，避免覆盖其他进程的修改
-    let mut store = load_package_store()?;
-    store.packages.remove(key.as_str());
-    save_package_store(&store, None)?;
+    // 使用事务原子性地移除包记录
+    with_package_store(|store| {
+        store.packages.remove(&key);
+        Ok(())
+    })?;
 
     Ok(())
 }
 
 /// TODO: deprecated this function
 pub fn delete_all_layer_data() -> Result<()> {
-    let mut store = load_package_store()?;
-    store.packages.clear();
-    save_package_store(&store, None)?;
+    with_package_store(|store| {
+        store.packages.clear();
+        Ok(())
+    })?;
 
     layer::delete_all_layer_data()?;
 
@@ -191,17 +195,38 @@ fn package_store_file(write: bool) -> Result<File> {
     fs::create_dir_all(&dir).map_err(|e| format!("Failed to create dir: {:?}", e))?;
     let file_path = dir.join(PACKAGE_STORE);
 
-    if !file_path.exists() {
-        let f = File::create(&file_path).map_err(|e| format!("Failed to create file: {:?}", e))?;
-        FileExt::lock_exclusive(&f).map_err(|e| format!("Failed to lock file: {:?}", e))?;
-        let writer = std::io::BufWriter::new(&f);
+    // 使用 OpenOptions 原子性地创建文件（如果不存在），不截断现有内容
+    let file = std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .open(&file_path)
+        .map_err(|e| format!("Failed to open file: {:?}", e))?;
+
+    // 获取锁后检查文件是否为空，如果为空则初始化
+    FileExt::lock_exclusive(&file).map_err(|e| format!("Failed to lock file: {:?}", e))?;
+
+    let metadata = file
+        .metadata()
+        .map_err(|e| format!("Failed to get file metadata: {:?}", e))?;
+
+    if metadata.len() == 0 {
+        let writer = std::io::BufWriter::new(&file);
         serde_json::to_writer(writer, &PackageLayerStore::default())
             .map_err(|e| format!("Failed to serialize: {:?}", e))?;
-        FileExt::unlock(&f).map_err(|e| format!("Failed to unlock file: {:?}", e))?;
     }
 
+    FileExt::unlock(&file).map_err(|e| format!("Failed to unlock file: {:?}", e))?;
+    drop(file);
+
+    // 根据需要重新打开文件
     let f = if write {
-        File::create(&file_path).map_err(|e| format!("Failed to open file for write: {:?}", e))?
+        std::fs::OpenOptions::new()
+            .write(true)
+            .truncate(true)
+            .open(&file_path)
+            .map_err(|e| format!("Failed to open file for write: {:?}", e))?
     } else {
         File::open(&file_path).map_err(|e| format!("Failed to open file: {:?}", e))?
     };
@@ -244,17 +269,96 @@ pub fn load_package_store() -> Result<PackageLayerStore> {
     Ok(store)
 }
 
-pub fn add_import_package(pkg: &PackageLayer) -> Result<()> {
-    let mut store = load_package_store()?;
+/// 事务函数：在持有排他锁的情况下读取、修改、保存 store
+/// 确保整个读-改-写过程的原子性，避免并发修改导致的数据丢失
+pub fn with_package_store<F, R>(f: F) -> Result<R>
+where
+    F: FnOnce(&mut PackageLayerStore) -> Result<R>,
+{
+    let dir = config::store_dir().ok_or("Failed to get home dir")?;
+    fs::create_dir_all(&dir).map_err(|e| format!("Failed to create dir: {:?}", e))?;
+    let file_path = dir.join(PACKAGE_STORE);
 
-    store
-        .packages
-        .insert(pkg.package_path.to_string_lossy().to_string(), pkg.clone());
-    save_package_store(&store, None)?;
+    // 使用 OpenOptions 以读写模式打开，如果不存在则创建，不截断现有内容
+    let file = std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .open(&file_path)
+        .map_err(|e| format!("Failed to open file: {:?}", e))?;
 
-    Ok(())
+    // 获取排他锁，阻塞直到获得锁
+    FileExt::lock_exclusive(&file).map_err(|e| format!("Failed to lock file: {:?}", e))?;
+
+    // 读取现有内容，如果文件为空则使用默认值
+    let store: PackageLayerStore = {
+        let metadata = file
+            .metadata()
+            .map_err(|e| format!("Failed to get file metadata: {:?}", e))?;
+        if metadata.len() == 0 {
+            PackageLayerStore::default()
+        } else {
+            let reader = std::io::BufReader::new(&file);
+            serde_json::from_reader(reader).map_err(|e| {
+                let _ = FileExt::unlock(&file);
+                format!(
+                    "Failed to deserialize package store from {}: {:?}",
+                    PACKAGE_STORE, e
+                )
+            })?
+        }
+    };
+
+    // 版本迁移检查
+    let mut store = if store.version != env!("CARGO_PKG_VERSION")
+        && (store.version == "0.2.0" || store.version == "0.1.0")
+    {
+        PackageLayerStore::default()
+    } else {
+        store
+    };
+
+    // 执行用户的闭包
+    let result = match f(&mut store) {
+        Ok(r) => r,
+        Err(e) => {
+            let _ = FileExt::unlock(&file);
+            return Err(e);
+        }
+    };
+
+    // 回写文件：先截断再写入
+    use std::io::{Seek, SeekFrom};
+    file.set_len(0)
+        .map_err(|e| format!("Failed to truncate file: {:?}", e))?;
+    (&file)
+        .seek(SeekFrom::Start(0))
+        .map_err(|e| format!("Failed to seek file: {:?}", e))?;
+
+    let writer = std::io::BufWriter::new(&file);
+    serde_json::to_writer_pretty(writer, &store).map_err(|e| {
+        let _ = FileExt::unlock(&file);
+        format!("Failed to serialize: {:?}", e)
+    })?;
+
+    // 释放锁
+    FileExt::unlock(&file).map_err(|e| format!("Failed to unlock file: {:?}", e))?;
+
+    Ok(result)
 }
 
+pub fn add_import_package(pkg: &PackageLayer) -> Result<()> {
+    let pkg = pkg.clone();
+    with_package_store(|store| {
+        store
+            .packages
+            .insert(pkg.package_path.to_string_lossy().to_string(), pkg.clone());
+        Ok(())
+    })
+}
+
+#[allow(dead_code)]
 pub fn save_package_store(store: &PackageLayerStore, file: Option<File>) -> Result<()> {
     let file_provided = file.is_some();
 
@@ -440,8 +544,11 @@ mod tests {
         let store = load_package_store().expect("load store failed");
         assert!(store.packages.contains_key("/import/test/path"));
 
-        let mut store = load_package_store().expect("load store failed");
-        store.packages.remove("/import/test/path");
-        save_package_store(&store, None).expect("save store failed");
+        // cleanup
+        with_package_store(|store| {
+            store.packages.remove("/import/test/path");
+            Ok(())
+        })
+        .expect("cleanup failed");
     }
 }
