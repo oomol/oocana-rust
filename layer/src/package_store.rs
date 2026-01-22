@@ -19,15 +19,6 @@ use utils::{
 
 static PACKAGE_STORE: &str = "package_store.json";
 
-struct Defer<F: FnOnce()>(Option<F>);
-impl<F: FnOnce()> Drop for Defer<F> {
-    fn drop(&mut self) {
-        if let Some(f) = self.0.take() {
-            f();
-        }
-    }
-}
-
 fn package_meta<P: AsRef<Path>>(dir: P) -> Result<Package> {
     let p = find_package_file(dir.as_ref());
     match p {
@@ -255,20 +246,15 @@ pub fn load_package_store() -> Result<PackageLayerStore> {
     let reader = std::io::BufReader::new(&f);
     FileExt::lock_shared(&f).map_err(|e| format!("Failed to lock file: {:?}", e))?;
 
-    let _defer = Defer(Some(|| {
-        FileExt::unlock(&f)
-            .map_err(|e| format!("Failed to unlock file: {:?}", e))
-            .unwrap();
-    }));
-
     let store: PackageLayerStore = serde_json::from_reader(reader).map_err(|e| {
+        let _ = FileExt::unlock(&f);
         format!(
             "Failed to deserialize package store from {}: {:?}",
             PACKAGE_STORE, e
         )
     })?;
 
-    drop(_defer);
+    let _ = FileExt::unlock(&f);
 
     if store.version == env!("CARGO_PKG_VERSION") {
         return Ok(store);
