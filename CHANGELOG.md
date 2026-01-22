@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.30.31 (2026-01-22)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* fix: package-layer scan need consider registry layer store by @leavesster in https://github.com/oomol/oocana-rust/pull/388
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.30.30...v0.30.31
+
 ## 0.30.30 (2026-01-22)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
