@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::injection_store::{injection_store_path, load_injection_store};
+use crate::injection_store::with_injection_store;
 use crate::layer::{create_layer, random_name};
 use serde::{Deserialize, Serialize};
 use utils::error::Result;
@@ -47,16 +47,14 @@ impl InjectionLayer {
     }
 
     pub fn save_to_store(&self) -> Result<()> {
-        let file = injection_store_path()?;
-        let mut store = load_injection_store()?;
-        let key = self.flow_path.clone();
-        let entry = store.flow_injection.entry(key).or_insert(HashMap::new());
-        entry.insert(self.package_path.clone(), self.clone());
-        let f =
-            std::fs::File::create(&file).map_err(|e| format!("Failed to create file: {:?}", e))?;
-        let writer = std::io::BufWriter::new(f);
-        serde_json::to_writer_pretty(writer, &store)
-            .map_err(|e| format!("Failed to serialize: {:?}", e))?;
-        Ok(())
+        let layer = self.clone();
+        with_injection_store(|store| {
+            let entry = store
+                .flow_injection
+                .entry(layer.flow_path.clone())
+                .or_insert(HashMap::new());
+            entry.insert(layer.package_path.clone(), layer);
+            Ok(())
+        })
     }
 }

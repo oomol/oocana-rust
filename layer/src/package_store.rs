@@ -1,3 +1,8 @@
+//! Package layer store management.
+//!
+//! Write operations use [`with_package_store`] with exclusive file lock.
+//! Read operations are lock-free, atomic rename ensures consistency.
+
 use crate::injection_store::load_injection_store;
 use crate::layer;
 use crate::ovmlayer::{BindPath, LayerType};
@@ -18,15 +23,10 @@ use utils::{
 };
 
 static PACKAGE_STORE: &str = "package_store.json";
+static PACKAGE_STORE_LOCK: &str = "package_store.lock";
 
-struct Defer<F: FnOnce()>(Option<F>);
-impl<F: FnOnce()> Drop for Defer<F> {
-    fn drop(&mut self) {
-        if let Some(f) = self.0.take() {
-            f();
-        }
-    }
-}
+const MAX_READ_RETRIES: usize = 5;
+const RETRY_DELAY_MS: u64 = 1000;
 
 fn package_meta<P: AsRef<Path>>(dir: P) -> Result<Package> {
     let p = find_package_file(dir.as_ref());
@@ -94,7 +94,6 @@ pub fn get_or_create_package_layer<P: AsRef<Path>>(
     let key = package_path.to_string_lossy().to_string();
 
     let store = load_package_store()?;
-
     if let Some(p) = store.packages.get(&key) {
         if p.version == version && p.validate().is_ok() {
             return Ok(p.clone());
@@ -118,50 +117,51 @@ pub fn get_or_create_package_layer<P: AsRef<Path>>(
         env_file,
     )?;
 
-    // avoid race condition, just reload and save
-    let mut store = load_package_store()?;
-    store.packages.insert(key, layer.clone());
-    save_package_store(&store, None)?;
+    with_package_store(|store| {
+        store.packages.insert(key.clone(), layer.clone());
+        Ok(())
+    })?;
+
     Ok(layer)
 }
 
 pub fn delete_package_layer<P: AsRef<Path>>(package_path: P) -> Result<()> {
     let package_path = package_path.as_ref();
-    let mut store = load_package_store()?;
-
     let key = package_path.to_string_lossy().to_string();
-    let pkg_layer = store.packages.remove(key.as_str());
 
-    let mut delete_layers = vec![];
+    let store = load_package_store()?;
+    let pkg_layer = store.packages.get(key.as_str());
+    let mut pkg_layers_to_delete = vec![];
     if let Some(pkg_layer) = pkg_layer {
-        if let Some(layers) = pkg_layer.base_layers {
-            for l in layers {
-                delete_layers.push(l);
-            }
+        if let Some(layers) = &pkg_layer.base_layers {
+            pkg_layers_to_delete.extend(layers.iter().cloned());
         }
-        if let Some(bootstrap_layer) = pkg_layer.bootstrap_layer {
-            delete_layers.push(bootstrap_layer);
-        }
-        // TODO: 在这里只能清理当前项目的 injection layer，应该要清理全部项目里面的 injection layers 里对应的 package layer
-        let injection_store = load_injection_store()?;
-        for (_, flow_injection) in injection_store.flow_injection.iter() {
-            for (_, injection_layer) in flow_injection.iter() {
-                if injection_layer.package_path == key {
-                    delete_layers.push(injection_layer.layer_name.to_owned());
-                }
-            }
+        if let Some(bootstrap_layer) = &pkg_layer.bootstrap_layer {
+            pkg_layers_to_delete.push(bootstrap_layer.clone());
         }
     }
 
     let mut stored_layers = vec![];
-    for (_, p) in store.packages.iter() {
+    for (pkg_key, p) in store.packages.iter() {
+        if pkg_key == &key {
+            continue;
+        }
         if let Some(layers) = &p.base_layers {
-            for l in layers {
-                stored_layers.push(l.clone());
-            }
+            stored_layers.extend(layers.iter().cloned());
         }
         if let Some(bootstrap_layer) = &p.bootstrap_layer {
             stored_layers.push(bootstrap_layer.clone());
+        }
+    }
+
+    // TODO: 在这里只能清理当前项目的 injection layer，应该要清理全部项目里面的 injection layers 里对应的 package layer
+    let mut delete_layers = pkg_layers_to_delete;
+    let injection_store = load_injection_store()?;
+    for (_, flow_injection) in injection_store.flow_injection.iter() {
+        for (_, injection_layer) in flow_injection.iter() {
+            if injection_layer.package_path == key {
+                delete_layers.push(injection_layer.layer_name.to_owned());
+            }
         }
     }
 
@@ -176,19 +176,20 @@ pub fn delete_package_layer<P: AsRef<Path>>(package_path: P) -> Result<()> {
         }
     }
 
-    let mut store = load_package_store()?;
-    store.packages.remove(key.as_str());
-
-    save_package_store(&store, None)?;
+    with_package_store(|store| {
+        store.packages.remove(key.as_str());
+        Ok(())
+    })?;
 
     Ok(())
 }
 
 /// TODO: deprecated this function
 pub fn delete_all_layer_data() -> Result<()> {
-    let mut store = load_package_store()?;
-    store.packages.clear();
-    save_package_store(&store, None)?;
+    with_package_store(|store| {
+        store.packages.clear();
+        Ok(())
+    })?;
 
     layer::delete_all_layer_data()?;
 
@@ -205,109 +206,123 @@ pub fn list_package_layers() -> Result<Vec<PackageLayer>> {
     Ok(layers)
 }
 
-fn package_store_file(write: bool) -> Result<File> {
+fn save_package_store_atomic(store: &PackageLayerStore) -> Result<()> {
     let dir = config::store_dir().ok_or("Failed to get home dir")?;
-
     std::fs::create_dir_all(&dir).map_err(|e| format!("Failed to create dir: {:?}", e))?;
 
     let file_path = dir.join(PACKAGE_STORE);
+    let temp_path = dir.join(format!("{}.tmp.{}", PACKAGE_STORE, std::process::id()));
 
-    if !file_path.exists() {
-        let f = File::create(&file_path).map_err(|e| format!("Failed to create file: {:?}", e))?;
-        FileExt::lock_exclusive(&f).map_err(|e| format!("Failed to lock file: {:?}", e))?;
-        let writer = std::io::BufWriter::new(&f);
-        let store = PackageLayerStore {
-            version: env!("CARGO_PKG_VERSION").to_string(),
-            packages: HashMap::new(),
-        };
-        serde_json::to_writer(writer, &store)
-            .map_err(|e| format!("Failed to serialize: {:?}", e))?;
-        FileExt::unlock(&f).map_err(|e| format!("Failed to unlock file: {:?}", e))?;
+    let content = serde_json::to_string_pretty(store)
+        .map_err(|e| format!("Failed to serialize: {:?}", e))?;
+
+    std::fs::write(&temp_path, content)
+        .map_err(|e| format!("Failed to write temp file: {:?}", e))?;
+
+    std::fs::rename(&temp_path, &file_path)
+        .map_err(|e| format!("Failed to rename temp file: {:?}", e))?;
+
+    Ok(())
+}
+
+/// Execute a read-modify-write transaction on the package store with exclusive file lock.
+pub fn with_package_store<F, R>(f: F) -> Result<R>
+where
+    F: FnOnce(&mut PackageLayerStore) -> Result<R>,
+{
+    let dir = config::store_dir().ok_or("Failed to get store dir")?;
+    std::fs::create_dir_all(&dir).map_err(|e| format!("Failed to create dir: {:?}", e))?;
+
+    let lock_path = dir.join(PACKAGE_STORE_LOCK);
+    let lock_file =
+        File::create(&lock_path).map_err(|e| format!("Failed to create lock file: {:?}", e))?;
+
+    lock_file
+        .lock_exclusive()
+        .map_err(|e| format!("Failed to acquire lock: {:?}", e))?;
+
+    let mut store = load_package_store()?;
+    let result = f(&mut store)?;
+    save_package_store_atomic(&store)?;
+
+    Ok(result)
+}
+
+fn load_package_store_with_retry() -> Result<PackageLayerStore> {
+    let dir = config::store_dir().ok_or("Failed to get home dir")?;
+    let file_path = dir.join(PACKAGE_STORE);
+
+    for attempt in 0..MAX_READ_RETRIES {
+        match std::fs::read_to_string(&file_path) {
+            Ok(content) => {
+                match serde_json::from_str::<PackageLayerStore>(&content) {
+                    Ok(store) => {
+                        if store.version == env!("CARGO_PKG_VERSION") {
+                            return Ok(store);
+                        }
+
+                        // 0.1.0 更新了 server-base，所有 layer 都被清空，干脆删除
+                        // 0.2.0 版本丢失了部分 layer 信息，也重新生成
+                        if store.version == "0.2.0" || store.version == "0.1.0" {
+                            return Ok(PackageLayerStore {
+                                version: env!("CARGO_PKG_VERSION").to_string(),
+                                packages: HashMap::new(),
+                            });
+                        }
+
+                        return Ok(store);
+                    }
+                    Err(e) if attempt < MAX_READ_RETRIES - 1 => {
+                        tracing::debug!(
+                            "JSON parse failed (attempt {}): {}, retrying...",
+                            attempt + 1,
+                            e
+                        );
+                        std::thread::sleep(std::time::Duration::from_millis(RETRY_DELAY_MS));
+                        continue;
+                    }
+                    Err(e) => {
+                        return Err(format!(
+                            "Failed to deserialize package store from {}: {:?}",
+                            PACKAGE_STORE, e
+                        )
+                        .into())
+                    }
+                }
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                return Ok(PackageLayerStore {
+                    version: env!("CARGO_PKG_VERSION").to_string(),
+                    packages: HashMap::new(),
+                });
+            }
+            Err(e) if attempt < MAX_READ_RETRIES - 1 => {
+                tracing::debug!(
+                    "File read failed (attempt {}): {}, retrying...",
+                    attempt + 1,
+                    e
+                );
+                std::thread::sleep(std::time::Duration::from_millis(RETRY_DELAY_MS));
+                continue;
+            }
+            Err(e) => return Err(format!("Failed to read file: {:?}", e).into()),
+        }
     }
 
-    let f = if write {
-        File::create(&file_path).map_err(|e| format!("Failed to open file: {:?}", e))?
-    } else {
-        File::open(&file_path).map_err(|e| format!("Failed to open file: {:?}", e))?
-    };
-
-    Ok(f)
+    unreachable!()
 }
 
 pub fn load_package_store() -> Result<PackageLayerStore> {
-    let f = package_store_file(false)?;
-
-    let reader = std::io::BufReader::new(&f);
-    FileExt::lock_shared(&f).map_err(|e| format!("Failed to lock file: {:?}", e))?;
-
-    let _defer = Defer(Some(|| {
-        FileExt::unlock(&f)
-            .map_err(|e| format!("Failed to unlock file: {:?}", e))
-            .unwrap();
-    }));
-
-    let store: PackageLayerStore = serde_json::from_reader(reader).map_err(|e| {
-        format!(
-            "Failed to deserialize package store from {}: {:?}",
-            PACKAGE_STORE, e
-        )
-    })?;
-
-    drop(_defer);
-
-    if store.version == env!("CARGO_PKG_VERSION") {
-        return Ok(store);
-    }
-
-    // 0.1.0 更新了 server-base，所有 layer 都被清空，干脆删除
-    // 0.2.0 版本丢失了部分 layer 信息，也重新生成
-    if store.version == "0.2.0" || store.version == "0.1.0" {
-        let dir = config::store_dir().ok_or("Failed to get home dir")?;
-
-        std::fs::create_dir_all(&dir).map_err(|e| format!("Failed to create dir: {:?}", e))?;
-
-        let file_path = dir.join(PACKAGE_STORE);
-        fs::remove_file(&file_path).map_err(|e| format!("Failed to remove file: {:?}", e))?;
-        return load_package_store();
-    }
-
-    Ok(store)
+    load_package_store_with_retry()
 }
 
 pub fn add_import_package(pkg: &PackageLayer) -> Result<()> {
-    let mut store = load_package_store()?;
-
-    store
-        .packages
-        .insert(pkg.package_path.to_string_lossy().to_string(), pkg.clone());
-    save_package_store(&store, None)?;
-
-    Ok(())
-}
-
-pub fn save_package_store(store: &PackageLayerStore, file: Option<File>) -> Result<()> {
-    let file_provided = file.is_some();
-
-    let f = file.unwrap_or(package_store_file(true)?);
-
-    if file_provided {
-        // 如果调用者提供了文件句柄，可能已经进行过锁操作，这里只尝试加锁
-        let _ = FileExt::try_lock_exclusive(&f);
-    } else {
-        FileExt::lock_exclusive(&f).map_err(|e| format!("Failed to lock file: {:?}", e))?;
-    }
-
-    f.set_len(0)
-        .map_err(|e| format!("Failed to truncate package store file: {:?}", e))?;
-
-    let writer = std::io::BufWriter::new(&f);
-
-    serde_json::to_writer_pretty(writer, store)
-        .map_err(|e| format!("Failed to serialize: {:?}", e))?;
-
-    FileExt::unlock(&f).map_err(|e| format!("Failed to unlock file: {:?}", e))?;
-
-    Ok(())
+    with_package_store(|store| {
+        store
+            .packages
+            .insert(pkg.package_path.to_string_lossy().to_string(), pkg.clone());
+        Ok(())
+    })
 }
 
 /// TODO: 移除这个 API，容易误删
