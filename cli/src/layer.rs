@@ -116,6 +116,60 @@ pub enum LayerAction {
     DeleteAll {},
 }
 
+/// Get layer status with registry fallback logic (same as Get command).
+/// If override_name and override_version are provided, they take precedence over package meta.
+/// Returns Exist if registry or package layer exists, NotInStore otherwise.
+/// Errors are logged but treated as NotInStore.
+fn get_layer_status_with_registry_fallback(
+    package_path: &std::path::Path,
+    override_name: Option<&str>,
+    override_version: Option<&str>,
+) -> layer::PackageLayerStatus {
+    // Use overrides if both provided, otherwise try to read from package meta
+    let (pkg_name, ver) = match (override_name, override_version) {
+        (Some(name), Some(ver)) => (Some(name.to_string()), Some(ver.to_string())),
+        _ => find_package_file(package_path)
+            .and_then(|pkg_file| read_package(&pkg_file).ok())
+            .map(|meta| (meta.name, meta.version))
+            .unwrap_or((None, None)),
+    };
+
+    // If we have both name and version, try registry layer first
+    if let (Some(ref name), Some(ref ver)) = (&pkg_name, &ver) {
+        match layer::registry_layer_status(name, ver) {
+            Ok(layer::RegistryLayerStatus::Exist) => {
+                tracing::debug!(
+                    "find registry layer ({name}@{ver}) in {package_path:?} with status Exist"
+                );
+                return layer::PackageLayerStatus::Exist;
+            }
+            Ok(layer::RegistryLayerStatus::NotInStore) => {
+                tracing::debug!(
+                    "registry layer ({name}@{ver}) not in store, fallback to package layer"
+                );
+            }
+            Err(e) => {
+                tracing::debug!(
+                    "get registry layer ({name}@{ver}) failed: {:?}, fallback to package layer",
+                    e
+                );
+            }
+        }
+    }
+
+    // Fallback to package layer
+    match layer::package_layer_status(package_path) {
+        Ok(status) => {
+            tracing::debug!("package {package_path:?} status: {status:?}");
+            status
+        }
+        Err(e) => {
+            tracing::warn!("get package layer status failed for {package_path:?}: {e}");
+            layer::PackageLayerStatus::NotInStore
+        }
+    }
+}
+
 pub fn layer_action(action: &LayerAction) -> Result<()> {
     if std::env::var(utils::env::OVMLAYER_LOG_ENV_KEY).is_err() {
         std::env::set_var(
@@ -192,56 +246,14 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
             package_name,
             version,
         } => {
-            // Determine package name and version: use provided args or read from package meta
-            let (pkg_name, ver) = match (package_name, version) {
-                (Some(name), Some(v)) => (Some(name.clone()), Some(v.clone())),
-                _ => {
-                    // Try to read from package meta
-                    if let Some(pkg_file) = find_package_file(package) {
-                        if let Ok(meta) = read_package(&pkg_file) {
-                            (meta.name, meta.version)
-                        } else {
-                            (None, None)
-                        }
-                    } else {
-                        (None, None)
-                    }
-                }
-            };
+            let status = get_layer_status_with_registry_fallback(
+                std::path::Path::new(package),
+                package_name.as_deref(),
+                version.as_deref(),
+            );
 
-            // If we have both name and version, try registry layer first
-            if let (Some(ref name), Some(ref ver)) = (&pkg_name, &ver) {
-                match layer::registry_layer_status(name, ver) {
-                    Ok(layer::RegistryLayerStatus::Exist) => {
-                        info!("registry package ({name}@{ver}) status: Exist");
-                        println!("{:?}", layer::RegistryLayerStatus::Exist);
-                    }
-                    Ok(layer::RegistryLayerStatus::NotInStore) => {
-                        // Registry layer not found, fallback to package layer
-                        info!(
-                            "registry layer ({name}@{ver}) not in store, fallback to package layer"
-                        );
-                        let status = layer::package_layer_status(package)?;
-                        info!("package ({package}) status: {status:?}");
-                        println!("{status:?}");
-                    }
-                    Err(e) => {
-                        // Registry query failed, fallback to package layer
-                        info!(
-                            "get registry layer failed: {:?}, fallback to package layer",
-                            e
-                        );
-                        let status = layer::package_layer_status(package)?;
-                        info!("package ({package}) status: {status:?}");
-                        println!("{status:?}");
-                    }
-                }
-            } else {
-                // No registry info available, use package layer directly
-                let status = layer::package_layer_status(package)?;
-                info!("package ({package}) status: {status:?}");
-                println!("{status:?}");
-            }
+            info!("package ({package}) status: {status:?}");
+            println!("{status:?}");
         }
         LayerAction::GetRegistry {
             package_name,
@@ -281,18 +293,16 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
                                 }
 
                                 if find_package_file(&scope_path).is_some() {
-                                    let status = layer::package_layer_status(&scope_path)?;
-                                    tracing::debug!("find package file in {scope_path:?} with status {status:?}");
+                                    let status =
+                                        get_layer_status_with_registry_fallback(&scope_path, None, None);
                                     package_map.insert(scope_path, format!("{status:?}"));
                                 }
                             }
                         } else {
                             // Regular directories, use original logic
                             if find_package_file(&path).is_some() {
-                                let status = layer::package_layer_status(&path)?;
-                                tracing::debug!(
-                                    "find package file in {path:?} with status {status:?}"
-                                );
+                                let status =
+                                    get_layer_status_with_registry_fallback(&path, None, None);
                                 package_map.insert(path, format!("{status:?}"));
                             }
                         }
