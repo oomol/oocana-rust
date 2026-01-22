@@ -101,6 +101,13 @@ pub fn get_or_create_package_layer<P: AsRef<Path>>(
         }
     }
 
+    tracing::info!(
+        "creating package layer for {}, version: {:?}",
+        pkg.name
+            .unwrap_or(package_path.to_string_lossy().to_string()),
+        version
+    );
+
     let layer = PackageLayer::create(
         version,
         None,
