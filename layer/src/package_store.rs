@@ -188,26 +188,19 @@ pub fn list_package_layers() -> Result<Vec<PackageLayer>> {
 
 fn package_store_file(write: bool) -> Result<File> {
     let dir = config::store_dir().ok_or("Failed to get home dir")?;
-
-    std::fs::create_dir_all(&dir).map_err(|e| format!("Failed to create dir: {:?}", e))?;
-
+    fs::create_dir_all(&dir).map_err(|e| format!("Failed to create dir: {:?}", e))?;
     let file_path = dir.join(PACKAGE_STORE);
 
     if !file_path.exists() {
-        let f = File::create(&file_path).map_err(|e| format!("Failed to create file: {:?}", e))?;
-        FileExt::lock_exclusive(&f).map_err(|e| format!("Failed to lock file: {:?}", e))?;
-        let writer = std::io::BufWriter::new(&f);
-        let store = PackageLayerStore {
-            version: env!("CARGO_PKG_VERSION").to_string(),
-            packages: HashMap::new(),
-        };
-        serde_json::to_writer(writer, &store)
+        let store = PackageLayerStore::default();
+        let content = serde_json::to_string_pretty(&store)
             .map_err(|e| format!("Failed to serialize: {:?}", e))?;
-        FileExt::unlock(&f).map_err(|e| format!("Failed to unlock file: {:?}", e))?;
+        fs::write(&file_path, content)
+            .map_err(|e| format!("Failed to write initial store: {:?}", e))?;
     }
 
     let f = if write {
-        File::create(&file_path).map_err(|e| format!("Failed to open file: {:?}", e))?
+        File::create(&file_path).map_err(|e| format!("Failed to open file for write: {:?}", e))?
     } else {
         File::open(&file_path).map_err(|e| format!("Failed to open file: {:?}", e))?
     };
@@ -329,6 +322,15 @@ pub struct PackageLayerStore {
     pub version: String,
     /// key 为 package 的 PATH
     pub packages: HashMap<String, PackageLayer>,
+}
+
+impl Default for PackageLayerStore {
+    fn default() -> Self {
+        Self {
+            version: env!("CARGO_PKG_VERSION").to_string(),
+            packages: HashMap::new(),
+        }
+    }
 }
 
 #[cfg(test)]
