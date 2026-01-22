@@ -58,8 +58,8 @@ const RETRY_DELAY_MS: u64 = 1000;
 /// Load registry store with retry mechanism for NFS compatibility.
 /// Retries on read/parse failures to handle transient issues during atomic writes.
 fn load_registry_store_with_retry() -> Result<RegistryLayerStore> {
-    let file_path = config::registry_store_file()
-        .ok_or("Failed to get registry store file path")?;
+    let file_path =
+        config::registry_store_file().ok_or("Failed to get registry store file path")?;
 
     for attempt in 0..MAX_READ_RETRIES {
         match std::fs::read_to_string(&file_path) {
@@ -114,19 +114,18 @@ fn load_registry_store_with_retry() -> Result<RegistryLayerStore> {
 /// Atomically save registry store using write-to-temp + rename.
 /// This is NFS-safe and more reliable than file locks.
 fn save_registry_store_atomic(store: &RegistryLayerStore) -> Result<()> {
-    let file_path = config::registry_store_file()
-        .ok_or("Failed to get registry store file path")?;
+    let file_path =
+        config::registry_store_file().ok_or("Failed to get registry store file path")?;
 
     // Ensure directory exists
     if let Some(dir) = file_path.parent() {
-        std::fs::create_dir_all(dir)
-            .map_err(|e| format!("Failed to create dir: {:?}", e))?;
+        std::fs::create_dir_all(dir).map_err(|e| format!("Failed to create dir: {:?}", e))?;
     }
 
     // Write to temporary file
     let temp_path = file_path.with_extension("tmp");
-    let content = serde_json::to_string_pretty(store)
-        .map_err(|e| format!("Failed to serialize: {:?}", e))?;
+    let content =
+        serde_json::to_string_pretty(store).map_err(|e| format!("Failed to serialize: {:?}", e))?;
 
     std::fs::write(&temp_path, content)
         .map_err(|e| format!("Failed to write temp file: {:?}", e))?;
@@ -223,10 +222,7 @@ pub fn create_registry_layer<P: AsRef<Path>>(
                 return Ok(p.clone());
             }
             // Invalid layer, will recreate
-            tracing::debug!(
-                "{} layer validation failed, recreating",
-                key
-            );
+            tracing::debug!("{} layer validation failed, recreating", key);
         }
     }
 
