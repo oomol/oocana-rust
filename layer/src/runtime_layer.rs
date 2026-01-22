@@ -47,35 +47,36 @@ pub fn create_runtime_layer(
     // Helper to get package layer with logging
     let get_package_layer = || {
         get_or_create_package_layer(package, bind_paths, envs, env_file).map(|layer| {
-            info!("runtime layer from package store: {}", package);
+            info!("get package layer from package store: {}", package);
             layer
         })
     };
 
     let layer: std::result::Result<PackageLayer, utils::error::Error> =
         match (package_name, version) {
-            (Some(pkg_name), Some(ver)) => {
-                match get_registry_layer(pkg_name, ver) {
-                    Ok(Some(layer)) => {
-                        info!("runtime layer from registry store: {}@{}", pkg_name, ver);
-                        Ok(layer)
-                    }
-                    Ok(None) => {
-                        info!(
-                            "registry layer {}@{} not found, fallback to package layer",
-                            pkg_name, ver
-                        );
-                        get_package_layer()
-                    }
-                    Err(e) => {
-                        info!(
-                            "get registry layer failed: {:?}, fallback to package layer",
-                            e
-                        );
-                        get_package_layer()
-                    }
+            (Some(pkg_name), Some(ver)) => match get_registry_layer(pkg_name, ver) {
+                Ok(Some(layer)) => {
+                    info!(
+                        "get package layer from registry store: {}@{}",
+                        pkg_name, ver
+                    );
+                    Ok(layer)
                 }
-            }
+                Ok(None) => {
+                    info!(
+                        "registry layer {}@{} not found, fallback to package layer",
+                        pkg_name, ver
+                    );
+                    get_package_layer()
+                }
+                Err(e) => {
+                    info!(
+                        "get registry layer failed: {:?}, fallback to package layer",
+                        e
+                    );
+                    get_package_layer()
+                }
+            },
             _ => get_package_layer(),
         };
 

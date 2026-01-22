@@ -91,53 +91,38 @@ pub fn get_or_create_package_layer<P: AsRef<Path>>(
     let pkg = package_meta(package_path)?;
     let version = pkg.version;
     let bootstrap = pkg.scripts.and_then(|s| s.bootstrap);
+    let key = package_path.to_string_lossy().to_string();
 
     let store = load_package_store()?;
 
-    let package = store
-        .packages
-        .get(&package_path.to_string_lossy().to_string());
-
-    match package {
-        Some(p) => {
-            if p.version == version && p.validate().is_ok() {
-                Ok(p.clone())
-            } else {
-                let layer = PackageLayer::create(
-                    version,
-                    None,
-                    bootstrap,
-                    bind_path,
-                    package_path.to_path_buf(),
-                    envs,
-                    env_file,
-                )?;
-                let mut store = load_package_store()?;
-                store
-                    .packages
-                    .insert(package_path.to_string_lossy().to_string(), layer.clone());
-                save_package_store(&store, None)?;
-                Ok(layer)
-            }
-        }
-        None => {
-            let layer = PackageLayer::create(
-                version,
-                None,
-                bootstrap,
-                bind_path,
-                package_path.to_path_buf(),
-                envs,
-                env_file,
-            )?;
-            let mut store = load_package_store()?;
-            store
-                .packages
-                .insert(package_path.to_string_lossy().to_string(), layer.clone());
-            save_package_store(&store, None)?;
-            Ok(layer)
+    if let Some(p) = store.packages.get(&key) {
+        if p.version == version && p.validate().is_ok() {
+            return Ok(p.clone());
         }
     }
+
+    tracing::info!(
+        "creating package layer for {}, version: {:?}",
+        pkg.name
+            .unwrap_or(package_path.to_string_lossy().to_string()),
+        version
+    );
+
+    let layer = PackageLayer::create(
+        version,
+        None,
+        bootstrap,
+        bind_path,
+        package_path.to_path_buf(),
+        envs,
+        env_file,
+    )?;
+
+    // avoid race condition, just reload and save
+    let mut store = load_package_store()?;
+    store.packages.insert(key, layer.clone());
+    save_package_store(&store, None)?;
+    Ok(layer)
 }
 
 pub fn delete_package_layer<P: AsRef<Path>>(package_path: P) -> Result<()> {
@@ -300,13 +285,13 @@ pub fn add_import_package(pkg: &PackageLayer) -> Result<()> {
     Ok(())
 }
 
-pub fn save_package_store(store: &PackageLayerStore, f: Option<File>) -> Result<()> {
-    let file_exist = f.is_some();
+pub fn save_package_store(store: &PackageLayerStore, file: Option<File>) -> Result<()> {
+    let file_provided = file.is_some();
 
-    let f = f.unwrap_or(package_store_file(true)?);
+    let f = file.unwrap_or(package_store_file(true)?);
 
-    if file_exist {
-        // 如果文件存在，可能前面已经进行过锁操作，这里只尝试加锁
+    if file_provided {
+        // 如果调用者提供了文件句柄，可能已经进行过锁操作，这里只尝试加锁
         let _ = FileExt::try_lock_exclusive(&f);
     } else {
         FileExt::lock_exclusive(&f).map_err(|e| format!("Failed to lock file: {:?}", e))?;
