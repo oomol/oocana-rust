@@ -93,7 +93,7 @@ pub fn get_or_create_package_layer<P: AsRef<Path>>(
     let bootstrap = pkg.scripts.and_then(|s| s.bootstrap);
     let key = package_path.to_string_lossy().to_string();
 
-    let mut store = load_package_store()?;
+    let store = load_package_store()?;
 
     if let Some(p) = store.packages.get(&key) {
         if p.version == version && p.validate().is_ok() {
@@ -117,6 +117,9 @@ pub fn get_or_create_package_layer<P: AsRef<Path>>(
         envs,
         env_file,
     )?;
+
+    // avoid race condition, just reload and save
+    let mut store = load_package_store()?;
     store.packages.insert(key, layer.clone());
     save_package_store(&store, None)?;
     Ok(layer)
