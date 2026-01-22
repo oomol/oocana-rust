@@ -157,9 +157,9 @@ pub fn delete_package_layer<P: AsRef<Path>>(package_path: P) -> Result<()> {
         }
     }
 
+    // 重新加载 store 以获取最新状态，避免覆盖其他进程的修改
     let mut store = load_package_store()?;
     store.packages.remove(key.as_str());
-
     save_package_store(&store, None)?;
 
     Ok(())
@@ -192,11 +192,12 @@ fn package_store_file(write: bool) -> Result<File> {
     let file_path = dir.join(PACKAGE_STORE);
 
     if !file_path.exists() {
-        let store = PackageLayerStore::default();
-        let content = serde_json::to_string_pretty(&store)
+        let f = File::create(&file_path).map_err(|e| format!("Failed to create file: {:?}", e))?;
+        FileExt::lock_exclusive(&f).map_err(|e| format!("Failed to lock file: {:?}", e))?;
+        let writer = std::io::BufWriter::new(&f);
+        serde_json::to_writer(writer, &PackageLayerStore::default())
             .map_err(|e| format!("Failed to serialize: {:?}", e))?;
-        fs::write(&file_path, content)
-            .map_err(|e| format!("Failed to write initial store: {:?}", e))?;
+        FileExt::unlock(&f).map_err(|e| format!("Failed to unlock file: {:?}", e))?;
     }
 
     let f = if write {
