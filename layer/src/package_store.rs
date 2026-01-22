@@ -82,53 +82,28 @@ pub fn get_or_create_package_layer<P: AsRef<Path>>(
     let pkg = package_meta(package_path)?;
     let version = pkg.version;
     let bootstrap = pkg.scripts.and_then(|s| s.bootstrap);
+    let key = package_path.to_string_lossy().to_string();
 
-    let store = load_package_store()?;
+    let mut store = load_package_store()?;
 
-    let package = store
-        .packages
-        .get(&package_path.to_string_lossy().to_string());
-
-    match package {
-        Some(p) => {
-            if p.version == version && p.validate().is_ok() {
-                Ok(p.clone())
-            } else {
-                let layer = PackageLayer::create(
-                    version,
-                    None,
-                    bootstrap,
-                    bind_path,
-                    package_path.to_path_buf(),
-                    envs,
-                    env_file,
-                )?;
-                let mut store = load_package_store()?;
-                store
-                    .packages
-                    .insert(package_path.to_string_lossy().to_string(), layer.clone());
-                save_package_store(&store, None)?;
-                Ok(layer)
-            }
-        }
-        None => {
-            let layer = PackageLayer::create(
-                version,
-                None,
-                bootstrap,
-                bind_path,
-                package_path.to_path_buf(),
-                envs,
-                env_file,
-            )?;
-            let mut store = load_package_store()?;
-            store
-                .packages
-                .insert(package_path.to_string_lossy().to_string(), layer.clone());
-            save_package_store(&store, None)?;
-            Ok(layer)
+    if let Some(p) = store.packages.get(&key) {
+        if p.version == version && p.validate().is_ok() {
+            return Ok(p.clone());
         }
     }
+
+    let layer = PackageLayer::create(
+        version,
+        None,
+        bootstrap,
+        bind_path,
+        package_path.to_path_buf(),
+        envs,
+        env_file,
+    )?;
+    store.packages.insert(key, layer.clone());
+    save_package_store(&store, None)?;
+    Ok(layer)
 }
 
 pub fn delete_package_layer<P: AsRef<Path>>(package_path: P) -> Result<()> {
