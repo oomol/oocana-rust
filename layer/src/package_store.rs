@@ -16,7 +16,7 @@ use serde::{Deserialize, Serialize};
 use std::env;
 use std::fs::File;
 use std::path::Path;
-use std::{collections::HashMap, fs};
+use std::collections::HashMap;
 use utils::{
     config,
     error::{Error, Result},
@@ -374,20 +374,277 @@ pub struct PackageLayerStore {
 #[cfg(target_os = "linux")]
 mod tests {
     use super::*;
+    use std::path::PathBuf;
+    use std::sync::{Mutex, MutexGuard};
+    use std::time::{SystemTime, UNIX_EPOCH};
+    use utils::config::GLOBAL_CONFIG;
+
+    static TEST_MUTEX: Mutex<()> = Mutex::new(());
+
+    // ============================================================================
+    // Test Infrastructure
+    // ============================================================================
+
+    struct TestEnv<'a> {
+        store_dir: PathBuf,
+        _guard: MutexGuard<'a, ()>,
+    }
+
+    impl<'a> TestEnv<'a> {
+        fn new(test_name: &str) -> Self {
+            let _guard = TEST_MUTEX.lock().unwrap();
+
+            let mut dir = std::env::temp_dir();
+            let now = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_millis();
+            dir.push(format!("oocana-store-test-{}-{}", test_name, now));
+            std::fs::create_dir_all(&dir).expect("create test dir");
+
+            Self::setup_config(&dir);
+            Self { store_dir: dir, _guard }
+        }
+
+        fn spawn_workers<F>(&self, count: usize, f: F) -> Result<()>
+        where
+            F: Fn(usize, PathBuf) -> Result<()> + Send + Sync + 'static,
+        {
+            let f = std::sync::Arc::new(f);
+            let handles: Vec<_> = (0..count)
+                .map(|id| {
+                    let dir = self.store_dir.clone();
+                    let f = f.clone();
+                    std::thread::spawn(move || {
+                        Self::setup_config(&dir);
+                        f(id, dir)
+                    })
+                })
+                .collect();
+
+            for handle in handles {
+                handle.join().expect("thread panicked")?;
+            }
+            Ok(())
+        }
+
+        fn verify_store(&self, expected_count: usize) -> Result<PackageLayerStore> {
+            let store = load_package_store()?;
+            assert_eq!(store.packages.len(), expected_count);
+
+            for (key, pkg) in store.packages.iter() {
+                assert_eq!(pkg.package_path.to_string_lossy().to_string(), *key);
+                assert!(pkg.version.is_some());
+                assert!(!pkg.source_layer.is_empty());
+            }
+            Ok(store)
+        }
+
+        fn setup_config(dir: &PathBuf) {
+            let mut config = GLOBAL_CONFIG.lock().unwrap();
+            config.global.store_dir = dir.to_string_lossy().to_string();
+            config.global.oocana_dir = dir.join("oocana").to_string_lossy().to_string();
+        }
+    }
+
+    // ============================================================================
+    // Tests
+    // ============================================================================
 
     #[test]
     fn test_clean_layers() {
+        let _guard = TEST_MUTEX.lock().unwrap();
         let r = clean_layer_not_in_store();
-        assert!(
-            r.is_ok(),
-            "clean_layer_not_in_store failed: {:?}",
-            r.unwrap_err()
-        );
+        assert!(r.is_ok(), "clean_layer_not_in_store failed: {:?}", r.unwrap_err());
     }
 
     #[test]
     fn test_load_package_store() {
+        let _guard = TEST_MUTEX.lock().unwrap();
         let r = load_package_store();
         assert!(r.is_ok(), "load_package_store failed: {:?}", r.unwrap_err());
+    }
+
+    #[test]
+    fn test_concurrent_writes() -> Result<()> {
+        let env = TestEnv::new("concurrent-writes");
+        env.spawn_workers(4, |id, dir| {
+            let key = dir.join(format!("pkg-{}", id));
+            for _ in 0..5 {
+                let layer = PackageLayer {
+                    version: Some("1.0.0".to_string()),
+                    base_layers: None,
+                    source_layer: format!("source-{}", id),
+                    bootstrap: None,
+                    bootstrap_layer: None,
+                    package_path: key.clone(),
+                };
+                with_package_store(|store| {
+                    store.packages.insert(key.to_string_lossy().to_string(), layer.clone());
+                    Ok(())
+                })?;
+            }
+            Ok(())
+        })?;
+        env.verify_store(4)?;
+        Ok(())
+    }
+
+    #[test]
+    fn test_mixed_read_write() -> Result<()> {
+        let env = TestEnv::new("mixed-read-write");
+
+        // Writers
+        env.spawn_workers(3, |id, dir| {
+            let key = dir.join(format!("pkg-{}", id));
+            for _ in 0..5 {
+                let layer = PackageLayer {
+                    version: Some("1.0.0".to_string()),
+                    base_layers: None,
+                    source_layer: format!("source-{}", id),
+                    bootstrap: None,
+                    bootstrap_layer: None,
+                    package_path: key.clone(),
+                };
+                with_package_store(|store| {
+                    store.packages.insert(key.to_string_lossy().to_string(), layer.clone());
+                    Ok(())
+                })?;
+            }
+            Ok(())
+        })?;
+
+        // Readers
+        env.spawn_workers(2, |_, _| {
+            for _ in 0..10 {
+                let _ = load_package_store()?;
+            }
+            Ok(())
+        })?;
+
+        env.verify_store(3)?;
+        Ok(())
+    }
+
+    #[test]
+    fn test_read_modify_write_race() -> Result<()> {
+        let env = TestEnv::new("read-modify-write");
+        env.spawn_workers(3, |id, dir| {
+            for i in 0..3 {
+                with_package_store(|store| {
+                    let count = store.packages.len();
+                    let key = dir.join(format!("pkg-proc{}-iter{}-count{}", id, i, count));
+                    let layer = PackageLayer {
+                        version: Some(format!("1.0.{}", count)),
+                        base_layers: None,
+                        source_layer: format!("source-{}-{}", id, i),
+                        bootstrap: None,
+                        bootstrap_layer: None,
+                        package_path: key.clone(),
+                    };
+                    store.packages.insert(key.to_string_lossy().to_string(), layer);
+                    Ok(())
+                })?;
+            }
+            Ok(())
+        })?;
+        env.verify_store(9)?;
+        Ok(())
+    }
+
+    #[test]
+    fn test_data_integrity_under_load() -> Result<()> {
+        let env = TestEnv::new("data-integrity");
+
+        // Writers
+        env.spawn_workers(3, |id, dir| {
+            let key = dir.join(format!("pkg-{}", id));
+            for _ in 0..5 {
+                let layer = PackageLayer {
+                    version: Some("1.0.0".to_string()),
+                    base_layers: None,
+                    source_layer: format!("source-{}", id),
+                    bootstrap: None,
+                    bootstrap_layer: None,
+                    package_path: key.clone(),
+                };
+                with_package_store(|store| {
+                    store.packages.insert(key.to_string_lossy().to_string(), layer.clone());
+                    Ok(())
+                })?;
+            }
+            Ok(())
+        })?;
+
+        // Validators
+        env.spawn_workers(2, |_, _| {
+            for _ in 0..20 {
+                let store = load_package_store()?;
+                for (key, pkg) in store.packages.iter() {
+                    assert_eq!(pkg.package_path.to_string_lossy().to_string(), *key);
+                    assert!(pkg.version.is_some());
+                    assert!(!pkg.source_layer.is_empty());
+                }
+                std::thread::sleep(std::time::Duration::from_millis(50));
+            }
+            Ok(())
+        })?;
+
+        env.verify_store(3)?;
+        Ok(())
+    }
+
+    #[test]
+    fn test_version_updates() -> Result<()> {
+        let env = TestEnv::new("version-updates");
+        let shared_key = env.store_dir.join("shared-pkg");
+
+        env.spawn_workers(4, move |id, _| {
+            let version = format!("1.0.{}", id);
+            let layer = PackageLayer {
+                version: Some(version),
+                base_layers: None,
+                source_layer: format!("source-{}", id),
+                bootstrap: None,
+                bootstrap_layer: None,
+                package_path: shared_key.clone(),
+            };
+            with_package_store(|store| {
+                store.packages.insert(shared_key.to_string_lossy().to_string(), layer);
+                Ok(())
+            })
+        })?;
+
+        let store = env.verify_store(1)?;
+        let shared_key = env.store_dir.join("shared-pkg");
+        let pkg = store.packages.get(&shared_key.to_string_lossy().to_string())
+            .expect("shared-pkg not found");
+        assert!(pkg.version.as_ref().unwrap().starts_with("1.0."));
+        Ok(())
+    }
+
+    #[test]
+    fn test_high_frequency_writes() -> Result<()> {
+        let env = TestEnv::new("high-frequency");
+        env.spawn_workers(4, |id, dir| {
+            let key = dir.join(format!("pkg-{}", id));
+            for _ in 0..10 {
+                let layer = PackageLayer {
+                    version: Some("1.0.0".to_string()),
+                    base_layers: None,
+                    source_layer: format!("source-{}", id),
+                    bootstrap: None,
+                    bootstrap_layer: None,
+                    package_path: key.clone(),
+                };
+                with_package_store(|store| {
+                    store.packages.insert(key.to_string_lossy().to_string(), layer.clone());
+                    Ok(())
+                })?;
+            }
+            Ok(())
+        })?;
+        env.verify_store(4)?;
+        Ok(())
     }
 }
