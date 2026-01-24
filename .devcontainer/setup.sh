@@ -18,3 +18,6 @@ gh release download base-rootfs@0.4.0 --repo oomol/ovmlayer-rootfs --pattern "*$
 
 # setup ovmlayer
 sudo ovmlayer setup -d /workspaces/ovmlayer-layers,rw --rootfs-tar /tmp/ubuntu-rootfs.tar --rootfs-path /workspaces/rootfs
+
+# cleanup temporary archives and extracted ovmlayer directory to free space
+rm -f /tmp/ovmlayer.tar.zst /tmp/ovmlayer.tar /tmp/ubuntu-rootfs.tar && rm -rf /tmp/ovmlayer
