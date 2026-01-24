@@ -17,9 +17,9 @@
 		},
 		"ghcr.io/devcontainers/features/python:1": {},
 		"ghcr.io/devcontainers/features/github-cli:1": {},
-		"ghcr.io/devcontainers/features/sshd:1": {},
+		"./zstd": {},
+		"ghcr.io/devcontainers/features/sshd:1": {}
 		// "ghcr.io/devcontainers-contrib/features/pdm:2": {},
-		"./ovmlayer": {}
 	},
 
 	"mounts": [
@@ -44,14 +44,9 @@
 			"type": "volume"
 		},
 		{
-			"source": "${localEnv:HOME}/oomol/ovmlayer",
-			"target": "/workspaces/ovmlayer",
-			"type": "bind"
-		},
-		{
-			"source": "${localEnv:HOME}/oomol/layer_blocker",
-			"target": "/workspaces/layer",
-			"type": "bind"
+			"source": "ovmlayer-layers",
+			"target": "/workspaces/ovmlayer-layers",
+			"type": "volume"
 		},
 		{
 			"source": "${localEnv:HOME}/.oh-my-zsh",
@@ -87,7 +82,6 @@
 	"remoteEnv": {
 		"PATH": "${containerEnv:PATH}:/workspaces/oocana-node/packages/executor/dist:/workspaces/oocana-python/executor/bin"
 	},
-	// 没有改变 $SHELL 变量
 	"customizations": {
 		"vscode": {
 			"settings": {
@@ -98,20 +92,7 @@
 			}
 		}
 	},
-	"runArgs": [
-		"--privileged",
-		"--device=/dev/loop0",
-		"--device=/dev/loop1",
-		"--device=/dev/loop2",
-		"--device=/dev/loop3",
-		"--device=/dev/loop4",
-		"--device=/dev/loop5",
-		"--device=/dev/loop6",
-		"--device=/dev/loop-control"
-	],
+	"runArgs": ["--privileged"],
 	"remoteUser": "root",
-	"onCreateCommand": "./.devcontainer/build.sh",
-	"postCreateCommand": "sudo mknod /dev/loop0 b 7 0; ./.devcontainer/setup.sh",
-	// orb 的虚拟机，需要手动创建 loop0 设备。同时如果 orb 整个退出再重开 container loop0 会丢失，所以需要在 container 启动时创建 loop0 设备
-	"postStartCommand": "test -e /dev/loop0 || sudo mknod /dev/loop0 b 7 0"
+	"onCreateCommand": "./.devcontainer/setup.sh"
 }
