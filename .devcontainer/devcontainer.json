@@ -94,5 +94,6 @@
 	},
 	"runArgs": ["--privileged"],
 	"remoteUser": "root",
-	"onCreateCommand": "./.devcontainer/setup.sh"
+	"onCreateCommand": "./.devcontainer/setup.sh",
+	"postStartCommand": "./.devcontainer/start.sh"
 }
