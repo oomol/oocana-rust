@@ -81,7 +81,16 @@ impl Node {
     pub fn block(&self) -> Block {
         match self {
             Self::Task(task) => Block::Task(Arc::clone(&task.task)),
-            Self::Flow(flow) => Block::Flow(Arc::clone(&flow.flow)),
+            Self::Flow(flow) => match &flow.flow {
+                crate::FlowReference::Resolved(subflow) => Block::Flow(Arc::clone(subflow)),
+                crate::FlowReference::Lazy { flow_path, .. } => {
+                    panic!(
+                        "Cannot get block from lazy flow reference at {:?}. \
+                         Flow must be resolved at runtime before accessing.",
+                        flow_path
+                    )
+                }
+            },
             Self::Slot(slot) => Block::Slot(Arc::clone(&slot.slot)),
             Self::Service(service) => Block::Service(Arc::clone(&service.block)),
             Self::Condition(condition) => Block::Condition(Arc::clone(&condition.conditions)),
@@ -115,7 +124,10 @@ impl Node {
         match self {
             Self::Task(task) => task.outputs_def.as_ref(),
             // TODO: change to node outputs_def instead of block's
-            Self::Flow(flow) => flow.flow.outputs_def.as_ref(),
+            Self::Flow(flow) => flow
+                .flow
+                .resolved()
+                .and_then(|f| f.outputs_def.as_ref()),
             Self::Slot(slot) => slot.slot.outputs_def.as_ref(),
             Self::Service(service) => service.block.outputs_def.as_ref(),
             Self::Condition(_) => None,
@@ -147,15 +159,18 @@ impl Node {
                 task.task = Arc::new(task_inner);
             }
             Self::Flow(flow) => {
-                let mut flow_inner = (*flow.flow).clone();
-                if let Some(output_def) = flow_inner
-                    .outputs_def
-                    .as_mut()
-                    .and_then(|def| def.get_mut(handle))
-                {
-                    output_def._serialize_for_cache = true;
+                if let crate::FlowReference::Resolved(flow_arc) = &flow.flow {
+                    let mut flow_inner = (**flow_arc).clone();
+                    if let Some(output_def) = flow_inner
+                        .outputs_def
+                        .as_mut()
+                        .and_then(|def| def.get_mut(handle))
+                    {
+                        output_def._serialize_for_cache = true;
+                    }
+                    flow.flow = crate::FlowReference::Resolved(Arc::new(flow_inner));
                 }
-                flow.flow = Arc::new(flow_inner);
+                // For lazy references, skip updating (will be handled at runtime)
             }
             Self::Slot(slot) => {
                 let mut slot_inner = (*slot.slot).clone();
@@ -218,7 +233,10 @@ impl Node {
     pub fn package_path(&self) -> Option<PathBuf> {
         match self {
             Self::Task(task) => task.task.package_path.clone(),
-            Self::Flow(flow) => flow.flow.package_path.clone(),
+            Self::Flow(flow) => flow
+                .flow
+                .resolved()
+                .and_then(|f| f.package_path.clone()),
             Self::Slot(_) => None,
             Self::Service(service) => service.block.package_path.clone(),
             Self::Condition(_) => None,
