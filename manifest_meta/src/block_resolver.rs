@@ -4,20 +4,22 @@ use manifest_reader::{
     reader::read_task_block,
 };
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     path::{Path, PathBuf},
     sync::Arc,
 };
 use utils::error::Result;
 
 use crate::service::ServiceBlock;
-use crate::{flow_resolver, service_resolver, Block, Service, SlotBlock, SubflowBlock, TaskBlock};
+use crate::{flow_resolver, service_resolver, Block, FlowReference, Service, SlotBlock, SubflowBlock, TaskBlock};
 pub type BlockPath = PathBuf;
 
 pub struct BlockResolver {
     flow_cache: Option<HashMap<BlockPath, Arc<SubflowBlock>>>,
     task_cache: Option<HashMap<BlockPath, Arc<TaskBlock>>>,
     service_cache: Option<HashMap<BlockPath, Service>>,
+    /// Tracks paths currently being resolved to detect circular dependencies
+    resolving_paths: HashSet<PathBuf>,
 }
 
 impl Default for BlockResolver {
@@ -32,6 +34,7 @@ impl BlockResolver {
             flow_cache: None,
             task_cache: None,
             service_cache: None,
+            resolving_paths: HashSet::new(),
         }
     }
 
@@ -43,6 +46,23 @@ impl BlockResolver {
         let flow_path = path_finder.find_flow_block_path(flow_name)?;
 
         self.read_flow_block(&flow_path, path_finder)
+    }
+
+    /// Resolve a flow block with support for circular dependencies.
+    ///
+    /// Unlike `resolve_flow_block`, this method returns a `FlowReference` which can be
+    /// either `Resolved` (immediately loaded) or `Lazy` (deferred due to circular dependency).
+    ///
+    /// This allows defining flows that reference themselves or form cycles, deferring
+    /// the actual recursion check to runtime when the execution path is known.
+    pub fn resolve_flow_block_lazy(
+        &mut self,
+        flow_name: &str,
+        path_finder: &mut BlockPathFinder,
+    ) -> Result<FlowReference> {
+        let flow_path = path_finder.find_flow_block_path(flow_name)?;
+
+        self.read_flow_block_lazy(&flow_path, path_finder, flow_name)
     }
 
     pub fn resolve_slot_flow_block(
@@ -223,9 +243,25 @@ impl BlockResolver {
         inputs_def: Option<InputHandles>,
         resolver: &mut BlockPathFinder,
     ) -> Result<Arc<SubflowBlock>> {
-        let slotflow = flow_resolver::read_slotflow(inputs_def, slot_flow_path, self, resolver)?;
+        // Detect circular dependency (slotflows can also form cycles)
+        if self.resolving_paths.contains(slot_flow_path) {
+            return Err(utils::error::Error::new(&format!(
+                "Circular dependency detected: slotflow at {:?} is already being resolved in the current call stack",
+                slot_flow_path
+            )));
+        }
 
-        Ok(Arc::new(slotflow))
+        // Mark as resolving
+        self.resolving_paths.insert(slot_flow_path.to_owned());
+
+        // Resolve the slotflow
+        let result = flow_resolver::read_slotflow(inputs_def, slot_flow_path, self, resolver);
+
+        // Always remove from resolving set
+        self.resolving_paths.remove(slot_flow_path);
+
+        // Return result wrapped in Arc
+        result.map(Arc::new)
     }
 
     pub fn read_flow_block(
@@ -233,18 +269,91 @@ impl BlockResolver {
         flow_path: &Path,
         resolver: &mut BlockPathFinder,
     ) -> Result<Arc<SubflowBlock>> {
+        // Check cache first
         if let Some(flow_cache) = &self.flow_cache {
             if let Some(flow) = flow_cache.get(flow_path) {
                 return Ok(Arc::clone(flow));
             }
         }
 
-        let flow = Arc::new(flow_resolver::read_flow(flow_path, self, resolver)?);
+        // Detect circular dependency
+        if self.resolving_paths.contains(flow_path) {
+            return Err(utils::error::Error::new(&format!(
+                "Circular dependency detected: flow at {:?} is already being resolved in the current call stack",
+                flow_path
+            )));
+        }
 
-        let flow_cache = self.flow_cache.get_or_insert_with(HashMap::new);
-        flow_cache.insert(flow_path.to_owned(), Arc::clone(&flow));
+        // Mark as resolving
+        self.resolving_paths.insert(flow_path.to_owned());
 
-        Ok(flow)
+        // Resolve the flow
+        let result = flow_resolver::read_flow(flow_path, self, resolver);
+
+        // Always remove from resolving set, even on error
+        self.resolving_paths.remove(flow_path);
+
+        // Cache and return if successful
+        match result {
+            Ok(flow) => {
+                let flow = Arc::new(flow);
+                let flow_cache = self.flow_cache.get_or_insert_with(HashMap::new);
+                flow_cache.insert(flow_path.to_owned(), Arc::clone(&flow));
+                Ok(flow)
+            }
+            Err(e) => Err(e),
+        }
+    }
+
+    /// Read a flow block with lazy loading support for circular dependencies.
+    ///
+    /// If a circular dependency is detected, returns a `FlowReference::Lazy` instead
+    /// of failing, allowing runtime to handle the actual recursion based on execution path.
+    fn read_flow_block_lazy(
+        &mut self,
+        flow_path: &Path,
+        resolver: &mut BlockPathFinder,
+        flow_name: &str,
+    ) -> Result<FlowReference> {
+        // Check cache first
+        if let Some(flow_cache) = &self.flow_cache {
+            if let Some(flow) = flow_cache.get(flow_path) {
+                return Ok(FlowReference::Resolved(Arc::clone(flow)));
+            }
+        }
+
+        // Detect circular dependency - return Lazy instead of error
+        if self.resolving_paths.contains(flow_path) {
+            tracing::warn!(
+                "Circular dependency detected at {:?}, returning lazy reference. \
+                 Runtime will need to resolve this and check for actual infinite loops.",
+                flow_path
+            );
+            return Ok(FlowReference::Lazy {
+                flow_name: flow_name.to_string(),
+                flow_path: flow_path.to_owned(),
+            });
+        }
+
+        // Mark as resolving
+        self.resolving_paths.insert(flow_path.to_owned());
+
+        // Resolve the flow (this will use resolve_flow_block_lazy recursively if needed)
+        let result = flow_resolver::read_flow_lazy(flow_path, self, resolver);
+
+        // Always remove from resolving set
+        self.resolving_paths.remove(flow_path);
+
+        // Cache and return if successful
+        match result {
+            Ok(flow) => {
+                let flow = Arc::new(flow);
+                let flow_cache = self.flow_cache.get_or_insert_with(HashMap::new);
+                flow_cache.insert(flow_path.to_owned(), Arc::clone(&flow));
+                Ok(FlowReference::Resolved(flow))
+            }
+            Err(e) => Err(e),
+        }
     }
 
     fn read_service(&mut self, service_path: &Path) -> Result<&Service> {
@@ -303,5 +412,22 @@ mod test {
     fn test_task_package() {
         let task_path = Path::new("a/b/tasks/task_name/block.oo.yaml");
         assert_eq!(package_path(task_path).unwrap(), PathBuf::from("a/b"));
+    }
+
+    #[test]
+    fn test_circular_dependency_detection() {
+        let mut resolver = BlockResolver::new();
+        let path = PathBuf::from("test/flow.oo.yaml");
+
+        // Simulate entering the resolution process
+        assert!(!resolver.resolving_paths.contains(&path));
+        resolver.resolving_paths.insert(path.clone());
+
+        // Now the same path is already being resolved
+        assert!(resolver.resolving_paths.contains(&path));
+
+        // Cleanup
+        resolver.resolving_paths.remove(&path);
+        assert!(!resolver.resolving_paths.contains(&path));
     }
 }
