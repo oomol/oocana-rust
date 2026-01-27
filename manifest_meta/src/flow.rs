@@ -281,6 +281,7 @@ impl SubflowBlock {
         flow_path: PathBuf,
         block_resolver: &mut BlockResolver,
         mut path_finder: BlockPathFinder,
+        use_lazy_loading: bool,
     ) -> Result<Self> {
         let manifest::SubflowBlock {
             description,
@@ -377,9 +378,59 @@ impl SubflowBlock {
         for node in &nodes_in_flow {
             match node {
                 manifest::Node::Subflow(subflow_node) => {
-                    let mut flow = block_resolver
-                        .resolve_flow_block(&subflow_node.subflow, &mut path_finder)?;
-                    let subflow_inputs_def = flow.inputs_def.clone();
+                    let flow = if use_lazy_loading {
+                        block_resolver
+                            .resolve_flow_block_lazy(&subflow_node.subflow, &mut path_finder)?
+                    } else {
+                        let arc_flow = block_resolver
+                            .resolve_flow_block(&subflow_node.subflow, &mut path_finder)?;
+                        crate::FlowReference::Resolved(arc_flow)
+                    };
+
+                    // If this is a lazy reference (circular dependency detected),
+                    // create a minimal node and skip complex processing (slots, injection, etc.)
+                    if flow.is_lazy() {
+                        let from = connections.node_inputs_froms.remove(&subflow_node.node_id);
+                        let to = connections.node_outputs_tos.remove(&subflow_node.node_id);
+                        let subflow_inputs_def_patch = get_inputs_def_patch(&subflow_node.inputs_from);
+
+                        // For lazy references, we don't have access to the flow's inputs_def
+                        // Use empty inputs_def - runtime will need to handle this
+                        let inputs = generate_node_inputs(
+                            &None,
+                            &from,
+                            &subflow_node.inputs_from,
+                            &subflow_inputs_def_patch,
+                            &subflow_node.node_id,
+                        );
+
+                        warn!(
+                            "Created minimal SubflowNode for circular reference at node {}, \
+                             runtime must resolve the actual flow and check for infinite loops",
+                            subflow_node.node_id
+                        );
+
+                        new_nodes.insert(
+                            subflow_node.node_id.to_owned(),
+                            Node::Flow(SubflowNode {
+                                description: subflow_node.description.clone(),
+                                to,
+                                flow,  // FlowReference::Lazy
+                                node_id: subflow_node.node_id.to_owned(),
+                                timeout: subflow_node.timeout,
+                                inputs,
+                                concurrency: subflow_node.concurrency,
+                                scope: BlockScope::default(),
+                                progress_weight: subflow_node.progress_weight,
+                                slots: None,  // Skip slots processing for circular refs
+                            }),
+                        );
+                        continue;  // Skip the rest of the complex processing
+                    }
+
+                    // Normal processing for resolved flows
+                    let mut flow_arc = flow.resolved().unwrap().clone();
+                    let subflow_inputs_def = flow_arc.inputs_def.clone();
                     let subflow_inputs_def_patch = get_inputs_def_patch(&subflow_node.inputs_from);
                     let to = connections.node_outputs_tos.remove(&subflow_node.node_id);
 
@@ -387,10 +438,11 @@ impl SubflowBlock {
                     let mut subflow_inputs_from =
                         subflow_node.inputs_from.clone().unwrap_or_default();
 
+                    let package_path_for_scope = flow_arc.package_path.clone();
                     let running_target = calculate_running_target(
                         node,
                         &None,
-                        &flow.package_path,
+                        &package_path_for_scope,
                         calculate_block_value_type(&subflow_node.subflow),
                     );
 
@@ -457,7 +509,7 @@ impl SubflowBlock {
                                     // slotflow inputs def is not defined in the slotflow, we need to create it from slot node inputs_def
                                     // and merge all slotflow_provider.inputs_def into it.
                                     // it is user's responsibility to ensure that these inputs_def are not conflicting.
-                                    let mut slotflow_inputs_def = flow
+                                    let mut slotflow_inputs_def = flow_arc
                                         .nodes
                                         .get(&slotflow_provider.slot_node_id)
                                         .and_then(|n| n.inputs_def());
@@ -507,14 +559,14 @@ impl SubflowBlock {
 
                                     let slot_block = Slot::Subflow(SubflowSlot {
                                         slot_node_id: slotflow_provider.slot_node_id.to_owned(),
-                                        subflow: slotflow,
+                                        subflow: crate::FlowReference::Resolved(slotflow),
                                         scope,
                                     });
 
                                     // update slot node's inputs if slotflow_provider.inputs_def and inputs_from are defined.
                                     // we will generate the new input handle name as `runtime::slot_node_id::input_handle` format, so the slotflow_provider.inputs_def can be same as the slot node's inputs_def
                                     if let Some(Node::Slot(slot_node)) =
-                                        flow.nodes.get(&slotflow_provider.slot_node_id)
+                                        flow_arc.nodes.get(&slotflow_provider.slot_node_id)
                                     {
                                         let mut new_slot_node_inputs = slot_node.inputs.clone();
                                         let mut additional_flow_inputs_tos: HashMap<
@@ -653,7 +705,7 @@ impl SubflowBlock {
                                             }
 
                                             // Cannot mutate inside Arc, so clone, update, and re-wrap if needed
-                                            let mut flow_inner = (*flow).clone();
+                                            let mut flow_inner = (*flow_arc).clone();
                                             flow_inner.update_node(
                                                 &slotflow_provider.slot_node_id,
                                                 Node::Slot(new_slot_node),
@@ -666,7 +718,7 @@ impl SubflowBlock {
                                                     handle_tos,
                                                 );
                                             }
-                                            flow = Arc::new(flow_inner);
+                                            flow_arc = Arc::new(flow_inner);
                                         }
                                     } else {
                                         warn!(
@@ -711,7 +763,7 @@ impl SubflowBlock {
 
                                     let slot_block = Slot::Subflow(SubflowSlot {
                                         slot_node_id: subflow_provider.slot_node_id.to_owned(),
-                                        subflow: slot_flow,
+                                        subflow: crate::FlowReference::Resolved(slot_flow),
                                         scope,
                                     });
 
@@ -761,7 +813,7 @@ impl SubflowBlock {
                         Node::Flow(SubflowNode {
                             description: subflow_node.description.clone(),
                             to,
-                            flow,
+                            flow: crate::FlowReference::Resolved(flow_arc),
                             node_id: subflow_node.node_id.to_owned(),
                             timeout: subflow_node.timeout,
                             inputs,
