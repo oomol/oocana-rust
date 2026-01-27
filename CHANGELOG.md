@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.30.32 (2026-01-27)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* chore: rebuild .devcontainer for better usage by @leavesster in https://github.com/oomol/oocana-rust/pull/391
+* chore: use postStartCommand to fix container missing setup by @leavesster in https://github.com/oomol/oocana-rust/pull/392
+* feat: support reference self flow by @leavesster in https://github.com/oomol/oocana-rust/pull/393
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.30.31...v0.30.32
+
 ## 0.30.31 (2026-01-22)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
