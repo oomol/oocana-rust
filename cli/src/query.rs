@@ -179,7 +179,7 @@ pub fn query(action: &QueryAction) -> Result<()> {
                 read_flow_or_block(flow, &mut block_reader, &mut block_path_finder)?;
             match block_or_flow {
                 manifest_meta::Block::Flow(flow) => {
-                    let input = flow.query_nodes_inputs();
+                    let input = flow.read().unwrap().query_nodes_inputs();
                     let json_result = serde_json::to_string(&input)?;
                     if let Some(output) = output {
                         let mut file = std::fs::File::create(output)?;
@@ -213,7 +213,7 @@ pub fn query(action: &QueryAction) -> Result<()> {
 
             match block_or_flow {
                 manifest_meta::Block::Flow(flow) => {
-                    let results = flow.get_services();
+                    let results = flow.read().unwrap().get_services();
                     for result in results {
                         println!("service: {:}", result);
                     }

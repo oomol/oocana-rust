@@ -77,7 +77,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
 
     let mut block_reader = block_reader;
 
-    let mut block = match read_flow_or_block(block_name, &mut block_reader, &mut path_finder) {
+    let block = match read_flow_or_block(block_name, &mut block_reader, &mut path_finder) {
         Ok(block) => block,
         Err(err) => {
             log_error!("Failed to read block: {}", err);
@@ -113,10 +113,9 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
                 log_error!("Failed to parse input values: {}", e);
                 format!("Invalid input values: {}", e)
             })?;
-        if let Block::Flow(flow_block) = block {
-            let mut inner_flow_block = (*flow_block).clone();
-            inner_flow_block.merge_input_values(merge_inputs_value);
-            block = Block::Flow(Arc::new(inner_flow_block));
+        if let Block::Flow(flow_block) = &block {
+            let mut flow_guard = flow_block.write().unwrap();
+            flow_guard.merge_input_values(merge_inputs_value);
         }
     }
 
@@ -207,7 +206,10 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
             common: common_job_params,
         },
         Block::Flow(flow_block) => {
-            let flow_cache_path = get_flow_cache_path(&flow_block.path_str);
+            let flow_cache_path = {
+                let flow_guard = flow_block.read().unwrap();
+                get_flow_cache_path(&flow_guard.path_str)
+            };
             JobParams::Flow {
                 flow_block: flow_block.clone(),
                 nodes,
@@ -549,11 +551,12 @@ pub fn get_packages(args: GetPackageArgs<'_>) -> Result<HashMap<PathBuf, String>
     // TODO: 支持查询特定 node 需要的 packages
     let filter_nodes = nodes.unwrap_or_default();
 
-    let mut packages = vec![];
+    let mut packages: Vec<PathBuf> = vec![];
     match read_flow_or_block(block, &mut block_reader, &mut path_finder) {
         Ok(block) => match block {
             Block::Flow(flow) => {
-                flow.nodes
+                let flow_guard = flow.read().unwrap();
+                flow_guard.nodes
                     .iter()
                     .filter(|node| {
                         filter_nodes.is_empty() || filter_nodes.contains(&node.0.to_string())

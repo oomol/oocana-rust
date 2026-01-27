@@ -15,6 +15,7 @@ mod tests {
         let flow_block = block_reader
             .resolve_flow_block("basic", &mut finder)
             .unwrap();
+        let flow_block = flow_block.read().unwrap();
 
         let flow_input = HandleName::new("flow_in1".to_owned());
         let handle_in1 = HandleName::new("in1".to_owned());
@@ -88,6 +89,7 @@ mod tests {
         let flow_block = block_reader
             .resolve_flow_block("additional", &mut finder)
             .unwrap();
+        let flow_block = flow_block.read().unwrap();
 
         assert!(flow_block.path.ends_with("additional/subflow.oo.yaml"));
 
@@ -202,6 +204,7 @@ mod tests {
         let flow_block = block_reader
             .resolve_flow_block("serializable-var", &mut finder)
             .unwrap();
+        let flow_block = flow_block.read().unwrap();
 
         assert!(flow_block
             .path

@@ -1,4 +1,4 @@
-use std::{collections::HashSet, sync::Arc};
+use std::{collections::HashSet, sync::{Arc, RwLock}};
 
 use tracing::warn;
 
@@ -11,7 +11,7 @@ use super::run_to_node::RunToNode;
 use node_input_values::NodeInputValues;
 
 pub struct UpstreamParameters {
-    pub flow_block: Arc<SubflowBlock>,
+    pub flow_block: Arc<RwLock<SubflowBlock>>,
     pub use_cache: bool,
     pub nodes: Option<HashSet<NodeId>>,
 }
@@ -23,16 +23,17 @@ pub fn find_upstream(params: UpstreamParameters) -> (Vec<String>, Vec<String>, V
         nodes,
     } = params;
 
-    let mut node_input_values = if use_cache && get_flow_cache_path(&flow_block.path_str).is_some()
+    let flow_guard = flow_block.read().unwrap();
+    let mut node_input_values = if use_cache && get_flow_cache_path(&flow_guard.path_str).is_some()
     {
-        NodeInputValues::recover_from(get_flow_cache_path(&flow_block.path_str).unwrap(), false)
+        NodeInputValues::recover_from(get_flow_cache_path(&flow_guard.path_str).unwrap(), false)
     } else {
         NodeInputValues::new(false)
     };
 
     let (node_will_run, waiting_nodes, upstream_nodes) = find_upstream_nodes(
         &nodes.unwrap_or_default(),
-        &flow_block,
+        &flow_guard,
         &mut node_input_values,
     );
     (node_will_run, waiting_nodes, upstream_nodes)

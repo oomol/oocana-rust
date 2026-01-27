@@ -1,6 +1,6 @@
 use std::{
     collections::{HashMap, HashSet},
-    sync::Arc,
+    sync::{Arc, RwLock},
 };
 
 use job::{BlockInputs, BlockJobStacks, JobId, RuntimeScope};
@@ -26,9 +26,13 @@ pub struct CommonJobParameters {
     pub scope: RuntimeScope,
 }
 
+/// Maximum allowed recursion depth for job execution.
+/// Exceeding this limit will cause the job to fail with an error.
+pub const MAX_RECURSION_DEPTH: usize = 50;
+
 pub enum JobParams {
     Flow {
-        flow_block: Arc<SubflowBlock>,
+        flow_block: Arc<RwLock<SubflowBlock>>,
         nodes: Option<HashSet<NodeId>>,
         parent_scope: RuntimeScope,
         node_value_store: NodeInputValues,
@@ -41,14 +45,14 @@ pub enum JobParams {
         task_block: Arc<TaskBlock>,
         inputs_def: Option<InputHandles>, // block's inputs def will miss additional inputs added on node
         outputs_def: Option<OutputHandles>, // block's outputs def will miss additional outputs added on node
-        parent_flow: Option<Arc<SubflowBlock>>,
+        parent_flow: Option<Arc<RwLock<SubflowBlock>>>,
         timeout: Option<u64>,
         inputs_def_patch: Option<InputDefPatchMap>,
         common: CommonJobParameters,
     },
     Service {
         service_block: Arc<ServiceBlock>,
-        parent_flow: Option<Arc<SubflowBlock>>,
+        parent_flow: Option<Arc<RwLock<SubflowBlock>>>,
         inputs_def_patch: Option<InputDefPatchMap>,
         common: CommonJobParameters,
     },
@@ -64,7 +68,37 @@ pub enum JobParams {
     },
 }
 
+impl JobParams {
+    fn common(&self) -> &CommonJobParameters {
+        match self {
+            JobParams::Flow { common, .. } => common,
+            JobParams::Task { common, .. } => common,
+            JobParams::Service { common, .. } => common,
+            JobParams::Slot { common, .. } => common,
+            JobParams::Condition { common, .. } => common,
+        }
+    }
+}
+
 pub fn run_job(params: JobParams) -> Option<BlockJobHandle> {
+    let depth = params.common().stacks.depth();
+    if depth >= MAX_RECURSION_DEPTH {
+        let common = params.common();
+        common.shared.reporter.send(ReporterMessage::BlockFinished {
+            session_id: &common.shared.session_id,
+            job_id: &common.job_id,
+            block_path: &None,
+            stacks: common.stacks.vec(),
+            error: Some(format!(
+                "Maximum recursion depth exceeded: {} (limit: {})",
+                depth, MAX_RECURSION_DEPTH
+            )),
+            result: None,
+            finish_at: ReporterMessage::now(),
+        });
+        return None;
+    }
+
     match params {
         JobParams::Flow {
             flow_block,
@@ -104,8 +138,8 @@ pub fn run_job(params: JobParams) -> Option<BlockJobHandle> {
             inputs_def,
             outputs_def,
             shared: common.shared,
-            flow_path: parent_flow.as_ref().map(|f| f.path_str.clone()),
-            injection_store: parent_flow.as_ref().and_then(|f| f.injection_store.clone()),
+            flow_path: parent_flow.as_ref().map(|f| f.read().unwrap().path_str.clone()),
+            injection_store: parent_flow.as_ref().and_then(|f| f.read().unwrap().injection_store.clone()),
             dir: block_job::block_dir(&task_block, parent_flow.as_ref(), Some(&common.scope)),
             stacks: common.stacks,
             job_id: common.job_id,
@@ -127,7 +161,7 @@ pub fn run_job(params: JobParams) -> Option<BlockJobHandle> {
             job_id: common.job_id,
             inputs: common.inputs,
             block_status: common.block_status,
-            injection_store: parent_flow.as_ref().and_then(|f| f.injection_store.clone()),
+            injection_store: parent_flow.as_ref().and_then(|f| f.read().unwrap().injection_store.clone()),
             parent_flow: parent_flow,
             scope: common.scope,
             inputs_def_patch,

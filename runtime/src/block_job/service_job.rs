@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 
 use job::{BlockInputs, BlockJobStacks, JobId, RuntimeScope};
 use mainframe::scheduler::{SchedulerTx, ServiceParams};
@@ -36,7 +36,7 @@ pub struct ServiceJobParameters {
     pub block_status: BlockStatusTx,
     pub injection_store: Option<InjectionStore>,
     pub scope: RuntimeScope,
-    pub parent_flow: Option<Arc<SubflowBlock>>,
+    pub parent_flow: Option<Arc<RwLock<SubflowBlock>>>,
     pub inputs_def_patch: Option<InputDefPatchMap>,
 }
 
@@ -87,7 +87,7 @@ pub fn execute_service_job(params: ServiceJobParameters) -> Option<BlockJobHandl
         }),
         block_dir: service_dir(&service_block),
         injection_store,
-        flow_path: parent_flow.as_ref().map(|f| f.path_str.clone()),
+        flow_path: parent_flow.as_ref().map(|f| f.read().unwrap().path_str.clone()),
         inputs_def_patch,
     });
 
@@ -97,7 +97,7 @@ pub fn execute_service_job(params: ServiceJobParameters) -> Option<BlockJobHandl
         shared.scheduler_tx.clone(),
         stacks,
         &scope,
-        parent_flow.as_ref().map(|f| f.path_str.clone()),
+        parent_flow.as_ref().map(|f| f.read().unwrap().path_str.clone()),
     );
 
     let spawn_handles: Vec<tokio::task::JoinHandle<()>> = vec![worker_listener_handle];

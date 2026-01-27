@@ -111,13 +111,13 @@ impl Node {
         }
     }
 
-    pub fn outputs_def(&self) -> Option<&OutputHandles> {
+    pub fn outputs_def(&self) -> Option<OutputHandles> {
         match self {
-            Self::Task(task) => task.outputs_def.as_ref(),
+            Self::Task(task) => task.outputs_def.clone(),
             // TODO: change to node outputs_def instead of block's
-            Self::Flow(flow) => flow.flow.outputs_def.as_ref(),
-            Self::Slot(slot) => slot.slot.outputs_def.as_ref(),
-            Self::Service(service) => service.block.outputs_def.as_ref(),
+            Self::Flow(flow) => flow.flow.read().unwrap().outputs_def.clone(),
+            Self::Slot(slot) => slot.slot.outputs_def.clone(),
+            Self::Service(service) => service.block.outputs_def.clone(),
             Self::Condition(_) => None,
         }
     }
@@ -147,15 +147,14 @@ impl Node {
                 task.task = Arc::new(task_inner);
             }
             Self::Flow(flow) => {
-                let mut flow_inner = (*flow.flow).clone();
-                if let Some(output_def) = flow_inner
+                let mut flow_guard = flow.flow.write().unwrap();
+                if let Some(output_def) = flow_guard
                     .outputs_def
                     .as_mut()
                     .and_then(|def| def.get_mut(handle))
                 {
                     output_def._serialize_for_cache = true;
                 }
-                flow.flow = Arc::new(flow_inner);
             }
             Self::Slot(slot) => {
                 let mut slot_inner = (*slot.slot).clone();
@@ -218,7 +217,7 @@ impl Node {
     pub fn package_path(&self) -> Option<PathBuf> {
         match self {
             Self::Task(task) => task.task.package_path.clone(),
-            Self::Flow(flow) => flow.flow.package_path.clone(),
+            Self::Flow(flow) => flow.flow.read().unwrap().package_path.clone(),
             Self::Slot(_) => None,
             Self::Service(service) => service.block.package_path.clone(),
             Self::Condition(_) => None,
