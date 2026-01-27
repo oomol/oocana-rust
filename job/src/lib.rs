@@ -92,4 +92,8 @@ impl BlockJobStacks {
     pub fn is_root(&self) -> bool {
         self.0.is_empty()
     }
+
+    pub fn depth(&self) -> usize {
+        self.0.len()
+    }
 }

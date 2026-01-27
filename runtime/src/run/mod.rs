@@ -26,6 +26,10 @@ pub struct CommonJobParameters {
     pub scope: RuntimeScope,
 }
 
+/// Maximum allowed recursion depth for job execution.
+/// Exceeding this limit will cause the job to fail with an error.
+pub const MAX_RECURSION_DEPTH: usize = 50;
+
 pub enum JobParams {
     Flow {
         flow_block: Arc<RwLock<SubflowBlock>>,
@@ -64,7 +68,37 @@ pub enum JobParams {
     },
 }
 
+impl JobParams {
+    fn common(&self) -> &CommonJobParameters {
+        match self {
+            JobParams::Flow { common, .. } => common,
+            JobParams::Task { common, .. } => common,
+            JobParams::Service { common, .. } => common,
+            JobParams::Slot { common, .. } => common,
+            JobParams::Condition { common, .. } => common,
+        }
+    }
+}
+
 pub fn run_job(params: JobParams) -> Option<BlockJobHandle> {
+    let depth = params.common().stacks.depth();
+    if depth >= MAX_RECURSION_DEPTH {
+        let common = params.common();
+        common.shared.reporter.send(ReporterMessage::BlockFinished {
+            session_id: &common.shared.session_id,
+            job_id: &common.job_id,
+            block_path: &None,
+            stacks: common.stacks.vec(),
+            error: Some(format!(
+                "Maximum recursion depth exceeded: {} (limit: {})",
+                depth, MAX_RECURSION_DEPTH
+            )),
+            result: None,
+            finish_at: ReporterMessage::now(),
+        });
+        return None;
+    }
+
     match params {
         JobParams::Flow {
             flow_block,
