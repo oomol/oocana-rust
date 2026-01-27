@@ -210,6 +210,23 @@ pub fn generate_node_inputs(
 pub type MergeInputsValue = HashMap<NodeId, HashMap<HandleName, JsonValue>>;
 
 impl SubflowBlock {
+    /// Create a placeholder SubflowBlock for cache pre-occupation (recursive flow support)
+    pub fn placeholder(path: PathBuf) -> Self {
+        Self {
+            description: None,
+            nodes: HashMap::new(),
+            inputs_def: None,
+            outputs_def: None,
+            path_str: path.to_string_lossy().to_string(),
+            path,
+            flow_inputs_tos: HashMap::new(),
+            flow_outputs_froms: HashMap::new(),
+            package_path: None,
+            injection_store: None,
+            forward_previews: None,
+        }
+    }
+
     pub fn has_slot(&self) -> bool {
         self.nodes
             .values()
@@ -377,9 +394,10 @@ impl SubflowBlock {
         for node in &nodes_in_flow {
             match node {
                 manifest::Node::Subflow(subflow_node) => {
-                    let mut flow = block_resolver
+                    let flow = block_resolver
                         .resolve_flow_block(&subflow_node.subflow, &mut path_finder)?;
-                    let subflow_inputs_def = flow.inputs_def.clone();
+                    let flow_guard = flow.read().unwrap();
+                    let subflow_inputs_def = flow_guard.inputs_def.clone();
                     let subflow_inputs_def_patch = get_inputs_def_patch(&subflow_node.inputs_from);
                     let to = connections.node_outputs_tos.remove(&subflow_node.node_id);
 
@@ -390,7 +408,7 @@ impl SubflowBlock {
                     let running_target = calculate_running_target(
                         node,
                         &None,
-                        &flow.package_path,
+                        &flow_guard.package_path,
                         calculate_block_value_type(&subflow_node.subflow),
                     );
 
@@ -412,6 +430,7 @@ impl SubflowBlock {
                             BlockScope::default()
                         }
                     };
+                    drop(flow_guard);
 
                     let mut slot_blocks: HashMap<NodeId, Slot> = HashMap::new();
                     if let Some(slot_providers) = subflow_node.slots.as_ref() {
@@ -457,10 +476,13 @@ impl SubflowBlock {
                                     // slotflow inputs def is not defined in the slotflow, we need to create it from slot node inputs_def
                                     // and merge all slotflow_provider.inputs_def into it.
                                     // it is user's responsibility to ensure that these inputs_def are not conflicting.
-                                    let mut slotflow_inputs_def = flow
-                                        .nodes
-                                        .get(&slotflow_provider.slot_node_id)
-                                        .and_then(|n| n.inputs_def());
+                                    let mut slotflow_inputs_def = {
+                                        let flow_guard = flow.read().unwrap();
+                                        flow_guard
+                                            .nodes
+                                            .get(&slotflow_provider.slot_node_id)
+                                            .and_then(|n| n.inputs_def())
+                                    };
 
                                     if let Some(additional_slotflow_inputs_def) =
                                         slotflow_provider.inputs_def.as_ref()
@@ -491,7 +513,9 @@ impl SubflowBlock {
                                         &slotflow_provider.slotflow,
                                     ) {
                                         BlockValueType::Pkg { pkg_name, .. } => {
-                                            if let Some(package_path) = &slotflow.package_path {
+                                            let slotflow_guard = slotflow.read().unwrap();
+                                            if let Some(package_path) = &slotflow_guard.package_path
+                                            {
                                                 BlockScope::Package {
                                                     name: pkg_name,
                                                     path: package_path.clone(),
@@ -513,9 +537,14 @@ impl SubflowBlock {
 
                                     // update slot node's inputs if slotflow_provider.inputs_def and inputs_from are defined.
                                     // we will generate the new input handle name as `runtime::slot_node_id::input_handle` format, so the slotflow_provider.inputs_def can be same as the slot node's inputs_def
-                                    if let Some(Node::Slot(slot_node)) =
-                                        flow.nodes.get(&slotflow_provider.slot_node_id)
-                                    {
+                                    let slot_node_opt = {
+                                        let flow_guard = flow.read().unwrap();
+                                        flow_guard
+                                            .nodes
+                                            .get(&slotflow_provider.slot_node_id)
+                                            .cloned()
+                                    };
+                                    if let Some(Node::Slot(slot_node)) = slot_node_opt {
                                         let mut new_slot_node_inputs = slot_node.inputs.clone();
                                         let mut additional_flow_inputs_tos: HashMap<
                                             HandleName,
@@ -652,21 +681,22 @@ impl SubflowBlock {
                                                 new_slot_node.inputs = new_slot_node_inputs;
                                             }
 
-                                            // Cannot mutate inside Arc, so clone, update, and re-wrap if needed
-                                            let mut flow_inner = (*flow).clone();
-                                            flow_inner.update_node(
-                                                &slotflow_provider.slot_node_id,
-                                                Node::Slot(new_slot_node),
-                                            );
-                                            for (input_handle, handle_tos) in
-                                                additional_flow_inputs_tos.iter()
+                                            // Update the flow through write lock
                                             {
-                                                flow_inner.update_flow_inputs_tos(
-                                                    input_handle,
-                                                    handle_tos,
+                                                let mut flow_guard = flow.write().unwrap();
+                                                flow_guard.update_node(
+                                                    &slotflow_provider.slot_node_id,
+                                                    Node::Slot(new_slot_node),
                                                 );
+                                                for (input_handle, handle_tos) in
+                                                    additional_flow_inputs_tos.iter()
+                                                {
+                                                    flow_guard.update_flow_inputs_tos(
+                                                        input_handle,
+                                                        handle_tos,
+                                                    );
+                                                }
                                             }
-                                            flow = Arc::new(flow_inner);
                                         }
                                     } else {
                                         warn!(
@@ -686,15 +716,20 @@ impl SubflowBlock {
                                         &mut path_finder,
                                     )?;
 
-                                    if slot_flow.has_slot() {
-                                        tracing::warn!("this subflow has slot node");
+                                    {
+                                        let slot_flow_guard = slot_flow.read().unwrap();
+                                        if slot_flow_guard.has_slot() {
+                                            tracing::warn!("this subflow has slot node");
+                                        }
                                     }
 
                                     let scope =
                                         match calculate_block_value_type(&subflow_provider.subflow)
                                         {
                                             BlockValueType::Pkg { pkg_name, .. } => {
-                                                if let Some(package_path) = &slot_flow.package_path
+                                                let slot_flow_guard = slot_flow.read().unwrap();
+                                                if let Some(package_path) =
+                                                    &slot_flow_guard.package_path
                                                 {
                                                     BlockScope::Package {
                                                         name: pkg_name,

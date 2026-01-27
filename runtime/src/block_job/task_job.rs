@@ -8,7 +8,8 @@ use manifest_reader::manifest::SpawnOptions;
 
 use std::collections::HashMap;
 use std::path::Path;
-use std::{process, sync::Arc};
+use std::sync::{Arc, RwLock};
+use std::process;
 use tokio::io::{AsyncBufReadExt, BufReader};
 
 use crate::block_status::BlockStatusTx;
@@ -269,7 +270,7 @@ pub fn execute_task_job(params: TaskJobParameters) -> Option<BlockJobHandle> {
 
 pub fn block_dir(
     task_block: &TaskBlock,
-    parent_flow: Option<&Arc<SubflowBlock>>,
+    parent_flow: Option<&Arc<RwLock<SubflowBlock>>>,
     scope: Option<&RuntimeScope>,
 ) -> String {
     // Priority is given to the `scope` parameter if provided, as it represents
@@ -284,7 +285,8 @@ pub fn block_dir(
     } else {
         parent_flow
             .and_then(|f| {
-                f.path
+                let flow_guard = f.read().unwrap();
+                flow_guard.path
                     .parent()
                     .map(|p| p.to_str().unwrap_or(".").to_owned())
             })

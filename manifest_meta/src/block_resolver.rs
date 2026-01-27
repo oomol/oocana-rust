@@ -6,7 +6,7 @@ use manifest_reader::{
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
-    sync::Arc,
+    sync::{Arc, RwLock},
 };
 use utils::error::Result;
 
@@ -15,7 +15,7 @@ use crate::{flow_resolver, service_resolver, Block, Service, SlotBlock, SubflowB
 pub type BlockPath = PathBuf;
 
 pub struct BlockResolver {
-    flow_cache: Option<HashMap<BlockPath, Arc<SubflowBlock>>>,
+    flow_cache: Option<HashMap<BlockPath, Arc<RwLock<SubflowBlock>>>>,
     task_cache: Option<HashMap<BlockPath, Arc<TaskBlock>>>,
     service_cache: Option<HashMap<BlockPath, Service>>,
 }
@@ -39,7 +39,7 @@ impl BlockResolver {
         &mut self,
         flow_name: &str,
         path_finder: &mut BlockPathFinder,
-    ) -> Result<Arc<SubflowBlock>> {
+    ) -> Result<Arc<RwLock<SubflowBlock>>> {
         let flow_path = path_finder.find_flow_block_path(flow_name)?;
 
         self.read_flow_block(&flow_path, path_finder)
@@ -50,7 +50,7 @@ impl BlockResolver {
         slot_flow_name: &str,
         inputs_def: Option<InputHandles>,
         path_finder: &mut BlockPathFinder,
-    ) -> Result<Arc<SubflowBlock>> {
+    ) -> Result<Arc<RwLock<SubflowBlock>>> {
         let slot_flow_path = path_finder.find_slot_slotflow_path(slot_flow_name)?;
 
         self.read_slotflow_block(&slot_flow_path, inputs_def, path_finder)
@@ -222,29 +222,35 @@ impl BlockResolver {
         slot_flow_path: &Path,
         inputs_def: Option<InputHandles>,
         resolver: &mut BlockPathFinder,
-    ) -> Result<Arc<SubflowBlock>> {
+    ) -> Result<Arc<RwLock<SubflowBlock>>> {
         let slotflow = flow_resolver::read_slotflow(inputs_def, slot_flow_path, self, resolver)?;
 
-        Ok(Arc::new(slotflow))
+        Ok(Arc::new(RwLock::new(slotflow)))
     }
 
     pub fn read_flow_block(
         &mut self,
         flow_path: &Path,
         resolver: &mut BlockPathFinder,
-    ) -> Result<Arc<SubflowBlock>> {
+    ) -> Result<Arc<RwLock<SubflowBlock>>> {
         if let Some(flow_cache) = &self.flow_cache {
             if let Some(flow) = flow_cache.get(flow_path) {
                 return Ok(Arc::clone(flow));
             }
         }
 
-        let flow = Arc::new(flow_resolver::read_flow(flow_path, self, resolver)?);
-
+        let placeholder = Arc::new(RwLock::new(SubflowBlock::placeholder(flow_path.to_owned())));
         let flow_cache = self.flow_cache.get_or_insert_with(HashMap::new);
-        flow_cache.insert(flow_path.to_owned(), Arc::clone(&flow));
+        flow_cache.insert(flow_path.to_owned(), Arc::clone(&placeholder));
 
-        Ok(flow)
+        let flow = flow_resolver::read_flow(flow_path, self, resolver)?;
+
+        {
+            let mut guard = placeholder.write().unwrap();
+            *guard = flow;
+        }
+
+        Ok(placeholder)
     }
 
     fn read_service(&mut self, service_path: &Path) -> Result<&Service> {

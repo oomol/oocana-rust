@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, sync::{Arc, RwLock}};
 
 use job::{BlockJobStacks, JobId, RuntimeScope};
 use mainframe::scheduler::{QueryBlockRequest, RunBlockRequest};
@@ -19,7 +19,7 @@ use crate::{
 
 pub enum RunBlockSuccessResponse {
     Flow {
-        flow_block: Arc<SubflowBlock>,
+        flow_block: Arc<RwLock<SubflowBlock>>,
         inputs: HashMap<HandleName, Arc<OutputValue>>,
         scope: RuntimeScope,
         request_stack: BlockJobStacks,
@@ -221,13 +221,14 @@ pub fn parse_run_block_request(
             });
         }
         manifest_meta::Block::Flow(subflow_block) => {
+            let subflow_guard = subflow_block.read().unwrap();
             let flow_scope = match calculate_block_value_type(&block) {
                 BlockValueType::Pkg { pkg_name, .. } => RuntimeScope {
                     session_id: shared.session_id.clone(),
                     pkg_name: Some(pkg_name.clone()),
                     data_dir: scope.pkg_root.join(pkg_name).to_string_lossy().to_string(),
                     pkg_root: scope.pkg_root.clone(),
-                    path: subflow_block.package_path.clone().unwrap_or_else(|| {
+                    path: subflow_guard.package_path.clone().unwrap_or_else(|| {
                         warn!("can not find subflow package path, this should never happen");
                         scope.path.clone()
                     }),
@@ -238,7 +239,7 @@ pub fn parse_run_block_request(
                 _ => scope.clone(),
             };
 
-            fulfill_nullable_and_default(&mut values, &subflow_block.inputs_def);
+            fulfill_nullable_and_default(&mut values, &subflow_guard.inputs_def);
 
             let input_values: HashMap<HandleName, Arc<OutputValue>> = values
                 .into_iter()
@@ -253,7 +254,7 @@ pub fn parse_run_block_request(
                 })
                 .collect();
 
-            let missing_inputs = subflow_block
+            let missing_inputs = subflow_guard
                 .inputs_def
                 .as_ref()
                 .map(|inputs_def| {
@@ -274,7 +275,7 @@ pub fn parse_run_block_request(
                 return Err(msg);
             }
 
-            let invalid_inputs = validate_fn(&subflow_block.inputs_def, &input_values);
+            let invalid_inputs = validate_fn(&subflow_guard.inputs_def, &input_values);
 
             if !invalid_inputs.is_empty() {
                 let mut msg = format!("Subflow block {} has some invalid inputs:", block);
@@ -283,6 +284,8 @@ pub fn parse_run_block_request(
                 }
                 return Err(msg);
             }
+
+            drop(subflow_guard);
 
             return Ok(RunBlockSuccessResponse::Flow {
                 flow_block: subflow_block,
@@ -351,12 +354,13 @@ pub fn parse_query_block_request(
                     has_slot: bool,
                 }
 
+                let subflow_guard = subflow_block.read().unwrap();
                 let metadata = SubflowMetadata {
                     r#type: "subflow".to_string(),
-                    description: subflow_block.description.clone(),
-                    inputs_def: subflow_block.inputs_def.clone(),
-                    outputs_def: subflow_block.outputs_def.clone(),
-                    has_slot: subflow_block.has_slot(),
+                    description: subflow_guard.description.clone(),
+                    inputs_def: subflow_guard.inputs_def.clone(),
+                    outputs_def: subflow_guard.outputs_def.clone(),
+                    has_slot: subflow_guard.has_slot(),
                 };
 
                 let json = serde_json::to_value(&metadata);

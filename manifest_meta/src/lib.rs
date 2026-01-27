@@ -53,9 +53,10 @@ pub fn read_flow_or_block(
     block_reader: &mut BlockResolver,
     path_finder: &mut BlockPathFinder,
 ) -> Result<Block> {
+    use std::sync::RwLock;
     if let Ok(flow_path) = find_flow(block_name) {
         return flow_resolver::read_flow(&flow_path, block_reader, path_finder)
-            .map(|flow| Block::Flow(Arc::new(flow)));
+            .map(|flow| Block::Flow(Arc::new(RwLock::new(flow))));
     }
 
     block_reader.resolve_block(block_name, path_finder)

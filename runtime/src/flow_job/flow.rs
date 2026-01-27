@@ -1,7 +1,7 @@
 use std::{
     collections::{HashMap, HashSet},
     default,
-    sync::Arc,
+    sync::{Arc, RwLock},
 };
 
 use crate::{
@@ -56,7 +56,7 @@ struct BlockInFlowJobHandle {
 
 struct FlowShared {
     job_id: JobId,
-    flow_block: Arc<SubflowBlock>,
+    flow_block: Arc<RwLock<SubflowBlock>>,
     shared: Arc<Shared>,
     stacks: BlockJobStacks,
     parent_scope: RuntimeScope,
@@ -81,7 +81,7 @@ struct NodeQueue {
 }
 
 pub struct FlowJobParameters {
-    pub flow_block: Arc<SubflowBlock>,
+    pub flow_block: Arc<RwLock<SubflowBlock>>,
     pub shared: Arc<Shared>,
     pub stacks: BlockJobStacks,
     pub flow_job_id: JobId,
@@ -113,34 +113,40 @@ pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle>
         vault_client,
     } = params;
 
+    // Acquire read lock to get necessary data
+    let (flow_path_str, flow_path, absence_node_inputs) = {
+        let flow_guard = flow_block.read().unwrap();
+        let absence_node_inputs = flow_guard
+            .query_nodes_inputs()
+            .into_iter()
+            .filter_map(|(node_id, handles)| {
+                if flow_guard
+                    .nodes
+                    .get(&node_id)
+                    .is_none_or(|n| node_value_store.is_node_fulfill(n))
+                {
+                    None
+                } else {
+                    Some((
+                        node_id,
+                        handles
+                            .iter()
+                            .filter(|h| h.value.is_none())
+                            .cloned()
+                            .collect::<Vec<InputHandle>>(),
+                    ))
+                }
+            })
+            .collect::<HashMap<NodeId, Vec<InputHandle>>>();
+        (flow_guard.path_str.clone(), flow_guard.path.clone(), absence_node_inputs)
+    };
+
     let reporter = Arc::new(shared.reporter.flow(
         flow_job_id.to_owned(),
-        Some(flow_block.path_str.clone()),
+        Some(flow_path_str.clone()),
         stacks.clone(),
     ));
     reporter.started(&inputs);
-    let absence_node_inputs = flow_block
-        .query_nodes_inputs()
-        .into_iter()
-        .filter_map(|(node_id, handles)| {
-            if flow_block
-                .nodes
-                .get(&node_id)
-                .is_none_or(|n| node_value_store.is_node_fulfill(n))
-            {
-                None
-            } else {
-                Some((
-                    node_id,
-                    handles
-                        .iter()
-                        .filter(|h| h.value.is_none())
-                        .cloned()
-                        .collect::<Vec<InputHandle>>(),
-                ))
-            }
-        })
-        .collect::<HashMap<NodeId, Vec<InputHandle>>>();
 
     if !absence_node_inputs.is_empty() {
         let node_and_handles = absence_node_inputs
@@ -174,7 +180,6 @@ pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle>
         node_queue_pool: HashMap::new(),
     };
 
-    let flow_path = flow_block.path.clone();
     let flow_shared = FlowShared {
         flow_block,
         job_id: flow_job_id.to_owned(),
@@ -188,11 +193,14 @@ pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle>
     };
 
     if let Some(ref origin_nodes) = nodes {
-        let (runnable_nodes, pending_nodes, upstream_nodes) = find_upstream_nodes(
-            origin_nodes,
-            &flow_shared.flow_block,
-            &mut run_flow_ctx.node_input_values,
-        );
+        let (runnable_nodes, pending_nodes, upstream_nodes) = {
+            let flow_guard = flow_shared.flow_block.read().unwrap();
+            find_upstream_nodes(
+                origin_nodes,
+                &flow_guard,
+                &mut run_flow_ctx.node_input_values,
+            )
+        };
 
         reporter.will_run_nodes(
             &runnable_nodes,
@@ -204,8 +212,12 @@ pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle>
         );
 
         for node in runnable_nodes {
-            if let Some(node) = flow_shared.flow_block.nodes.get(&NodeId::from(node)) {
-                run_node(node, &flow_shared, &mut run_flow_ctx);
+            let node_opt = {
+                let flow_guard = flow_shared.flow_block.read().unwrap();
+                flow_guard.nodes.get(&NodeId::from(node.clone())).cloned()
+            };
+            if let Some(node) = node_opt {
+                run_node(&node, &flow_shared, &mut run_flow_ctx);
             }
         }
 
@@ -218,11 +230,14 @@ pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle>
     } else {
         let mut runnable_nodes: Vec<String> = Vec::new();
         let mut pending_nodes: Vec<String> = Vec::new();
-        for node in flow_shared.flow_block.nodes.values() {
-            if run_flow_ctx.node_input_values.is_node_fulfill(node) {
-                runnable_nodes.push(node.node_id().to_string());
-            } else {
-                pending_nodes.push(node.node_id().to_string());
+        {
+            let flow_guard = flow_shared.flow_block.read().unwrap();
+            for node in flow_guard.nodes.values() {
+                if run_flow_ctx.node_input_values.is_node_fulfill(node) {
+                    runnable_nodes.push(node.node_id().to_string());
+                } else {
+                    pending_nodes.push(node.node_id().to_string());
+                }
             }
         }
 
@@ -231,18 +246,26 @@ pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle>
         reporter.will_run_nodes(&runnable_nodes, &pending_nodes, &Vec::new());
 
         for node in runnable_nodes {
-            if let Some(node) = flow_shared.flow_block.nodes.get(&NodeId::from(node)) {
-                run_node(node, &flow_shared, &mut run_flow_ctx);
+            let node_opt = {
+                let flow_guard = flow_shared.flow_block.read().unwrap();
+                flow_guard.nodes.get(&NodeId::from(node.clone())).cloned()
+            };
+            if let Some(node) = node_opt {
+                run_node(&node, &flow_shared, &mut run_flow_ctx);
             }
         }
     }
 
     if let Some(inputs) = inputs {
         for (handle, value) in inputs {
-            if let Some(handle_tos) = flow_shared.flow_block.flow_inputs_tos.get(&handle) {
+            let handle_tos_opt = {
+                let flow_guard = flow_shared.flow_block.read().unwrap();
+                flow_guard.flow_inputs_tos.get(&handle).cloned()
+            };
+            if let Some(handle_tos) = handle_tos_opt {
                 produce_new_value(
                     &value,
-                    handle_tos,
+                    &handle_tos,
                     &flow_shared,
                     &mut run_flow_ctx,
                     true,
@@ -265,14 +288,17 @@ pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle>
     }
 
     let mut estimation_node_progress_store = HashMap::new();
-    for (node_id, node) in flow_shared.flow_block.nodes.iter() {
-        estimation_node_progress_store.insert(
-            node_id.clone(),
-            EstimationNodeProgress {
-                progress: 0.0,
-                weight: node.progress_weight(),
-            },
-        );
+    {
+        let flow_guard = flow_shared.flow_block.read().unwrap();
+        for (node_id, node) in flow_guard.nodes.iter() {
+            estimation_node_progress_store.insert(
+                node_id.clone(),
+                EstimationNodeProgress {
+                    progress: 0.0,
+                    weight: node.progress_weight(),
+                },
+            );
+        }
     }
 
     let scheduler_tx = flow_shared.shared.scheduler_tx.clone();
@@ -282,8 +308,11 @@ pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle>
     let spawn_handle = tokio::spawn(async move {
         // Initialize progress tracking variables inside the async task
         let mut total_weight = 0.0;
-        for node in flow_shared.flow_block.nodes.values() {
-            total_weight += node.progress_weight();
+        {
+            let flow_guard = flow_shared.flow_block.read().unwrap();
+            for node in flow_guard.nodes.values() {
+                total_weight += node.progress_weight();
+            }
         }
         let mut estimation_progress_sum = 0.0; // 0.0 ~ 100.0
 
@@ -332,7 +361,11 @@ pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle>
                     options,
                 } => {
                     if let Some(job) = run_flow_ctx.jobs.get(&job_id) {
-                        if let Some(node) = flow_shared.flow_block.nodes.get(&job.node_id) {
+                        let node_opt = {
+                            let flow_guard = flow_shared.flow_block.read().unwrap();
+                            flow_guard.nodes.get(&job.node_id).cloned()
+                        };
+                        if let Some(node) = node_opt {
                             if let Some(tos) = node.to() {
                                 if let Some(handle_tos) = tos.get(&handle) {
                                     produce_new_value(
@@ -352,7 +385,11 @@ pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle>
                 }
                 block_status::Status::Progress { job_id, progress } => {
                     if let Some(job) = run_flow_ctx.jobs.get(&job_id) {
-                        if flow_shared.flow_block.nodes.contains_key(&job.node_id) {
+                        let contains_key = {
+                            let flow_guard = flow_shared.flow_block.read().unwrap();
+                            flow_guard.nodes.contains_key(&job.node_id)
+                        };
+                        if contains_key {
                             let node_weight_progress =
                                 estimation_node_progress_store.get_mut(&job.node_id);
 
@@ -378,7 +415,11 @@ pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle>
                     outputs: map,
                 } => {
                     if let Some(job) = run_flow_ctx.jobs.get(&job_id) {
-                        if let Some(node) = flow_shared.flow_block.nodes.get(&job.node_id) {
+                        let node_opt = {
+                            let flow_guard = flow_shared.flow_block.read().unwrap();
+                            flow_guard.nodes.get(&job.node_id).cloned()
+                        };
+                        if let Some(node) = node_opt {
                             if let Some(tos) = node.to() {
                                 for (handle, value) in map.iter() {
                                     if let Some(handle_tos) = tos.get(handle) {
@@ -424,6 +465,10 @@ pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle>
                                         Some(&flow_shared.flow_block),
                                         Some(&scope),
                                     );
+                                    let (flow_path_str, injection_store) = {
+                                        let flow_guard = flow_shared.flow_block.read().unwrap();
+                                        (flow_guard.path_str.clone(), flow_guard.injection_store.clone())
+                                    };
                                     if let Some(handle) = execute_task_job(TaskJobParameters {
                                         executor: task_block.executor.clone(),
                                         block_path: task_block.path_str(),
@@ -432,14 +477,11 @@ pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle>
                                         shared: flow_shared.shared.clone(),
                                         stacks: request_stack.stack(
                                             flow_shared.job_id.to_owned(),
-                                            flow_shared.flow_block.path_str.to_owned(),
+                                            flow_path_str.clone(),
                                             node_id.clone(),
                                         ),
-                                        injection_store: flow_shared
-                                            .flow_block
-                                            .injection_store
-                                            .clone(),
-                                        flow_path: Some(flow_shared.flow_block.path_str.clone()),
+                                        injection_store,
+                                        flow_path: Some(flow_path_str),
                                         dir: block_dir,
                                         job_id: job_id.clone(),
                                         inputs: Some(inputs),
@@ -465,12 +507,16 @@ pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle>
                                     job_id,
                                     node_id,
                                 } => {
+                                    let flow_path_str = {
+                                        let flow_guard = flow_shared.flow_block.read().unwrap();
+                                        flow_guard.path_str.clone()
+                                    };
                                     if let Some(handle) = execute_flow_job(FlowJobParameters {
                                         flow_block,
                                         shared: flow_shared.shared.clone(),
                                         stacks: request_stack.stack(
                                             flow_shared.job_id.to_owned(),
-                                            flow_shared.flow_block.path_str.to_owned(),
+                                            flow_path_str,
                                             node_id.clone(),
                                         ),
                                         flow_job_id: job_id.clone(),
@@ -557,16 +603,20 @@ pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle>
                         request_id,
                         session_id,
                     } => {
-                        let node = run_flow_ctx
-                            .jobs
-                            .get(&job_id)
-                            .map(|job| job.node_id.to_owned())
-                            .and_then(|id| flow_shared.flow_block.nodes.get(&id));
+                        let (node, nodes, outputs_def) = {
+                            let flow_guard = flow_shared.flow_block.read().unwrap();
+                            let node_id = run_flow_ctx
+                                .jobs
+                                .get(&job_id)
+                                .map(|job| job.node_id.to_owned());
+                            let node = node_id.and_then(|id| flow_guard.nodes.get(&id).cloned());
+                            (node, flow_guard.nodes.clone(), flow_guard.outputs_def.clone())
+                        };
                         let res = parse_node_downstream(
-                            node,
-                            &flow_shared.flow_block.nodes,
+                            node.as_ref(),
+                            &nodes,
                             &outputs,
-                            &flow_shared.flow_block.outputs_def,
+                            &outputs_def,
                         );
                         match res {
                             Ok(json) => {
@@ -607,11 +657,14 @@ pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle>
                             .get(&job_id)
                             .map(|job| job.node_id.to_owned());
                         if let Some(node_id) = &node_id {
-                            if flow_shared
-                                .flow_block
-                                .forward_previews
-                                .as_ref()
-                                .map_or(false, |p| p.contains(node_id))
+                            let should_forward = {
+                                let flow_guard = flow_shared.flow_block.read().unwrap();
+                                flow_guard
+                                    .forward_previews
+                                    .as_ref()
+                                    .map_or(false, |p| p.contains(node_id))
+                            };
+                            if should_forward
                             {
                                 reporter.forward_previews(node_id.clone(), &payload);
                                 run_flow_ctx.parent_block_status.run_request(
@@ -729,7 +782,8 @@ pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle>
                     let success_done = error.is_none();
 
                     if let Some(job) = run_flow_ctx.jobs.get(&job_id) {
-                        if let Some(node) = flow_shared.flow_block.nodes.get(&job.node_id) {
+                        let flow_guard = flow_shared.flow_block.read().unwrap();
+                        if let Some(node) = flow_guard.nodes.get(&job.node_id) {
                             let node_weight_progress =
                                 estimation_node_progress_store.get_mut(&job.node_id);
 
@@ -771,9 +825,10 @@ pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle>
 
                     // error already handled in the block report
                     if let Some(err) = error {
+                        let flow_path_str = flow_shared.flow_block.read().unwrap().path_str.clone();
                         save_flow_cache(
                             &run_flow_ctx.node_input_values,
-                            &flow_shared.flow_block.path_str,
+                            &flow_path_str,
                         );
 
                         let node_id = run_flow_ctx
@@ -807,7 +862,7 @@ pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle>
                         } else {
                             let error_stack = flow_shared.stacks.stack(
                                 flow_shared.job_id.to_owned(),
-                                flow_shared.flow_block.path_str.to_owned(),
+                                flow_path_str.clone(),
                                 node_id.unwrap_or_else(|| NodeId::from("unknown_node".to_string())),
                             );
                             error_stack.vec().to_owned()
@@ -825,7 +880,7 @@ pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle>
                             run_flow_ctx.parent_block_status.finish(
                                 flow_shared.job_id.to_owned(),
                                 None,
-                                Some(format!("flow {} failed.", flow_shared.flow_block.path_str)),
+                                Some(format!("flow {} failed.", flow_path_str)),
                                 Some(ErrorDetail {
                                     message: Some(err),
                                     stack: error_stack,
@@ -849,9 +904,10 @@ pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle>
                     }
                 }
                 block_status::Status::Error { error } => {
+                    let flow_path_str = flow_shared.flow_block.read().unwrap().path_str.clone();
                     save_flow_cache(
                         &run_flow_ctx.node_input_values,
-                        &flow_shared.flow_block.path_str,
+                        &flow_path_str,
                     );
 
                     run_flow_ctx.jobs.clear();
@@ -880,7 +936,8 @@ fn flow_success(shared: &FlowShared, ctx: &RunFlowContext, reporter: &FlowReport
     reporter.done(&None, &None);
     ctx.parent_block_status
         .finish(shared.job_id.to_owned(), None, None, None);
-    save_flow_cache(&ctx.node_input_values, &shared.flow_block.path_str);
+    let flow_path_str = shared.flow_block.read().unwrap().path_str.clone();
+    save_flow_cache(&ctx.node_input_values, &flow_path_str);
 }
 
 fn run_pending_node(job_id: JobId, flow_shared: &FlowShared, run_flow_ctx: &mut RunFlowContext) {
@@ -894,7 +951,8 @@ fn run_pending_node(job_id: JobId, flow_shared: &FlowShared, run_flow_ctx: &mut 
 
         node_queue.jobs.remove(&job_id);
 
-        if let Some(node) = flow_shared.flow_block.nodes.get(&node_id) {
+        let flow_guard = flow_shared.flow_block.read().unwrap();
+        if let Some(node) = flow_guard.nodes.get(&node_id) {
             let concurrency = node.concurrency();
             let jobs_count = node_queue.jobs.len();
             if jobs_count < concurrency as usize && !node_queue.pending.is_empty() {
@@ -941,7 +999,8 @@ fn produce_new_value(
                     continue;
                 }
 
-                let last_fulfill_count = if let Some(node) = shared.flow_block.nodes.get(node_id) {
+                let flow_guard = shared.flow_block.read().unwrap();
+                let last_fulfill_count = if let Some(node) = flow_guard.nodes.get(node_id) {
                     ctx.node_input_values.node_pending_fulfill(node)
                 } else {
                     0
@@ -966,7 +1025,7 @@ fn produce_new_value(
                     .insert(node_id, input_handle, Arc::clone(value));
 
                 if run_next_node {
-                    if let Some(node) = shared.flow_block.nodes.get(node_id) {
+                    if let Some(node) = flow_guard.nodes.get(node_id) {
                         if ctx.node_input_values.is_node_fulfill(node) {
                             let node_queue =
                                 ctx.node_queue_pool.entry(node_id.to_owned()).or_default();
@@ -1096,7 +1155,7 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
         shared: shared.shared.clone(),
         stacks: shared.stacks.stack(
             shared.job_id.to_owned(),
-            shared.flow_block.path_str.to_owned(),
+            shared.flow_block.read().unwrap().path_str.to_owned(),
             node.node_id().to_owned(),
         ),
         job_id: job_id.clone(),
@@ -1108,7 +1167,7 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
     let job_params = match block {
         Block::Task(task_block) => JobParams::Task {
             inputs_def: node.inputs_def(),
-            outputs_def: node.outputs_def().cloned(),
+            outputs_def: node.outputs_def(),
             task_block: task_block.clone(),
             parent_flow: Some(shared.flow_block.clone()),
             timeout: node.timeout(),

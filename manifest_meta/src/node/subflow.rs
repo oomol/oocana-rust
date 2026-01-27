@@ -2,10 +2,10 @@ use super::common::{HandlesTos, NodeInput};
 use crate::{extend_node_common_field, Block, BlockScope, SubflowBlock, TaskBlock};
 use crate::{HandleName, NodeId};
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 
 extend_node_common_field!(SubflowNode {
-    flow: Arc<SubflowBlock>,
+    flow: Arc<RwLock<SubflowBlock>>,
     slots: Option<HashMap<NodeId, Slot>>,
     scope: BlockScope,
 });
@@ -49,6 +49,6 @@ pub struct TaskSlot {
 #[derive(Debug, Clone)]
 pub struct SubflowSlot {
     pub slot_node_id: NodeId,
-    pub subflow: Arc<SubflowBlock>,
+    pub subflow: Arc<RwLock<SubflowBlock>>,
     pub scope: BlockScope,
 }
