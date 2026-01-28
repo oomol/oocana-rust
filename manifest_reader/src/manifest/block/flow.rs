@@ -8,7 +8,7 @@ use crate::manifest::{
 };
 
 use super::{
-    handle::{to_input_handles, to_output_handles},
+    handle::{convert_middle_inputs, convert_middle_outputs},
     InputHandles, OutputHandles,
 };
 
@@ -30,22 +30,8 @@ impl From<TmpSubflowBlock> for SubflowBlock {
             description: tmp.description,
             nodes: tmp.nodes,
             outputs_from: tmp.outputs_from,
-            inputs_def: to_input_handles(tmp.inputs_def.map(|v| {
-                v.into_iter()
-                    .filter_map(|h| match h {
-                        MiddleInputHandle::Input(handle) => Some(handle),
-                        MiddleInputHandle::Group { .. } => None,
-                    })
-                    .collect()
-            })),
-            outputs_def: to_output_handles(tmp.outputs_def.map(|v| {
-                v.into_iter()
-                    .filter_map(|h| match h {
-                        MiddleOutputHandle::Output(handle) => Some(handle),
-                        MiddleOutputHandle::Group { .. } => None,
-                    })
-                    .collect()
-            })),
+            inputs_def: convert_middle_inputs(tmp.inputs_def),
+            outputs_def: convert_middle_outputs(tmp.outputs_def),
             injection: tmp.injection,
             forward_previews: tmp.forward_previews,
         }
