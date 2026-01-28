@@ -131,7 +131,7 @@ pub fn generate_node_inputs(
                 from.as_ref().and_then(|f| {
                     f.first().and_then(|hf| {
                         if let crate::HandleFrom::FromValue { value } = hf {
-                            value.clone()
+                            value.clone().into()
                         } else {
                             None
                         }

@@ -128,7 +128,7 @@ pub enum HandleFrom {
         output_handle: HandleName,
     },
     FromValue {
-        value: Option<Option<JsonValue>>,
+        value: ValueState,
     },
 }
 

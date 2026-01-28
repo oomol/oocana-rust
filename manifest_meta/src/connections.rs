@@ -50,7 +50,7 @@ impl Connections {
                                 subflow_node_id.to_owned(),
                                 runtime_handle.clone(),
                                 HandleFrom::FromValue {
-                                    value: input.value.clone(),
+                                    value: input.value.clone().into(),
                                 },
                             );
                             tracing::debug!(
@@ -122,7 +122,7 @@ impl Connections {
                     subflow_node_id.to_owned(),
                     runtime_handle,
                     HandleFrom::FromValue {
-                        value: Some(value.clone()),
+                        value: Some(value.clone()).into(),
                     },
                 );
             }
@@ -192,7 +192,7 @@ impl Connections {
                                     node_id.to_owned(),
                                     input_from.handle.to_owned(),
                                     HandleFrom::FromValue {
-                                        value: input.value.clone(),
+                                        value: input.value.clone().into(),
                                     },
                                 );
                                 tracing::debug!(
