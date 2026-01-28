@@ -82,7 +82,7 @@ pub fn read_flow_block(flow_manifest_path: &Path) -> Result<SubflowBlock> {
 }
 
 pub fn read_manifest_file<T: DeserializeOwned>(file_path: &Path) -> Result<T> {
-    let s = std::fs::read_to_string(file_path).unwrap();
+    let s = std::fs::read_to_string(file_path)?;
 
     // Remove Unicode line separator and paragraph separator before parsing since they will cause serde_yaml to fail
     let s = s.replace("\u{2028}", "").replace("\u{2029}", "");
