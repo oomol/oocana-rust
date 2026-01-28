@@ -76,7 +76,7 @@ pub struct NodeInput {
     pub def: InputHandle,
     pub patch: Option<Vec<InputDefPatch>>,
     // generate from node's from.value or from value_node
-    pub value: Option<Option<JsonValue>>,
+    pub value: ValueState,
     // generate from node's from.flow_input or from node's from.node_output
     pub sources: Option<Vec<HandleSource>>,
     pub serialize_for_cache: bool,

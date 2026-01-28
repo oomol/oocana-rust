@@ -17,7 +17,7 @@ use manifest_reader::{
 use crate::{
     condition::ConditionBlock,
     node::{
-        common::NodeInput,
+        common::{NodeInput, ValueState},
         subflow::{Slot, SubflowSlot, TaskSlot},
     },
     scope::{calculate_running_target, BlockScope, RunningTarget},
@@ -197,7 +197,7 @@ pub fn generate_node_inputs(
                         ..input_def.clone()
                     },
                     patch,
-                    value,
+                    value: value.into(),
                     sources: connection_from,
                     serialize_for_cache,
                 },
@@ -247,7 +247,7 @@ impl SubflowBlock {
                     }
                     inputs
                         .entry(handle)
-                        .and_modify(|i| i.value = Some(Some(value)));
+                        .and_modify(|i| i.value = Some(Some(value)).into());
                 }
                 node.update_inputs(inputs);
             }
@@ -264,7 +264,7 @@ impl SubflowBlock {
 
                 // copy runtime value to input def when querying inputs
                 let input_def = InputHandle {
-                    value: input.value.clone(),
+                    value: input.value.clone().into(),
                     ..input.def.clone()
                 };
 
@@ -595,7 +595,7 @@ impl SubflowBlock {
                                                             ..input.clone()
                                                         },
                                                         patch: None,
-                                                        value: None,
+                                                        value: ValueState::NotProvided,
                                                         sources: None, // from will be added later
                                                         serialize_for_cache: serialize,
                                                     },
@@ -633,7 +633,7 @@ impl SubflowBlock {
                                                             .entry(input.handle.clone())
                                                             .and_modify(|node_input| {
                                                                 node_input.value =
-                                                                    Some(value.clone());
+                                                                    Some(value.clone()).into();
                                                             });
                                                     }
 
