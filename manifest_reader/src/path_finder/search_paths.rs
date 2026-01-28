@@ -338,6 +338,23 @@ mod tests {
                 path: "a::::b".to_string()
             }
         );
+
+        // Path with embedded .. (not starting with ./ or ../) is Direct, not RelPath
+        // This is by design: only paths starting with ./ or ../ are treated as RelPath
+        assert_eq!(
+            calculate_block_value_type("a/../b"),
+            BlockValueType::Direct {
+                path: "a/../b".to_string()
+            }
+        );
+
+        // Path with embedded . (not starting with ./) is Direct, not RelPath
+        assert_eq!(
+            calculate_block_value_type("a/./b"),
+            BlockValueType::Direct {
+                path: "a/./b".to_string()
+            }
+        );
     }
 
     #[test]
