@@ -158,7 +158,10 @@ pub enum BlockValueType {
     /// `<block_name>` - direct block name or path without special prefix
     Direct { path: String },
     /// `<pkg>::<block>` - block from another package
-    Pkg { pkg_name: String, block_name: String },
+    Pkg {
+        pkg_name: String,
+        block_name: String,
+    },
     /// `/absolute/path` - absolute filesystem path
     AbsPath { path: String },
     /// `./relative/path` or `../relative/path` - relative filesystem path
