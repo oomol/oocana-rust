@@ -8,8 +8,8 @@ use manifest_reader::manifest::SpawnOptions;
 
 use std::collections::HashMap;
 use std::path::Path;
-use std::sync::{Arc, RwLock};
 use std::process;
+use std::sync::{Arc, RwLock};
 use tokio::io::{AsyncBufReadExt, BufReader};
 
 use crate::block_status::BlockStatusTx;
@@ -217,7 +217,7 @@ pub fn execute_task_job(params: TaskJobParameters) -> Option<BlockJobHandle> {
                         TaskJobHandle {
                             job_id,
                             shared,
-                            child: None, // TODO: keep child and also wait exit code
+                            child: None,
                             spawn_handles,
                         },
                     ))
@@ -289,7 +289,8 @@ pub fn block_dir(
         parent_flow
             .and_then(|f| {
                 let flow_guard = f.read().unwrap();
-                flow_guard.path
+                flow_guard
+                    .path
                     .parent()
                     .map(|p| p.to_str().unwrap_or(".").to_owned())
             })
