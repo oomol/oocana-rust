@@ -233,6 +233,13 @@ mod tests {
             }
         );
         assert_eq!(
+            calculate_block_value_type("pkg1::service::block1"),
+            BlockValueType::Pkg {
+                pkg_name: "pkg1".to_string(),
+                block_name: "service".to_string()
+            }
+        );
+        assert_eq!(
             calculate_block_value_type("/abs/path/block1"),
             BlockValueType::AbsPath {
                 path: "/abs/path/block1".to_string()
