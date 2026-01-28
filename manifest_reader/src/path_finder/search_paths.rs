@@ -3,7 +3,7 @@ use tracing::warn;
 use super::manifest_file::{find_oo_yaml, find_oo_yaml_in_dir, find_oo_yaml_without_oo_suffix};
 use std::collections::HashMap;
 use std::fs::canonicalize;
-use std::path::{Component, Path, PathBuf};
+use std::path::{Path, PathBuf};
 
 pub struct BlockManifestParams<'a> {
     pub block_value: BlockValueType,
@@ -96,81 +96,6 @@ pub fn search_block_manifest(params: BlockManifestParams) -> Option<PathBuf> {
     }
 }
 
-// parse <pkg>::<block> or <pkg>::<service>::<function> and return an Option<(String, String)>,
-// where the first element is the package name (pkg) and the second is the block or service name.
-fn separate_to_pkg_and_block(block_value: &str) -> Option<(String, String)> {
-    let parts: Vec<&str> = block_value.split("::").filter(|s| !s.is_empty()).collect();
-
-    if parts.len() > 1 {
-        Some((parts[0].to_string(), parts[1].to_string()))
-    } else {
-        None
-    }
-}
-
-/// 如果能够把这个处理往上移，可能结构会更清晰
-#[derive(Debug, PartialEq, Eq)]
-pub enum BlockValueType {
-    /// start with self::, like self::<block_name> or self::<service_name>::<block_name>
-    SelfBlock {
-        name: String, // block name without self:: prefix
-    },
-    /// <block_name> or manifest file path or a directory contains manifest file.
-    /// (not start with / and not start with ./ or ../ and not contains '::')
-    Direct {
-        path: String, // block name or manifest file path
-    },
-    /// <pkg_name>::<block_name> or <pkg_name>::<service_name>::<block_name>
-    Pkg {
-        pkg_name: String,
-        block_name: String, // block name
-    },
-    /// absolute path, start with /, path can be manifest file path or a directory contains manifest file.
-    AbsPath {
-        path: String, // absolute path
-    },
-    /// relative path, start with ./ or ../ or multiple '.'. path can be manifest file path or a directory contains manifest file.
-    RelPath {
-        path: String, // relative path
-    },
-}
-
-const SELF_BLOCK_PREFIX: &str = "self::";
-
-pub fn calculate_block_value_type(block_value: &str) -> BlockValueType {
-    if let Some(prefix) = block_value.strip_prefix(SELF_BLOCK_PREFIX) {
-        return BlockValueType::SelfBlock {
-            name: prefix.to_string(),
-        };
-    }
-
-    let block_path = Path::new(block_value);
-    if block_path.is_absolute() {
-        return BlockValueType::AbsPath {
-            path: block_value.to_string(),
-        };
-    }
-
-    // 1. <pkg_name>::<service_name>::<block_name> or <pkg_name>::<block_name>
-    // 2. <block_name>
-    if block_path.components().all(is_normal_path_component) {
-        if let Some((pkg_name, block_name)) = separate_to_pkg_and_block(block_value) {
-            return BlockValueType::Pkg {
-                pkg_name,
-                block_name,
-            };
-        } else {
-            return BlockValueType::Direct {
-                path: block_value.to_owned(),
-            };
-        }
-    }
-
-    BlockValueType::RelPath {
-        path: block_value.to_owned(),
-    }
-}
-
 struct BlockSearchParams<'a> {
     pub manifest_path: &'a Path, // block directory path, like <pkg_name>/<block_type+'s'><block_name> or <block_name>
     pub file_prefix: &'a str, // file_prefix is the name of the manifest without the suffix (oo.yaml, oo.yml)
@@ -218,8 +143,82 @@ fn find_manifest_yaml_file(file_or_dir_path: &Path, file_prefix: &str) -> Option
     find_oo_yaml_without_oo_suffix(file_or_dir_path)
 }
 
-fn is_normal_path_component(component: Component) -> bool {
-    matches!(component, Component::Normal(_))
+/// Block value type parsed from a string reference.
+///
+/// Parsing rules (in order):
+/// 1. `self::` prefix → SelfBlock
+/// 2. Starts with `/` → AbsPath
+/// 3. Starts with `./` or `../` → RelPath
+/// 4. Contains `::` → Pkg (package::block)
+/// 5. Otherwise → Direct (block name or path)
+#[derive(Debug, PartialEq, Eq)]
+pub enum BlockValueType {
+    /// `self::<block_name>` - block in same package
+    SelfBlock { name: String },
+    /// `<block_name>` - direct block name or path without special prefix
+    Direct { path: String },
+    /// `<pkg>::<block>` - block from another package
+    Pkg {
+        pkg_name: String,
+        block_name: String,
+    },
+    /// `/absolute/path` - absolute filesystem path
+    AbsPath { path: String },
+    /// `./relative/path` or `../relative/path` - relative filesystem path
+    RelPath { path: String },
+}
+
+const SELF_BLOCK_PREFIX: &str = "self::";
+
+pub fn calculate_block_value_type(block_value: &str) -> BlockValueType {
+    // 1. self:: prefix
+    if let Some(name) = block_value.strip_prefix(SELF_BLOCK_PREFIX) {
+        return BlockValueType::SelfBlock {
+            name: name.to_string(),
+        };
+    }
+
+    // 2. Absolute path
+    if Path::new(block_value).is_absolute() {
+        return BlockValueType::AbsPath {
+            path: block_value.to_string(),
+        };
+    }
+
+    // 3. Relative path (starts with ./ or ../)
+    if block_value.starts_with("./") || block_value.starts_with("../") {
+        return BlockValueType::RelPath {
+            path: block_value.to_string(),
+        };
+    }
+
+    // 4. Package reference (contains ::), pkg::block or pkg::service::function -> pkg, block or pkg, service
+    let mut parts = block_value.split("::");
+    if let (Some(pkg_name), Some(block_name)) = (parts.next(), parts.next()) {
+        if !pkg_name.is_empty() && !block_name.is_empty() {
+            return BlockValueType::Pkg {
+                pkg_name: pkg_name.to_string(),
+                block_name: block_name.to_string(),
+            };
+        }
+    }
+
+    // 5. Direct block name or path
+    // Warn if the path looks suspicious
+    let path = Path::new(block_value);
+    let has_no_components = path.components().next().is_none();
+    let contains_colon = block_value.contains(':');
+
+    if has_no_components || contains_colon {
+        warn!(
+            "block value '{}' may be malformed, treating as direct path",
+            block_value
+        );
+    }
+
+    BlockValueType::Direct {
+        path: block_value.to_string(),
+    }
 }
 
 #[cfg(test)]
@@ -227,7 +226,139 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_get_block_value_type() {
+    fn test_invalid_formats_become_direct() {
+        // Single colon instead of double colon - not a valid self:: prefix
+        assert_eq!(
+            calculate_block_value_type("self:block1"),
+            BlockValueType::Direct {
+                path: "self:block1".to_string()
+            }
+        );
+
+        // "self" without any colon
+        assert_eq!(
+            calculate_block_value_type("self"),
+            BlockValueType::Direct {
+                path: "self".to_string()
+            }
+        );
+
+        // Single colon separator - not a valid pkg::block format
+        assert_eq!(
+            calculate_block_value_type("pkg:block"),
+            BlockValueType::Direct {
+                path: "pkg:block".to_string()
+            }
+        );
+
+        // Dot without slash - not a valid relative path
+        assert_eq!(
+            calculate_block_value_type(".block"),
+            BlockValueType::Direct {
+                path: ".block".to_string()
+            }
+        );
+
+        // Double dot without slash - not a valid relative path
+        assert_eq!(
+            calculate_block_value_type("..block"),
+            BlockValueType::Direct {
+                path: "..block".to_string()
+            }
+        );
+
+        // Tilde path - not recognized as special
+        assert_eq!(
+            calculate_block_value_type("~/path/block"),
+            BlockValueType::Direct {
+                path: "~/path/block".to_string()
+            }
+        );
+
+        // Colon at start - malformed
+        assert_eq!(
+            calculate_block_value_type(":block"),
+            BlockValueType::Direct {
+                path: ":block".to_string()
+            }
+        );
+
+        // Trailing colon - malformed
+        assert_eq!(
+            calculate_block_value_type("block:"),
+            BlockValueType::Direct {
+                path: "block:".to_string()
+            }
+        );
+
+        // Empty string
+        assert_eq!(
+            calculate_block_value_type(""),
+            BlockValueType::Direct {
+                path: "".to_string()
+            }
+        );
+
+        // Whitespace only
+        assert_eq!(
+            calculate_block_value_type("  "),
+            BlockValueType::Direct {
+                path: "  ".to_string()
+            }
+        );
+
+        // Double colon with empty block name
+        assert_eq!(
+            calculate_block_value_type("xxx::"),
+            BlockValueType::Direct {
+                path: "xxx::".to_string()
+            }
+        );
+
+        // Double colon with empty pkg name
+        assert_eq!(
+            calculate_block_value_type("::xxx"),
+            BlockValueType::Direct {
+                path: "::xxx".to_string()
+            }
+        );
+
+        // Double colon only
+        assert_eq!(
+            calculate_block_value_type("::"),
+            BlockValueType::Direct {
+                path: "::".to_string()
+            }
+        );
+
+        // Multiple double colons - malformed (split produces ["a", "", "b"])
+        assert_eq!(
+            calculate_block_value_type("a::::b"),
+            BlockValueType::Direct {
+                path: "a::::b".to_string()
+            }
+        );
+
+        // Path with embedded .. (not starting with ./ or ../) is Direct, not RelPath
+        // This is by design: only paths starting with ./ or ../ are treated as RelPath
+        assert_eq!(
+            calculate_block_value_type("a/../b"),
+            BlockValueType::Direct {
+                path: "a/../b".to_string()
+            }
+        );
+
+        // Path with embedded . (not starting with ./) is Direct, not RelPath
+        assert_eq!(
+            calculate_block_value_type("a/./b"),
+            BlockValueType::Direct {
+                path: "a/./b".to_string()
+            }
+        );
+    }
+
+    #[test]
+    fn test_right_block_value_type() {
         assert_eq!(
             calculate_block_value_type("self::block1"),
             BlockValueType::SelfBlock {
@@ -245,6 +376,13 @@ mod tests {
             BlockValueType::Pkg {
                 pkg_name: "pkg1".to_string(),
                 block_name: "block1".to_string()
+            }
+        );
+        assert_eq!(
+            calculate_block_value_type("pkg1::service::block1"),
+            BlockValueType::Pkg {
+                pkg_name: "pkg1".to_string(),
+                block_name: "service".to_string()
             }
         );
         assert_eq!(
