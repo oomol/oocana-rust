@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.30.33 (2026-01-28)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* fix: exit handler run before stdio handler by @leavesster in https://github.com/oomol/oocana-rust/pull/395
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.30.32...v0.30.33
+
 ## 0.30.32 (2026-01-27)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
