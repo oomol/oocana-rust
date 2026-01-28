@@ -178,8 +178,8 @@ pub fn calculate_block_value_type(block_value: &str) -> BlockValueType {
         };
     }
 
-    // 2. Absolute path (starts with /)
-    if block_value.starts_with('/') {
+    // 2. Absolute path
+    if Path::new(block_value).is_absolute() {
         return BlockValueType::AbsPath {
             path: block_value.to_string(),
         };
