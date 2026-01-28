@@ -189,12 +189,9 @@ pub fn calculate_block_value_type(block_value: &str) -> BlockValueType {
         };
     }
 
-    // 4. Package reference (contains ::)
-    if let Some(idx) = block_value.find("::") {
-        let pkg_name = &block_value[..idx];
-        let block_name = &block_value[idx + 2..];
-        // Handle pkg::service::block by taking only the second part
-        let block_name = block_name.split("::").next().unwrap_or(block_name);
+    // 4. Package reference (contains ::), pkg::block or pkg::service::function -> pkg, block or pkg, service
+    let mut parts = block_value.split("::");
+    if let (Some(pkg_name), Some(block_name)) = (parts.next(), parts.next()) {
         return BlockValueType::Pkg {
             pkg_name: pkg_name.to_string(),
             block_name: block_name.to_string(),
