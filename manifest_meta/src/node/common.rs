@@ -5,6 +5,72 @@ use manifest_reader::{
     JsonValue,
 };
 
+/// Represents a three-state value: not provided, explicitly null, or has value.
+/// This replaces the confusing `Option<Option<JsonValue>>` pattern.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub enum ValueState {
+    /// Value was not provided (use default or get from connection)
+    #[default]
+    NotProvided,
+    /// Value was explicitly set to null
+    ExplicitNull,
+    /// Value has a concrete value
+    Value(JsonValue),
+}
+
+impl ValueState {
+    pub fn is_provided(&self) -> bool {
+        !matches!(self, ValueState::NotProvided)
+    }
+
+    pub fn has_value(&self) -> bool {
+        matches!(self, ValueState::Value(_))
+    }
+
+    pub fn as_value(&self) -> Option<&JsonValue> {
+        match self {
+            ValueState::Value(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    pub fn into_option(self) -> Option<JsonValue> {
+        match self {
+            ValueState::Value(v) => Some(v),
+            _ => None,
+        }
+    }
+}
+
+impl From<Option<Option<JsonValue>>> for ValueState {
+    fn from(v: Option<Option<JsonValue>>) -> Self {
+        match v {
+            None => ValueState::NotProvided,
+            Some(None) => ValueState::ExplicitNull,
+            Some(Some(v)) => ValueState::Value(v),
+        }
+    }
+}
+
+impl From<ValueState> for Option<Option<JsonValue>> {
+    fn from(v: ValueState) -> Self {
+        match v {
+            ValueState::NotProvided => None,
+            ValueState::ExplicitNull => Some(None),
+            ValueState::Value(v) => Some(Some(v)),
+        }
+    }
+}
+
+impl From<Option<JsonValue>> for ValueState {
+    fn from(v: Option<JsonValue>) -> Self {
+        match v {
+            None => ValueState::ExplicitNull,
+            Some(v) => ValueState::Value(v),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct NodeInput {
     pub def: InputHandle,
