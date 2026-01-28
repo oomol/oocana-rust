@@ -7,15 +7,13 @@ mod tests {
     use std::path::PathBuf;
     use utils::error::Result;
 
-    fn test_directory() -> PathBuf {
+    fn fixtures_dir() -> PathBuf {
         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures")
     }
 
     #[test]
     fn load_flow() -> Result<()> {
-        let base_dir = test_directory();
-
-        let flow_block = read_flow_block(&base_dir.join("flow.oo.yaml"))?;
+        let flow_block = read_flow_block(&fixtures_dir().join("flow.oo.yaml"))?;
         assert_eq!(flow_block.nodes[0].concurrency(), 3);
 
         Ok(())
@@ -23,9 +21,7 @@ mod tests {
 
     #[test]
     fn load_block() -> Result<()> {
-        let base_dir = test_directory();
-
-        let flow_block = read_task_block(&base_dir.join("block.oo.yaml"))?;
+        let flow_block = read_task_block(&fixtures_dir().join("block.oo.yaml"))?;
 
         assert!(flow_block.additional_inputs);
         assert!(flow_block.additional_outputs);
@@ -35,9 +31,7 @@ mod tests {
 
     #[test]
     fn load_service() -> Result<()> {
-        let base_dir = test_directory();
-
-        let service = read_service(&base_dir.join("service.oo.yaml"))?;
+        let service = read_service(&fixtures_dir().join("service.oo.yaml"))?;
 
         let executor = service.executor.expect("executor should exist");
         assert_eq!(executor.name, Some("python".to_string()));
@@ -54,9 +48,7 @@ mod tests {
 
     #[test]
     fn load_package() -> Result<()> {
-        let base_dir = test_directory();
-
-        let package = read_package(&base_dir.join("package.oo.yaml"))?;
+        let package = read_package(&fixtures_dir().join("package.oo.yaml"))?;
 
         assert_eq!(package.name, Some("test-package".to_string()));
         assert_eq!(package.version, Some("1.0.0".to_string()));
@@ -79,8 +71,6 @@ mod tests {
         use manifest_reader::manifest::{InputHandle, InputHandles};
         use std::collections::HashMap;
 
-        let base_dir = test_directory();
-
         let handle_name = HandleName::new("injected_input".to_string());
         let input_handle = InputHandle {
             handle: handle_name.clone(),
@@ -97,7 +87,7 @@ mod tests {
         let mut inputs_map: InputHandles = HashMap::new();
         inputs_map.insert(handle_name.clone(), input_handle);
 
-        let slotflow = read_slotflow(Some(inputs_map), &base_dir.join("slotflow.oo.yaml"))?;
+        let slotflow = read_slotflow(Some(inputs_map), &fixtures_dir().join("slotflow.oo.yaml"))?;
 
         assert_eq!(slotflow.description, Some("Test slotflow".to_string()));
         assert_eq!(slotflow.nodes.len(), 1);
