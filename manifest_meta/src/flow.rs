@@ -107,6 +107,25 @@ pub fn generate_runtime_handle_name(node_id: &str, handle: &HandleName) -> Handl
     format!("{}::{}-{}", RUNTIME_HANDLE_PREFIX, node_id, handle).into()
 }
 
+/// Calculate the BlockScope for a slot provider based on block value type and package path.
+fn calculate_slot_scope(block_value: &str, package_path: Option<&PathBuf>) -> BlockScope {
+    match calculate_block_value_type(block_value) {
+        BlockValueType::Pkg { pkg_name, .. } => {
+            if let Some(path) = package_path {
+                BlockScope::Package {
+                    name: pkg_name,
+                    path: path.clone(),
+                    inject: false,
+                    node_id: None,
+                }
+            } else {
+                BlockScope::Slot {}
+            }
+        }
+        _ => BlockScope::Slot {},
+    }
+}
+
 pub fn generate_node_inputs(
     inputs_def: &Option<InputHandles>,
     froms: &Option<HandlesFroms>,
@@ -450,23 +469,10 @@ impl SubflowBlock {
                                         &mut path_finder,
                                     )?;
 
-                                    let scope = match calculate_block_value_type(
+                                    let scope = calculate_slot_scope(
                                         &task_slot_provider.task,
-                                    ) {
-                                        BlockValueType::Pkg { pkg_name, .. } => {
-                                            if let Some(package_path) = &task.package_path {
-                                                BlockScope::Package {
-                                                    name: pkg_name,
-                                                    path: package_path.clone(),
-                                                    inject: false,
-                                                    node_id: None,
-                                                }
-                                            } else {
-                                                BlockScope::Slot {}
-                                            }
-                                        }
-                                        _ => BlockScope::Slot {},
-                                    };
+                                        task.package_path.as_ref(),
+                                    );
 
                                     let slot_block = Slot::Task(TaskSlot {
                                         slot_node_id: task_slot_provider.slot_node_id.to_owned(),
@@ -515,24 +521,12 @@ impl SubflowBlock {
                                         &mut path_finder,
                                     )?;
 
-                                    let scope = match calculate_block_value_type(
-                                        &slotflow_provider.slotflow,
-                                    ) {
-                                        BlockValueType::Pkg { pkg_name, .. } => {
-                                            let slotflow_guard = slotflow.read().unwrap();
-                                            if let Some(package_path) = &slotflow_guard.package_path
-                                            {
-                                                BlockScope::Package {
-                                                    name: pkg_name,
-                                                    path: package_path.clone(),
-                                                    inject: false,
-                                                    node_id: None,
-                                                }
-                                            } else {
-                                                BlockScope::Slot {}
-                                            }
-                                        }
-                                        _ => BlockScope::Slot {},
+                                    let scope = {
+                                        let slotflow_guard = slotflow.read().unwrap();
+                                        calculate_slot_scope(
+                                            &slotflow_provider.slotflow,
+                                            slotflow_guard.package_path.as_ref(),
+                                        )
                                     };
 
                                     let slot_block = Slot::Subflow(SubflowSlot {
@@ -729,26 +723,13 @@ impl SubflowBlock {
                                         }
                                     }
 
-                                    let scope =
-                                        match calculate_block_value_type(&subflow_provider.subflow)
-                                        {
-                                            BlockValueType::Pkg { pkg_name, .. } => {
-                                                let slot_flow_guard = slot_flow.read().unwrap();
-                                                if let Some(package_path) =
-                                                    &slot_flow_guard.package_path
-                                                {
-                                                    BlockScope::Package {
-                                                        name: pkg_name,
-                                                        path: package_path.to_owned(),
-                                                        inject: false,
-                                                        node_id: None,
-                                                    }
-                                                } else {
-                                                    BlockScope::Slot {}
-                                                }
-                                            }
-                                            _ => BlockScope::Slot {},
-                                        };
+                                    let scope = {
+                                        let slot_flow_guard = slot_flow.read().unwrap();
+                                        calculate_slot_scope(
+                                            &subflow_provider.subflow,
+                                            slot_flow_guard.package_path.as_ref(),
+                                        )
+                                    };
 
                                     let slot_block = Slot::Subflow(SubflowSlot {
                                         slot_node_id: subflow_provider.slot_node_id.to_owned(),
