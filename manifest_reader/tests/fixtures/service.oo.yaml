@@ -1,0 +1,13 @@
+executor:
+  name: python
+  entry: main.py
+  function: handler
+  start_at: session_start
+  stop_at: session_end
+  keep_alive: 30
+blocks:
+  - name: service_block_1
+    inputs_def:
+      - handle: svc_in
+    outputs_def:
+      - handle: svc_out

@@ -1,0 +1,10 @@
+name: test-package
+version: 1.0.0
+exports:
+  main: ./src/main.rs
+  utils: ./src/utils.rs
+scripts:
+  bootstrap: npm install
+dependencies:
+  lodash: "4.17.21"
+  axios: "1.6.0"
