@@ -47,7 +47,13 @@ pub fn find_service(params: ServiceManifestParams) -> Result<PathBuf> {
     }
 
     Err(utils::error::Error::new(&format!(
-        "Service {} not found",
+        "Service {} could not be found in either {} or in the search paths: {}",
         value,
+        base_dir.to_str().unwrap_or_default(),
+        block_search_paths
+            .iter()
+            .filter_map(|p| p.to_str())
+            .collect::<Vec<&str>>()
+            .join(", ")
     )))
 }
