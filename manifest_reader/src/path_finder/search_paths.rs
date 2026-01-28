@@ -214,7 +214,122 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_get_block_value_type() {
+    fn test_invalid_formats_become_direct() {
+        // Single colon instead of double colon - not a valid self:: prefix
+        assert_eq!(
+            calculate_block_value_type("self:block1"),
+            BlockValueType::Direct {
+                path: "self:block1".to_string()
+            }
+        );
+
+        // "self" without any colon
+        assert_eq!(
+            calculate_block_value_type("self"),
+            BlockValueType::Direct {
+                path: "self".to_string()
+            }
+        );
+
+        // Single colon separator - not a valid pkg::block format
+        assert_eq!(
+            calculate_block_value_type("pkg:block"),
+            BlockValueType::Direct {
+                path: "pkg:block".to_string()
+            }
+        );
+
+        // Dot without slash - not a valid relative path
+        assert_eq!(
+            calculate_block_value_type(".block"),
+            BlockValueType::Direct {
+                path: ".block".to_string()
+            }
+        );
+
+        // Double dot without slash - not a valid relative path
+        assert_eq!(
+            calculate_block_value_type("..block"),
+            BlockValueType::Direct {
+                path: "..block".to_string()
+            }
+        );
+
+        // Tilde path - not recognized as special
+        assert_eq!(
+            calculate_block_value_type("~/path/block"),
+            BlockValueType::Direct {
+                path: "~/path/block".to_string()
+            }
+        );
+
+        // Colon at start - malformed
+        assert_eq!(
+            calculate_block_value_type(":block"),
+            BlockValueType::Direct {
+                path: ":block".to_string()
+            }
+        );
+
+        // Trailing colon - malformed
+        assert_eq!(
+            calculate_block_value_type("block:"),
+            BlockValueType::Direct {
+                path: "block:".to_string()
+            }
+        );
+
+        // Empty string
+        assert_eq!(
+            calculate_block_value_type(""),
+            BlockValueType::Direct {
+                path: "".to_string()
+            }
+        );
+
+        // Whitespace only
+        assert_eq!(
+            calculate_block_value_type("  "),
+            BlockValueType::Direct {
+                path: "  ".to_string()
+            }
+        );
+
+        // Double colon with empty block name
+        assert_eq!(
+            calculate_block_value_type("xxx::"),
+            BlockValueType::Direct {
+                path: "xxx::".to_string()
+            }
+        );
+
+        // Double colon with empty pkg name
+        assert_eq!(
+            calculate_block_value_type("::xxx"),
+            BlockValueType::Direct {
+                path: "::xxx".to_string()
+            }
+        );
+
+        // Double colon only
+        assert_eq!(
+            calculate_block_value_type("::"),
+            BlockValueType::Direct {
+                path: "::".to_string()
+            }
+        );
+
+        // Multiple double colons - malformed (split produces ["a", "", "b"])
+        assert_eq!(
+            calculate_block_value_type("a::::b"),
+            BlockValueType::Direct {
+                path: "a::::b".to_string()
+            }
+        );
+    }
+
+    #[test]
+    fn test_right_block_value_type() {
         assert_eq!(
             calculate_block_value_type("self::block1"),
             BlockValueType::SelfBlock {
