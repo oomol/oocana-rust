@@ -3,7 +3,7 @@ use std::path::Path;
 use serde::de::DeserializeOwned;
 use utils::error::Result;
 
-use crate::manifest::{InputHandles, PackageMeta, Service, SlotBlock, SubflowBlock, TaskBlock};
+use crate::manifest::{InputHandles, PackageMeta, Service, SubflowBlock, TaskBlock};
 use path_clean::PathClean;
 
 pub fn read_task_block(task_manifest_path: &Path) -> Result<TaskBlock> {
@@ -81,17 +81,6 @@ pub fn read_flow_block(flow_manifest_path: &Path) -> Result<SubflowBlock> {
     })
 }
 
-pub fn read_slot_block(slot_manifest_path: &Path) -> Result<SlotBlock> {
-    read_manifest_file::<SlotBlock>(slot_manifest_path).map_err(|error| {
-        utils::error::Error::with_source(
-            &format!(
-                "Unable to read Slot Block manifest file {:?}",
-                slot_manifest_path.clean()
-            ),
-            Box::new(error),
-        )
-    })
-}
 pub fn read_manifest_file<T: DeserializeOwned>(file_path: &Path) -> Result<T> {
     let s = std::fs::read_to_string(file_path).unwrap();
 
