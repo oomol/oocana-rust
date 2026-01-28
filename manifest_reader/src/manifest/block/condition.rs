@@ -31,32 +31,21 @@ pub struct ConditionHandleDef {
 
 impl ConditionHandleDef {
     pub fn is_match(&self, input_map: &HashMap<HandleName, serde_json::Value>) -> bool {
-        let mut result = false;
-        for expr in &self.expressions {
-            let input_value = input_map.get(&expr.input_handle);
-            let left = if let Some(v) = input_value {
-                v
-            } else {
-                &serde_json::Value::Null
-            };
-            let expr_result = expr.operator.compare_values(left, &expr.value);
-            match self.logical {
-                Some(LogicalOperator::And) => {
-                    if expr_result {
-                        result = true;
-                    } else {
-                        return false;
-                    }
-                }
-                Some(LogicalOperator::Or) | None => {
-                    result = result || expr_result;
-                    if result {
-                        return true;
-                    }
-                }
-            }
+        if self.expressions.is_empty() {
+            return false;
         }
-        result
+
+        let eval = |expr: &ConditionExpression| {
+            let left = input_map
+                .get(&expr.input_handle)
+                .unwrap_or(&serde_json::Value::Null);
+            expr.operator.compare_values(left, &expr.value)
+        };
+
+        match self.logical.as_ref().unwrap_or(&LogicalOperator::Or) {
+            LogicalOperator::And => self.expressions.iter().all(eval),
+            LogicalOperator::Or => self.expressions.iter().any(eval),
+        }
     }
 }
 
@@ -463,5 +452,100 @@ mod tests {
             let op: ExpressionOperator = result.unwrap();
             assert_eq!(op, expected_op, "Mismatched operator for: {}", json_op);
         }
+    }
+
+    #[test]
+    fn test_is_match_empty_expressions() {
+        let case = ConditionHandleDef {
+            handle: HandleName::from("test"),
+            description: None,
+            logical: Some(LogicalOperator::And),
+            expressions: vec![],
+        };
+        // Empty AND should be true (vacuous truth)
+        // Empty OR should be false
+        // Current behavior: empty expressions return false
+        assert!(!case.is_match(&HashMap::new()));
+    }
+
+    #[test]
+    fn test_is_match_or_multiple_expressions() {
+        let case = ConditionHandleDef {
+            handle: HandleName::from("test"),
+            description: None,
+            logical: Some(LogicalOperator::Or),
+            expressions: vec![
+                ConditionExpression {
+                    input_handle: HandleName::from("a"),
+                    operator: ExpressionOperator::Equal,
+                    value: Some(serde_json::json!(1)),
+                    description: None,
+                },
+                ConditionExpression {
+                    input_handle: HandleName::from("b"),
+                    operator: ExpressionOperator::Equal,
+                    value: Some(serde_json::json!(2)),
+                    description: None,
+                },
+            ],
+        };
+
+        // Neither match
+        let inputs = HashMap::from([
+            (HandleName::from("a"), serde_json::json!(0)),
+            (HandleName::from("b"), serde_json::json!(0)),
+        ]);
+        assert!(!case.is_match(&inputs));
+
+        // First matches
+        let inputs = HashMap::from([
+            (HandleName::from("a"), serde_json::json!(1)),
+            (HandleName::from("b"), serde_json::json!(0)),
+        ]);
+        assert!(case.is_match(&inputs));
+
+        // Second matches
+        let inputs = HashMap::from([
+            (HandleName::from("a"), serde_json::json!(0)),
+            (HandleName::from("b"), serde_json::json!(2)),
+        ]);
+        assert!(case.is_match(&inputs));
+
+        // Both match
+        let inputs = HashMap::from([
+            (HandleName::from("a"), serde_json::json!(1)),
+            (HandleName::from("b"), serde_json::json!(2)),
+        ]);
+        assert!(case.is_match(&inputs));
+    }
+
+    #[test]
+    fn test_is_match_default_logical_is_or() {
+        let case = ConditionHandleDef {
+            handle: HandleName::from("test"),
+            description: None,
+            logical: None, // No logical specified, should default to OR
+            expressions: vec![
+                ConditionExpression {
+                    input_handle: HandleName::from("a"),
+                    operator: ExpressionOperator::Equal,
+                    value: Some(serde_json::json!(1)),
+                    description: None,
+                },
+                ConditionExpression {
+                    input_handle: HandleName::from("b"),
+                    operator: ExpressionOperator::Equal,
+                    value: Some(serde_json::json!(2)),
+                    description: None,
+                },
+            ],
+        };
+
+        // Only first matches - should be true if default is OR
+        let inputs = HashMap::from([
+            (HandleName::from("a"), serde_json::json!(1)),
+            (HandleName::from("b"), serde_json::json!(0)),
+        ]);
+        assert!(case.is_match(&inputs));
     }
 }
