@@ -204,6 +204,18 @@ pub fn calculate_block_value_type(block_value: &str) -> BlockValueType {
     }
 
     // 5. Direct block name or path
+    // Warn if the path looks suspicious
+    let path = Path::new(block_value);
+    let has_no_components = path.components().next().is_none();
+    let contains_colon = block_value.contains(':');
+
+    if has_no_components || contains_colon {
+        warn!(
+            "block value '{}' may be malformed, treating as direct path",
+            block_value
+        );
+    }
+
     BlockValueType::Direct {
         path: block_value.to_string(),
     }
