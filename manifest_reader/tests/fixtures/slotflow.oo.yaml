@@ -1,0 +1,8 @@
+name: slotflow-test
+description: Test slotflow
+nodes:
+  - node_id: inner-task
+    task: ./not-exist/task.oo.yaml
+outputs_from:
+  - node: inner-task
+    handle: output

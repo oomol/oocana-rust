@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::manifest::block::handle::{MiddleInputHandle, MiddleOutputHandle};
 
 use super::{
-    handle::{to_input_handles, to_output_handles},
+    handle::{convert_middle_inputs, convert_middle_outputs},
     InputHandles, OutputHandles,
 };
 
@@ -33,22 +33,8 @@ impl From<TmpTaskBlock> for TaskBlock {
         Self {
             description: tmp.description,
             executor: tmp.executor,
-            inputs_def: to_input_handles(tmp.inputs_def.map(|v| {
-                v.into_iter()
-                    .filter_map(|h| match h {
-                        MiddleInputHandle::Input(handle) => Some(handle),
-                        MiddleInputHandle::Group { .. } => None,
-                    })
-                    .collect()
-            })),
-            outputs_def: to_output_handles(tmp.outputs_def.map(|v| {
-                v.into_iter()
-                    .filter_map(|h| match h {
-                        MiddleOutputHandle::Output(handle) => Some(handle),
-                        MiddleOutputHandle::Group { .. } => None,
-                    })
-                    .collect()
-            })),
+            inputs_def: convert_middle_inputs(tmp.inputs_def),
+            outputs_def: convert_middle_outputs(tmp.outputs_def),
             additional_inputs: match tmp.additional_inputs {
                 Some(AdditionalObject::Bool(b)) => b,
                 Some(AdditionalObject::Value(_)) => true,

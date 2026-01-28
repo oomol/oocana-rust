@@ -199,6 +199,28 @@ pub fn to_output_handles(outputs: Option<Vec<OutputHandle>>) -> Option<OutputHan
     })
 }
 
+pub fn convert_middle_inputs(inputs: Option<Vec<MiddleInputHandle>>) -> Option<InputHandles> {
+    to_input_handles(inputs.map(|v| {
+        v.into_iter()
+            .filter_map(|h| match h {
+                MiddleInputHandle::Input(handle) => Some(handle),
+                MiddleInputHandle::Group { .. } => None,
+            })
+            .collect()
+    }))
+}
+
+pub fn convert_middle_outputs(outputs: Option<Vec<MiddleOutputHandle>>) -> Option<OutputHandles> {
+    to_output_handles(outputs.map(|v| {
+        v.into_iter()
+            .filter_map(|h| match h {
+                MiddleOutputHandle::Output(handle) => Some(handle),
+                MiddleOutputHandle::Group { .. } => None,
+            })
+            .collect()
+    }))
+}
+
 #[cfg(test)]
 mod tests {
 
