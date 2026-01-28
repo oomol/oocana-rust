@@ -3,7 +3,7 @@ use tracing::warn;
 use super::manifest_file::{find_oo_yaml, find_oo_yaml_in_dir, find_oo_yaml_without_oo_suffix};
 use std::collections::HashMap;
 use std::fs::canonicalize;
-use std::path::{Component, Path, PathBuf};
+use std::path::{Path, PathBuf};
 
 pub struct BlockManifestParams<'a> {
     pub block_value: BlockValueType,
@@ -96,81 +96,6 @@ pub fn search_block_manifest(params: BlockManifestParams) -> Option<PathBuf> {
     }
 }
 
-// parse <pkg>::<block> or <pkg>::<service>::<function> and return an Option<(String, String)>,
-// where the first element is the package name (pkg) and the second is the block or service name.
-fn separate_to_pkg_and_block(block_value: &str) -> Option<(String, String)> {
-    let parts: Vec<&str> = block_value.split("::").filter(|s| !s.is_empty()).collect();
-
-    if parts.len() > 1 {
-        Some((parts[0].to_string(), parts[1].to_string()))
-    } else {
-        None
-    }
-}
-
-/// 如果能够把这个处理往上移，可能结构会更清晰
-#[derive(Debug, PartialEq, Eq)]
-pub enum BlockValueType {
-    /// start with self::, like self::<block_name> or self::<service_name>::<block_name>
-    SelfBlock {
-        name: String, // block name without self:: prefix
-    },
-    /// <block_name> or manifest file path or a directory contains manifest file.
-    /// (not start with / and not start with ./ or ../ and not contains '::')
-    Direct {
-        path: String, // block name or manifest file path
-    },
-    /// <pkg_name>::<block_name> or <pkg_name>::<service_name>::<block_name>
-    Pkg {
-        pkg_name: String,
-        block_name: String, // block name
-    },
-    /// absolute path, start with /, path can be manifest file path or a directory contains manifest file.
-    AbsPath {
-        path: String, // absolute path
-    },
-    /// relative path, start with ./ or ../ or multiple '.'. path can be manifest file path or a directory contains manifest file.
-    RelPath {
-        path: String, // relative path
-    },
-}
-
-const SELF_BLOCK_PREFIX: &str = "self::";
-
-pub fn calculate_block_value_type(block_value: &str) -> BlockValueType {
-    if let Some(prefix) = block_value.strip_prefix(SELF_BLOCK_PREFIX) {
-        return BlockValueType::SelfBlock {
-            name: prefix.to_string(),
-        };
-    }
-
-    let block_path = Path::new(block_value);
-    if block_path.is_absolute() {
-        return BlockValueType::AbsPath {
-            path: block_value.to_string(),
-        };
-    }
-
-    // 1. <pkg_name>::<service_name>::<block_name> or <pkg_name>::<block_name>
-    // 2. <block_name>
-    if block_path.components().all(is_normal_path_component) {
-        if let Some((pkg_name, block_name)) = separate_to_pkg_and_block(block_value) {
-            return BlockValueType::Pkg {
-                pkg_name,
-                block_name,
-            };
-        } else {
-            return BlockValueType::Direct {
-                path: block_value.to_owned(),
-            };
-        }
-    }
-
-    BlockValueType::RelPath {
-        path: block_value.to_owned(),
-    }
-}
-
 struct BlockSearchParams<'a> {
     pub manifest_path: &'a Path, // block directory path, like <pkg_name>/<block_type+'s'><block_name> or <block_name>
     pub file_prefix: &'a str, // file_prefix is the name of the manifest without the suffix (oo.yaml, oo.yml)
@@ -218,8 +143,68 @@ fn find_manifest_yaml_file(file_or_dir_path: &Path, file_prefix: &str) -> Option
     find_oo_yaml_without_oo_suffix(file_or_dir_path)
 }
 
-fn is_normal_path_component(component: Component) -> bool {
-    matches!(component, Component::Normal(_))
+/// Block value type parsed from a string reference.
+///
+/// Parsing rules (in order):
+/// 1. `self::` prefix → SelfBlock
+/// 2. Starts with `/` → AbsPath
+/// 3. Starts with `./` or `../` → RelPath
+/// 4. Contains `::` → Pkg (package::block)
+/// 5. Otherwise → Direct (block name or path)
+#[derive(Debug, PartialEq, Eq)]
+pub enum BlockValueType {
+    /// `self::<block_name>` - block in same package
+    SelfBlock { name: String },
+    /// `<block_name>` - direct block name or path without special prefix
+    Direct { path: String },
+    /// `<pkg>::<block>` - block from another package
+    Pkg { pkg_name: String, block_name: String },
+    /// `/absolute/path` - absolute filesystem path
+    AbsPath { path: String },
+    /// `./relative/path` or `../relative/path` - relative filesystem path
+    RelPath { path: String },
+}
+
+const SELF_BLOCK_PREFIX: &str = "self::";
+
+pub fn calculate_block_value_type(block_value: &str) -> BlockValueType {
+    // 1. self:: prefix
+    if let Some(name) = block_value.strip_prefix(SELF_BLOCK_PREFIX) {
+        return BlockValueType::SelfBlock {
+            name: name.to_string(),
+        };
+    }
+
+    // 2. Absolute path (starts with /)
+    if block_value.starts_with('/') {
+        return BlockValueType::AbsPath {
+            path: block_value.to_string(),
+        };
+    }
+
+    // 3. Relative path (starts with ./ or ../)
+    if block_value.starts_with("./") || block_value.starts_with("../") {
+        return BlockValueType::RelPath {
+            path: block_value.to_string(),
+        };
+    }
+
+    // 4. Package reference (contains ::)
+    if let Some(idx) = block_value.find("::") {
+        let pkg_name = &block_value[..idx];
+        let block_name = &block_value[idx + 2..];
+        // Handle pkg::service::block by taking only the second part
+        let block_name = block_name.split("::").next().unwrap_or(block_name);
+        return BlockValueType::Pkg {
+            pkg_name: pkg_name.to_string(),
+            block_name: block_name.to_string(),
+        };
+    }
+
+    // 5. Direct block name or path
+    BlockValueType::Direct {
+        path: block_value.to_string(),
+    }
 }
 
 #[cfg(test)]
