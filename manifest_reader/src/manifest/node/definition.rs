@@ -10,6 +10,16 @@ use super::value::ValueNode;
 use serde::Deserialize;
 
 #[derive(Deserialize, Debug, Clone)]
+pub struct FallbackNode {
+    #[serde(default = "fallback_node_id")]
+    pub node_id: NodeId,
+}
+
+fn fallback_node_id() -> NodeId {
+    NodeId::from("fallback".to_owned())
+}
+
+#[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum Node {
     Task(TaskNode),
@@ -18,6 +28,7 @@ pub enum Node {
     Service(ServiceNode),
     Condition(ConditionNode),
     Value(ValueNode),
+    FallBack(FallbackNode),
 }
 
 impl Node {
@@ -29,6 +40,7 @@ impl Node {
             Node::Service(service) => &service.node_id,
             Node::Condition(condition) => &condition.node_id,
             Node::Value(value) => &value.node_id,
+            Node::FallBack(fallback) => &fallback.node_id,
         }
     }
 
@@ -40,6 +52,7 @@ impl Node {
             Node::Service(service) => service.concurrency,
             Node::Condition(condition) => condition.concurrency,
             Node::Value(_value) => default_concurrency(),
+            Node::FallBack(_fallback) => default_concurrency(),
         }
     }
     pub fn inputs_from(&self) -> Option<&Vec<NodeInputFrom>> {
@@ -50,6 +63,7 @@ impl Node {
             Node::Service(service) => service.inputs_from.as_ref(),
             Node::Condition(condition) => condition.inputs_from.as_ref(),
             Node::Value(_) => None,
+            Node::FallBack(_) => None,
         }
     }
     pub fn should_ignore(&self) -> bool {
@@ -60,6 +74,7 @@ impl Node {
             Node::Service(service) => service.ignore,
             Node::Condition(condition) => condition.ignore,
             Node::Value(value) => value.ignore,
+            Node::FallBack(_) => true,
         }
     }
 
@@ -74,6 +89,62 @@ impl Node {
             Node::Service(_) => false,
             Node::Condition(_) => false,
             Node::Value(_) => false,
+            Node::FallBack(_) => false,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_yaml;
+
+    #[test]
+    fn test_fallback_node() {
+        let yaml = r#"
+        a: c
+        "#;
+
+        let node: FallbackNode = serde_yaml::from_str(yaml).unwrap();
+        assert_eq!(node.node_id, NodeId::from("fallback".to_owned()));
+    }
+
+    #[test]
+    fn test_nodes() {
+        let yaml = r#"
+        - task: example_task
+          node_id: example_node
+          inputs_from:
+            - handle: input_handle
+              value: null
+          concurrency: 5
+          ignore: false
+        - slot: example_slot
+          node_id: slot_node
+        - service: example_service
+          node_id: service_node
+        - condition:
+            handle: condition_handle
+          node_id: condition_node
+        - value:
+            key: example_key
+            value: example_value
+          node_id: value_node
+        - fallback:
+            node_id: fallback_node
+        - comment: This is a comment and should be ignored
+        "#;
+
+        let nodes: Vec<Node> = serde_yaml::from_str(yaml).unwrap();
+        assert_eq!(nodes.len(), 7);
+        assert_eq!(nodes[0].node_id(), &NodeId::from("example_node".to_owned()));
+        assert_eq!(nodes[1].node_id(), &NodeId::from("slot_node".to_owned()));
+        assert_eq!(nodes[2].node_id(), &NodeId::from("service_node".to_owned()));
+        assert_eq!(
+            nodes[3].node_id(),
+            &NodeId::from("condition_node".to_owned())
+        );
+        assert_eq!(nodes[4].node_id(), &NodeId::from("value_node".to_owned()));
+        assert_eq!(nodes[5].node_id(), &NodeId::from("fallback".to_owned()));
     }
 }
