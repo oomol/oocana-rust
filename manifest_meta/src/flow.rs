@@ -126,6 +126,55 @@ fn calculate_slot_scope(block_value: &str, package_path: Option<&PathBuf>) -> Bl
     }
 }
 
+/// Extract value from a single FromValue connection.
+fn extract_value_from_connection(from: &Option<Vec<crate::HandleFrom>>) -> Option<ValueState> {
+    let froms = from.as_ref()?;
+    if froms.len() != 1 {
+        return None;
+    }
+    match froms.first()? {
+        crate::HandleFrom::FromValue { value } => Some(value.clone()),
+        _ => None,
+    }
+}
+
+/// Extract value from node_inputs_from for a given handle.
+fn extract_value_from_inputs(
+    node_inputs_from: &Option<Vec<manifest::NodeInputFrom>>,
+    handle: &manifest::HandleName,
+) -> Option<ValueState> {
+    node_inputs_from.as_ref()?.iter().find_map(|input_from| {
+        if input_from.handle == *handle {
+            Some(input_from.value.clone().into())
+        } else {
+            None
+        }
+    })
+}
+
+/// Convert HandleFrom connections to HandleSource, filtering out FromValue.
+fn convert_to_sources(
+    from: Option<Vec<crate::HandleFrom>>,
+) -> Option<Vec<crate::node::HandleSource>> {
+    from.map(|f| {
+        f.into_iter()
+            .filter_map(|ff| match ff {
+                crate::HandleFrom::FromFlowInput { input_handle } => {
+                    Some(crate::node::HandleSource::FlowInput { input_handle })
+                }
+                crate::HandleFrom::FromNodeOutput {
+                    node_id,
+                    output_handle,
+                } => Some(crate::node::HandleSource::NodeOutput {
+                    node_id,
+                    output_handle,
+                }),
+                _ => None,
+            })
+            .collect()
+    })
+}
+
 pub fn generate_node_inputs(
     inputs_def: &Option<InputHandles>,
     froms: &Option<HandlesFroms>,
@@ -143,59 +192,15 @@ pub fn generate_node_inputs(
                 .as_ref()
                 .and_then(|patches| patches.get(handle))
                 .cloned();
-            let value: ValueState = if from.as_ref().is_some_and(|f| f.len() == 1)
-                && matches!(
-                    from.as_ref().unwrap()[0],
-                    crate::HandleFrom::FromValue { .. }
-                ) {
-                from.as_ref()
-                    .and_then(|f| {
-                        f.first().and_then(|hf| {
-                            if let crate::HandleFrom::FromValue { value } = hf {
-                                Some(value.clone())
-                            } else {
-                                None
-                            }
-                        })
-                    })
-                    .unwrap_or_default()
-            } else {
-                node_inputs_from
-                    .as_ref()
-                    .and_then(|inputs_from| {
-                        inputs_from.iter().find_map(|input_from| {
-                            if input_from.handle == *handle {
-                                input_from.value.clone()
-                            } else {
-                                None
-                            }
-                        })
-                    })
-                    .into()
-            };
+            // Try to get value from FromValue connection, otherwise from node_inputs_from
+            let value: ValueState = extract_value_from_connection(&from)
+                .or_else(|| extract_value_from_inputs(node_inputs_from, handle))
+                .unwrap_or_default();
 
-            // remove from value node connection
-            let connection_from = from.map(|f| {
-                f.iter()
-                    .filter_map(|ff| match ff {
-                        crate::HandleFrom::FromFlowInput { input_handle } => {
-                            Some(crate::node::HandleSource::FlowInput {
-                                input_handle: input_handle.clone(),
-                            })
-                        }
-                        crate::HandleFrom::FromNodeOutput {
-                            node_id,
-                            output_handle,
-                        } => Some(crate::node::HandleSource::NodeOutput {
-                            node_id: node_id.clone(),
-                            output_handle: output_handle.clone(),
-                        }),
-                        _ => None,
-                    })
-                    .collect::<Vec<_>>()
-            });
+            // Convert connections to sources, filtering out FromValue
+            let sources = convert_to_sources(from);
 
-            if !value.is_provided() && connection_from.as_ref().is_some_and(|f| f.is_empty()) {
+            if !value.is_provided() && sources.as_ref().is_some_and(|f| f.is_empty()) {
                 warn!("node id ({}) handle: ({}) has no connection and has no value. This node won't run.",  node_id, handle);
                 if input_def.value.is_some() {
                     warn!(
@@ -206,13 +211,11 @@ pub fn generate_node_inputs(
                 }
             }
 
-            let serialize_for_cache = if let Some(node_inputs_from) = node_inputs_from {
-                node_inputs_from.iter().any(|input_from| {
+            let serialize_for_cache = node_inputs_from.as_ref().is_some_and(|inputs| {
+                inputs.iter().any(|input_from| {
                     input_from.handle == *handle && input_from.serialize_for_cache
                 })
-            } else {
-                false
-            };
+            });
 
             inputs.insert(
                 handle.to_owned(),
@@ -223,7 +226,7 @@ pub fn generate_node_inputs(
                     },
                     patch,
                     value,
-                    sources: connection_from,
+                    sources,
                     serialize_for_cache,
                 },
             );
@@ -1218,5 +1221,207 @@ fn get_inputs_def_patch(
             }
         }
         None => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::HandleFrom;
+    use manifest_reader::JsonValue;
+
+    #[test]
+    fn test_extract_value_from_connection_single_from_value() {
+        let from = Some(vec![HandleFrom::FromValue {
+            value: ValueState::from_json(JsonValue::String("test".to_string())),
+        }]);
+
+        let result = extract_value_from_connection(&from);
+        assert!(result.is_some());
+        assert_eq!(
+            result.unwrap(),
+            ValueState::from_json(JsonValue::String("test".to_string()))
+        );
+    }
+
+    #[test]
+    fn test_extract_value_from_connection_multiple_connections() {
+        let from = Some(vec![
+            HandleFrom::FromValue {
+                value: ValueState::from_json(JsonValue::String("test".to_string())),
+            },
+            HandleFrom::FromFlowInput {
+                input_handle: "input".to_string().into(),
+            },
+        ]);
+
+        let result = extract_value_from_connection(&from);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_extract_value_from_connection_non_value() {
+        let from = Some(vec![HandleFrom::FromFlowInput {
+            input_handle: "input".to_string().into(),
+        }]);
+
+        let result = extract_value_from_connection(&from);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_extract_value_from_connection_none() {
+        let from: Option<Vec<HandleFrom>> = None;
+        let result = extract_value_from_connection(&from);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_extract_value_from_connection_empty() {
+        let from: Option<Vec<HandleFrom>> = Some(vec![]);
+        let result = extract_value_from_connection(&from);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_convert_to_sources_filters_from_value() {
+        let from = Some(vec![
+            HandleFrom::FromValue {
+                value: ValueState::from_json(JsonValue::String("test".to_string())),
+            },
+            HandleFrom::FromFlowInput {
+                input_handle: "input".to_string().into(),
+            },
+            HandleFrom::FromNodeOutput {
+                node_id: "node1".to_string().into(),
+                output_handle: "output".to_string().into(),
+            },
+        ]);
+
+        let result = convert_to_sources(from);
+        assert!(result.is_some());
+        let sources = result.unwrap();
+        assert_eq!(sources.len(), 2);
+
+        assert!(matches!(
+            &sources[0],
+            crate::node::HandleSource::FlowInput { input_handle } if *input_handle == HandleName::from("input".to_string())
+        ));
+        assert!(matches!(
+            &sources[1],
+            crate::node::HandleSource::NodeOutput { node_id, output_handle }
+            if *node_id == NodeId::from("node1".to_string()) && *output_handle == HandleName::from("output".to_string())
+        ));
+    }
+
+    #[test]
+    fn test_convert_to_sources_none() {
+        let from: Option<Vec<HandleFrom>> = None;
+        let result = convert_to_sources(from);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_convert_to_sources_only_from_value() {
+        let from = Some(vec![HandleFrom::FromValue {
+            value: ValueState::from_json(JsonValue::Null),
+        }]);
+
+        let result = convert_to_sources(from);
+        assert!(result.is_some());
+        assert!(result.unwrap().is_empty());
+    }
+
+    // Helper to create NodeInputFrom for testing
+    fn create_node_input_from(
+        handle: &str,
+        value: Option<Option<JsonValue>>,
+    ) -> manifest::NodeInputFrom {
+        manifest::NodeInputFrom {
+            handle: handle.to_string().into(),
+            value,
+            schema_overrides: None,
+            from_flow: None,
+            from_node: None,
+            serialize_for_cache: false,
+        }
+    }
+
+    #[test]
+    fn test_extract_value_from_inputs_none() {
+        let node_inputs_from: Option<Vec<manifest::NodeInputFrom>> = None;
+        let handle: HandleName = "test".to_string().into();
+        let result = extract_value_from_inputs(&node_inputs_from, &handle);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_extract_value_from_inputs_empty() {
+        let node_inputs_from: Option<Vec<manifest::NodeInputFrom>> = Some(vec![]);
+        let handle: HandleName = "test".to_string().into();
+        let result = extract_value_from_inputs(&node_inputs_from, &handle);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_extract_value_from_inputs_handle_not_found() {
+        let node_inputs_from = Some(vec![create_node_input_from(
+            "other",
+            Some(Some(JsonValue::String("value".to_string()))),
+        )]);
+        let handle: HandleName = "test".to_string().into();
+        let result = extract_value_from_inputs(&node_inputs_from, &handle);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_extract_value_from_inputs_with_value() {
+        let node_inputs_from = Some(vec![create_node_input_from(
+            "test",
+            Some(Some(JsonValue::String("hello".to_string()))),
+        )]);
+        let handle: HandleName = "test".to_string().into();
+        let result = extract_value_from_inputs(&node_inputs_from, &handle);
+        assert!(result.is_some());
+        assert_eq!(
+            result.unwrap(),
+            ValueState::Value(JsonValue::String("hello".to_string()))
+        );
+    }
+
+    #[test]
+    fn test_extract_value_from_inputs_explicit_null() {
+        // Some(None) represents explicit null
+        let node_inputs_from = Some(vec![create_node_input_from("test", Some(None))]);
+        let handle: HandleName = "test".to_string().into();
+        let result = extract_value_from_inputs(&node_inputs_from, &handle);
+        assert!(result.is_some());
+        assert_eq!(result.unwrap(), ValueState::ExplicitNull);
+    }
+
+    #[test]
+    fn test_extract_value_from_inputs_not_provided() {
+        // None represents not provided
+        let node_inputs_from = Some(vec![create_node_input_from("test", None)]);
+        let handle: HandleName = "test".to_string().into();
+        let result = extract_value_from_inputs(&node_inputs_from, &handle);
+        assert!(result.is_some());
+        assert_eq!(result.unwrap(), ValueState::NotProvided);
+    }
+
+    #[test]
+    fn test_extract_value_from_inputs_multiple_inputs() {
+        let node_inputs_from = Some(vec![
+            create_node_input_from("first", Some(Some(JsonValue::Number(1.into())))),
+            create_node_input_from("second", Some(Some(JsonValue::Number(2.into())))),
+            create_node_input_from("third", Some(Some(JsonValue::Number(3.into())))),
+        ]);
+        let handle: HandleName = "second".to_string().into();
+        let result = extract_value_from_inputs(&node_inputs_from, &handle);
+        assert!(result.is_some());
+        assert_eq!(
+            result.unwrap(),
+            ValueState::Value(JsonValue::Number(2.into()))
+        );
     }
 }
