@@ -7,22 +7,17 @@ use std::path::PathBuf;
 /// }
 pub const CACHE_META_FILE: &str = "cache_meta.json";
 
+fn with_oocana_subpath(subpath: &str) -> Option<PathBuf> {
+    config::oocana_dir().map(|mut p| {
+        p.push(subpath);
+        p
+    })
+}
+
 pub fn cache_meta_file_path() -> Option<PathBuf> {
-    match config::oocana_dir() {
-        Some(mut path) => {
-            path.push(CACHE_META_FILE);
-            Some(path)
-        }
-        None => None,
-    }
+    with_oocana_subpath(CACHE_META_FILE)
 }
 
 pub fn cache_dir() -> Option<PathBuf> {
-    match config::oocana_dir() {
-        Some(mut path) => {
-            path.push("cache");
-            Some(path)
-        }
-        None => None,
-    }
+    with_oocana_subpath("cache")
 }
