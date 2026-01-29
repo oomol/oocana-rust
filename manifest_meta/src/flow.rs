@@ -1418,6 +1418,9 @@ mod tests {
         let handle: HandleName = "second".to_string().into();
         let result = extract_value_from_inputs(&node_inputs_from, &handle);
         assert!(result.is_some());
-        assert_eq!(result.unwrap(), ValueState::Value(JsonValue::Number(2.into())));
+        assert_eq!(
+            result.unwrap(),
+            ValueState::Value(JsonValue::Number(2.into()))
+        );
     }
 }
