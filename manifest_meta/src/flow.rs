@@ -1222,3 +1222,112 @@ fn get_inputs_def_patch(
         None => None,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::HandleFrom;
+    use manifest_reader::JsonValue;
+
+    #[test]
+    fn test_extract_value_from_connection_single_from_value() {
+        let from = Some(vec![HandleFrom::FromValue {
+            value: ValueState::from_json(JsonValue::String("test".to_string())),
+        }]);
+
+        let result = extract_value_from_connection(&from);
+        assert!(result.is_some());
+        assert_eq!(
+            result.unwrap(),
+            ValueState::from_json(JsonValue::String("test".to_string()))
+        );
+    }
+
+    #[test]
+    fn test_extract_value_from_connection_multiple_connections() {
+        let from = Some(vec![
+            HandleFrom::FromValue {
+                value: ValueState::from_json(JsonValue::String("test".to_string())),
+            },
+            HandleFrom::FromFlowInput {
+                input_handle: "input".to_string().into(),
+            },
+        ]);
+
+        let result = extract_value_from_connection(&from);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_extract_value_from_connection_non_value() {
+        let from = Some(vec![HandleFrom::FromFlowInput {
+            input_handle: "input".to_string().into(),
+        }]);
+
+        let result = extract_value_from_connection(&from);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_extract_value_from_connection_none() {
+        let from: Option<Vec<HandleFrom>> = None;
+        let result = extract_value_from_connection(&from);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_extract_value_from_connection_empty() {
+        let from: Option<Vec<HandleFrom>> = Some(vec![]);
+        let result = extract_value_from_connection(&from);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_convert_to_sources_filters_from_value() {
+        let from = Some(vec![
+            HandleFrom::FromValue {
+                value: ValueState::from_json(JsonValue::String("test".to_string())),
+            },
+            HandleFrom::FromFlowInput {
+                input_handle: "input".to_string().into(),
+            },
+            HandleFrom::FromNodeOutput {
+                node_id: "node1".to_string().into(),
+                output_handle: "output".to_string().into(),
+            },
+        ]);
+
+        let result = convert_to_sources(from);
+        assert!(result.is_some());
+        let sources = result.unwrap();
+        assert_eq!(sources.len(), 2);
+
+        assert!(matches!(
+            &sources[0],
+            crate::node::HandleSource::FlowInput { input_handle } if *input_handle == HandleName::from("input".to_string())
+        ));
+        assert!(matches!(
+            &sources[1],
+            crate::node::HandleSource::NodeOutput { node_id, output_handle }
+            if *node_id == NodeId::from("node1".to_string()) && *output_handle == HandleName::from("output".to_string())
+        ));
+    }
+
+    #[test]
+    fn test_convert_to_sources_none() {
+        let from: Option<Vec<HandleFrom>> = None;
+        let result = convert_to_sources(from);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_convert_to_sources_only_from_value() {
+        let from = Some(vec![HandleFrom::FromValue {
+            value: ValueState::from_json(JsonValue::Null),
+        }]);
+
+        let result = convert_to_sources(from);
+        assert!(result.is_some());
+        assert!(result.unwrap().is_empty());
+    }
+}
