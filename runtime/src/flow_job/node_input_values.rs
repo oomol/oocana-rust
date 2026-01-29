@@ -128,7 +128,7 @@ impl NodeInputValues {
 
     pub fn is_node_fulfill(&self, node: &Node) -> bool {
         for (handle, input) in node.inputs() {
-            if input.sources.as_ref().is_none_or(|f| f.is_empty()) && input.value.is_some() {
+            if input.sources.as_ref().is_none_or(|f| f.is_empty()) && input.value.is_provided() {
                 continue;
             }
 
@@ -152,7 +152,7 @@ impl NodeInputValues {
 
     pub fn node_has_input(&self, node: &Node, handle_name: &HandleName) -> bool {
         if let Some(input) = node.inputs().get(handle_name) {
-            if input.sources.as_ref().is_none_or(|f| f.is_empty()) && input.value.is_some() {
+            if input.sources.as_ref().is_none_or(|f| f.is_empty()) && input.value.is_provided() {
                 return true;
             }
         }
@@ -233,9 +233,9 @@ impl NodeInputValues {
             for (handle, values) in input_values {
                 // this is a workaround, the best way is when flow or block is edited, clear the cache or run flow without `cache`
                 if !node.has_connection(handle)
-                    && node.inputs().get(handle).is_some_and(|i| i.value.is_some())
+                    && node.inputs().get(handle).is_some_and(|i| i.value.is_provided())
                 {
-                    warn!("Node {} handle {} has no connection with a static value exist. oocana will use handle's static value instead of the value in node store to avoid cache effect.", node_id, handle);
+                    warn!("Node {} handle {} has no connection while a static value is set. oocana will use handle's static value instead of the value in node store to avoid cache effect.", node_id, handle);
                     continue;
                 }
 
@@ -262,11 +262,12 @@ impl NodeInputValues {
 
         for (handle, input) in node.inputs() {
             if input.sources.as_ref().is_none_or(|f| f.is_empty()) {
-                if let Some(value) = input.value.as_ref() {
+                if input.value.is_provided() {
+                    let json_value = input.value.clone().into_json_or_null();
                     value_map.insert(
                         handle.to_owned(),
                         Arc::new(OutputValue {
-                            value: value.clone().unwrap_or(serde_json::Value::Null),
+                            value: json_value,
                             is_json_serializable: true,
                         }),
                     );

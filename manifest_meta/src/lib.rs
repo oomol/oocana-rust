@@ -38,7 +38,7 @@ pub use slot::SlotBlock;
 mod node;
 pub use node::{
     HandleFrom, HandleSource, HandleTo, HandlesFroms, HandlesTos, InputDefPatchMap, Node,
-    NodesHandlesTos, ServiceNode, Slot, SlotNode, SubflowNode,
+    NodesHandlesTos, ServiceNode, Slot, SlotNode, SubflowNode, ValueState,
 };
 
 mod connections;

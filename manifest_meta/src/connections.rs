@@ -50,7 +50,7 @@ impl Connections {
                                 subflow_node_id.to_owned(),
                                 runtime_handle.clone(),
                                 HandleFrom::FromValue {
-                                    value: input.value.clone(),
+                                    value: input.value.clone().into(),
                                 },
                             );
                             tracing::debug!(
@@ -117,12 +117,12 @@ impl Connections {
             // slot input from value is not a common case, we need add it to node_inputs_froms
             // so that we can use it. in other connection input from value will merged on generate node inputs.
             // but slot input from value is not merged, so we need to add it to node_inputs_froms.
-            if let Some(value) = slot_input_from.value {
+            if let Some(value) = slot_input_from.value.clone() {
                 self.node_inputs_froms.add(
                     subflow_node_id.to_owned(),
                     runtime_handle,
                     HandleFrom::FromValue {
-                        value: Some(value.clone()),
+                        value: Some(value).into(),
                     },
                 );
             }
@@ -192,7 +192,7 @@ impl Connections {
                                     node_id.to_owned(),
                                     input_from.handle.to_owned(),
                                     HandleFrom::FromValue {
-                                        value: input.value.clone(),
+                                        value: input.value.clone().into(),
                                     },
                                 );
                                 tracing::debug!(
