@@ -581,7 +581,7 @@ impl SubflowBlock {
                                                     });
 
                                                 let serialize = handle_input_from
-                                                    .map_or(false, |input_from| {
+                                                    .is_some_and(|input_from| {
                                                         input_from.serialize_for_cache
                                                     });
 
@@ -1112,8 +1112,8 @@ impl SubflowBlock {
 
         let mut serialized_node_outputs: Vec<(NodeId, HandleName)> = Vec::new();
 
-        for (_, node) in new_nodes.iter() {
-            for (_, input) in node.inputs() {
+        for node in new_nodes.values() {
+            for input in node.inputs().values() {
                 if input.serialize_for_cache {
                     if let Some(ref from) = input.sources {
                         for source in from.iter() {
@@ -1142,7 +1142,7 @@ impl SubflowBlock {
         }
 
         Ok(Self {
-            description: description,
+            description,
             nodes: new_nodes,
             inputs_def,
             outputs_def,
