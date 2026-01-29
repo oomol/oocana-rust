@@ -126,6 +126,54 @@ fn calculate_slot_scope(block_value: &str, package_path: Option<&PathBuf>) -> Bl
     }
 }
 
+/// Extract value from a single FromValue connection.
+fn extract_value_from_connection(from: &Option<Vec<crate::HandleFrom>>) -> Option<ValueState> {
+    let froms = from.as_ref()?;
+    if froms.len() != 1 {
+        return None;
+    }
+    match froms.first()? {
+        crate::HandleFrom::FromValue { value } => Some(value.clone()),
+        _ => None,
+    }
+}
+
+/// Extract value from node_inputs_from for a given handle.
+fn extract_value_from_inputs(
+    node_inputs_from: &Option<Vec<manifest::NodeInputFrom>>,
+    handle: &manifest::HandleName,
+) -> Option<ValueState> {
+    node_inputs_from.as_ref()?.iter().find_map(|input_from| {
+        if input_from.handle == *handle {
+            Some(input_from.value.clone().into())
+        } else {
+            None
+        }
+    })
+}
+
+/// Convert HandleFrom connections to HandleSource, filtering out FromValue.
+fn convert_to_sources(from: Option<Vec<crate::HandleFrom>>) -> Option<Vec<crate::node::HandleSource>> {
+    from.map(|f| {
+        f.iter()
+            .filter_map(|ff| match ff {
+                crate::HandleFrom::FromFlowInput { input_handle } => {
+                    Some(crate::node::HandleSource::FlowInput {
+                        input_handle: input_handle.clone(),
+                    })
+                }
+                crate::HandleFrom::FromNodeOutput { node_id, output_handle } => {
+                    Some(crate::node::HandleSource::NodeOutput {
+                        node_id: node_id.clone(),
+                        output_handle: output_handle.clone(),
+                    })
+                }
+                _ => None,
+            })
+            .collect()
+    })
+}
+
 pub fn generate_node_inputs(
     inputs_def: &Option<InputHandles>,
     froms: &Option<HandlesFroms>,
