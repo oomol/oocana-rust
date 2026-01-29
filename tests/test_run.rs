@@ -10,10 +10,7 @@ fn oocana_cmd() -> Command {
 }
 
 fn run_flow(path: &str) {
-    oocana_cmd()
-        .args(["run", path])
-        .assert()
-        .success();
+    oocana_cmd().args(["run", path]).assert().success();
 }
 
 #[test]
@@ -43,11 +40,12 @@ fn shell_flow_stdout_capture() {
 
 #[test]
 fn shell_flow_stderr_capture() {
-    // Verify that shell executor captures stderr correctly
+    // all stderr messages are prefixed with "HandleName("stderr" to identify their source
     oocana_cmd()
         .args(["run", "examples/shell"])
         .assert()
         .stdout(contains("stderr message"))
+        .stdout(contains("HandleName(\"stderr"))
         .success();
 }
 
@@ -113,8 +111,5 @@ fn version_pkg_test() {
 
 #[test]
 fn should_failed_if_flow_not_exist() {
-    oocana_cmd()
-        .args(["run", "error_path"])
-        .assert()
-        .failure();
+    oocana_cmd().args(["run", "error_path"]).assert().failure();
 }
