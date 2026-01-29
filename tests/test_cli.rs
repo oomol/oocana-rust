@@ -1,27 +1,21 @@
-#[cfg(test)]
-extern crate assert_cmd;
-extern crate predicates;
-
 use assert_cmd::prelude::*;
-
 use std::process::{Command, Stdio};
+
+fn oocana_cmd() -> Command {
+    let mut cmd = Command::cargo_bin("oocana").unwrap();
+    cmd.stdin(Stdio::null());
+    cmd
+}
 
 #[test]
 fn should_failed_without_subcommand() {
-    Command::cargo_bin("oocana")
-        .expect("Calling binary failed")
-        .assert()
-        .failure();
+    oocana_cmd().assert().failure();
 }
 
 #[test]
 fn cache_clear() {
-    Command::cargo_bin("oocana")
-        .unwrap()
+    oocana_cmd()
         .args(["cache", "clear"])
-        .stdin(Stdio::null())
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
         .assert()
         .success();
 }
