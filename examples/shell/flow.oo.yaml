@@ -57,8 +57,8 @@ nodes:
       - handle: command
         value: "echo \"Line 3: Host=$(hostname)\" >> data.txt && pwd"
 
-  # Step 4: Read file and demo stderr (depends on append-line-3)
-  - node_id: read-and-stderr
+  # Step 4: Read file, demo stderr, and cleanup (depends on append-line-3)
+  - node_id: read-stderr-cleanup
     task:
       executor:
         name: shell
@@ -74,22 +74,10 @@ nodes:
           - node_id: append-line-3
             output_handle: stdout
       - handle: command
-        value: "cat data.txt && echo 'stdout message' && echo 'stderr message' >&2 && pwd"
-
-  # Step 5: Cleanup (runs parallel with read-and-stderr, both depend on append-line-3)
-  - node_id: cleanup
-    task:
-      executor:
-        name: shell
-      inputs_def:
-        - handle: command
-        - handle: cwd
-      outputs_def:
-        - handle: stdout
-    inputs_from:
-      - handle: cwd
-        from_node:
-          - node_id: append-line-3
-            output_handle: stdout
-      - handle: command
-        value: "rm data.txt && cd .. && rmdir \"$(basename $OLDPWD)\" && echo cleaned"
+        value: |
+          cat data.txt
+          echo 'stdout message'
+          echo 'stderr message' >&2
+          rm data.txt
+          cd .. && rmdir "$(basename $OLDPWD)"
+          echo 'cleaned'
