@@ -61,7 +61,7 @@ type: task_block
 executor:
   name: shell
 inputs_def:
-  - handle: args
+  - handle: command
     value: "ls -al"
 outputs_def:
   - handle: stdout
@@ -151,7 +151,7 @@ type: task_block
 executor:
   name: shell
 inputs_def:
-  - handle: args
+  - handle: command
     value: "ls -al"
 outputs_def:
   - handle: stdout
