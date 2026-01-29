@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.30.34 (2026-01-29)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* refactor: improve reader crate by @leavesster in https://github.com/oomol/oocana-rust/pull/397
+* refactor: simplify ConditionHandleDef::is_match using iterators by @leavesster in https://github.com/oomol/oocana-rust/pull/399
+* refactor: improve block type function by @leavesster in https://github.com/oomol/oocana-rust/pull/400
+* refactor: replace Option<Option<JsonValue>> with ValueState enum by @leavesster in https://github.com/oomol/oocana-rust/pull/402
+* refactor(manifest_meta): extract calculate_slot_scope function by @leavesster in https://github.com/oomol/oocana-rust/pull/403
+* refactor(manifest_meta): fix clippy warnings by @leavesster in https://github.com/oomol/oocana-rust/pull/404
+* refactor(flow): simplify generate_node_inputs by @leavesster in https://github.com/oomol/oocana-rust/pull/405
+* test(flow): add integration tests for package and recursive subflow resolution by @leavesster in https://github.com/oomol/oocana-rust/pull/406
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.30.33...v0.30.34
+
 ## 0.30.33 (2026-01-28)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
