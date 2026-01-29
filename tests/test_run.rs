@@ -32,6 +32,50 @@ fn run_shell_flow() {
 }
 
 #[test]
+fn shell_flow_stdout_capture() {
+    // Verify that shell executor captures stdout correctly
+    oocana_cmd()
+        .args(["run", "examples/shell"])
+        .assert()
+        .stdout(contains("stdout message"))
+        .success();
+}
+
+#[test]
+fn shell_flow_stderr_capture() {
+    // Verify that shell executor captures stderr correctly
+    oocana_cmd()
+        .args(["run", "examples/shell"])
+        .assert()
+        .stdout(contains("stderr message"))
+        .success();
+}
+
+#[test]
+fn shell_flow_env_injection() {
+    // Verify that custom environment variables are injected
+    oocana_cmd()
+        .args(["run", "examples/shell"])
+        .assert()
+        .stdout(contains("hello_oocana"))
+        .success();
+}
+
+#[test]
+fn shell_flow_node_chaining() {
+    // Verify that nodes chain correctly via cwd
+    // setup creates dir, append nodes add content, read-and-stderr reads it
+    oocana_cmd()
+        .args(["run", "examples/shell"])
+        .assert()
+        .stdout(contains("Line 1: Created at"))
+        .stdout(contains("Line 2: Custom="))
+        .stdout(contains("Line 3: Host="))
+        .stdout(contains("cleaned"))
+        .success();
+}
+
+#[test]
 fn run_flow_with_input() {
     oocana_cmd()
         .args([
