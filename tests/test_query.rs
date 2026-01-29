@@ -1,150 +1,118 @@
-#[cfg(test)]
-extern crate assert_cmd;
-extern crate predicates;
-
 use assert_cmd::prelude::*;
+use serde_json::Value;
+use std::env::temp_dir;
+use std::process::{Command, Stdio};
 
-use std::{
-    env::temp_dir,
-    process::{Command, Stdio},
-};
+fn oocana_cmd() -> Command {
+    let mut cmd = Command::cargo_bin("oocana").unwrap();
+    cmd.stdin(Stdio::null());
+    cmd
+}
+
+fn query_to_json(args: &[&str], tmp_name: &str) -> Value {
+    let tmp_file = temp_dir().join(tmp_name);
+    let tmp_path = tmp_file.to_str().unwrap();
+
+    let mut full_args: Vec<&str> = args.to_vec();
+    full_args.extend(["--output", tmp_path]);
+
+    oocana_cmd()
+        .args(&full_args)
+        .assert()
+        .success();
+
+    let content = std::fs::read_to_string(&tmp_file)
+        .unwrap_or_else(|e| panic!("Failed to read {}: {}", tmp_path, e));
+
+    serde_json::from_str(&content)
+        .unwrap_or_else(|e| panic!("Invalid JSON in {}: {}\nContent: {}", tmp_path, e, content))
+}
 
 #[test]
 fn query_services() {
-    Command::cargo_bin("oocana")
-        .unwrap()
+    oocana_cmd()
         .args(["query", "service", "examples/service/flow.oo.yaml"])
-        .stdin(Stdio::null())
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
         .assert()
         .success();
 }
 
 #[test]
 fn query_upstream() {
-    Command::cargo_bin("oocana")
-        .unwrap()
+    oocana_cmd()
         .args(["query", "upstream", "--nodes", "block-6", "examples/base"])
-        .stdin(Stdio::null())
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
         .assert()
         .success();
 }
 
 #[test]
 fn query_inputs() {
-    let mut cmd = Command::cargo_bin("oocana").unwrap();
-    let tmp_file = temp_dir().join("oocana_test_query_inputs.json");
+    let result = query_to_json(
+        &["query", "inputs", "examples/base/pkg_a/blocks/blk-b"],
+        "oocana_test_query_inputs.json",
+    );
 
-    cmd.args([
-        "query",
-        "inputs",
-        "examples/base/pkg_a/blocks/blk-b",
-        "--output",
-        tmp_file.to_str().unwrap(),
-    ])
-    .stdin(Stdio::null())
-    .stderr(Stdio::inherit())
-    .assert()
-    .success();
-
-    let result_str = std::fs::read_to_string(&tmp_file).expect("Failed to read output file");
-    println!("result: {}", result_str);
-
-    let map = serde_json::from_str::<serde_json::Value>(&result_str)
-        .unwrap_or_else(|_| panic!("Failed to parse JSON output {}", result_str));
-
-    assert!(map.is_object());
+    assert!(result.is_object(), "Expected object, got: {}", result);
     assert!(
-        map.get("my_count").is_some(),
-        "Expected 'inputs' key in output"
+        result.get("my_count").is_some(),
+        "Expected 'my_count' key in output, got: {}",
+        result
     );
 }
 
 #[test]
 fn query_nodes_inputs() {
-    let mut cmd = Command::cargo_bin("oocana").unwrap();
-    let tmp_file = temp_dir().join("oocana_test_query_nodes_inputs.json");
-
-    cmd.args([
-        "query",
-        "nodes-inputs",
-        "examples/input",
-        "--output",
-        tmp_file.to_str().unwrap(),
-    ])
-    .stdin(Stdio::null())
-    .stderr(Stdio::inherit())
-    .assert()
-    .success();
-
-    let result_str = std::fs::read_to_string(&tmp_file).expect("Failed to read output file");
-
-    let map = serde_json::from_str::<serde_json::Value>(&result_str)
-        .unwrap_or_else(|_| panic!("Failed to parse JSON output {}", result_str));
-    println!("result: {}", result_str);
-
-    assert!(map.is_object());
-    assert!(
-        map.get("block-1").is_some(),
-        "Expected 'inputs' key in output"
+    let result = query_to_json(
+        &["query", "nodes-inputs", "examples/input"],
+        "oocana_test_query_nodes_inputs.json",
     );
 
-    for (key, value) in map.as_object().unwrap() {
-        println!("{}: {}", key, value);
-        assert!(
-            value.is_array(),
-            "Expected key({}) to have an array value, got {}",
-            key,
-            value
-        );
-        assert!(
-            value.as_array().is_some_and(|v| v.len() == 2),
-            "Expected key({}) to have only one element, got {}",
-            key,
-            value,
-        );
+    let map = result.as_object().expect("Expected object at root");
+    assert!(map.contains_key("block-1"), "Missing 'block-1' in output");
 
-        assert!(
-            value.as_array().is_some_and(|v| v[0].is_object()),
-            "Expected first element of array for {} to be an object",
-            value
-        );
+    for (node, inputs) in map {
+        assert_node_inputs(node, inputs);
+    }
+}
 
-        assert!(
-            value
-                .as_array()
-                .is_some_and(|v| v[0].get("handle").is_some()),
-            "Expected 'handle' key in first element of array for {}",
-            key
-        );
+fn assert_node_inputs(node: &str, inputs: &Value) {
+    let arr = inputs
+        .as_array()
+        .unwrap_or_else(|| panic!("Node '{}': expected array, got {}", node, inputs));
 
-        for item in value.as_array().unwrap() {
+    assert_eq!(arr.len(), 2, "Node '{}': expected 2 inputs, got {}", node, arr.len());
+
+    for item in arr {
+        assert_input_item(node, item);
+    }
+}
+
+fn assert_input_item(node: &str, item: &Value) {
+    let obj = item
+        .as_object()
+        .unwrap_or_else(|| panic!("Node '{}': input should be object, got {}", node, item));
+
+    let handle = obj
+        .get("handle")
+        .and_then(|h| h.as_str())
+        .unwrap_or_else(|| panic!("Node '{}': missing 'handle' field in {}", node, item));
+
+    match handle {
+        "in" => {
             assert!(
-                item.is_object(),
-                "Expected each item in array for {} to be an object",
-                key
+                obj.get("value").is_some_and(|v| v.is_number()),
+                "Node '{}': handle 'in' should have number value, got {}",
+                node,
+                item
             );
-            println!("item: {}", item);
-            if let Some(handle) = item.get("handle") {
-                if handle.as_str().unwrap() == "in" {
-                    assert!(
-                        item.get("value").is_some_and(|v| v.is_number()),
-                        "Expected handle [in] has number value, got: {}",
-                        item
-                    );
-                } else if handle.as_str().unwrap() == "my_count" {
-                    assert!(
-                        item.get("value").is_none(),
-                        "Expected handle [my_count] has no value, got: {}",
-                        item
-                    );
-                } else {
-                    panic!("Unexpected handle: {}", handle);
-                }
-            }
         }
+        "my_count" => {
+            assert!(
+                obj.get("value").is_none(),
+                "Node '{}': handle 'my_count' should have no value, got {}",
+                node,
+                item
+            );
+        }
+        _ => panic!("Node '{}': unexpected handle '{}'", node, handle),
     }
 }
