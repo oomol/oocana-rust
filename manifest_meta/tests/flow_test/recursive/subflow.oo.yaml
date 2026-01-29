@@ -1,0 +1,23 @@
+inputs_def:
+  - handle: depth
+    json_schema:
+      type: number
+outputs_from:
+  - handle: result
+    from_node:
+      - node_id: recurse
+        output_handle: result
+nodes:
+  - node_id: worker
+    task: "./task.oo.yaml"
+    inputs_from:
+      - handle: in1
+        from_flow:
+          - input_handle: depth
+  - node_id: recurse
+    subflow: "./subflow.oo.yaml"
+    inputs_from:
+      - handle: depth
+        from_node:
+          - node_id: worker
+            output_handle: out1

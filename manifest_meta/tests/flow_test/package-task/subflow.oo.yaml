@@ -1,0 +1,21 @@
+inputs_def:
+  - handle: user_name
+    json_schema:
+      type: string
+outputs_from:
+  - handle: output_message
+    from_node:
+      - node_id: greet
+        output_handle: message
+nodes:
+  - node_id: greet
+    task: "test-pkg::greeting"
+    inputs_from:
+      - handle: name
+        from_flow:
+          - input_handle: user_name
+  - node_id: process
+    task: "test-pkg::transform"
+    inputs_from:
+      - handle: text
+        value: "hello world"

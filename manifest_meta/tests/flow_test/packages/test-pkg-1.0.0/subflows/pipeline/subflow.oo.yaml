@@ -1,0 +1,23 @@
+inputs_def:
+  - handle: input_name
+    json_schema:
+      type: string
+outputs_from:
+  - handle: final_result
+    from_node:
+      - node_id: transform_node
+        output_handle: result
+nodes:
+  - node_id: greeting_node
+    task: "self::greeting"
+    inputs_from:
+      - handle: name
+        from_flow:
+          - input_handle: input_name
+  - node_id: transform_node
+    task: "self::transform"
+    inputs_from:
+      - handle: text
+        from_node:
+          - node_id: greeting_node
+            output_handle: message

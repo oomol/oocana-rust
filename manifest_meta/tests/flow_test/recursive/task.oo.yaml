@@ -1,0 +1,10 @@
+executor:
+  name: python
+inputs_def:
+  - handle: in1
+    json_schema:
+      type: number
+outputs_def:
+  - handle: out1
+    json_schema:
+      type: number

@@ -1,7 +1,9 @@
 #[cfg(test)]
 mod tests {
 
-    use manifest_meta::{generate_runtime_handle_name, BlockResolver, HandleName, NodeId};
+    use manifest_meta::{
+        generate_runtime_handle_name, BlockResolver, HandleName, NodeId,
+    };
     use manifest_reader::path_finder::BlockPathFinder;
 
     use std::path::PathBuf;
