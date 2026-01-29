@@ -97,22 +97,19 @@ pub(crate) fn calculate_running_target(
         }
     }
 
-    match block_type {
-        BlockValueType::Pkg { pkg_name, .. } => {
-            if let Some(package_path) = package_path {
-                return RunningTarget::Package {
-                    pkg_name,
-                    package_path: package_path.clone(),
-                    node_id: injection.as_ref().and_then(|inj| match &inj.target {
-                        manifest_reader::manifest::InjectionTarget::Node(node_id) => {
-                            Some(node_id.clone())
-                        }
-                        _ => None,
-                    }),
-                };
-            }
+    if let BlockValueType::Pkg { pkg_name, .. } = block_type {
+        if let Some(package_path) = package_path {
+            return RunningTarget::Package {
+                pkg_name,
+                package_path: package_path.clone(),
+                node_id: injection.as_ref().and_then(|inj| match &inj.target {
+                    manifest_reader::manifest::InjectionTarget::Node(node_id) => {
+                        Some(node_id.clone())
+                    }
+                    _ => None,
+                }),
+            };
         }
-        _ => {}
     }
 
     match injection {
