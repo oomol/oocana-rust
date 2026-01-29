@@ -10,10 +10,7 @@ fn oocana_cmd() -> Command {
 }
 
 fn run_flow(path: &str) {
-    oocana_cmd()
-        .args(["run", path])
-        .assert()
-        .success();
+    oocana_cmd().args(["run", path]).assert().success();
 }
 
 #[test]
@@ -29,6 +26,62 @@ fn self_flow_run() {
 #[test]
 fn run_shell_flow() {
     run_flow("examples/shell");
+}
+
+#[test]
+fn shell_flow_stdout_capture() {
+    // Verify that shell executor captures stdout correctly
+    oocana_cmd()
+        .args(["run", "examples/shell"])
+        .assert()
+        .stdout(contains("stdout message"))
+        .success();
+}
+
+#[test]
+fn shell_flow_stderr_capture() {
+    // all stderr messages are prefixed with "HandleName("stderr" to identify their source
+    oocana_cmd()
+        .args(["run", "examples/shell"])
+        .assert()
+        .stdout(contains("stderr message"))
+        .stdout(contains("HandleName(\"stderr"))
+        .success();
+}
+
+#[test]
+fn shell_flow_env_injection() {
+    // Verify that custom environment variables are injected
+    oocana_cmd()
+        .args(["run", "examples/shell"])
+        .assert()
+        .stdout(contains("hello_oocana"))
+        .success();
+}
+
+#[test]
+fn shell_flow_env_with_equals_in_value() {
+    // Verify that environment variable values containing '=' are parsed correctly
+    // e.g., CONNECTION_STRING=host=localhost;user=admin;pass=secret=123
+    oocana_cmd()
+        .args(["run", "examples/shell"])
+        .assert()
+        .stdout(contains("CONNECTION=host=localhost;user=admin;pass=secret=123"))
+        .success();
+}
+
+#[test]
+fn shell_flow_node_chaining() {
+    // Verify that nodes chain correctly via cwd
+    // setup creates dir, append nodes add content, read-and-stderr reads it
+    oocana_cmd()
+        .args(["run", "examples/shell"])
+        .assert()
+        .stdout(contains("Line 1: Created at"))
+        .stdout(contains("Line 2: Custom="))
+        .stdout(contains("Line 3: Host="))
+        .stdout(contains("cleaned"))
+        .success();
 }
 
 #[test]
@@ -69,8 +122,5 @@ fn version_pkg_test() {
 
 #[test]
 fn should_failed_if_flow_not_exist() {
-    oocana_cmd()
-        .args(["run", "error_path"])
-        .assert()
-        .failure();
+    oocana_cmd().args(["run", "error_path"]).assert().failure();
 }

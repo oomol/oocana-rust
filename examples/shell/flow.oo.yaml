@@ -1,5 +1,25 @@
+# Shell Executor Demo Flow
+# Demonstrates: node dependencies via cwd, environment variables, stdout/stderr
+
 nodes:
-  - node_id: shell-1
+  # Test: Environment variable value with equals sign
+  - node_id: env-with-equals
+    task:
+      executor:
+        name: shell
+      inputs_def:
+        - handle: command
+        - handle: envs
+      outputs_def:
+        - handle: stdout
+    inputs_from:
+      - handle: command
+        value: "echo \"CONNECTION=$CONNECTION_STRING\""
+      - handle: envs
+        value: "CONNECTION_STRING=host=localhost;user=admin;pass=secret=123"
+
+  # Step 1: Create temp directory
+  - node_id: setup
     task:
       executor:
         name: shell
@@ -9,4 +29,71 @@ nodes:
         - handle: stdout
     inputs_from:
       - handle: command
-        value: "ls -l"
+        value: |
+          DIR=$(mktemp -d)
+          echo "Line 1: Created at $(date)" > "$DIR/data.txt"
+          echo "$DIR"
+
+  # Step 2: Append line 2 (depends on setup)
+  - node_id: append-line-2
+    task:
+      executor:
+        name: shell
+      inputs_def:
+        - handle: command
+        - handle: cwd
+        - handle: envs
+      outputs_def:
+        - handle: stdout
+    inputs_from:
+      - handle: cwd
+        from_node:
+          - node_id: setup
+            output_handle: stdout
+      - handle: command
+        value: "echo \"Line 2: Custom=$CUSTOM_VAR\" >> data.txt && pwd"
+      - handle: envs
+        value: "CUSTOM_VAR=hello_oocana"
+
+  # Step 3: Append line 3 (depends on append-line-2)
+  - node_id: append-line-3
+    task:
+      executor:
+        name: shell
+      inputs_def:
+        - handle: command
+        - handle: cwd
+      outputs_def:
+        - handle: stdout
+    inputs_from:
+      - handle: cwd
+        from_node:
+          - node_id: append-line-2
+            output_handle: stdout
+      - handle: command
+        value: "echo \"Line 3: Host=$(hostname)\" >> data.txt && pwd"
+
+  # Step 4: Read file, demo stderr, and cleanup (depends on append-line-3)
+  - node_id: read-stderr-cleanup
+    task:
+      executor:
+        name: shell
+      inputs_def:
+        - handle: command
+        - handle: cwd
+      outputs_def:
+        - handle: stdout
+        - handle: stderr
+    inputs_from:
+      - handle: cwd
+        from_node:
+          - node_id: append-line-3
+            output_handle: stdout
+      - handle: command
+        value: |
+          cat data.txt
+          echo 'stdout message'
+          echo 'stderr message' >&2
+          rm data.txt
+          cd .. && rmdir "$(basename $OLDPWD)"
+          echo 'cleaned'
