@@ -13,6 +13,21 @@ pub struct Error {
     source: Option<Box<dyn std::error::Error + Send + Sync>>,
 }
 
+macro_rules! impl_from_error {
+    ($error_type:ty, $msg:expr) => {
+        impl From<$error_type> for Error {
+            fn from(err: $error_type) -> Self {
+                Error {
+                    msg: String::from($msg),
+                    #[cfg(feature = "nightly")]
+                    backtrace: std::backtrace::Backtrace::capture(),
+                    source: Some(Box::new(err)),
+                }
+            }
+        }
+    };
+}
+
 // Implement the Display trait for our Error type.
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -57,6 +72,7 @@ impl Error {
     }
 }
 
+// PoisonError is not Send + Sync, so we can't use the macro
 impl<T> From<std::sync::PoisonError<T>> for Error {
     fn from(_err: std::sync::PoisonError<T>) -> Self {
         Error {
@@ -68,49 +84,10 @@ impl<T> From<std::sync::PoisonError<T>> for Error {
     }
 }
 
-impl From<std::io::Error> for Error {
-    fn from(err: std::io::Error) -> Self {
-        Error {
-            msg: String::from("IO Error"),
-            #[cfg(feature = "nightly")]
-            backtrace: std::backtrace::Backtrace::capture(),
-            source: Some(Box::new(err)),
-        }
-    }
-}
-
-impl From<log::SetLoggerError> for Error {
-    fn from(err: log::SetLoggerError) -> Self {
-        Error {
-            msg: String::from("Logger Error"),
-            #[cfg(feature = "nightly")]
-            backtrace: std::backtrace::Backtrace::capture(),
-            source: Some(Box::new(err)),
-        }
-    }
-}
-
-impl From<serde_json::Error> for Error {
-    fn from(err: serde_json::Error) -> Self {
-        Error {
-            msg: String::from("JSON Error"),
-            #[cfg(feature = "nightly")]
-            backtrace: std::backtrace::Backtrace::capture(),
-            source: Some(Box::new(err)),
-        }
-    }
-}
-
-impl From<serde_yaml::Error> for Error {
-    fn from(err: serde_yaml::Error) -> Self {
-        Error {
-            msg: String::from("YAML Error"),
-            #[cfg(feature = "nightly")]
-            backtrace: std::backtrace::Backtrace::capture(),
-            source: Some(Box::new(err)),
-        }
-    }
-}
+impl_from_error!(std::io::Error, "IO Error");
+impl_from_error!(log::SetLoggerError, "Logger Error");
+impl_from_error!(serde_json::Error, "JSON Error");
+impl_from_error!(serde_yaml::Error, "YAML Error");
 
 impl From<std::string::String> for Error {
     fn from(value: String) -> Self {
