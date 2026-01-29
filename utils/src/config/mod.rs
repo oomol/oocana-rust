@@ -10,14 +10,11 @@ pub fn default_broker_port() -> u16 {
 }
 
 pub fn store_dir() -> Option<PathBuf> {
-    let global_config = GLOBAL_CONFIG.lock().unwrap();
-    Some(PathBuf::from(global_config.global.store_dir.clone()))
+    Some(PathBuf::from(&get_config().global.store_dir))
 }
 
 pub fn oocana_dir() -> Option<PathBuf> {
-    let global_config = GLOBAL_CONFIG.lock().unwrap();
-
-    Some(PathBuf::from(global_config.global.oocana_dir.clone()))
+    Some(PathBuf::from(&get_config().global.oocana_dir))
 }
 
 pub fn registry_store_file() -> Option<PathBuf> {
@@ -29,20 +26,15 @@ pub fn registry_store_file() -> Option<PathBuf> {
         }
     }
 
-    let global_config = GLOBAL_CONFIG.lock().unwrap();
-    Some(PathBuf::from(
-        global_config.global.registry_store_file.clone(),
-    ))
+    Some(PathBuf::from(&get_config().global.registry_store_file))
 }
 
 pub fn search_paths() -> Option<Vec<String>> {
-    let global_config = GLOBAL_CONFIG.lock().unwrap();
-    global_config.global.search_paths.clone()
+    get_config().global.search_paths.clone()
 }
 
 pub fn extra_search_path() -> Option<Vec<String>> {
-    let global_config = GLOBAL_CONFIG.lock().unwrap();
-    global_config
+    get_config()
         .run
         .extra
         .as_ref()
@@ -50,11 +42,9 @@ pub fn extra_search_path() -> Option<Vec<String>> {
 }
 
 pub fn env_file() -> Option<String> {
-    let global_config = GLOBAL_CONFIG.lock().unwrap();
-    global_config.global.env_file.clone()
+    get_config().global.env_file.clone()
 }
 
 pub fn bind_path_file() -> Option<String> {
-    let global_config = GLOBAL_CONFIG.lock().unwrap();
-    global_config.global.bind_path_file.clone()
+    get_config().global.bind_path_file.clone()
 }

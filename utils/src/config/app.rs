@@ -1,10 +1,8 @@
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
 
 use config::Config;
-use lazy_static::lazy_static;
-use std::sync::Mutex;
-
 use dirs::home_dir;
 
 use super::{global_config::GlobalConfig, run_config::RunConfig};
@@ -16,31 +14,41 @@ pub struct AppConfig {
     pub run: RunConfig,
 }
 
-lazy_static! {
-    pub static ref GLOBAL_CONFIG: Mutex<AppConfig> = Mutex::new(AppConfig {
-        global: GlobalConfig::default(),
-        run: RunConfig::default(),
-    });
+impl Default for AppConfig {
+    fn default() -> Self {
+        AppConfig {
+            global: GlobalConfig::default(),
+            run: RunConfig::default(),
+        }
+    }
 }
 
-pub fn load_config<P: AsRef<Path>>(file: Option<P>) -> Result<AppConfig, String> {
+static GLOBAL_CONFIG: OnceLock<AppConfig> = OnceLock::new();
+
+/// Get the global config reference. Panics if config was never loaded.
+pub fn get_config() -> &'static AppConfig {
+    GLOBAL_CONFIG
+        .get()
+        .expect("Config not initialized. Call load_config first.")
+}
+
+/// Parse config from file path without setting global state.
+/// Returns default config if file doesn't exist.
+fn parse_config<P: AsRef<Path>>(file: Option<P>) -> Result<AppConfig, String> {
     let p: PathBuf = match file {
         Some(p) => p.as_ref().to_path_buf(),
         None => {
             let mut default_path = home_dir().ok_or("Failed to get home dir")?;
             default_path.push("oocana");
             default_path.push("config");
-            default_path.to_path_buf()
+            default_path
         }
     };
 
     let config_path = if p.is_absolute() {
         p
     } else {
-        // 先展开 ~ 和 $HOME
         let expanded = PathBuf::from(expand_home(&p));
-
-        // 如果展开后还是相对路径，拼接当前目录
         if expanded.is_relative() {
             let mut current_dir = std::env::current_dir()
                 .map_err(|e| format!("Failed to get current dir: {:?}", e))?;
@@ -51,17 +59,15 @@ pub fn load_config<P: AsRef<Path>>(file: Option<P>) -> Result<AppConfig, String>
         }
     };
 
-    // TODO: use config set_default to set default value
     if !config_path.with_extension("json").exists()
         && !config_path.with_extension("toml").exists()
         && !config_path.with_extension("json5").exists()
     {
-        let app_config = GLOBAL_CONFIG.lock().unwrap();
         tracing::info!(
-            "No config file found at {:?}, return default config",
+            "No config file found at {:?}, using default config",
             config_path
         );
-        return Ok(app_config.clone());
+        return Ok(AppConfig::default());
     }
 
     Config::builder()
@@ -70,9 +76,39 @@ pub fn load_config<P: AsRef<Path>>(file: Option<P>) -> Result<AppConfig, String>
         .map_err(|e| format!("Failed to load config: {:?}", e))?
         .try_deserialize::<AppConfig>()
         .map_err(|e| format!("Failed to deserialize config: {:?}", e))
-        .map(|config| {
-            let mut global_config = GLOBAL_CONFIG.lock().unwrap();
-            *global_config = config;
-            global_config.clone()
-        })
+}
+
+/// Load config from file and set as global config.
+/// Returns a clone of the config for compatibility.
+/// If config is already initialized, returns the existing config (ignores file param).
+pub fn load_config<P: AsRef<Path>>(file: Option<P>) -> Result<AppConfig, String> {
+    // If already initialized, return the existing config
+    if let Some(config) = GLOBAL_CONFIG.get() {
+        return Ok(config.clone());
+    }
+
+    let config = parse_config(file)?;
+
+    // Try to set the config; if another thread beat us, use their config
+    let _ = GLOBAL_CONFIG.set(config);
+    Ok(GLOBAL_CONFIG.get().unwrap().clone())
+}
+
+/// Parse config from file without affecting global state.
+/// Useful for testing config parsing or reading configs independently.
+pub fn parse_config_standalone<P: AsRef<Path>>(file: Option<P>) -> Result<AppConfig, String> {
+    parse_config(file)
+}
+
+#[cfg(test)]
+pub use tests::parse_config_for_test;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Test-only function to parse config without affecting global state.
+    pub fn parse_config_for_test<P: AsRef<Path>>(file: Option<P>) -> Result<AppConfig, String> {
+        parse_config(file)
+    }
 }

@@ -9,17 +9,21 @@ use crate::{config, env};
 
 use super::error::Result;
 
-use std::sync::Mutex;
+use std::sync::{Mutex, OnceLock};
 use tracing::level_filters::LevelFilter;
 use tracing_appender::non_blocking;
 use tracing_subscriber::{fmt, layer::SubscriberExt, EnvFilter, Layer, Registry};
 
-lazy_static::lazy_static! {
-    static ref LOGGER_DIR: Mutex<PathBuf> = Mutex::new(config::oocana_dir().unwrap_or(std::env::temp_dir()));
+static LOGGER_DIR: OnceLock<Mutex<PathBuf>> = OnceLock::new();
+
+fn get_logger_dir() -> &'static Mutex<PathBuf> {
+    LOGGER_DIR.get_or_init(|| {
+        Mutex::new(config::oocana_dir().unwrap_or_else(std::env::temp_dir))
+    })
 }
 
 pub fn logger_dir() -> PathBuf {
-    LOGGER_DIR.lock().unwrap().clone()
+    get_logger_dir().lock().unwrap().clone()
 }
 
 pub const STDOUT_TARGET: &str = "stdout";
@@ -48,7 +52,7 @@ pub fn setup_logging<P: AsRef<Path>>(params: LogParams<P>) -> Result<non_blockin
         logger_dir.push(sub_dir);
     }
 
-    *LOGGER_DIR.lock().unwrap() = logger_dir.clone();
+    *get_logger_dir().lock().unwrap() = logger_dir.clone();
 
     // Set OVMLAYER environment variable for ovmlayer logging
     std::env::set_var(
@@ -148,6 +152,9 @@ mod tests {
 
     #[test]
     fn test_logger() {
+        // Initialize config before using logger
+        let _ = config::load_config(None::<String>);
+
         let g = setup_logging(LogParams {
             sub_dir: Some("test"),
             log_name: "test",
