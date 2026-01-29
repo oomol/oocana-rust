@@ -1,7 +1,9 @@
 #[cfg(test)]
 mod tests {
 
-    use manifest_meta::{generate_runtime_handle_name, BlockResolver, HandleName, NodeId};
+    use manifest_meta::{
+        generate_runtime_handle_name, BlockResolver, HandleName, NodeId,
+    };
     use manifest_reader::path_finder::BlockPathFinder;
 
     use std::path::PathBuf;
@@ -268,6 +270,6 @@ mod tests {
     }
 
     fn test_directory() -> PathBuf {
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/flow_test")
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures")
     }
 }

@@ -1,0 +1,16 @@
+inputs_def:
+  - handle: name
+    json_schema:
+      type: string
+outputs_from:
+  - handle: result
+    from_node:
+      - node_id: pipeline
+        output_handle: final_result
+nodes:
+  - node_id: pipeline
+    subflow: "test-pkg::pipeline"
+    inputs_from:
+      - handle: input_name
+        from_flow:
+          - input_handle: name

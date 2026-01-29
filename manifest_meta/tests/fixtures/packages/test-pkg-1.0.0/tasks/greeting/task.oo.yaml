@@ -1,0 +1,10 @@
+executor:
+  name: python
+inputs_def:
+  - handle: name
+    json_schema:
+      type: string
+outputs_def:
+  - handle: message
+    json_schema:
+      type: string
