@@ -1330,4 +1330,94 @@ mod tests {
         assert!(result.is_some());
         assert!(result.unwrap().is_empty());
     }
+
+    // Helper to create NodeInputFrom for testing
+    fn create_node_input_from(
+        handle: &str,
+        value: Option<Option<JsonValue>>,
+    ) -> manifest::NodeInputFrom {
+        manifest::NodeInputFrom {
+            handle: handle.to_string().into(),
+            value,
+            schema_overrides: None,
+            from_flow: None,
+            from_node: None,
+            serialize_for_cache: false,
+        }
+    }
+
+    #[test]
+    fn test_extract_value_from_inputs_none() {
+        let node_inputs_from: Option<Vec<manifest::NodeInputFrom>> = None;
+        let handle: HandleName = "test".to_string().into();
+        let result = extract_value_from_inputs(&node_inputs_from, &handle);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_extract_value_from_inputs_empty() {
+        let node_inputs_from: Option<Vec<manifest::NodeInputFrom>> = Some(vec![]);
+        let handle: HandleName = "test".to_string().into();
+        let result = extract_value_from_inputs(&node_inputs_from, &handle);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_extract_value_from_inputs_handle_not_found() {
+        let node_inputs_from = Some(vec![create_node_input_from(
+            "other",
+            Some(Some(JsonValue::String("value".to_string()))),
+        )]);
+        let handle: HandleName = "test".to_string().into();
+        let result = extract_value_from_inputs(&node_inputs_from, &handle);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_extract_value_from_inputs_with_value() {
+        let node_inputs_from = Some(vec![create_node_input_from(
+            "test",
+            Some(Some(JsonValue::String("hello".to_string()))),
+        )]);
+        let handle: HandleName = "test".to_string().into();
+        let result = extract_value_from_inputs(&node_inputs_from, &handle);
+        assert!(result.is_some());
+        assert_eq!(
+            result.unwrap(),
+            ValueState::Value(JsonValue::String("hello".to_string()))
+        );
+    }
+
+    #[test]
+    fn test_extract_value_from_inputs_explicit_null() {
+        // Some(None) represents explicit null
+        let node_inputs_from = Some(vec![create_node_input_from("test", Some(None))]);
+        let handle: HandleName = "test".to_string().into();
+        let result = extract_value_from_inputs(&node_inputs_from, &handle);
+        assert!(result.is_some());
+        assert_eq!(result.unwrap(), ValueState::ExplicitNull);
+    }
+
+    #[test]
+    fn test_extract_value_from_inputs_not_provided() {
+        // None represents not provided
+        let node_inputs_from = Some(vec![create_node_input_from("test", None)]);
+        let handle: HandleName = "test".to_string().into();
+        let result = extract_value_from_inputs(&node_inputs_from, &handle);
+        assert!(result.is_some());
+        assert_eq!(result.unwrap(), ValueState::NotProvided);
+    }
+
+    #[test]
+    fn test_extract_value_from_inputs_multiple_inputs() {
+        let node_inputs_from = Some(vec![
+            create_node_input_from("first", Some(Some(JsonValue::Number(1.into())))),
+            create_node_input_from("second", Some(Some(JsonValue::Number(2.into())))),
+            create_node_input_from("third", Some(Some(JsonValue::Number(3.into())))),
+        ]);
+        let handle: HandleName = "second".to_string().into();
+        let result = extract_value_from_inputs(&node_inputs_from, &handle);
+        assert!(result.is_some());
+        assert_eq!(result.unwrap(), ValueState::Value(JsonValue::Number(2.into())));
+    }
 }
