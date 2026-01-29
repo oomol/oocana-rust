@@ -171,16 +171,6 @@ fn get_layer_status_with_registry_fallback(
 }
 
 pub fn layer_action(action: &LayerAction) -> Result<()> {
-    if std::env::var(utils::env::OVMLAYER_LOG_ENV_KEY).is_err() {
-        std::env::set_var(
-            utils::env::OVMLAYER_LOG_ENV_KEY,
-            utils::logger::logger_dir()
-                .join("ovmlayer.log")
-                .to_string_lossy()
-                .to_string(),
-        );
-    }
-
     if !layer::feature_enabled() {
         tracing::warn!("Layer feature is not enabled. quitting");
         return Err(Error::from("Layer feature is not enabled"));

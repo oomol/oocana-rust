@@ -79,9 +79,7 @@ pub enum QueryAction {
         )]
         output: Option<String>,
     },
-    #[command(
-        about = "get services from a flow block. will output service struct line by line, output will be like: 'service: {json-style service struct}'"
-    )]
+    #[command(about = "get services from a flow block, output JSON per line")]
     Service {
         #[arg(
             help = "Absolute Path to the Oocana Block Manifest file or a directory with flow.oo.yaml."
@@ -138,7 +136,11 @@ pub fn query(action: &QueryAction) -> Result<()> {
                 nodes: Some(HashSet::new()),
             })?;
             for (package, layer) in package_status {
-                println!("package-status: {:?}:{:?}", package, layer);
+                let json = serde_json::json!({
+                    "package": package.to_string_lossy(),
+                    "status": format!("{:?}", layer)
+                });
+                println!("{}", json);
             }
         }
         QueryAction::Inputs {
@@ -215,11 +217,14 @@ pub fn query(action: &QueryAction) -> Result<()> {
                 manifest_meta::Block::Flow(flow) => {
                     let results = flow.read().unwrap().get_services();
                     for result in results {
-                        println!("service: {:}", result);
+                        println!("{}", result);
                     }
                 }
                 _ => {
                     println!("block is not flow");
+                    return Err(utils::error::Error::new(
+                        "Block is not a flow, cannot get services.",
+                    ));
                 }
             }
         }
