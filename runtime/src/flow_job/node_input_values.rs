@@ -263,11 +263,7 @@ impl NodeInputValues {
         for (handle, input) in node.inputs() {
             if input.sources.as_ref().is_none_or(|f| f.is_empty()) {
                 if input.value.is_provided() {
-                    let json_value = input
-                        .value
-                        .as_value()
-                        .cloned()
-                        .unwrap_or(serde_json::Value::Null);
+                    let json_value = input.value.clone().into_json_or_null();
                     value_map.insert(
                         handle.to_owned(),
                         Arc::new(OutputValue {
