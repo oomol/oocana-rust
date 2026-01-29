@@ -153,21 +153,22 @@ fn extract_value_from_inputs(
 }
 
 /// Convert HandleFrom connections to HandleSource, filtering out FromValue.
-fn convert_to_sources(from: Option<Vec<crate::HandleFrom>>) -> Option<Vec<crate::node::HandleSource>> {
+fn convert_to_sources(
+    from: Option<Vec<crate::HandleFrom>>,
+) -> Option<Vec<crate::node::HandleSource>> {
     from.map(|f| {
-        f.iter()
+        f.into_iter()
             .filter_map(|ff| match ff {
                 crate::HandleFrom::FromFlowInput { input_handle } => {
-                    Some(crate::node::HandleSource::FlowInput {
-                        input_handle: input_handle.clone(),
-                    })
+                    Some(crate::node::HandleSource::FlowInput { input_handle })
                 }
-                crate::HandleFrom::FromNodeOutput { node_id, output_handle } => {
-                    Some(crate::node::HandleSource::NodeOutput {
-                        node_id: node_id.clone(),
-                        output_handle: output_handle.clone(),
-                    })
-                }
+                crate::HandleFrom::FromNodeOutput {
+                    node_id,
+                    output_handle,
+                } => Some(crate::node::HandleSource::NodeOutput {
+                    node_id,
+                    output_handle,
+                }),
                 _ => None,
             })
             .collect()
