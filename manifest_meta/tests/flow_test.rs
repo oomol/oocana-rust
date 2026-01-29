@@ -204,7 +204,7 @@ mod tests {
         let mut block_reader = BlockResolver::new();
 
         let flow_block = block_reader
-            .resolve_flow_block("serializable-var", &mut finder)
+            .resolve_flow_block("subflows/serializable-var", &mut finder)
             .unwrap();
         let flow_block = flow_block.read().unwrap();
 
