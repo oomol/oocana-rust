@@ -37,7 +37,7 @@ outputs_def:
 |--------|------|----------|-------------|
 | `command` | string | Yes | Shell command to execute |
 | `cwd` | string | No | Working directory (supports relative and absolute paths) |
-| `envs` | string | No | Environment variables, format: `KEY1=VALUE1,KEY2=VALUE2` |
+| `envs` | string | No | Environment variables, format: `KEY1=VALUE1,KEY2=VALUE2`. Values may contain `=` (e.g., `KEY=a=b=c`), but commas are used as separators and cannot be escaped. Invalid pairs are silently ignored. |
 
 ### Output Parameters
 
@@ -127,7 +127,7 @@ outputs_def:
 |--------|------|------|------|
 | `command` | string | 是 | 要执行的 shell 命令 |
 | `cwd` | string | 否 | 工作目录（支持相对路径和绝对路径） |
-| `envs` | string | 否 | 环境变量，格式：`KEY1=VALUE1,KEY2=VALUE2` |
+| `envs` | string | 否 | 环境变量，格式：`KEY1=VALUE1,KEY2=VALUE2`。值可以包含 `=`（如 `KEY=a=b=c`），但逗号作为分隔符不可转义。无效的键值对会被静默忽略。 |
 
 ### 输出参数
 

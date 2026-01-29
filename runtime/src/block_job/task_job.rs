@@ -331,7 +331,7 @@ fn spawn_shell(
     if let Some(env_str) = env_strings {
         let env_key_value_pairs: Vec<&str> = env_str.split(',').collect();
         for env in env_key_value_pairs {
-            let key_value: Vec<&str> = env.split('=').collect();
+            let key_value: Vec<&str> = env.splitn(2, '=').collect();
             if key_value.len() == 2 {
                 envs.insert(key_value[0].to_string(), key_value[1].to_string());
             }

@@ -2,6 +2,22 @@
 # Demonstrates: node dependencies via cwd, environment variables, stdout/stderr
 
 nodes:
+  # Test: Environment variable value with equals sign
+  - node_id: env-with-equals
+    task:
+      executor:
+        name: shell
+      inputs_def:
+        - handle: command
+        - handle: envs
+      outputs_def:
+        - handle: stdout
+    inputs_from:
+      - handle: command
+        value: "echo \"CONNECTION=$CONNECTION_STRING\""
+      - handle: envs
+        value: "CONNECTION_STRING=host=localhost;user=admin;pass=secret=123"
+
   # Step 1: Create temp directory
   - node_id: setup
     task:

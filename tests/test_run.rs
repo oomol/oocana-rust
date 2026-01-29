@@ -60,6 +60,17 @@ fn shell_flow_env_injection() {
 }
 
 #[test]
+fn shell_flow_env_with_equals_in_value() {
+    // Verify that environment variable values containing '=' are parsed correctly
+    // e.g., CONNECTION_STRING=host=localhost;user=admin;pass=secret=123
+    oocana_cmd()
+        .args(["run", "examples/shell"])
+        .assert()
+        .stdout(contains("CONNECTION=host=localhost;user=admin;pass=secret=123"))
+        .success();
+}
+
+#[test]
 fn shell_flow_node_chaining() {
     // Verify that nodes chain correctly via cwd
     // setup creates dir, append nodes add content, read-and-stderr reads it
