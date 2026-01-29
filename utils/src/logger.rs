@@ -9,19 +9,18 @@ use crate::{config, env};
 
 use super::error::Result;
 
-use std::sync::{Mutex, OnceLock};
+use std::sync::OnceLock;
 use tracing::level_filters::LevelFilter;
 use tracing_appender::non_blocking;
 use tracing_subscriber::{fmt, layer::SubscriberExt, EnvFilter, Layer, Registry};
 
-static LOGGER_DIR: OnceLock<Mutex<PathBuf>> = OnceLock::new();
-
-fn get_logger_dir() -> &'static Mutex<PathBuf> {
-    LOGGER_DIR.get_or_init(|| Mutex::new(config::oocana_dir()))
-}
+static LOGGER_DIR: OnceLock<PathBuf> = OnceLock::new();
 
 pub fn logger_dir() -> PathBuf {
-    get_logger_dir().lock().unwrap().clone()
+    LOGGER_DIR
+        .get()
+        .cloned()
+        .unwrap_or_else(config::oocana_dir)
 }
 
 pub const STDOUT_TARGET: &str = "stdout";
@@ -50,7 +49,8 @@ pub fn setup_logging<P: AsRef<Path>>(params: LogParams<P>) -> Result<non_blockin
         logger_dir.push(sub_dir);
     }
 
-    *get_logger_dir().lock().unwrap() = logger_dir.clone();
+    // Set logger directory once. Subsequent calls will use the same directory.
+    let _ = LOGGER_DIR.set(logger_dir.clone());
 
     // Set OVMLAYER environment variable for ovmlayer logging
     std::env::set_var(

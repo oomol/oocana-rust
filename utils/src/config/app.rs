@@ -25,11 +25,15 @@ impl Default for AppConfig {
 
 static GLOBAL_CONFIG: OnceLock<AppConfig> = OnceLock::new();
 
-/// Get the global config reference. Panics if config was never loaded.
+/// Get the global config reference.
+/// If config was never loaded, automatically loads default config.
 pub fn get_config() -> &'static AppConfig {
-    GLOBAL_CONFIG
-        .get()
-        .expect("Config not initialized. Call load_config first.")
+    GLOBAL_CONFIG.get_or_init(|| {
+        parse_config(None::<PathBuf>).unwrap_or_else(|e| {
+            tracing::warn!("Failed to load config: {}. Using default.", e);
+            AppConfig::default()
+        })
+    })
 }
 
 /// Parse config from file path without setting global state.

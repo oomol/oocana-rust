@@ -39,18 +39,6 @@ impl fmt::Display for Error {
     }
 }
 
-// Implement Default for Error
-impl Default for Error {
-    fn default() -> Self {
-        Error {
-            msg: "".to_string(),
-            #[cfg(feature = "nightly")]
-            backtrace: std::backtrace::Backtrace::capture(),
-            source: None,
-        }
-    }
-}
-
 impl Error {
     /// Create a new Error instance.
     pub fn new(msg: &str) -> Self {
