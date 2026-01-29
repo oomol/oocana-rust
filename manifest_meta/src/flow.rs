@@ -191,59 +191,15 @@ pub fn generate_node_inputs(
                 .as_ref()
                 .and_then(|patches| patches.get(handle))
                 .cloned();
-            let value: ValueState = if from.as_ref().is_some_and(|f| f.len() == 1)
-                && matches!(
-                    from.as_ref().unwrap()[0],
-                    crate::HandleFrom::FromValue { .. }
-                ) {
-                from.as_ref()
-                    .and_then(|f| {
-                        f.first().and_then(|hf| {
-                            if let crate::HandleFrom::FromValue { value } = hf {
-                                Some(value.clone())
-                            } else {
-                                None
-                            }
-                        })
-                    })
-                    .unwrap_or_default()
-            } else {
-                node_inputs_from
-                    .as_ref()
-                    .and_then(|inputs_from| {
-                        inputs_from.iter().find_map(|input_from| {
-                            if input_from.handle == *handle {
-                                input_from.value.clone()
-                            } else {
-                                None
-                            }
-                        })
-                    })
-                    .into()
-            };
+            // Try to get value from FromValue connection, otherwise from node_inputs_from
+            let value: ValueState = extract_value_from_connection(&from)
+                .or_else(|| extract_value_from_inputs(node_inputs_from, handle))
+                .unwrap_or_default();
 
-            // remove from value node connection
-            let connection_from = from.map(|f| {
-                f.iter()
-                    .filter_map(|ff| match ff {
-                        crate::HandleFrom::FromFlowInput { input_handle } => {
-                            Some(crate::node::HandleSource::FlowInput {
-                                input_handle: input_handle.clone(),
-                            })
-                        }
-                        crate::HandleFrom::FromNodeOutput {
-                            node_id,
-                            output_handle,
-                        } => Some(crate::node::HandleSource::NodeOutput {
-                            node_id: node_id.clone(),
-                            output_handle: output_handle.clone(),
-                        }),
-                        _ => None,
-                    })
-                    .collect::<Vec<_>>()
-            });
+            // Convert connections to sources, filtering out FromValue
+            let sources = convert_to_sources(from);
 
-            if !value.is_provided() && connection_from.as_ref().is_some_and(|f| f.is_empty()) {
+            if !value.is_provided() && sources.as_ref().is_some_and(|f| f.is_empty()) {
                 warn!("node id ({}) handle: ({}) has no connection and has no value. This node won't run.",  node_id, handle);
                 if input_def.value.is_some() {
                     warn!(
@@ -254,13 +210,11 @@ pub fn generate_node_inputs(
                 }
             }
 
-            let serialize_for_cache = if let Some(node_inputs_from) = node_inputs_from {
-                node_inputs_from.iter().any(|input_from| {
+            let serialize_for_cache = node_inputs_from.as_ref().is_some_and(|inputs| {
+                inputs.iter().any(|input_from| {
                     input_from.handle == *handle && input_from.serialize_for_cache
                 })
-            } else {
-                false
-            };
+            });
 
             inputs.insert(
                 handle.to_owned(),
@@ -271,7 +225,7 @@ pub fn generate_node_inputs(
                     },
                     patch,
                     value,
-                    sources: connection_from,
+                    sources,
                     serialize_for_cache,
                 },
             );
