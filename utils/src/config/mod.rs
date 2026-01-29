@@ -9,24 +9,24 @@ pub fn default_broker_port() -> u16 {
     47688
 }
 
-pub fn store_dir() -> Option<PathBuf> {
-    Some(PathBuf::from(&get_config().global.store_dir))
+pub fn store_dir() -> PathBuf {
+    PathBuf::from(&get_config().global.store_dir)
 }
 
-pub fn oocana_dir() -> Option<PathBuf> {
-    Some(PathBuf::from(&get_config().global.oocana_dir))
+pub fn oocana_dir() -> PathBuf {
+    PathBuf::from(&get_config().global.oocana_dir)
 }
 
-pub fn registry_store_file() -> Option<PathBuf> {
+pub fn registry_store_file() -> PathBuf {
     use crate::path::expand_home;
 
     if let Ok(val) = std::env::var("OOMOL_REGISTRY_STORE_FILE") {
         if !val.is_empty() {
-            return Some(PathBuf::from(expand_home(&val)));
+            return PathBuf::from(expand_home(&val));
         }
     }
 
-    Some(PathBuf::from(&get_config().global.registry_store_file))
+    PathBuf::from(&get_config().global.registry_store_file)
 }
 
 pub fn search_paths() -> Option<Vec<String>> {

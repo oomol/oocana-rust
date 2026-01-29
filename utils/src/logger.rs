@@ -17,9 +17,7 @@ use tracing_subscriber::{fmt, layer::SubscriberExt, EnvFilter, Layer, Registry};
 static LOGGER_DIR: OnceLock<Mutex<PathBuf>> = OnceLock::new();
 
 fn get_logger_dir() -> &'static Mutex<PathBuf> {
-    LOGGER_DIR.get_or_init(|| {
-        Mutex::new(config::oocana_dir().unwrap_or_else(std::env::temp_dir))
-    })
+    LOGGER_DIR.get_or_init(|| Mutex::new(config::oocana_dir()))
 }
 
 pub fn logger_dir() -> PathBuf {
@@ -46,7 +44,7 @@ pub fn setup_logging<P: AsRef<Path>>(params: LogParams<P>) -> Result<non_blockin
         capture_stdout_stderr_target,
     } = params;
 
-    let mut logger_dir = config::oocana_dir().unwrap_or_else(std::env::temp_dir);
+    let mut logger_dir = config::oocana_dir();
 
     if let Some(sub_dir) = sub_dir {
         logger_dir.push(sub_dir);

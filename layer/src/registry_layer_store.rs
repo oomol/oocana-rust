@@ -58,8 +58,7 @@ const RETRY_DELAY_MS: u64 = 1000;
 /// Load registry store with retry mechanism for NFS compatibility.
 /// Retries on read/parse failures to handle transient issues during atomic writes.
 fn load_registry_store_with_retry() -> Result<RegistryLayerStore> {
-    let file_path = config::registry_store_file()
-        .ok_or("Failed to get registry store file path")?;
+    let file_path = config::registry_store_file();
 
     for attempt in 0..MAX_READ_RETRIES {
         match std::fs::read_to_string(&file_path) {
@@ -114,8 +113,7 @@ fn load_registry_store_with_retry() -> Result<RegistryLayerStore> {
 /// Atomically save registry store using write-to-temp + rename.
 /// This is NFS-safe and more reliable than file locks.
 fn save_registry_store_atomic(store: &RegistryLayerStore) -> Result<()> {
-    let file_path = config::registry_store_file()
-        .ok_or("Failed to get registry store file path")?;
+    let file_path = config::registry_store_file();
 
     // Ensure directory exists
     if let Some(dir) = file_path.parent() {

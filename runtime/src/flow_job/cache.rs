@@ -8,11 +8,10 @@ use crate::flow_job::{
 };
 
 pub fn get_flow_cache_path(flow: &str) -> Option<PathBuf> {
-    utils::cache::cache_meta_file_path().and_then(|path| {
-        CacheMetaMap::load(path)
-            .ok()
-            .and_then(|meta| meta.get(flow).map(|cache_path| cache_path.into()))
-    })
+    let path = utils::cache::cache_meta_file_path();
+    CacheMetaMap::load(path)
+        .ok()
+        .and_then(|meta| meta.get(flow).map(|cache_path| cache_path.into()))
 }
 
 pub(crate) fn save_flow_cache(node_input_values: &NodeInputValues, flow: &str) {
@@ -20,10 +19,9 @@ pub(crate) fn save_flow_cache(node_input_values: &NodeInputValues, flow: &str) {
         if let Err(e) = node_input_values.save_cache(cache_path) {
             warn!("failed to save cache: {}", e);
         }
-    } else if let Some(meta_path) = utils::cache::cache_meta_file_path() {
-        let cache_path = utils::cache::cache_dir()
-            .unwrap_or(std::env::temp_dir())
-            .join(Uuid::new_v4().to_string() + ".json");
+    } else {
+        let meta_path = utils::cache::cache_meta_file_path();
+        let cache_path = utils::cache::cache_dir().join(Uuid::new_v4().to_string() + ".json");
 
         if let Err(e) = node_input_values.save_cache(cache_path.clone()) {
             warn!("failed to save cache: {}", e);

@@ -155,6 +155,9 @@ enum Commands {
 pub fn cli_match() -> Result<()> {
     let cli = Cli::parse();
 
+    // Load config first, as setup_logging depends on it
+    let app_config = utils::config::load_config(Some(&cli.config))?;
+
     let command = &cli.command;
 
     let _guard = match command {
@@ -210,7 +213,6 @@ pub fn cli_match() -> Result<()> {
         })?,
     };
 
-    let app_config = utils::config::load_config(Some(&cli.config))?;
     debug!(
         "config {:?} command args: {command:#?} in version: {VERSION}",
         cli.config

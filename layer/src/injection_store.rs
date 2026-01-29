@@ -22,7 +22,7 @@ pub struct InjectionStore {
 static INJECTION_STORE_FILE: &str = "injection_store.json";
 
 pub fn injection_store_path() -> Result<PathBuf> {
-    let dir = config::oocana_dir().ok_or("Failed to get home dir")?;
+    let dir = config::oocana_dir();
 
     std::fs::create_dir_all(&dir).map_err(|e| format!("Failed to create dir: {:?}", e))?;
 
