@@ -19,6 +19,7 @@ use crate::{
     node::{
         common::NodeInput,
         subflow::{Slot, SubflowSlot, TaskSlot},
+        ValueState,
     },
     scope::{calculate_running_target, BlockScope, RunningTarget},
 };
@@ -123,30 +124,35 @@ pub fn generate_node_inputs(
                 .as_ref()
                 .and_then(|patches| patches.get(handle))
                 .cloned();
-            let value = if from.as_ref().is_some_and(|f| f.len() == 1)
+            let value: ValueState = if from.as_ref().is_some_and(|f| f.len() == 1)
                 && matches!(
                     from.as_ref().unwrap()[0],
                     crate::HandleFrom::FromValue { .. }
                 ) {
-                from.as_ref().and_then(|f| {
-                    f.first().and_then(|hf| {
-                        if let crate::HandleFrom::FromValue { value } = hf {
-                            value.clone()
-                        } else {
-                            None
-                        }
+                from.as_ref()
+                    .and_then(|f| {
+                        f.first().and_then(|hf| {
+                            if let crate::HandleFrom::FromValue { value } = hf {
+                                Some(value.clone())
+                            } else {
+                                None
+                            }
+                        })
                     })
-                })
+                    .unwrap_or_default()
             } else {
-                node_inputs_from.as_ref().and_then(|inputs_from| {
-                    inputs_from.iter().find_map(|input_from| {
-                        if input_from.handle == *handle {
-                            input_from.value.clone()
-                        } else {
-                            None
-                        }
+                node_inputs_from
+                    .as_ref()
+                    .and_then(|inputs_from| {
+                        inputs_from.iter().find_map(|input_from| {
+                            if input_from.handle == *handle {
+                                input_from.value.clone()
+                            } else {
+                                None
+                            }
+                        })
                     })
-                })
+                    .into()
             };
 
             // remove from value node connection
@@ -170,7 +176,7 @@ pub fn generate_node_inputs(
                     .collect::<Vec<_>>()
             });
 
-            if value.is_none() && connection_from.as_ref().is_some_and(|f| f.is_empty()) {
+            if !value.is_provided() && connection_from.as_ref().is_some_and(|f| f.is_empty()) {
                 warn!("node id ({}) handle: ({}) has no connection and has no value. This node won't run.",  node_id, handle);
                 if input_def.value.is_some() {
                     warn!(
@@ -247,7 +253,7 @@ impl SubflowBlock {
                     }
                     inputs
                         .entry(handle)
-                        .and_modify(|i| i.value = Some(Some(value)));
+                        .and_modify(|i| i.value = ValueState::from_json(value));
                 }
                 node.update_inputs(inputs);
             }
@@ -264,7 +270,7 @@ impl SubflowBlock {
 
                 // copy runtime value to input def when querying inputs
                 let input_def = InputHandle {
-                    value: input.value.clone(),
+                    value: input.value.clone().into(),
                     ..input.def.clone()
                 };
 
@@ -595,7 +601,7 @@ impl SubflowBlock {
                                                             ..input.clone()
                                                         },
                                                         patch: None,
-                                                        value: None,
+                                                        value: ValueState::NotProvided,
                                                         sources: None, // from will be added later
                                                         serialize_for_cache: serialize,
                                                     },
@@ -633,7 +639,7 @@ impl SubflowBlock {
                                                             .entry(input.handle.clone())
                                                             .and_modify(|node_input| {
                                                                 node_input.value =
-                                                                    Some(value.clone());
+                                                                    Some(value.clone()).into();
                                                             });
                                                     }
 
