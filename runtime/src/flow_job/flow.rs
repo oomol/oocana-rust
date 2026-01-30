@@ -918,9 +918,7 @@ pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle>
         }
     });
 
-    Some(BlockJobHandle::new(
-        flow_job_id.to_owned(),
-        FlowJobHandle {
+    Some(BlockJobHandle::new(FlowJobHandle {
             job_id: flow_job_id,
             spawn_handle,
         },

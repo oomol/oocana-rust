@@ -135,28 +135,22 @@ pub fn execute_task_job(params: TaskJobParameters) -> Option<BlockJobHandle> {
                     spawn_handles.push(worker_listener_handle);
                     bind_stdio(&mut child, &reporter, &mut spawn_handles);
 
-                    Some(BlockJobHandle::new(
-                        job_id.to_owned(),
-                        TaskJobHandle {
-                            job_id,
-                            shared,
-                            child: Some(child),
-                            spawn_handles,
-                        },
-                    ))
+                    Some(BlockJobHandle::new(TaskJobHandle {
+                        job_id,
+                        shared,
+                        child: Some(child),
+                        spawn_handles,
+                    }))
                 }
                 Err(e) => {
                     worker_listener_handle.abort();
                     reporter.finished(None, Some(e.to_string()));
-                    Some(BlockJobHandle::new(
-                        job_id.to_owned(),
-                        TaskJobHandle {
-                            job_id,
-                            shared,
-                            child: None,
-                            spawn_handles,
-                        },
-                    ))
+                    Some(BlockJobHandle::new(TaskJobHandle {
+                        job_id,
+                        shared,
+                        child: None,
+                        spawn_handles,
+                    }))
                 }
             }
         }
@@ -212,15 +206,12 @@ pub fn execute_task_job(params: TaskJobParameters) -> Option<BlockJobHandle> {
 
                     spawn_handles.push(exit_handler);
 
-                    Some(BlockJobHandle::new(
-                        job_id.to_owned(),
-                        TaskJobHandle {
-                            job_id,
-                            shared,
-                            child: None,
-                            spawn_handles,
-                        },
-                    ))
+                    Some(BlockJobHandle::new(TaskJobHandle {
+                        job_id,
+                        shared,
+                        child: None,
+                        spawn_handles,
+                    }))
                 }
                 Err(_) => {
                     shared.scheduler_tx.send_block_event(
@@ -231,15 +222,12 @@ pub fn execute_task_job(params: TaskJobParameters) -> Option<BlockJobHandle> {
                             error: Some("Failed to spawn shell".to_owned()),
                         },
                     );
-                    Some(BlockJobHandle::new(
-                        job_id.to_owned(),
-                        TaskJobHandle {
-                            job_id,
-                            shared,
-                            child: None,
-                            spawn_handles,
-                        },
-                    ))
+                    Some(BlockJobHandle::new(TaskJobHandle {
+                        job_id,
+                        shared,
+                        child: None,
+                        spawn_handles,
+                    }))
                 }
             }
         }
@@ -258,15 +246,12 @@ pub fn execute_task_job(params: TaskJobParameters) -> Option<BlockJobHandle> {
 
             spawn_handles.push(worker_listener_handle);
 
-            Some(BlockJobHandle::new(
-                job_id.to_owned(),
-                TaskJobHandle {
-                    job_id,
-                    shared,
-                    child: None,
-                    spawn_handles,
-                },
-            ))
+            Some(BlockJobHandle::new(TaskJobHandle {
+                job_id,
+                shared,
+                child: None,
+                spawn_handles,
+            }))
         }
     }
 }
