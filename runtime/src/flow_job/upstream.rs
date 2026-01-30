@@ -24,12 +24,12 @@ pub fn find_upstream(params: UpstreamParameters) -> (Vec<String>, Vec<String>, V
     } = params;
 
     let flow_guard = flow_block.read().unwrap();
-    let mut node_input_values = if use_cache && get_flow_cache_path(&flow_guard.path_str).is_some()
-    {
-        NodeInputValues::recover_from(get_flow_cache_path(&flow_guard.path_str).unwrap(), false)
-    } else {
-        NodeInputValues::new(false)
-    };
+    let mut node_input_values =
+        if let Some(cache_path) = use_cache.then(|| get_flow_cache_path(&flow_guard.path_str)).flatten() {
+            NodeInputValues::recover_from(cache_path, false)
+        } else {
+            NodeInputValues::new(false)
+        };
 
     let (node_will_run, waiting_nodes, upstream_nodes) = find_upstream_nodes(
         &nodes.unwrap_or_default(),
