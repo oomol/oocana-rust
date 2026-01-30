@@ -108,11 +108,11 @@ pub fn listen_to_worker(params: ListenerParameters) -> tokio::task::JoinHandle<(
                          service: Option<&ServiceExecutorPayload>| {
             if let Some(executor) = executor {
                 scheduler_tx.send_to_executor(ExecutorParams {
-                    executor_name: &executor.name(),
+                    executor_name: executor.name(),
                     job_id: job_id.to_owned(),
                     stacks: stacks.vec(),
                     dir: block_dir.to_owned(),
-                    executor: &executor,
+                    executor,
                     outputs: &outputs_def,
                     scope: &scope,
                     injection_store: &injection_store,

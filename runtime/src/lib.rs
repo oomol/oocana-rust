@@ -487,10 +487,8 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
                 error_detail,
                 ..
             } => {
-                if job_id != root_job_id {
-                    if addition_running_jobs.remove(&job_id) {
-                        continue;
-                    }
+                if job_id != root_job_id && addition_running_jobs.remove(&job_id) {
+                    continue;
                 }
 
                 if let Some(err) = error {
