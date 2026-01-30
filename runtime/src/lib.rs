@@ -105,7 +105,11 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
         .filter(|path| path.exists())
         .or_else(|| current_dir().ok());
 
-    let workspace = scope_workspace.expect("workspace not found");
+    let workspace = scope_workspace.ok_or_else(|| {
+        utils::error::Error::new(
+            "workspace not found: default_package_path does not exist and current_dir is unavailable",
+        )
+    })?;
 
     if let Some(patch_value_str) = nodes_inputs {
         let merge_inputs_value = serde_json::from_str::<MergeInputsValue>(&patch_value_str)
