@@ -37,9 +37,6 @@ use super::node_input_values;
 use node_input_values::NodeInputValues;
 
 pub struct FlowJobHandle {
-    // TODO: Remove this field
-    #[allow(dead_code)]
-    pub job_id: JobId,
     spawn_handle: tokio::task::JoinHandle<()>,
 }
 
@@ -918,11 +915,7 @@ pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle>
         }
     });
 
-    Some(BlockJobHandle::new(FlowJobHandle {
-            job_id: flow_job_id,
-            spawn_handle,
-        },
-    ))
+    Some(BlockJobHandle::new(FlowJobHandle { spawn_handle }))
 }
 
 fn remove_job_and_is_finished(job_id: &JobId, run_flow_ctx: &mut RunFlowContext) -> bool {
