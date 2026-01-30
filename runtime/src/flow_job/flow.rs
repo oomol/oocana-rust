@@ -956,6 +956,7 @@ fn run_pending_node(job_id: JobId, flow_shared: &FlowShared, run_flow_ctx: &mut 
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn produce_new_value(
     value: &Arc<OutputValue>,
     handle_tos: &[HandleTo],
