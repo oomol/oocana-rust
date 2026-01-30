@@ -40,9 +40,9 @@ pub fn find_oo_yaml<P: AsRef<Path>>(path: P, file_prefix: &str) -> Option<PathBu
                 return Some(path.to_path_buf());
             }
         }
-        return None;
+        None
     } else {
-        return None;
+        None
     }
 }
 

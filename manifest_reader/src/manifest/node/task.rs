@@ -53,17 +53,17 @@ impl From<TmpInjection> for Injection {
         if tmp.package.is_some() && tmp.node_id.is_some() {
             warn!("Both package and node_id are provided. package will be used.");
         }
-        if tmp.package.is_some() {
+        if let Some(package) = tmp.package {
             Injection {
-                target: InjectionTarget::Package(tmp.package.unwrap()),
+                target: InjectionTarget::Package(package),
                 script: tmp.script,
             }
-        } else if tmp.node_id.is_some() {
+        } else if let Some(node_id) = tmp.node_id {
             tmp.script
                 .as_ref()
                 .inspect(|_| warn!("script will be ignored when injection target is node"));
             Injection {
-                target: InjectionTarget::Node(NodeId(tmp.node_id.unwrap())),
+                target: InjectionTarget::Node(NodeId(node_id)),
                 script: None,
             }
         } else {
