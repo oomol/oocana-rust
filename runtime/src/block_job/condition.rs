@@ -40,15 +40,15 @@ pub fn execute_condition_job(params: ConditionJobParameters) -> Option<BlockJobH
     let reporter = Arc::new(shared.reporter.block(job_id.to_owned(), None, stacks));
     reporter.started(&inputs);
 
-    let inputs_values = if let Some(inputs) = inputs.clone() {
-        let mut map = HashMap::new();
-        for (k, v) in inputs.iter() {
-            map.insert(k.clone(), v.value.clone());
-        }
-        map
-    } else {
-        HashMap::new()
-    };
+    let inputs_values = inputs
+        .as_ref()
+        .map(|inputs| {
+            inputs
+                .iter()
+                .map(|(k, v)| (k.clone(), v.value.clone()))
+                .collect()
+        })
+        .unwrap_or_default();
 
     let output_handle = condition_block.evaluate(&inputs_values);
     if output_handle.is_none() {
