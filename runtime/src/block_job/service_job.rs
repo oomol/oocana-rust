@@ -102,14 +102,11 @@ pub fn execute_service_job(params: ServiceJobParameters) -> Option<BlockJobHandl
 
     let spawn_handles: Vec<tokio::task::JoinHandle<()>> = vec![worker_listener_handle];
 
-    Some(BlockJobHandle::new(
-        job_id.to_owned(),
-        ServiceJobHandle {
-            job_id,
-            shared,
-            spawn_handles,
-        },
-    ))
+    Some(BlockJobHandle::new(ServiceJobHandle {
+        job_id,
+        shared,
+        spawn_handles,
+    }))
 }
 
 // TODO: 有重复，回头合并

@@ -54,7 +54,7 @@ pub fn parse_run_block_request(
         ..
     } = request;
 
-    let result = read_flow_or_block(&block, block_resolver, flow_path_finder);
+    let result = read_flow_or_block(block, block_resolver, flow_path_finder);
 
     if result.is_err() {
         let msg = format!("Failed to read block or subflow: {}", block);
@@ -189,7 +189,7 @@ pub fn parse_run_block_request(
                 return Err(msg);
             }
 
-            let block_scope = match calculate_block_value_type(&block) {
+            let block_scope = match calculate_block_value_type(block) {
                 BlockValueType::Pkg { pkg_name, .. } => {
                     RuntimeScope {
                         session_id: shared.session_id.clone(),
@@ -222,7 +222,7 @@ pub fn parse_run_block_request(
         }
         manifest_meta::Block::Flow(subflow_block) => {
             let subflow_guard = subflow_block.read().unwrap();
-            let flow_scope = match calculate_block_value_type(&block) {
+            let flow_scope = match calculate_block_value_type(block) {
                 BlockValueType::Pkg { pkg_name, .. } => RuntimeScope {
                     session_id: shared.session_id.clone(),
                     pkg_name: Some(pkg_name.clone()),
@@ -335,11 +335,7 @@ pub fn parse_query_block_request(
                     additional_outputs: task_block.additional_outputs,
                 };
                 let json = serde_json::to_value(&metadata);
-                if let Ok(json) = json {
-                    return Ok(json);
-                } else {
-                    return Err(format!("Failed to serialize task block metadata to JSON"));
-                }
+                json.map_err(|_| "Failed to serialize task block metadata to JSON".to_string())
             }
             manifest_meta::Block::Flow(subflow_block) => {
                 #[derive(serde::Serialize)]
@@ -364,24 +360,14 @@ pub fn parse_query_block_request(
                 };
 
                 let json = serde_json::to_value(&metadata);
-                if let Ok(json) = json {
-                    return Ok(json);
-                } else {
-                    return Err(format!(
-                        "Failed to serialize subflow block metadata to JSON"
-                    ));
-                }
+                json.map_err(|_| "Failed to serialize subflow block metadata to JSON".to_string())
             }
-            _ => {
-                return Err(format!("{} is not subflow or task block.", request.block));
-            }
+            _ => Err(format!("{} is not subflow or task block.", request.block)),
         },
-        Err(_) => {
-            return Err(format!(
-                "Failed to find {} for block or subflow",
-                request.block
-            ));
-        }
+        Err(_) => Err(format!(
+            "Failed to find {} for block or subflow",
+            request.block
+        )),
     }
 }
 
@@ -489,7 +475,7 @@ pub async fn parse_oauth_request(
 ) -> Result<vault::VaultValue> {
     let vault_id_opt = payload.as_str();
     if let Some(vault_id) = vault_id_opt {
-        vault_client.fetch(&vault_id).await
+        vault_client.fetch(vault_id).await
     } else {
         let actual_type = match payload {
             Value::String(_) => "string",

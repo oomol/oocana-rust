@@ -37,9 +37,6 @@ use super::node_input_values;
 use node_input_values::NodeInputValues;
 
 pub struct FlowJobHandle {
-    // TODO: Remove this field
-    #[allow(dead_code)]
-    pub job_id: JobId,
     spawn_handle: tokio::task::JoinHandle<()>,
 }
 
@@ -662,7 +659,7 @@ pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle>
                                 flow_guard
                                     .forward_previews
                                     .as_ref()
-                                    .map_or(false, |p| p.contains(node_id))
+                                    .is_some_and(|p| p.contains(node_id))
                             };
                             if should_forward
                             {
@@ -918,13 +915,7 @@ pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle>
         }
     });
 
-    Some(BlockJobHandle::new(
-        flow_job_id.to_owned(),
-        FlowJobHandle {
-            job_id: flow_job_id,
-            spawn_handle,
-        },
-    ))
+    Some(BlockJobHandle::new(FlowJobHandle { spawn_handle }))
 }
 
 fn remove_job_and_is_finished(job_id: &JobId, run_flow_ctx: &mut RunFlowContext) -> bool {
@@ -967,7 +958,7 @@ fn run_pending_node(job_id: JobId, flow_shared: &FlowShared, run_flow_ctx: &mut 
 
 fn produce_new_value(
     value: &Arc<OutputValue>,
-    handle_tos: &Vec<HandleTo>,
+    handle_tos: &[HandleTo],
     shared: &FlowShared,
     ctx: &mut RunFlowContext,
     run_next_node: bool,
@@ -987,8 +978,8 @@ fn produce_new_value(
                 //      if handle_to is in to_node_input, continue processing
                 //      if not, skip this handle_to processing
                 if options.as_ref().is_some_and(|op| {
-                    op.target.as_ref().map_or(false, |t| {
-                        t.to_node.as_ref().map_or(true, |to_nodes| {
+                    op.target.as_ref().is_some_and(|t| {
+                        t.to_node.as_ref().is_none_or(|to_nodes| {
                             !to_nodes.contains(&ToNodeInput {
                                 node_id: node_id.to_owned(),
                                 input_handle: input_handle.to_owned(),
@@ -1056,8 +1047,8 @@ fn produce_new_value(
             } => {
                 // Refer to the logic for handling ToNodeInput
                 if options.as_ref().is_some_and(|op| {
-                    op.target.as_ref().map_or(false, |t| {
-                        t.to_flow.as_ref().map_or(true, |to_outputs| {
+                    op.target.as_ref().is_some_and(|t| {
+                        t.to_flow.as_ref().is_none_or(|to_outputs| {
                             !to_outputs.contains(&ToFlowOutput {
                                 output_handle: flow_output_handle.to_owned(),
                             })

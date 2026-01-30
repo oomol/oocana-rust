@@ -162,7 +162,7 @@ pub fn run_job(params: JobParams) -> Option<BlockJobHandle> {
             inputs: common.inputs,
             block_status: common.block_status,
             injection_store: parent_flow.as_ref().and_then(|f| f.read().unwrap().injection_store.clone()),
-            parent_flow: parent_flow,
+            parent_flow,
             scope: common.scope,
             inputs_def_patch,
         }),
@@ -186,7 +186,7 @@ pub fn run_job(params: JobParams) -> Option<BlockJobHandle> {
             common,
             output_def,
         } => crate::block_job::execute_condition_job(crate::block_job::ConditionJobParameters {
-            condition_block: condition_block,
+            condition_block,
             shared: common.shared,
             stacks: common.stacks,
             job_id: common.job_id,

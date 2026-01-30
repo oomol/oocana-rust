@@ -82,8 +82,5 @@ pub fn execute_condition_job(params: ConditionJobParameters) -> Option<BlockJobH
         reporter.finished(None, None);
     }
 
-    Some(BlockJobHandle::new(
-        job_id.to_owned(),
-        ConditionJobHandle {},
-    ))
+    Some(BlockJobHandle::new(ConditionJobHandle {}))
 }

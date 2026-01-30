@@ -287,7 +287,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
                                 job_id,
                                 node_id,
                             } => {
-                                if let Some(_) = execute_task_job(TaskJobParameters {
+                                if execute_task_job(TaskJobParameters {
                                     inputs_def,
                                     outputs_def,
                                     dir: block_job::block_dir(&task_block, None, Some(&scope)),
@@ -307,7 +307,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
                                     scope,
                                     timeout: None,
                                     inputs_def_patch: None,
-                                }) {
+                                }).is_some() {
                                     addition_running_jobs.insert(job_id);
                                 }
                             }
@@ -319,7 +319,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
                                 job_id,
                                 node_id,
                             } => {
-                                if let Some(_) = execute_flow_job(FlowJobParameters {
+                                if execute_flow_job(FlowJobParameters {
                                     flow_block,
                                     shared: shared.clone(),
                                     stacks: request_stack.stack(
@@ -337,7 +337,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
                                     scope,
                                     slot_blocks: default::Default::default(),
                                     path_finder: path_finder.clone(),
-                                }) {
+                                }).is_some() {
                                     addition_running_jobs.insert(job_id);
                                 }
                             }
@@ -487,10 +487,8 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
                 error_detail,
                 ..
             } => {
-                if job_id != root_job_id {
-                    if addition_running_jobs.remove(&job_id) {
-                        continue;
-                    }
+                if job_id != root_job_id && addition_running_jobs.remove(&job_id) {
+                    continue;
                 }
 
                 if let Some(err) = error {
