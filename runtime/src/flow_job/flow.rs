@@ -956,6 +956,8 @@ fn run_pending_node(job_id: JobId, flow_shared: &FlowShared, run_flow_ctx: &mut 
     }
 }
 
+// TODO: refactor to reduce arguments, consider using a struct
+#[allow(clippy::too_many_arguments)]
 fn produce_new_value(
     value: &Arc<OutputValue>,
     handle_tos: &[HandleTo],

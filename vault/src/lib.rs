@@ -115,7 +115,7 @@ impl VaultClient {
                     let status = resp.status();
 
                     if status.is_success() {
-                        log_request_duration(&id, start_time, "completed");
+                        log_request_duration(id, start_time, "completed");
                         return parse_vaultlet_response(resp).await;
                     } else if should_retry(status, attempt, self.max_retries) {
                         warn!(
@@ -127,7 +127,7 @@ impl VaultClient {
                         continue;
                     } else {
                         log_request_duration(
-                            &id,
+                            id,
                             start_time,
                             &format!("failed with status: {}", status),
                         );
@@ -144,7 +144,7 @@ impl VaultClient {
                         );
                         continue;
                     } else {
-                        log_request_duration(&id, start_time, &format!("failed with error: {}", e));
+                        log_request_duration(id, start_time, &format!("failed with error: {}", e));
                         return Err(Error::new(&format!(
                             "Request failed after {} retries: {}",
                             self.max_retries, e
@@ -385,7 +385,7 @@ mod tests {
             ))
             .respond_with(
                 ResponseTemplate::new(200)
-                    .set_body_json(&serde_json::json!({"value": {"test": "value"}}))
+                    .set_body_json(serde_json::json!({"value": {"test": "value"}}))
                     .set_delay(std::time::Duration::from_secs(2)),
             )
             .mount(&mock_server)

@@ -32,7 +32,7 @@ pub fn find_oo_yaml_without_oo_suffix<P: AsRef<Path>>(
 pub fn find_oo_yaml<P: AsRef<Path>>(path: P, file_prefix: &str) -> Option<PathBuf> {
     let path = path.as_ref();
     if path.is_dir() {
-        return find_oo_yaml_in_dir(path, file_prefix);
+        find_oo_yaml_in_dir(path, file_prefix)
     } else if path.is_file() {
         let filename = path.file_name();
         if let Some(name) = filename.and_then(|n| n.to_str()) {
@@ -40,9 +40,9 @@ pub fn find_oo_yaml<P: AsRef<Path>>(path: P, file_prefix: &str) -> Option<PathBu
                 return Some(path.to_path_buf());
             }
         }
-        return None;
+        None
     } else {
-        return None;
+        None
     }
 }
 

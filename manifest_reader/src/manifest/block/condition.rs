@@ -113,8 +113,8 @@ impl ExpressionOperator {
         right: &Option<serde_json::Value>,
     ) -> bool {
         match self {
-            ExpressionOperator::Equal => right.as_ref().map_or(false, |r| left == r),
-            ExpressionOperator::NotEqual => right.as_ref().map_or(false, |r| left != r),
+            ExpressionOperator::Equal => right.as_ref() == Some(left),
+            ExpressionOperator::NotEqual => right.as_ref().is_some_and(|r| left != r),
             ExpressionOperator::GreaterThan => {
                 if let Some(r) = right {
                     if let (Some(lf), Some(rf)) = (left.as_f64(), r.as_f64()) {
@@ -341,19 +341,19 @@ mod tests {
             HandleName::from("input1"),
             serde_json::Value::Number(serde_json::Number::from(8)),
         )]));
-        assert_eq!(result, true);
+        assert!(result);
 
         let result = first_case.is_match(&HashMap::from([(
             HandleName::from("input1"),
             serde_json::Value::Number(serde_json::Number::from(0)),
         )]));
-        assert_eq!(result, false);
+        assert!(!result);
 
         let result = first_case.is_match(&HashMap::from([(
             HandleName::from("input1"),
             serde_json::Value::Number(serde_json::Number::from(11)),
         )]));
-        assert_eq!(result, false);
+        assert!(!result);
     }
 
     #[test]
@@ -394,13 +394,13 @@ mod tests {
             HandleName::from("input1"),
             serde_json::Value::Number(serde_json::Number::from(0)),
         )]));
-        assert_eq!(result, false);
+        assert!(!result);
 
         let result = first_case.is_match(&HashMap::from([(
             HandleName::from("input1"),
             serde_json::Value::Number(serde_json::Number::from(5)),
         )]));
-        assert_eq!(result, true);
+        assert!(result);
     }
 
     #[test]

@@ -242,8 +242,8 @@ mod test {
 
             assert_eq!(block.description, Some("Test Task".to_string()));
             assert!(matches!(*block.executor, TaskBlockExecutor::NodeJS(_)));
-            assert_eq!(block.additional_inputs, true);
-            assert_eq!(block.additional_outputs, false);
+            assert!(block.additional_inputs);
+            assert!(!block.additional_outputs);
         }
 
         // Test with additional_inputs and additional_outputs as objects
@@ -274,8 +274,8 @@ mod test {
 
             assert_eq!(block.description, Some("Test Task".to_string()));
             assert!(matches!(*block.executor, TaskBlockExecutor::NodeJS(_)));
-            assert_eq!(block.additional_inputs, true);
-            assert_eq!(block.additional_outputs, true);
+            assert!(block.additional_inputs);
+            assert!(block.additional_outputs);
         }
 
         // Test with neither additional_inputs nor additional_outputs present
@@ -304,8 +304,8 @@ mod test {
 
             assert_eq!(block.description, Some("Test Task".to_string()));
             assert!(matches!(*block.executor, TaskBlockExecutor::NodeJS(_)));
-            assert_eq!(block.additional_inputs, false);
-            assert_eq!(block.additional_outputs, false);
+            assert!(!block.additional_inputs);
+            assert!(!block.additional_outputs);
         }
     }
 

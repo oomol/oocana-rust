@@ -46,9 +46,8 @@ pub fn create_runtime_layer(
 ) -> Result<RuntimeLayer> {
     // Helper to get package layer with logging
     let get_package_layer = || {
-        get_or_create_package_layer(package, bind_paths, envs, env_file).map(|layer| {
+        get_or_create_package_layer(package, bind_paths, envs, env_file).inspect(|_layer| {
             info!("get package layer from package store: {}", package);
-            layer
         })
     };
 

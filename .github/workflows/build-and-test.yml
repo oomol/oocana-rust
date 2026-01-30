@@ -45,6 +45,9 @@ jobs:
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           rustflags: ""
+          components: clippy
+      - name: Clippy
+        run: cargo clippy --workspace -- -W clippy::all -D warnings
       - name: Start MQTT Broker
         run: |
           sudo apt update && sudo apt install -y --no-install-recommends mosquitto

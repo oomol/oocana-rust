@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use version_compare::{compare, Cmp};
 
@@ -29,7 +29,7 @@ pub struct BlockPathFinder {
 
 // TODO: cache pkg store paths result, only update working_dir
 fn collect_latest_pkg_version(
-    _working_dir: &PathBuf,
+    _working_dir: &Path,
     pkg_store_paths: &Option<Vec<PathBuf>>,
 ) -> HashMap<String, String> {
     let mut pkg_version = HashMap::new();

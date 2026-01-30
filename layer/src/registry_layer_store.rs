@@ -312,11 +312,9 @@ pub fn delete_registry_layer(package_name: &str, version: &str) -> Result<()> {
             tracing::warn!("layer {} is shared, skip delete", l);
         } else if used_layers.contains(&l) {
             tracing::warn!("layer {} is used, skip delete", l);
-        } else {
-            if let Err(e) = layer::delete_layer(&l) {
-                tracing::error!("Failed to delete layer {}: {:?}", l, e);
-                delete_errors.push((l, e));
-            }
+        } else if let Err(e) = layer::delete_layer(&l) {
+            tracing::error!("Failed to delete layer {}: {:?}", l, e);
+            delete_errors.push((l, e));
         }
     }
 
