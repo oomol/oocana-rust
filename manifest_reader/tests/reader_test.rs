@@ -48,7 +48,7 @@ mod tests {
 
     #[test]
     fn load_package() -> Result<()> {
-        let package = read_package(&fixtures_dir().join("package.oo.yaml"))?;
+        let package = read_package(fixtures_dir().join("package.oo.yaml"))?;
 
         assert_eq!(package.name, Some("test-package".to_string()));
         assert_eq!(package.version, Some("1.0.0".to_string()));

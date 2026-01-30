@@ -263,8 +263,8 @@ mod tests {
                 assert!(additional_input.is_some());
                 let additional_input = additional_input.unwrap();
                 assert!(additional_input.def.is_additional);
-                assert_eq!(additional_input.serialize_for_cache, true);
-                assert_eq!(additional_input.def._deserialize_from_cache, true);
+                assert!(additional_input.serialize_for_cache);
+                assert!(additional_input.def._deserialize_from_cache);
             }
         }
     }

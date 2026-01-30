@@ -209,7 +209,7 @@ pub fn parse_run_block_request(
                 _ => scope.clone(),
             };
 
-            return Ok(RunBlockSuccessResponse::Task {
+            Ok(RunBlockSuccessResponse::Task {
                 task_block,
                 inputs: inputs_values,
                 inputs_def: task_job_inputs_def,
@@ -218,7 +218,7 @@ pub fn parse_run_block_request(
                 job_id: block_job_id.to_owned().into(),
                 request_stack: block_stack,
                 node_id: NodeId::from(format!("run_block::{}", request.block)),
-            });
+            })
         }
         manifest_meta::Block::Flow(subflow_block) => {
             let subflow_guard = subflow_block.read().unwrap();
@@ -287,18 +287,18 @@ pub fn parse_run_block_request(
 
             drop(subflow_guard);
 
-            return Ok(RunBlockSuccessResponse::Flow {
+            Ok(RunBlockSuccessResponse::Flow {
                 flow_block: subflow_block,
                 inputs: input_values,
                 scope: flow_scope,
                 job_id: block_job_id.to_owned().into(),
                 request_stack: block_stack,
                 node_id: NodeId::from(format!("run_block::{}", request.block)),
-            });
+            })
         }
         _ => {
             let msg = format!("{} is not subflow or task block.", block);
-            return Err(msg);
+            Err(msg)
         }
     }
 }

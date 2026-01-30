@@ -238,10 +238,10 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
     let current_package_in_excludes = current_package_path
         .as_ref()
         .and_then(|p| p.to_str())
-        .map_or(false, |p| {
+        .is_some_and(|p| {
             exclude_packages
                 .as_ref()
-                .map_or(false, |excludes| excludes.iter().any(|e| p.starts_with(e)))
+                .is_some_and(|excludes| excludes.iter().any(|e| p.starts_with(e)))
         });
 
     let run_in_layer = if layer::feature_enabled() {

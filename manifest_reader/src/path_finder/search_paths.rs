@@ -91,7 +91,7 @@ pub fn search_block_manifest(params: BlockManifestParams) -> Option<PathBuf> {
                 .and_then(|f| f.to_str())
                 .and_then(|s| s.strip_suffix(".oo"))
                 .unwrap_or(file_prefix);
-            find_manifest_yaml_file(&block_manifest_path, &relative_file_prefix)
+            find_manifest_yaml_file(&block_manifest_path, relative_file_prefix)
         }
     }
 }
