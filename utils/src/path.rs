@@ -26,11 +26,10 @@ pub fn expand_home<P: AsRef<Path>>(path: P) -> String {
     const HOME_VAR: &str = "$HOME";
     if s.starts_with('~') || s.starts_with(HOME_VAR) {
         if let Some(home) = home_dir() {
-            let rest = if s.starts_with('~') {
-                &s[1..]
-            } else {
-                &s[HOME_VAR.len()..]
-            };
+            let rest = s
+                .strip_prefix('~')
+                .or_else(|| s.strip_prefix(HOME_VAR))
+                .unwrap();
             let rest = rest.trim_start_matches(std::path::is_separator);
             return home.join(rest).to_string_lossy().to_string();
         }
