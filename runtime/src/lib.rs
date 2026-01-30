@@ -9,7 +9,6 @@ use mainframe::scheduler::{BlockRequest, BlockResponseParams, QueryBlockRequest}
 use manifest_reader::path_finder::BlockPathFinder;
 use std::{
     collections::{HashMap, HashSet},
-    default,
     env::current_dir,
     path::PathBuf,
     sync::Arc,
@@ -339,7 +338,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
                                     nodes: None,
                                     parent_scope: root_scope.clone(),
                                     scope,
-                                    slot_blocks: default::Default::default(),
+                                    slot_blocks: Default::default(),
                                     path_finder: path_finder.clone(),
                                 }).is_some() {
                                     addition_running_jobs.insert(job_id);
