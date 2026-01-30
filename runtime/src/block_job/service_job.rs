@@ -10,6 +10,29 @@ use super::job_handle::BlockJobHandle;
 use super::listener::{listen_to_worker, ListenerParameters, ServiceExecutorPayload};
 use crate::{block_status::BlockStatusTx, shared::Shared};
 
+/// Get the executor name from a ServiceBlock.
+/// Panics with a descriptive message if the service_executor or its name is not set.
+fn get_executor_name(service_block: &ServiceBlock) -> String {
+    service_block
+        .service_executor
+        .as_ref()
+        .as_ref()
+        .expect("service_executor must be set for service blocks")
+        .name
+        .clone()
+        .expect("service_executor.name must be set")
+}
+
+/// Get the ServiceExecutorOptions from a ServiceBlock.
+/// Panics with a descriptive message if the service_executor is not set.
+fn get_service_executor(service_block: &ServiceBlock) -> &ServiceExecutorOptions {
+    service_block
+        .service_executor
+        .as_ref()
+        .as_ref()
+        .expect("service_executor must be set for service blocks")
+}
+
 pub struct ServiceJobHandle {
     pub job_id: JobId,
     shared: Arc<Shared>,
@@ -76,14 +99,7 @@ pub fn execute_service_job(params: ServiceJobParameters) -> Option<BlockJobHandl
         service: Some(ServiceExecutorPayload {
             options: service_options,
             block_name: service_block.name.clone(),
-            executor_name: service_block
-                .service_executor
-                .as_ref()
-                .as_ref()
-                .unwrap()
-                .name
-                .clone()
-                .unwrap(),
+            executor_name: get_executor_name(&service_block),
         }),
         block_dir: service_dir(&service_block),
         injection_store,
@@ -118,7 +134,7 @@ fn service_dir(service_block: &ServiceBlock) -> String {
 }
 
 fn service_executor_options(service_block: &ServiceBlock) -> ServiceExecutorOptions {
-    let executor = service_block.service_executor.as_ref().as_ref().unwrap();
+    let executor = get_service_executor(service_block);
     ServiceExecutorOptions {
         name: executor.name.clone(),
         entry: executor.entry.clone(),
@@ -137,14 +153,7 @@ fn send_to_service(
     scope: &RuntimeScope,
     flow: Option<String>,
 ) {
-    let executor_name = service_block
-        .service_executor
-        .as_ref()
-        .as_ref()
-        .unwrap()
-        .name
-        .clone()
-        .unwrap();
+    let executor_name = get_executor_name(service_block);
 
     let dir = service_dir(service_block);
 

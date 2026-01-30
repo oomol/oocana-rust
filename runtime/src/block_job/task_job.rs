@@ -362,18 +362,10 @@ fn spawn_shell(
 }
 
 fn get_string_value_from_inputs(inputs: &Option<BlockInputs>, key: &str) -> Option<String> {
-    match inputs {
-        Some(inputs) => {
-            let key = HandleName::new(key.to_string());
-            let v = inputs.get(&key);
-            if v.is_some_and(|v| v.value.is_string()) {
-                Some(v.unwrap().value.as_str().unwrap().to_owned())
-            } else {
-                None
-            }
-        }
-        None => None,
-    }
+    inputs
+        .as_ref()
+        .and_then(|inputs| inputs.get(&HandleName::new(key.to_string())))
+        .and_then(|v| v.value.as_str().map(|s| s.to_owned()))
 }
 
 fn spawn(
