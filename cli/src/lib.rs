@@ -32,6 +32,7 @@ pub struct Cli {
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[derive(Subcommand, Debug)]
+// TODO: consider boxing large fields to reduce enum size
 #[allow(clippy::large_enum_variant)]
 enum Commands {
     #[command(

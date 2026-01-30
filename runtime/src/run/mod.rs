@@ -30,6 +30,7 @@ pub struct CommonJobParameters {
 /// Exceeding this limit will cause the job to fail with an error.
 pub const MAX_RECURSION_DEPTH: usize = 50;
 
+// TODO: consider boxing large fields to reduce enum size
 #[allow(clippy::large_enum_variant)]
 pub enum JobParams {
     Flow {
