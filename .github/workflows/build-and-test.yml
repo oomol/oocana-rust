@@ -34,11 +34,19 @@ jobs:
             - ".github/workflows/oocana-python.yml"
             - '.github/workflows/build-and-test.yml'
 
+  check-duplicate:
+    runs-on: ubuntu-latest
+    outputs:
+      is_duplicate: ${{ steps.dedup.outputs.is_duplicate }}
+    steps:
+      - name: Check for duplicate runs
+        id: dedup
+        uses: leavesster/duplicate-run-action@v0.1
+
   rust-test:
     runs-on: ubuntu-latest
-    needs: [skip]
-    # Squash commits will add # at the end, filtering out squash commit pushes to reduce duplicate builds.
-    if: ${{ needs.skip.outputs.should_skip != 'true' && !contains(github.event.head_commit.message, '#')}}
+    needs: [skip, check-duplicate]
+    if: ${{ needs.skip.outputs.should_skip != 'true' && needs.check-duplicate.outputs.is_duplicate != 'true' }}
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
