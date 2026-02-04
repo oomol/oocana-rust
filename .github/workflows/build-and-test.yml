@@ -34,11 +34,19 @@ jobs:
             - ".github/workflows/oocana-python.yml"
             - '.github/workflows/build-and-test.yml'
 
+  check-duplicate:
+    runs-on: ubuntu-latest
+    outputs:
+      is_duplicate: ${{ steps.dedup.outputs.is_duplicate }}
+    steps:
+      - name: Check for duplicate runs
+        id: dedup
+        uses: leavesster/duplicate-run-action@v0.1
+
   rust-test:
     runs-on: ubuntu-latest
-    needs: [skip]
-    # Squash commits will add # at the end, filtering out squash commit pushes to reduce duplicate builds.
-    if: ${{ needs.skip.outputs.should_skip != 'true' && !contains(github.event.head_commit.message, '#')}}
+    needs: [skip, check-duplicate]
+    if: ${{ needs.skip.outputs.should_skip != 'true' && needs.check-duplicate.outputs.is_duplicate != 'true' }}
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -71,7 +79,7 @@ jobs:
     uses: ./.github/workflows/oocana-python.yml
   build:
     runs-on: ubuntu-latest
-    needs: [skip, rust-test, python-test, node-test]
+    needs: [skip, check-duplicate, rust-test, python-test, node-test]
     if: ${{ always() }}
     steps:
       - name: check
@@ -84,7 +92,8 @@ jobs:
           }
 
           exit_on_result "skip" "${{ needs.skip.result }}"
-          exit_on_result "skip" "${{ needs.rust-test.result }}"
+          exit_on_result "check-duplicate" "${{ needs.check-duplicate.result }}"
+          exit_on_result "rust-test" "${{ needs.rust-test.result }}"
           exit_on_result "node-test" "${{ needs.node-test.result }}"
           exit_on_result "python-test" "${{ needs.python-test.result }}"
           echo all needs jobs : "${{ toJson(needs)}}"
