@@ -1,0 +1,15 @@
+[package]
+name = "user_task_client"
+version = "0.30.34"
+edition = "2024"
+description = "Client for create/get-detail/get-result user task APIs"
+
+[dependencies]
+reqwest = { version = "0.12", features = ["rustls-tls", "json"], default-features = false }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "2.0"
+tokio = { version = "1.0", features = ["time"] }
+
+[dev-dependencies]
+tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }

@@ -16,6 +16,7 @@ members = [
     "utils",
     "cli",
     "one_shot",
+    "user_task_client",
     "sdk",
     "job",
     "runtime",
