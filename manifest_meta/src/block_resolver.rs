@@ -1,7 +1,7 @@
 use manifest_reader::{
     manifest::{self, InputHandles},
     path_finder::BlockPathFinder,
-    reader::{read_block_metadata, read_task_block},
+    reader::{read_block_metadata, read_task_block, BlockMetadata},
 };
 use std::{
     collections::HashMap,
@@ -205,12 +205,19 @@ impl BlockResolver {
             }
         }
 
-        let metadata = read_block_metadata(task_path);
+        let pkg_path = package_path(task_path).ok();
+        let metadata = pkg_path
+            .as_deref()
+            .map(read_block_metadata)
+            .unwrap_or(BlockMetadata {
+                hide_source: false,
+                timeout: None,
+            });
 
         let task = Arc::new(TaskBlock::from_manifest(
             read_task_block(task_path)?,
             Some(task_path.to_owned()),
-            package_path(task_path).ok(),
+            pkg_path,
             metadata.hide_source,
             metadata.timeout,
         ));
@@ -252,9 +259,11 @@ impl BlockResolver {
         {
             let mut guard = placeholder.write().unwrap();
             *guard = flow;
-            let metadata = read_block_metadata(flow_path);
-            guard.hide_source = metadata.hide_source;
-            guard.remote_timeout = metadata.timeout;
+            if let Ok(pkg_path) = package_path(flow_path) {
+                let metadata = read_block_metadata(&pkg_path);
+                guard.hide_source = metadata.hide_source;
+                guard.remote_timeout = metadata.timeout;
+            }
         }
 
         Ok(placeholder)
