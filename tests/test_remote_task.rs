@@ -1,7 +1,8 @@
 use assert_cmd::prelude::*;
-use std::net::TcpStream;
 use std::process::{Command, Stdio};
-use std::time::{Duration, Instant};
+
+use serde_json::Value;
+use user_task_client::mock;
 
 fn oocana_cmd() -> Command {
     let mut cmd = Command::cargo_bin("oocana").unwrap();
@@ -9,49 +10,45 @@ fn oocana_cmd() -> Command {
     cmd
 }
 
-/// Spawn the mock_server binary and wait until it accepts TCP connections.
-/// Returns the child process (caller must kill it).
-fn start_mock_server(port: u16) -> std::process::Child {
-    let child = Command::cargo_bin("mock_server")
-        .unwrap()
-        .env("PORT", port.to_string())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .spawn()
-        .expect("failed to start mock_server");
-
-    // Poll until the server accepts connections.
-    let deadline = Instant::now() + Duration::from_secs(10);
-    loop {
-        if Instant::now() > deadline {
-            panic!("mock_server did not become ready within 10s");
-        }
-        if TcpStream::connect(format!("127.0.0.1:{port}")).is_ok() {
-            break;
-        }
-        std::thread::sleep(Duration::from_millis(50));
-    }
-
-    child
-}
-
 #[test]
 fn remote_task_flow() {
-    let port: u16 = 23579;
-    let mut server = start_mock_server(port);
+    let server = mock::start(23579);
 
-    oocana_cmd()
+    let output = oocana_cmd()
         .args([
             "run",
             "examples/remote_task",
             "--task-api-url",
-            &format!("http://127.0.0.1:{port}"),
+            &server.url(),
             "--search-paths",
             "examples/remote_task",
+            "--report-to-console",
         ])
-        .assert()
-        .success();
+        .output()
+        .expect("failed to run oocana");
 
-    server.kill().ok();
-    server.wait().ok();
+    drop(server);
+
+    assert!(output.status.success(), "oocana exited with failure");
+
+    // Parse reporter JSON lines from stdout to verify all nodes actually ran.
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let finished_nodes: Vec<String> = stdout
+        .lines()
+        .filter_map(|line| serde_json::from_str::<Value>(line).ok())
+        .filter(|msg| msg["type"] == "BlockFinished")
+        .filter_map(|msg| {
+            msg["stacks"]
+                .as_array()
+                .and_then(|s| s.last())
+                .and_then(|level| level["node_id"].as_str().map(String::from))
+        })
+        .collect();
+
+    for node_id in &["prepare", "echo-1", "verify"] {
+        assert!(
+            finished_nodes.iter().any(|n| n == node_id),
+            "node '{node_id}' did not finish; finished nodes: {finished_nodes:?}"
+        );
+    }
 }

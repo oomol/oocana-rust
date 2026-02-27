@@ -1,9 +1,11 @@
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
-use std::collections::HashMap;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 use thiserror::Error;
+
+#[cfg(feature = "mock")]
+pub mod mock;
 
 type JsonMap = Map<String, Value>;
 
@@ -18,29 +20,21 @@ pub enum TaskClientError {
     },
     #[error("task {task_id} failed: {message}")]
     TaskFailed { task_id: String, message: String },
-    #[error("task {task_id} timed out after {elapsed:?}")]
-    Timeout { task_id: String, elapsed: Duration },
 }
 
 pub type Result<T> = std::result::Result<T, TaskClientError>;
 
 #[derive(Clone)]
-pub enum Auth {
+enum Auth {
     None,
-    Bearer(String),
-    Header { name: String, value: String },
+    Token(String),
 }
 
 impl std::fmt::Debug for Auth {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Auth::None => f.write_str("None"),
-            Auth::Bearer(_) => f.write_str("Bearer(**redacted**)"),
-            Auth::Header { name, .. } => f
-                .debug_struct("Header")
-                .field("name", name)
-                .field("value", &"**redacted**")
-                .finish(),
+            Auth::Token(_) => f.write_str("Token(**redacted**)"),
         }
     }
 }
@@ -67,30 +61,17 @@ impl UserTaskClient {
         }
     }
 
-    pub fn with_bearer_token(mut self, token: impl Into<String>) -> Self {
-        self.auth = Auth::Bearer(token.into());
+    pub fn with_token(mut self, token: impl Into<String>) -> Self {
+        self.auth = Auth::Token(token.into());
         self
     }
 
-    pub fn with_header_auth(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
-        self.auth = Auth::Header {
-            name: name.into(),
-            value: value.into(),
-        };
-        self
-    }
-
-    pub fn with_reqwest_client(mut self, client: Client) -> Self {
-        self.client = client;
-        self
-    }
-
-    pub async fn create_user_task(&self, payload: &CreateUserTaskRequest) -> Result<String> {
+    pub async fn create_user_task(&self, payload: &CreateTaskRequest) -> Result<String> {
         let url = format!("{}/v3/users/me/tasks", self.base_url);
         let req = self.client.post(url).json(payload);
         let resp = self.with_auth(req).send().await?;
         let resp = ensure_success(resp).await?;
-        let body: CreateUserTaskResponse = resp.json().await?;
+        let body: CreateTaskResponse = resp.json().await?;
         Ok(body.task_id)
     }
 
@@ -112,104 +93,51 @@ impl UserTaskClient {
         Ok(body)
     }
 
-    /// Create a task and poll until it reaches a terminal status, then fetch final result.
-    pub async fn run_task(
-        &self,
-        payload: &CreateUserTaskRequest,
-        options: RunTaskOptions,
-    ) -> Result<RunTaskOutput> {
-        let task_id = self.create_user_task(payload).await?;
-        let started_at = Instant::now();
-
-        loop {
-            if let Some(timeout) = options.timeout {
-                let elapsed = started_at.elapsed();
-                if elapsed > timeout {
-                    return Err(TaskClientError::Timeout { task_id, elapsed });
-                }
-            }
-
-            let detail = self.get_task_detail(&task_id).await?;
-            match detail.status {
-                TaskStatus::Success => {
-                    let result = self.get_task_result(&task_id).await?;
-                    return Ok(RunTaskOutput {
-                        task_id,
-                        detail,
-                        result,
-                    });
-                }
-                TaskStatus::Failed => {
-                    let fallback = detail
-                        .failed_message
-                        .clone()
-                        .unwrap_or_else(|| "task failed".to_string());
-                    let message = match self.get_task_result(&task_id).await {
-                        Ok(TaskResult::Failed { error, .. }) => error.unwrap_or(fallback),
-                        _ => fallback,
-                    };
-                    return Err(TaskClientError::TaskFailed { task_id, message });
-                }
-                _ => tokio::time::sleep(options.poll_interval).await,
-            }
-        }
-    }
-
     fn with_auth(&self, req: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
         match &self.auth {
             Auth::None => req,
-            Auth::Bearer(token) => req.bearer_auth(token),
-            Auth::Header { name, value } => req.header(name, value),
+            Auth::Token(token) => req.header("oomol-token", token),
         }
     }
 }
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct CreateUserTaskResponse {
+struct CreateTaskResponse {
     task_id: String,
 }
 
+/// Serverless task creation request.
 #[derive(Debug, Clone, Serialize)]
-#[serde(tag = "type")]
-pub enum CreateUserTaskRequest {
-    #[serde(rename = "serverless")]
-    Serverless {
-        #[serde(rename = "packageName")]
-        package_name: String,
-        #[serde(rename = "packageVersion")]
-        package_version: String,
-        #[serde(rename = "blockName")]
-        block_name: String,
-        #[serde(rename = "inputValues", skip_serializing_if = "Option::is_none")]
-        input_values: Option<JsonMap>,
-    },
-    #[serde(rename = "applet")]
-    Applet {
-        #[serde(rename = "appletID")]
-        applet_id: String,
-        #[serde(rename = "inputValues", skip_serializing_if = "Option::is_none")]
-        input_values: Option<JsonMap>,
-    },
-    #[serde(rename = "api_applet")]
-    ApiApplet {
-        #[serde(rename = "appletID")]
-        applet_id: String,
-        #[serde(rename = "inputValues", skip_serializing_if = "Option::is_none")]
-        input_values: Option<JsonMap>,
-    },
-    #[serde(rename = "web_task")]
-    WebTask {
-        #[serde(rename = "projectID")]
-        project_id: String,
-        #[serde(rename = "blockName")]
-        block_name: String,
-        #[serde(rename = "inputValues", skip_serializing_if = "Option::is_none")]
-        input_values: Option<JsonMap>,
-    },
+#[serde(rename_all = "camelCase")]
+pub struct CreateTaskRequest {
+    #[serde(rename = "type")]
+    task_type: &'static str,
+    pub package_name: String,
+    pub package_version: String,
+    pub block_name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub input_values: Option<JsonMap>,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+impl CreateTaskRequest {
+    pub fn new(
+        package_name: String,
+        package_version: String,
+        block_name: String,
+        input_values: Option<JsonMap>,
+    ) -> Self {
+        Self {
+            task_type: "serverless",
+            package_name,
+            package_version,
+            block_name,
+            input_values,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum TaskStatus {
     Queued,
@@ -220,68 +148,26 @@ pub enum TaskStatus {
     Failed,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TaskDetail {
-    pub task_type: String,
-    pub task_id: String,
     pub status: TaskStatus,
     pub progress: f64,
-    pub created_at: f64,
-    pub start_time: Option<f64>,
-    pub end_time: Option<f64>,
-    pub result_url: Option<String>,
     pub failed_message: Option<String>,
-    #[serde(flatten)]
-    pub extra: HashMap<String, Value>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(tag = "status", rename_all = "snake_case")]
 pub enum TaskResult {
-    Queued {
-        progress: f64,
-    },
-    Scheduling {
-        progress: f64,
-    },
-    Scheduled {
-        progress: f64,
-    },
-    Running {
-        progress: f64,
-    },
     Success {
-        #[serde(rename = "resultURL")]
-        result_url: Option<String>,
         #[serde(default, rename = "resultData")]
         result_data: Option<JsonMap>,
     },
     Failed {
         error: Option<String>,
     },
-}
-
-#[derive(Debug, Clone)]
-pub struct RunTaskOptions {
-    pub poll_interval: Duration,
-    pub timeout: Option<Duration>,
-}
-
-impl Default for RunTaskOptions {
-    fn default() -> Self {
-        Self {
-            poll_interval: Duration::from_secs(2),
-            timeout: Some(Duration::from_secs(600)),
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct RunTaskOutput {
-    pub task_id: String,
-    pub detail: TaskDetail,
-    pub result: TaskResult,
+    #[serde(other)]
+    Pending,
 }
 
 #[derive(Debug, Deserialize)]
@@ -309,13 +195,13 @@ async fn ensure_success(resp: reqwest::Response) -> Result<reqwest::Response> {
 mod tests {
     use super::*;
     #[test]
-    fn create_serverless_payload_serializes() {
-        let payload = CreateUserTaskRequest::Serverless {
-            package_name: "@oomol/pkg".to_string(),
-            package_version: "1.0.0".to_string(),
-            block_name: "main".to_string(),
-            input_values: None,
-        };
+    fn create_payload_serializes() {
+        let payload = CreateTaskRequest::new(
+            "@oomol/pkg".to_string(),
+            "1.0.0".to_string(),
+            "main".to_string(),
+            None,
+        );
 
         let value = serde_json::to_value(payload).expect("payload should serialize");
         assert_eq!(value["type"], "serverless");
@@ -328,23 +214,25 @@ mod tests {
     fn task_result_success_deserializes() {
         let raw = serde_json::json!({
             "status": "success",
-            "resultURL": "https://example.com/result.json",
             "resultData": { "foo": "bar" }
         });
         let result: TaskResult = serde_json::from_value(raw).expect("result should deserialize");
         match result {
-            TaskResult::Success {
-                result_url,
-                result_data,
-            } => {
-                assert_eq!(
-                    result_url.as_deref(),
-                    Some("https://example.com/result.json")
-                );
+            TaskResult::Success { result_data } => {
                 let data = result_data.unwrap();
                 assert_eq!(data.get("foo").unwrap(), "bar");
             }
             _ => panic!("unexpected task result variant"),
         }
+    }
+
+    #[test]
+    fn task_result_pending_deserializes() {
+        let raw = serde_json::json!({
+            "status": "running",
+            "progress": 0.5
+        });
+        let result: TaskResult = serde_json::from_value(raw).expect("result should deserialize");
+        assert!(matches!(result, TaskResult::Pending));
     }
 }

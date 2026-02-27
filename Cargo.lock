@@ -1709,17 +1709,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "mock_server"
-version = "0.1.0"
-dependencies = [
- "axum",
- "serde",
- "serde_json",
- "tokio",
- "uuid",
-]
-
-[[package]]
 name = "nanorand"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1887,6 +1876,7 @@ dependencies = [
  "predicates 2.1.5",
  "serde_json",
  "tracing",
+ "user_task_client",
  "utils",
 ]
 
@@ -3438,11 +3428,13 @@ dependencies = [
 name = "user_task_client"
 version = "0.30.34"
 dependencies = [
+ "axum",
  "reqwest",
  "serde",
  "serde_json",
  "thiserror 2.0.12",
  "tokio",
+ "uuid",
 ]
 
 [[package]]

@@ -4,7 +4,7 @@ use std::sync::Arc;
 use job::{BlockInputs, BlockJobStacks, JobId};
 use manifest_meta::{HandleName, TaskBlock};
 use tracing::warn;
-use user_task_client::{CreateUserTaskRequest, TaskResult, TaskStatus, UserTaskClient};
+use user_task_client::{CreateTaskRequest, TaskResult, TaskStatus, UserTaskClient};
 use utils::output::OutputValue;
 
 use crate::block_status::BlockStatusTx;
@@ -90,15 +90,15 @@ pub fn execute_remote_block_job(params: RemoteBlockJobParameters) -> Option<Bloc
 
     let mut client = UserTaskClient::new(&config.base_url);
     if let Some(ref token) = config.auth_token {
-        client = client.with_bearer_token(token);
+        client = client.with_token(token);
     }
 
-    let payload = CreateUserTaskRequest::Serverless {
-        package_name: package_name.clone(),
-        package_version: package_version.clone(),
-        block_name: block_name.clone(),
+    let payload = CreateTaskRequest::new(
+        package_name.clone(),
+        package_version.clone(),
+        block_name.clone(),
         input_values,
-    };
+    );
 
     // Timeout priority: per-block metadata > CLI/env var > default 30min
     let timeout_secs = task_block
