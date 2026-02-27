@@ -34,6 +34,7 @@ members = [
     "examples/condition/start",
     "examples/condition/end",
     "examples/flows/pkg/pkg_v-0.1.0/blocks/blk-b",
+    "examples/remote_task/mock_server",
     "layer",
     "vault",
 ]

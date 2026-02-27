@@ -1,0 +1,41 @@
+name: remote-task-demo
+nodes:
+  # Local block: produce a message
+  - node_id: prepare
+    task:
+      executor:
+        name: shell
+      inputs_def:
+        - handle: command
+      outputs_def:
+        - handle: stdout
+    inputs_from:
+      - handle: command
+        value: "echo hello from remote"
+
+  # Remote block: echo inputs back via mock server
+  - node_id: echo-1
+    task: secret_pkg::echo
+    inputs_from:
+      - handle: message
+        from_node:
+          - node_id: prepare
+            output_handle: stdout
+
+  # Local block: consume the remote result
+  - node_id: verify
+    task:
+      executor:
+        name: shell
+      inputs_def:
+        - handle: command
+        - handle: envs
+      outputs_def:
+        - handle: stdout
+    inputs_from:
+      - handle: envs
+        from_node:
+          - node_id: echo-1
+            output_handle: message
+      - handle: command
+        value: "echo done"
