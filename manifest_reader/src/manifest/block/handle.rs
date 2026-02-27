@@ -74,7 +74,7 @@ impl From<TempInputHandle> for InputHandle {
             nullable,
             value,
         } = temp;
-        let value = if temp.nullable.is_some_and(|nullable| nullable) {
+        let value = if nullable.is_some_and(|n| n) {
             if value.is_none() { Some(None) } else { value }
         } else {
             value

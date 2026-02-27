@@ -24,11 +24,25 @@ pub enum TaskClientError {
 
 pub type Result<T> = std::result::Result<T, TaskClientError>;
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub enum Auth {
     None,
     Bearer(String),
     Header { name: String, value: String },
+}
+
+impl std::fmt::Debug for Auth {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Auth::None => f.write_str("None"),
+            Auth::Bearer(_) => f.write_str("Bearer(**redacted**)"),
+            Auth::Header { name, .. } => f
+                .debug_struct("Header")
+                .field("name", name)
+                .field("value", &"**redacted**")
+                .finish(),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -38,11 +52,17 @@ pub struct UserTaskClient {
     auth: Auth,
 }
 
+const DEFAULT_HTTP_TIMEOUT: Duration = Duration::from_secs(30);
+
 impl UserTaskClient {
     pub fn new(base_url: impl Into<String>) -> Self {
+        let client = Client::builder()
+            .timeout(DEFAULT_HTTP_TIMEOUT)
+            .build()
+            .unwrap_or_else(|_| Client::new());
         Self {
             base_url: base_url.into().trim_end_matches('/').to_string(),
-            client: Client::new(),
+            client,
             auth: Auth::None,
         }
     }
