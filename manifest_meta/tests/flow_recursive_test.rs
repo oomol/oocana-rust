@@ -25,11 +25,13 @@ mod tests {
 
         // flow inputs_def: depth
         let depth_handle = HandleName::new("depth".to_owned());
-        assert!(guard
-            .inputs_def
-            .as_ref()
-            .unwrap()
-            .contains_key(&depth_handle));
+        assert!(
+            guard
+                .inputs_def
+                .as_ref()
+                .unwrap()
+                .contains_key(&depth_handle)
+        );
 
         // flow outputs_froms: result from recurse.result
         let result_handle = HandleName::new("result".to_owned());

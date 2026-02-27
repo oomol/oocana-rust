@@ -11,7 +11,7 @@ use std::{
 use utils::error::Result;
 
 use crate::service::ServiceBlock;
-use crate::{flow_resolver, service_resolver, Block, Service, SlotBlock, SubflowBlock, TaskBlock};
+use crate::{Block, Service, SlotBlock, SubflowBlock, TaskBlock, flow_resolver, service_resolver};
 pub type BlockPath = PathBuf;
 
 pub struct BlockResolver {

@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
 
-    use manifest_meta::{read_flow_or_block, Block, BlockResolver};
+    use manifest_meta::{Block, BlockResolver, read_flow_or_block};
     use manifest_reader::path_finder::BlockPathFinder;
 
     use std::path::PathBuf;

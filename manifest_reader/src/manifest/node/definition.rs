@@ -1,6 +1,6 @@
 use crate::manifest::node::ConditionNode;
 
-use super::common::{default_concurrency, NodeId};
+use super::common::{NodeId, default_concurrency};
 use super::input_from::NodeInputFrom;
 use super::service::ServiceNode;
 use super::slot::SlotNode;

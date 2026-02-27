@@ -5,17 +5,17 @@ use std::{
 };
 
 use crate::{
-    block_job::{self, execute_task_job, BlockJobHandle, TaskJobParameters},
+    block_job::{self, BlockJobHandle, TaskJobParameters, execute_task_job},
     block_status::{self, BlockStatusTx},
     flow_job::{
         block_request::{
-            parse_node_downstream, parse_query_block_request, parse_run_block_request,
-            RunBlockSuccessResponse,
+            RunBlockSuccessResponse, parse_node_downstream, parse_query_block_request,
+            parse_run_block_request,
         },
         cache::save_flow_cache,
         find_upstream_nodes, parse_oauth_request,
     },
-    run::{run_job, CommonJobParameters, JobParams},
+    run::{CommonJobParameters, JobParams, run_job},
     shared::Shared,
 };
 use mainframe::{
@@ -135,7 +135,11 @@ pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle>
                 }
             })
             .collect::<HashMap<NodeId, Vec<InputHandle>>>();
-        (flow_guard.path_str.clone(), flow_guard.path.clone(), absence_node_inputs)
+        (
+            flow_guard.path_str.clone(),
+            flow_guard.path.clone(),
+            absence_node_inputs,
+        )
     };
 
     let reporter = Arc::new(shared.reporter.flow(
@@ -464,7 +468,10 @@ pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle>
                                     );
                                     let (flow_path_str, injection_store) = {
                                         let flow_guard = flow_shared.flow_block.read().unwrap();
-                                        (flow_guard.path_str.clone(), flow_guard.injection_store.clone())
+                                        (
+                                            flow_guard.path_str.clone(),
+                                            flow_guard.injection_store.clone(),
+                                        )
                                     };
                                     if let Some(handle) = execute_task_job(TaskJobParameters {
                                         executor: task_block.executor.clone(),
@@ -607,14 +614,14 @@ pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle>
                                 .get(&job_id)
                                 .map(|job| job.node_id.to_owned());
                             let node = node_id.and_then(|id| flow_guard.nodes.get(&id).cloned());
-                            (node, flow_guard.nodes.clone(), flow_guard.outputs_def.clone())
+                            (
+                                node,
+                                flow_guard.nodes.clone(),
+                                flow_guard.outputs_def.clone(),
+                            )
                         };
-                        let res = parse_node_downstream(
-                            node.as_ref(),
-                            &nodes,
-                            &outputs,
-                            &outputs_def,
-                        );
+                        let res =
+                            parse_node_downstream(node.as_ref(), &nodes, &outputs, &outputs_def);
                         match res {
                             Ok(json) => {
                                 scheduler_tx.respond_block_request(
@@ -661,8 +668,7 @@ pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle>
                                     .as_ref()
                                     .is_some_and(|p| p.contains(node_id))
                             };
-                            if should_forward
-                            {
+                            if should_forward {
                                 reporter.forward_previews(node_id.clone(), &payload);
                                 run_flow_ctx.parent_block_status.run_request(
                                     BlockRequest::Preview {
@@ -823,10 +829,7 @@ pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle>
                     // error already handled in the block report
                     if let Some(err) = error {
                         let flow_path_str = flow_shared.flow_block.read().unwrap().path_str.clone();
-                        save_flow_cache(
-                            &run_flow_ctx.node_input_values,
-                            &flow_path_str,
-                        );
+                        save_flow_cache(&run_flow_ctx.node_input_values, &flow_path_str);
 
                         let node_id = run_flow_ctx
                             .jobs
@@ -902,10 +905,7 @@ pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle>
                 }
                 block_status::Status::Error { error } => {
                     let flow_path_str = flow_shared.flow_block.read().unwrap().path_str.clone();
-                    save_flow_cache(
-                        &run_flow_ctx.node_input_values,
-                        &flow_path_str,
-                    );
+                    save_flow_cache(&run_flow_ctx.node_input_values, &flow_path_str);
 
                     run_flow_ctx.jobs.clear();
                     run_flow_ctx.parent_block_status.error(error);
@@ -1030,7 +1030,12 @@ fn produce_new_value(
                                 // this value is fulfill the node's input again, we need added a pending job to queue.
                                 if pending_fulfill > last_fulfill_count {
                                     node_queue.pending.insert(JobId::random());
-                                    tracing::info!("node queue ({}) is full, add a pending job. current jobs count: {}, concurrency: {}",node_id,node_queue.jobs.len(),node.concurrency());
+                                    tracing::info!(
+                                        "node queue ({}) is full, add a pending job. current jobs count: {}, concurrency: {}",
+                                        node_id,
+                                        node_queue.jobs.len(),
+                                        node.concurrency()
+                                    );
                                 } else {
                                     tracing::info!(
                                         "Node ({}) has pending jobs; this input event will not trigger again as it did not fulfill more than before.",

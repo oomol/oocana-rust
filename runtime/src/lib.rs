@@ -13,23 +13,23 @@ use std::{
     path::PathBuf,
     sync::Arc,
 };
-use tokio::signal::unix::{signal, SignalKind};
+use tokio::signal::unix::{SignalKind, signal};
 use vault::VaultClient;
 
 use tracing::{error as log_error, info, warn};
 
 use job::{BlockJobStacks, JobId, RuntimeScope};
-use manifest_meta::{read_flow_or_block, Block, BlockResolver, MergeInputsValue, NodeId};
+use manifest_meta::{Block, BlockResolver, MergeInputsValue, NodeId, read_flow_or_block};
 use utils::error::Result;
 
 use crate::{
-    block_job::{execute_task_job, TaskJobParameters},
+    block_job::{TaskJobParameters, execute_task_job},
     flow_job::{
-        execute_flow_job, get_flow_cache_path, parse_node_downstream, parse_oauth_request,
-        parse_query_block_request, parse_run_block_request, FlowJobParameters, NodeInputValues,
-        RunBlockSuccessResponse,
+        FlowJobParameters, NodeInputValues, RunBlockSuccessResponse, execute_flow_job,
+        get_flow_cache_path, parse_node_downstream, parse_oauth_request, parse_query_block_request,
+        parse_run_block_request,
     },
-    run::{run_job, CommonJobParameters, JobParams},
+    run::{CommonJobParameters, JobParams, run_job},
 };
 
 const SESSION_CANCEL_INFO: &str = "Cancelled";
@@ -310,7 +310,9 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
                                     scope,
                                     timeout: None,
                                     inputs_def_patch: None,
-                                }).is_some() {
+                                })
+                                .is_some()
+                                {
                                     addition_running_jobs.insert(job_id);
                                 }
                             }
@@ -340,7 +342,9 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
                                     scope,
                                     slot_blocks: Default::default(),
                                     path_finder: path_finder.clone(),
-                                }).is_some() {
+                                })
+                                .is_some()
+                                {
                                     addition_running_jobs.insert(job_id);
                                 }
                             }
@@ -557,7 +561,8 @@ pub fn get_packages(args: GetPackageArgs<'_>) -> Result<HashMap<PathBuf, String>
         Ok(block) => match block {
             Block::Flow(flow) => {
                 let flow_guard = flow.read().unwrap();
-                flow_guard.nodes
+                flow_guard
+                    .nodes
                     .iter()
                     .filter(|node| {
                         filter_nodes.is_empty() || filter_nodes.contains(&node.0.to_string())

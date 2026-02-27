@@ -140,8 +140,12 @@ pub fn run_job(params: JobParams) -> Option<BlockJobHandle> {
             inputs_def,
             outputs_def,
             shared: common.shared,
-            flow_path: parent_flow.as_ref().map(|f| f.read().unwrap().path_str.clone()),
-            injection_store: parent_flow.as_ref().and_then(|f| f.read().unwrap().injection_store.clone()),
+            flow_path: parent_flow
+                .as_ref()
+                .map(|f| f.read().unwrap().path_str.clone()),
+            injection_store: parent_flow
+                .as_ref()
+                .and_then(|f| f.read().unwrap().injection_store.clone()),
             dir: block_job::block_dir(&task_block, parent_flow.as_ref(), Some(&common.scope)),
             stacks: common.stacks,
             job_id: common.job_id,
@@ -163,7 +167,9 @@ pub fn run_job(params: JobParams) -> Option<BlockJobHandle> {
             job_id: common.job_id,
             inputs: common.inputs,
             block_status: common.block_status,
-            injection_store: parent_flow.as_ref().and_then(|f| f.read().unwrap().injection_store.clone()),
+            injection_store: parent_flow
+                .as_ref()
+                .and_then(|f| f.read().unwrap().injection_store.clone()),
             parent_flow,
             scope: common.scope,
             inputs_def_patch,

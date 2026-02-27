@@ -3,8 +3,8 @@ use std::{net::SocketAddr, time::Duration};
 use async_trait::async_trait;
 use job::{JobId, SessionId};
 use mainframe::{
-    scheduler::{SchedulerRxImpl, SchedulerTxImpl},
     MessageData,
+    scheduler::{SchedulerRxImpl, SchedulerTxImpl},
 };
 use rumqttc::{AsyncClient, Event, EventLoop, Incoming, MqttOptions, QoS};
 use tokio::sync::watch;

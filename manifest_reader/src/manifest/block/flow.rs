@@ -3,13 +3,13 @@ use std::collections::HashMap;
 use serde::Deserialize;
 
 use crate::manifest::{
-    block::handle::{MiddleInputHandle, MiddleOutputHandle},
     Node, NodeId, NodeInputFrom,
+    block::handle::{MiddleInputHandle, MiddleOutputHandle},
 };
 
 use super::{
-    handle::{convert_middle_inputs, convert_middle_outputs},
     InputHandles, OutputHandles,
+    handle::{convert_middle_inputs, convert_middle_outputs},
 };
 
 #[derive(Deserialize, Debug, Clone)]

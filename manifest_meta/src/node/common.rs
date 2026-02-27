@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use manifest_reader::{
-    manifest::{HandleName, InputDefPatch, InputHandle, NodeId},
     JsonValue,
+    manifest::{HandleName, InputDefPatch, InputHandle, NodeId},
 };
 
 /// Represents a three-state value: not provided, explicitly null, or has value.

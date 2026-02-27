@@ -5,7 +5,7 @@ mod query;
 
 use cache::CacheAction;
 use fun::arg::{config, find_env_file, load_bind_paths, parse_search_paths, temp_root};
-use one_shot::one_shot::{run_block, BlockArgs};
+use one_shot::one_shot::{BlockArgs, run_block};
 use std::{collections::HashSet, path::PathBuf};
 
 use clap::{Parser, Subcommand};
@@ -179,11 +179,13 @@ pub fn cli_match() -> Result<()> {
                     // create 和 create-registry 要将特定 stdout stderr 的 target 输出到控制台。因此两个都要为 true。
                     output_to_console: matches!(
                         action,
-                        layer::LayerAction::Create { .. } | layer::LayerAction::CreateRegistry { .. }
+                        layer::LayerAction::Create { .. }
+                            | layer::LayerAction::CreateRegistry { .. }
                     ),
                     capture_stdout_stderr_target: matches!(
                         action,
-                        layer::LayerAction::Create { .. } | layer::LayerAction::CreateRegistry { .. }
+                        layer::LayerAction::Create { .. }
+                            | layer::LayerAction::CreateRegistry { .. }
                     ),
                 }
             })?

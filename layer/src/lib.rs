@@ -14,14 +14,14 @@ use std::process::Command;
 pub use ovmlayer::BindPath;
 pub use package_layer::import_package_layer;
 pub use package_store::{
-    delete_all_layer_data, delete_package_layer, get_or_create_package_layer, list_package_layers,
-    package_layer_status, PackageLayerStatus,
+    PackageLayerStatus, delete_all_layer_data, delete_package_layer, get_or_create_package_layer,
+    list_package_layers, package_layer_status,
 };
 pub use registry_layer_store::{
-    create_registry_layer, delete_registry_layer, get_registry_layer, list_registry_layers,
-    load_registry_store, registry_layer_status, RegistryLayerStatus, RegistryLayerStore,
+    RegistryLayerStatus, RegistryLayerStore, create_registry_layer, delete_registry_layer,
+    get_registry_layer, list_registry_layers, load_registry_store, registry_layer_status,
 };
-pub use runtime_layer::{create_runtime_layer, InjectionParams, RuntimeLayer};
+pub use runtime_layer::{InjectionParams, RuntimeLayer, create_runtime_layer};
 
 pub fn feature_enabled() -> bool {
     let mut cmd = Command::new("ovmlayer");

@@ -1,13 +1,13 @@
 use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
-use std::fs::{metadata, File};
+use std::fs::{File, metadata};
 use std::path::PathBuf;
 
 use crate::cli::exec;
 use crate::layer::{
     create_random_layer, export_layers, import_layer, list_layers, run_script_unmerge,
 };
-use crate::ovmlayer::{cp_to_layer, BindPath};
+use crate::ovmlayer::{BindPath, cp_to_layer};
 use crate::package_store::add_import_package;
 use serde::{Deserialize, Serialize};
 use tracing::instrument;

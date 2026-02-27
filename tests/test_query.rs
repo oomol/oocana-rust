@@ -16,10 +16,7 @@ fn query_to_json(args: &[&str], tmp_name: &str) -> Value {
     let mut full_args: Vec<&str> = args.to_vec();
     full_args.extend(["--output", tmp_path]);
 
-    oocana_cmd()
-        .args(&full_args)
-        .assert()
-        .success();
+    oocana_cmd().args(&full_args).assert().success();
 
     let content = std::fs::read_to_string(&tmp_file)
         .unwrap_or_else(|e| panic!("Failed to read {}: {}", tmp_path, e));
@@ -79,7 +76,13 @@ fn assert_node_inputs(node: &str, inputs: &Value) {
         .as_array()
         .unwrap_or_else(|| panic!("Node '{}': expected array, got {}", node, inputs));
 
-    assert_eq!(arr.len(), 2, "Node '{}': expected 2 inputs, got {}", node, arr.len());
+    assert_eq!(
+        arr.len(),
+        2,
+        "Node '{}': expected 2 inputs, got {}",
+        node,
+        arr.len()
+    );
 
     for item in arr {
         assert_input_item(node, item);

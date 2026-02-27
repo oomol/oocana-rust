@@ -5,7 +5,7 @@ use crate::{
     manifest::{InputHandle, NodeInputFrom},
 };
 
-use super::common::{default_concurrency, default_progress_weight, NodeId};
+use super::common::{NodeId, default_concurrency, default_progress_weight};
 
 extend_node_common_field!(SubflowNode {
     subflow: String,

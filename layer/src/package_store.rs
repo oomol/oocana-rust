@@ -4,9 +4,9 @@ use crate::ovmlayer::{BindPath, LayerType};
 use crate::package_layer::PackageLayer;
 
 use fs2::FileExt;
+use manifest_reader::Package;
 use manifest_reader::path_finder::find_package_file;
 use manifest_reader::reader::read_package;
-use manifest_reader::Package;
 use serde::{Deserialize, Serialize};
 use std::env;
 use std::fs::File;

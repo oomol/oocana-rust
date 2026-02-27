@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use manifest_reader::{
-    manifest::{self, ConditionHandleDef, DefaultConditionHandleDef, HandleName},
     JsonValue,
+    manifest::{self, ConditionHandleDef, DefaultConditionHandleDef, HandleName},
 };
 
 #[derive(Debug, Clone)]

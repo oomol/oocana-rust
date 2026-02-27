@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use flume::{Receiver, Sender};
-use layer::{create_runtime_layer, BindPath, InjectionParams, RuntimeLayer};
+use layer::{BindPath, InjectionParams, RuntimeLayer, create_runtime_layer};
 use manifest_reader::path_finder::find_package_file;
 use manifest_reader::reader::read_package;
 use port_check::free_local_ipv4_port_in_range;
@@ -946,7 +946,9 @@ fn spawn_executor(
                     // the time maybe after scheduler shutdown, send to tx will fail
                     Ok(status) => {
                         let code = status.code().unwrap_or(-1);
-                        info!("{executor_bin_clone} ({executor_map_name_clone}) {pid:?} exit with {code}");
+                        info!(
+                            "{executor_bin_clone} ({executor_map_name_clone}) {pid:?} exit with {code}"
+                        );
                         if !status.success() {
                             let _ = tx.send(SchedulerCommand::ExecutorExit {
                                 executor: executor_bin_clone.clone(),

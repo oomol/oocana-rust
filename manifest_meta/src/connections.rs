@@ -5,8 +5,8 @@ use manifest_reader::manifest::{self};
 use crate::flow::generate_runtime_handle_name;
 
 use super::{
-    node::{HandleFrom, HandleTo},
     HandleName, HandlesFroms, HandlesTos, NodeId,
+    node::{HandleFrom, HandleTo},
 };
 
 pub struct Connections {

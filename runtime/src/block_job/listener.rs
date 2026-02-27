@@ -12,7 +12,7 @@ use manifest_meta::{
 use serde_json::Value;
 use tracing::{debug, warn};
 use utils::output::{
-    OutputValue, OOMOL_BIN_DATA, OOMOL_SECRET_DATA, OOMOL_TYPE_KEY, OOMOL_VAR_DATA,
+    OOMOL_BIN_DATA, OOMOL_SECRET_DATA, OOMOL_TYPE_KEY, OOMOL_VAR_DATA, OutputValue,
 };
 
 use crate::block_status::BlockStatusTx;
@@ -141,7 +141,9 @@ pub fn listen_to_worker(params: ListenerParameters) -> tokio::task::JoinHandle<(
                     identifier,
                     ..
                 } => {
-                    tracing::info!("{executor_name} {identifier:?} ({executor_package:?}) executor is ready. block package: {block_scope:?}");
+                    tracing::info!(
+                        "{executor_name} {identifier:?} ({executor_package:?}) executor is ready. block package: {block_scope:?}"
+                    );
 
                     if identifier
                         .as_ref()
@@ -240,7 +242,9 @@ pub fn listen_to_worker(params: ListenerParameters) -> tokio::task::JoinHandle<(
                     if has_executor_response || job_id != msg_job_id {
                         continue;
                     }
-                    warn!("listener wait timeout 3s. job_id: {msg_job_id}. try to run block again, executor will filter duplicate job_id");
+                    warn!(
+                        "listener wait timeout 3s. job_id: {msg_job_id}. try to run block again, executor will filter duplicate job_id"
+                    );
                     run_block(executor.as_ref(), service.as_ref());
                 }
                 scheduler::ReceiveMessage::BlockOutputs {

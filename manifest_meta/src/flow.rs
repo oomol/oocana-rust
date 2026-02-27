@@ -6,32 +6,32 @@ use std::{
 };
 
 use manifest_reader::{
+    JsonValue,
     manifest::{
         self, HandleName, InputDefPatch, InputHandle, InputHandles, OutputHandle, OutputHandles,
     },
-    path_finder::{calculate_block_value_type, find_package_file, BlockPathFinder, BlockValueType},
+    path_finder::{BlockPathFinder, BlockValueType, calculate_block_value_type, find_package_file},
     reader::read_package,
-    JsonValue,
 };
 
 use crate::{
     condition::ConditionBlock,
     node::{
+        ValueState,
         common::NodeInput,
         subflow::{Slot, SubflowSlot, TaskSlot},
-        ValueState,
     },
-    scope::{calculate_running_target, BlockScope, RunningTarget},
+    scope::{BlockScope, RunningTarget, calculate_running_target},
 };
 
 use tracing::warn;
 use utils::error::Result;
 
 use crate::{
-    block_resolver::{package_path, BlockResolver},
+    HandlesFroms, HandlesTos, Node, NodeId, SlotNode, SubflowNode,
+    block_resolver::{BlockResolver, package_path},
     connections::Connections,
     node::{ConditionNode, ServiceNode, TaskNode},
-    HandlesFroms, HandlesTos, Node, NodeId, SlotNode, SubflowNode,
 };
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -201,12 +201,14 @@ pub fn generate_node_inputs(
             let sources = convert_to_sources(from);
 
             if !value.is_provided() && sources.as_ref().is_some_and(|f| f.is_empty()) {
-                warn!("node id ({}) handle: ({}) has no connection and has no value. This node won't run.",  node_id, handle);
+                warn!(
+                    "node id ({}) handle: ({}) has no connection and has no value. This node won't run.",
+                    node_id, handle
+                );
                 if input_def.value.is_some() {
                     warn!(
                         "node id ({}) handle: ({}) has value in inputs_def but is not used. For now the inputs_def's value will be ignored.",
-                        node_id,
-                        handle
+                        node_id, handle
                     );
                 }
             }
@@ -583,8 +585,8 @@ impl SubflowBlock {
                                                             .find(|i| i.handle == input.handle)
                                                     });
 
-                                                let serialize = handle_input_from
-                                                    .is_some_and(|input_from| {
+                                                let serialize =
+                                                    handle_input_from.is_some_and(|input_from| {
                                                         input_from.serialize_for_cache
                                                     });
 
@@ -664,10 +666,10 @@ impl SubflowBlock {
                                                     }
                                                 } else {
                                                     warn!(
-                                                            "slot node {} input {} not found in inputs_from",
-                                                            slotflow_provider.slot_node_id,
-                                                            input.handle
-                                                        );
+                                                        "slot node {} input {} not found in inputs_from",
+                                                        slotflow_provider.slot_node_id,
+                                                        input.handle
+                                                    );
                                                 }
 
                                                 additional_flow_inputs_tos

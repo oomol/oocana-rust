@@ -7,8 +7,8 @@ use async_trait::async_trait;
 use rumqttc::{AsyncClient, Event, EventLoop, Incoming, MqttOptions, QoS};
 
 use mainframe::{
-    reporter::{ReporterRxImpl, ReporterTxImpl},
     MessageData,
+    reporter::{ReporterRxImpl, ReporterTxImpl},
 };
 use tracing::{error, info};
 

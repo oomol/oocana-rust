@@ -1,7 +1,6 @@
 use super::{
-    calculate_block_value_type,
-    search_paths::{search_block_manifest, BlockManifestParams},
-    BlockValueType,
+    BlockValueType, calculate_block_value_type,
+    search_paths::{BlockManifestParams, search_block_manifest},
 };
 use path_clean::PathClean;
 use std::{
