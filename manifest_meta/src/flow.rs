@@ -73,6 +73,8 @@ pub struct SubflowBlock {
     pub package_path: Option<PathBuf>,
     pub injection_store: Option<InjectionStore>,
     pub forward_previews: Option<Vec<NodeId>>,
+    pub hide_source: bool,
+    pub remote_timeout: Option<u64>,
 }
 
 #[derive(Hash, PartialEq, Eq, Debug)]
@@ -254,6 +256,8 @@ impl SubflowBlock {
             package_path: None,
             injection_store: None,
             forward_previews: None,
+            hide_source: false,
+            remote_timeout: None,
         }
     }
 
@@ -1162,6 +1166,8 @@ impl SubflowBlock {
                 Some(injection)
             },
             forward_previews,
+            hide_source: false,
+            remote_timeout: None,
         })
     }
 

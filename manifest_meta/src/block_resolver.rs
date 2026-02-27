@@ -1,7 +1,7 @@
 use manifest_reader::{
     manifest::{self, InputHandles},
     path_finder::BlockPathFinder,
-    reader::read_task_block,
+    reader::{read_block_metadata, read_task_block},
 };
 use std::{
     collections::HashMap,
@@ -66,7 +66,7 @@ impl BlockResolver {
                 self.read_task_block(&path_finder.find_task_block_path(&file)?)
             }
             manifest::TaskNodeBlock::Inline(block) => {
-                let task_block = TaskBlock::from_manifest(block, None, None);
+                let task_block = TaskBlock::from_manifest(block, None, None, false, None);
                 Ok(Arc::new(task_block))
             }
         }
@@ -205,10 +205,14 @@ impl BlockResolver {
             }
         }
 
+        let metadata = read_block_metadata(task_path);
+
         let task = Arc::new(TaskBlock::from_manifest(
             read_task_block(task_path)?,
             Some(task_path.to_owned()),
             package_path(task_path).ok(),
+            metadata.hide_source,
+            metadata.timeout,
         ));
 
         let task_cache = self.task_cache.get_or_insert_with(HashMap::new);
@@ -248,6 +252,9 @@ impl BlockResolver {
         {
             let mut guard = placeholder.write().unwrap();
             *guard = flow;
+            let metadata = read_block_metadata(flow_path);
+            guard.hide_source = metadata.hide_source;
+            guard.remote_timeout = metadata.timeout;
         }
 
         Ok(placeholder)

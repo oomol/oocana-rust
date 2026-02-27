@@ -134,6 +134,16 @@ enum Commands {
         dry_run: bool,
         #[arg(help = "If true, oocana will forward report messages to console", long)]
         report_to_console: bool,
+        #[arg(
+            help = "Remote task API base URL. Overrides OOCANA_TASK_API_URL env var.",
+            long
+        )]
+        task_api_url: Option<String>,
+        #[arg(
+            help = "Timeout in seconds for remote task execution. Overrides OOCANA_TASK_TIMEOUT env var. Default is 1800 (30 minutes).",
+            long
+        )]
+        task_timeout: Option<u64>,
     },
     Cache {
         #[command(subcommand)]
@@ -245,6 +255,8 @@ pub fn cli_match() -> Result<()> {
             pkg_data_root,
             project_data,
             report_to_console,
+            task_api_url,
+            task_timeout,
         } => {
             let bind_paths = load_bind_paths(bind_paths, bind_path_file);
             let search_paths = parse_search_paths(search_paths);
@@ -296,6 +308,8 @@ pub fn cli_match() -> Result<()> {
                 project_data: &PathBuf::from(project_data),
                 pkg_data_root: &PathBuf::from(pkg_data_root),
                 report_to_console: report_to_console.to_owned(),
+                task_api_url: task_api_url.to_owned(),
+                task_timeout: task_timeout.to_owned(),
             })?
         }
         Commands::Cache { action } => {

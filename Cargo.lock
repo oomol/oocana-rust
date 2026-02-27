@@ -2458,6 +2458,7 @@ dependencies = [
  "serde_json",
  "tokio",
  "tracing",
+ "user_task_client",
  "utils",
  "uuid",
  "vault",

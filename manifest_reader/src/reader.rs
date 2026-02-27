@@ -90,3 +90,45 @@ pub fn read_manifest_file<T: DeserializeOwned>(file_path: &Path) -> Result<T> {
     let yaml_data: T = serde_yaml::from_str(&s)?;
     Ok(yaml_data)
 }
+
+/// Metadata read from `.metadata.oo.json` adjacent to a block manifest.
+pub struct BlockMetadata {
+    pub hide_source: bool,
+    /// Per-block timeout override for remote execution, in seconds.
+    pub timeout: Option<u64>,
+}
+
+/// Read block metadata from a `.metadata.oo.json` file adjacent to the block manifest.
+/// Returns defaults (hide_source=false, timeout=None) if the file doesn't exist or can't be parsed.
+pub fn read_block_metadata(block_path: &Path) -> BlockMetadata {
+    let Some(dir) = block_path.parent() else {
+        return BlockMetadata {
+            hide_source: false,
+            timeout: None,
+        };
+    };
+    let metadata_path = dir.join(".metadata.oo.json");
+    let Ok(content) = std::fs::read_to_string(&metadata_path) else {
+        return BlockMetadata {
+            hide_source: false,
+            timeout: None,
+        };
+    };
+
+    #[derive(serde::Deserialize)]
+    struct RawBlockMetadata {
+        #[serde(default)]
+        hide_source: bool,
+        timeout: Option<u64>,
+    }
+
+    serde_json::from_str::<RawBlockMetadata>(&content)
+        .map(|m| BlockMetadata {
+            hide_source: m.hide_source,
+            timeout: m.timeout,
+        })
+        .unwrap_or(BlockMetadata {
+            hide_source: false,
+            timeout: None,
+        })
+}

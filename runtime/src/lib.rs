@@ -2,6 +2,7 @@ mod block_job;
 pub mod block_status;
 pub mod delay_abort;
 mod flow_job;
+pub mod remote_task_config;
 mod run;
 pub mod shared;
 use mainframe::reporter::ErrorDetail;
