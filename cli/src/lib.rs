@@ -140,7 +140,7 @@ enum Commands {
         )]
         task_api_url: Option<String>,
         #[arg(
-            help = "Timeout in seconds for remote task execution. Overrides OOCANA_TASK_TIMEOUT env var. Default is 1800 (30 minutes).",
+            help = "Timeout in seconds for remote task execution. Overrides OOCANA_TASK_TIMEOUT env var. Default is 1800 (30 minutes). Use 0 to disable timeout and poll indefinitely.",
             long
         )]
         task_timeout: Option<u64>,

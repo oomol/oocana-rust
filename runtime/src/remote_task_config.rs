@@ -14,15 +14,31 @@ impl RemoteTaskConfig {
         cli_timeout: Option<u64>,
     ) -> Option<Self> {
         let base_url = cli_url
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
             .map(|s| s.to_owned())
-            .or_else(|| std::env::var("OOCANA_TASK_API_URL").ok())?;
+            .or_else(|| {
+                std::env::var("OOCANA_TASK_API_URL")
+                    .ok()
+                    .map(|s| s.trim().to_owned())
+                    .filter(|s| !s.is_empty())
+            })?;
 
         let auth_token = std::env::var("OOMOL_TOKEN").ok();
 
         let timeout_secs = cli_timeout.or_else(|| {
-            std::env::var("OOCANA_TASK_TIMEOUT")
-                .ok()
-                .and_then(|s| s.parse().ok())
+            std::env::var("OOCANA_TASK_TIMEOUT").ok().and_then(|s| {
+                match s.parse() {
+                    Ok(v) => Some(v),
+                    Err(_) => {
+                        tracing::warn!(
+                            "Invalid OOCANA_TASK_TIMEOUT value '{}', ignoring",
+                            s
+                        );
+                        None
+                    }
+                }
+            })
         });
 
         Some(Self {
