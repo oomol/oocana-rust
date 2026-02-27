@@ -42,7 +42,7 @@ jobs:
         with:
           toolchain: stable
       - name: install cross
-        run: cargo install cross
+        run: cargo install cross --version 0.2.5 --locked
       - name: build
         run: cross build --release --target ${{ matrix.target }}
       - name: name cli tool
@@ -76,6 +76,8 @@ jobs:
         with:
           toolchain: stable
           targets: aarch64-apple-darwin,x86_64-apple-darwin
+      - name: Ensure x86_64 target
+        run: rustup target add x86_64-apple-darwin
       - name: build
         run: |
           cargo build --release --target aarch64-apple-darwin
