@@ -10,6 +10,25 @@ fn oocana_cmd() -> Command {
     cmd
 }
 
+/// Strip ANSI escape sequences (e.g. `\x1b[2m`) so raw tracing output can be
+/// parsed as JSON.
+fn strip_ansi(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let mut chars = s.chars();
+    while let Some(c) = chars.next() {
+        if c == '\x1b' {
+            for c in chars.by_ref() {
+                if c == 'm' {
+                    break;
+                }
+            }
+        } else {
+            out.push(c);
+        }
+    }
+    out
+}
+
 #[test]
 fn remote_task_flow() {
     let server = mock::start(23579);
@@ -22,6 +41,7 @@ fn remote_task_flow() {
             &server.url(),
             "--search-paths",
             "examples/remote_task",
+            "--reporter",
             "--report-to-console",
         ])
         .output()
@@ -32,10 +52,12 @@ fn remote_task_flow() {
     assert!(output.status.success(), "oocana exited with failure");
 
     // Parse reporter JSON lines from stdout to verify all nodes actually ran.
-    let stdout = String::from_utf8_lossy(&output.stdout);
+    // The tracing layer may wrap output in ANSI escape codes, so strip them first.
+    let raw_stdout = String::from_utf8_lossy(&output.stdout);
+    let stdout = strip_ansi(&raw_stdout);
     let finished_nodes: Vec<String> = stdout
         .lines()
-        .filter_map(|line| serde_json::from_str::<Value>(line).ok())
+        .filter_map(|line| serde_json::from_str::<Value>(line.trim()).ok())
         .filter(|msg| msg["type"] == "BlockFinished")
         .filter_map(|msg| {
             msg["stacks"]
@@ -48,7 +70,13 @@ fn remote_task_flow() {
     for node_id in &["prepare", "echo-1", "verify"] {
         assert!(
             finished_nodes.iter().any(|n| n == node_id),
-            "node '{node_id}' did not finish; finished nodes: {finished_nodes:?}"
+            "node '{node_id}' did not finish; finished_nodes: {finished_nodes:?}\n\
+             --- raw stdout ({} bytes) ---\n{}\n\
+             --- raw stderr ({} bytes) ---\n{}",
+            output.stdout.len(),
+            raw_stdout,
+            output.stderr.len(),
+            String::from_utf8_lossy(&output.stderr),
         );
     }
 }

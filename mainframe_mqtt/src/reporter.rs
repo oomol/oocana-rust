@@ -27,7 +27,6 @@ impl ReporterTxImpl for ReporterTx {
     }
 
     async fn disconnect(&self) {
-        let _ = self.tx.disconnect().await;
         let _ = self.shutdown_tx.send(());
     }
 }
@@ -39,31 +38,70 @@ pub struct ReporterRx {
 }
 
 impl ReporterRxImpl for ReporterRx {
-    fn event_loop(mut self) -> tokio::task::JoinHandle<()> {
+    fn event_loop(self) -> tokio::task::JoinHandle<()> {
+        let Self {
+            mut rx,
+            mut shutdown_rx,
+            session_id,
+        } = self;
+
+        // Run EventLoop::poll() in a dedicated task so it is NEVER cancelled.
+        // rumqttc's poll() is not cancel-safe; dropping a pending poll() future
+        // (e.g. inside tokio::select!) corrupts the EventLoop's internal state
+        // and makes all subsequent poll() calls fail immediately.
+        let (event_tx, mut event_rx) = tokio::sync::mpsc::channel::<Event>(256);
+
+        let poll_task = tokio::spawn(async move {
+            while let Ok(event) = rx.poll().await {
+                if event_tx.send(event).await.is_err() {
+                    break; // receiver dropped
+                }
+            }
+        });
+
         tokio::spawn(async move {
+            // Main loop: receive events from the poll task, stop on shutdown signal.
+            // tokio::select! on mpsc::recv() is cancel-safe.
             loop {
                 tokio::select! {
-                    _ = self.shutdown_rx.changed() => {
-                        info!("ReporterRx shutting down");
+                    _ = shutdown_rx.changed() => {
                         break;
                     }
-                    result = self.rx.poll() => {
-                        match result {
-                            Ok(Event::Incoming(Incoming::Publish(publish))) => {
-                                let payload = publish.payload;
-                                let payload_str = String::from_utf8_lossy(&payload);
-                                if payload_str.contains(self.session_id.as_str()) {
+                    event = event_rx.recv() => {
+                        match event {
+                            Some(Event::Incoming(Incoming::Publish(publish))) => {
+                                let payload_str = String::from_utf8_lossy(&publish.payload);
+                                if payload_str.contains(session_id.as_str()) {
                                     info!(target: STDOUT_TARGET, "{}", payload_str);
                                 }
                             }
-                            Ok(_) => {}
-                            Err(e) => {
-                                error!("Error in reporter event loop: {}", e);
-                            }
+                            Some(_) => {}
+                            None => break, // poll task exited
                         }
                     }
                 }
             }
+
+            // Drain events that the poll task already forwarded into the channel.
+            // Give it a short window so in-flight broker messages can still arrive.
+            let deadline = tokio::time::Instant::now() + Duration::from_secs(1);
+            loop {
+                match tokio::time::timeout_at(deadline, event_rx.recv()).await {
+                    Ok(Some(Event::Incoming(Incoming::Publish(publish)))) => {
+                        let payload_str = String::from_utf8_lossy(&publish.payload);
+                        if payload_str.contains(session_id.as_str()) {
+                            info!(target: STDOUT_TARGET, "{}", payload_str);
+                        }
+                    }
+                    Ok(Some(_)) => {}
+                    _ => break, // timeout or channel closed
+                }
+            }
+
+            poll_task.abort();
+            let _ = poll_task.await;
+
+            info!("ReporterRx shutting down");
         })
     }
 }

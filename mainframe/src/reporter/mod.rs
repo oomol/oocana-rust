@@ -316,9 +316,7 @@ where
             rx,
         } = self;
 
-        if let Some(impl_rx) = impl_rx {
-            impl_rx.event_loop();
-        }
+        let subscriber_handle = impl_rx.map(|rx| rx.event_loop());
 
         tokio::spawn(async move {
             if let Some(rx) = rx {
@@ -341,6 +339,11 @@ where
                         }
                     }
                 }
+            }
+
+            // Wait for the MQTT subscriber to finish draining buffered events.
+            if let Some(handle) = subscriber_handle {
+                let _ = handle.await;
             }
         })
     }
