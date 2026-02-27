@@ -183,15 +183,7 @@ pub fn execute_remote_block_job(params: RemoteBlockJobParameters) -> Option<Bloc
                     // 3. Fetch result
                     match client.get_task_result(&task_id).await {
                         Ok(TaskResult::Success { result_data, .. }) => {
-                            let first_map = result_data.and_then(|mut v| {
-                                if v.is_empty() {
-                                    None
-                                } else {
-                                    Some(v.remove(0))
-                                }
-                            });
-
-                            if let Some(map) = first_map {
+                            if let Some(map) = result_data {
                                 let mut reporter_map = HashMap::new();
                                 let mut output_map = HashMap::new();
                                 for (key, value) in map {

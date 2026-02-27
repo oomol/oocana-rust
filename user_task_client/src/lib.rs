@@ -255,7 +255,7 @@ pub enum TaskResult {
         #[serde(rename = "resultURL")]
         result_url: Option<String>,
         #[serde(default, rename = "resultData")]
-        result_data: Option<Vec<JsonMap>>,
+        result_data: Option<JsonMap>,
     },
     Failed {
         error: Option<String>,
@@ -329,7 +329,7 @@ mod tests {
         let raw = serde_json::json!({
             "status": "success",
             "resultURL": "https://example.com/result.json",
-            "resultData": [{ "foo": "bar" }]
+            "resultData": { "foo": "bar" }
         });
         let result: TaskResult = serde_json::from_value(raw).expect("result should deserialize");
         match result {
@@ -341,7 +341,8 @@ mod tests {
                     result_url.as_deref(),
                     Some("https://example.com/result.json")
                 );
-                assert_eq!(result_data.unwrap().len(), 1);
+                let data = result_data.unwrap();
+                assert_eq!(data.get("foo").unwrap(), "bar");
             }
             _ => panic!("unexpected task result variant"),
         }
