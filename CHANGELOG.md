@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.30.35 (2026-02-28)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* ci: use duplicate-run-action to skip duplicate CI runs by @leavesster in https://github.com/oomol/oocana-rust/pull/416
+* feat: add remote job by @leavesster in https://github.com/oomol/oocana-rust/pull/418
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.30.34...v0.30.35
+
 ## 0.30.34 (2026-01-30)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
