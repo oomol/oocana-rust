@@ -95,7 +95,7 @@ pub struct BlockArgs<'a> {
     pub pkg_data_root: &'a PathBuf,
     pub report_to_console: bool,
     pub remote_block_url: Option<String>,
-    pub task_timeout: Option<u64>,
+    pub remote_block_timeout: Option<u64>,
 }
 
 async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
@@ -122,7 +122,7 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
         pkg_data_root,
         report_to_console,
         remote_block_url,
-        task_timeout,
+        remote_block_timeout,
     } = block_args;
     let session_id = SessionId::new(session);
     tracing::info!("Session start with session id: {}", session_id);
@@ -296,7 +296,7 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
 
     let remote_task_config = runtime::remote_task_config::RemoteTaskConfig::from_env_and_args(
         remote_block_url.as_deref(),
-        task_timeout,
+        remote_block_timeout,
     );
 
     let shared = Arc::new(runtime::shared::Shared {

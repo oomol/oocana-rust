@@ -27,12 +27,12 @@ impl RemoteTaskConfig {
         let auth_token = std::env::var("OOMOL_TOKEN").ok();
 
         let timeout_secs = cli_timeout.or_else(|| {
-            std::env::var("OOCANA_TASK_TIMEOUT").ok().and_then(|s| {
+            std::env::var("OOCANA_REMOTE_BLOCK_TIMEOUT").ok().and_then(|s| {
                 match s.parse() {
                     Ok(v) => Some(v),
                     Err(_) => {
                         tracing::warn!(
-                            "Invalid OOCANA_TASK_TIMEOUT value '{}', ignoring",
+                            "Invalid OOCANA_REMOTE_BLOCK_TIMEOUT value '{}', ignoring",
                             s
                         );
                         None
