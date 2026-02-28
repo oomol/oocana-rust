@@ -20,7 +20,7 @@ use utils::error::Result;
 use utils::path::to_absolute;
 
 use super::job_handle::BlockJobHandle;
-use super::listener::{listen_to_worker, ListenerParameters};
+use super::listener::{ListenerParameters, listen_to_worker};
 
 pub struct TaskJobHandle {
     pub job_id: JobId,

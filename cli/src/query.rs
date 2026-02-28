@@ -1,8 +1,8 @@
 use crate::fun::arg::parse_search_paths;
 use clap::Subcommand;
-use manifest_meta::{read_flow_or_block, BlockResolver};
+use manifest_meta::{BlockResolver, read_flow_or_block};
 use manifest_reader::path_finder::BlockPathFinder;
-use one_shot::one_shot::{find_upstream, UpstreamArgs};
+use one_shot::one_shot::{UpstreamArgs, find_upstream};
 use std::collections::HashSet;
 use std::env;
 use std::io::Write;

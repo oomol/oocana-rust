@@ -1,9 +1,7 @@
 #[cfg(test)]
 mod tests {
 
-    use manifest_meta::{
-        generate_runtime_handle_name, BlockResolver, HandleName, NodeId,
-    };
+    use manifest_meta::{BlockResolver, HandleName, NodeId, generate_runtime_handle_name};
     use manifest_reader::path_finder::BlockPathFinder;
 
     use std::path::PathBuf;
@@ -124,9 +122,11 @@ mod tests {
                 let definition = input_in1.def.clone();
                 assert_eq!(definition.handle, handle_in1);
                 assert_eq!(definition.nullable, Some(true));
-                assert!(definition
-                    .json_schema
-                    .is_some_and(|schema| { schema.get("type").is_some_and(|t| t == "string") }));
+                assert!(
+                    definition.json_schema.is_some_and(|schema| {
+                        schema.get("type").is_some_and(|t| t == "string")
+                    })
+                );
 
                 assert!(matches!(
                     input_in1.sources.as_ref().unwrap().first().unwrap(),
@@ -208,9 +208,11 @@ mod tests {
             .unwrap();
         let flow_block = flow_block.read().unwrap();
 
-        assert!(flow_block
-            .path
-            .ends_with("serializable-var/subflow.oo.yaml"));
+        assert!(
+            flow_block
+                .path
+                .ends_with("serializable-var/subflow.oo.yaml")
+        );
 
         let node1_id = NodeId::new("node1".to_owned());
         // node1

@@ -9,9 +9,9 @@ use utils::logger::{STDERR_TARGET, STDOUT_TARGET};
 
 use crate::cli::{self, exec};
 use crate::ovmlayer::{
-    cp_to_merge_point, create_layer_cmd, delete_all_layer_and_merge_point_cmd, delete_layer_cmd,
-    export_layer_cmd, import_layer_cmd, list_layer_cmd, merge_cmd, run_cmd, unmerge_cmd, BindPath,
-    LayerType,
+    BindPath, LayerType, cp_to_merge_point, create_layer_cmd, delete_all_layer_and_merge_point_cmd,
+    delete_layer_cmd, export_layer_cmd, import_layer_cmd, list_layer_cmd, merge_cmd, run_cmd,
+    unmerge_cmd,
 };
 use utils::error::{Error, Result};
 

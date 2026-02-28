@@ -5,8 +5,8 @@ use serde::{Deserialize, Serialize};
 use crate::manifest::block::handle::{MiddleInputHandle, MiddleOutputHandle};
 
 use super::{
-    handle::{convert_middle_inputs, convert_middle_outputs},
     InputHandles, OutputHandles,
+    handle::{convert_middle_inputs, convert_middle_outputs},
 };
 
 #[derive(Deserialize, Serialize, Debug, Clone)]

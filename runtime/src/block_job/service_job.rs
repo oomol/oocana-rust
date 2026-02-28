@@ -7,7 +7,7 @@ use manifest_meta::{
 };
 
 use super::job_handle::BlockJobHandle;
-use super::listener::{listen_to_worker, ListenerParameters, ServiceExecutorPayload};
+use super::listener::{ListenerParameters, ServiceExecutorPayload, listen_to_worker};
 use crate::{block_status::BlockStatusTx, shared::Shared};
 
 /// Get the executor name from a ServiceBlock.
@@ -103,7 +103,9 @@ pub fn execute_service_job(params: ServiceJobParameters) -> Option<BlockJobHandl
         }),
         block_dir: service_dir(&service_block),
         injection_store,
-        flow_path: parent_flow.as_ref().map(|f| f.read().unwrap().path_str.clone()),
+        flow_path: parent_flow
+            .as_ref()
+            .map(|f| f.read().unwrap().path_str.clone()),
         inputs_def_patch,
     });
 
@@ -113,7 +115,9 @@ pub fn execute_service_job(params: ServiceJobParameters) -> Option<BlockJobHandl
         shared.scheduler_tx.clone(),
         stacks,
         &scope,
-        parent_flow.as_ref().map(|f| f.read().unwrap().path_str.clone()),
+        parent_flow
+            .as_ref()
+            .map(|f| f.read().unwrap().path_str.clone()),
     );
 
     let spawn_handles: Vec<tokio::task::JoinHandle<()>> = vec![worker_listener_handle];

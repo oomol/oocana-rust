@@ -2,18 +2,18 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use version_compare::{compare, Cmp};
+use version_compare::{Cmp, compare};
 
 use utils::error::Result;
 
 use crate::reader::read_package;
 
 use super::block::{
-    find_flow_block, find_slot_flow, find_task_block, SlotBlockManifestParams,
-    SubflowBlockManifestParams, TaskBlockManifestParams,
+    SlotBlockManifestParams, SubflowBlockManifestParams, TaskBlockManifestParams, find_flow_block,
+    find_slot_flow, find_task_block,
 };
 use super::package::find_package_file;
-use super::service::{find_service, ServiceManifestParams};
+use super::service::{ServiceManifestParams, find_service};
 
 #[derive(Debug, Clone)]
 pub struct BlockPathFinder {

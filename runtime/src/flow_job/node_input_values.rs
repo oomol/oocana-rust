@@ -233,9 +233,15 @@ impl NodeInputValues {
             for (handle, values) in input_values {
                 // this is a workaround, the best way is when flow or block is edited, clear the cache or run flow without `cache`
                 if !node.has_connection(handle)
-                    && node.inputs().get(handle).is_some_and(|i| i.value.is_provided())
+                    && node
+                        .inputs()
+                        .get(handle)
+                        .is_some_and(|i| i.value.is_provided())
                 {
-                    warn!("Node {} handle {} has no connection while a static value is set. oocana will use handle's static value instead of the value in node store to avoid cache effect.", node_id, handle);
+                    warn!(
+                        "Node {} handle {} has no connection while a static value is set. oocana will use handle's static value instead of the value in node store to avoid cache effect.",
+                        node_id, handle
+                    );
                     continue;
                 }
 

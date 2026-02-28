@@ -24,11 +24,13 @@ mod tests {
 
         // flow inputs_def: user_name
         let user_name = HandleName::new("user_name".to_owned());
-        assert!(flow_block
-            .inputs_def
-            .as_ref()
-            .unwrap()
-            .contains_key(&user_name));
+        assert!(
+            flow_block
+                .inputs_def
+                .as_ref()
+                .unwrap()
+                .contains_key(&user_name)
+        );
 
         // flow outputs_froms: output_message comes from greet.message
         let output_message = HandleName::new("output_message".to_owned());
@@ -62,20 +64,22 @@ mod tests {
             assert!(matches!(greet_node, manifest_meta::Node::Task(_)));
             if let manifest_meta::Node::Task(task) = greet_node {
                 // task resolved from package should have a path ending in task.oo.yaml
-                assert!(task
-                    .task
-                    .path
-                    .as_ref()
-                    .unwrap()
-                    .ends_with("tasks/greeting/task.oo.yaml"));
+                assert!(
+                    task.task
+                        .path
+                        .as_ref()
+                        .unwrap()
+                        .ends_with("tasks/greeting/task.oo.yaml")
+                );
 
                 // task should have package_path pointing to test-pkg-1.0.0
-                assert!(task
-                    .task
-                    .package_path
-                    .as_ref()
-                    .unwrap()
-                    .ends_with("test-pkg-1.0.0"));
+                assert!(
+                    task.task
+                        .package_path
+                        .as_ref()
+                        .unwrap()
+                        .ends_with("test-pkg-1.0.0")
+                );
 
                 // name input has FlowInput source
                 let name_input = task.inputs.get(&name_handle).unwrap();
@@ -88,12 +92,13 @@ mod tests {
 
                 // task has message output
                 let message_handle = HandleName::new("message".to_owned());
-                assert!(task
-                    .task
-                    .outputs_def
-                    .as_ref()
-                    .unwrap()
-                    .contains_key(&message_handle));
+                assert!(
+                    task.task
+                        .outputs_def
+                        .as_ref()
+                        .unwrap()
+                        .contains_key(&message_handle)
+                );
 
                 // greet node has to connection: message → flow output
                 let to = task.to.as_ref().unwrap();
@@ -112,12 +117,13 @@ mod tests {
             let process_node = flow_block.nodes.get(&process_id).unwrap();
             assert!(matches!(process_node, manifest_meta::Node::Task(_)));
             if let manifest_meta::Node::Task(task) = process_node {
-                assert!(task
-                    .task
-                    .path
-                    .as_ref()
-                    .unwrap()
-                    .ends_with("tasks/transform/task.oo.yaml"));
+                assert!(
+                    task.task
+                        .path
+                        .as_ref()
+                        .unwrap()
+                        .ends_with("tasks/transform/task.oo.yaml")
+                );
 
                 let text_handle = HandleName::new("text".to_owned());
                 let text_input = task.inputs.get(&text_handle).unwrap();
@@ -126,9 +132,7 @@ mod tests {
                 assert!(text_input.value.is_provided());
                 assert_eq!(
                     text_input.value,
-                    ValueState::Value(JsonValue::String(
-                        "hello world".to_string()
-                    ))
+                    ValueState::Value(JsonValue::String("hello world".to_string()))
                 );
 
                 // text input has no connection source (value-only)
@@ -156,11 +160,13 @@ mod tests {
 
         // flow inputs_def: name
         let name_handle = HandleName::new("name".to_owned());
-        assert!(flow_block
-            .inputs_def
-            .as_ref()
-            .unwrap()
-            .contains_key(&name_handle));
+        assert!(
+            flow_block
+                .inputs_def
+                .as_ref()
+                .unwrap()
+                .contains_key(&name_handle)
+        );
 
         // flow outputs_froms: result from pipeline.final_result
         let result_handle = HandleName::new("result".to_owned());
@@ -195,9 +201,11 @@ mod tests {
 
             // Verify the nested subflow was resolved correctly
             let nested_flow = subflow_node.flow.read().unwrap();
-            assert!(nested_flow
-                .path
-                .ends_with("subflows/pipeline/subflow.oo.yaml"));
+            assert!(
+                nested_flow
+                    .path
+                    .ends_with("subflows/pipeline/subflow.oo.yaml")
+            );
 
             // nested subflow has 2 nodes (greeting_node and transform_node)
             assert_eq!(nested_flow.nodes.len(), 2);
@@ -207,18 +215,20 @@ mod tests {
             let greeting_node = nested_flow.nodes.get(&greeting_id).unwrap();
             assert!(matches!(greeting_node, manifest_meta::Node::Task(_)));
             if let manifest_meta::Node::Task(task) = greeting_node {
-                assert!(task
-                    .task
-                    .path
-                    .as_ref()
-                    .unwrap()
-                    .ends_with("tasks/greeting/task.oo.yaml"));
-                assert!(task
-                    .task
-                    .package_path
-                    .as_ref()
-                    .unwrap()
-                    .ends_with("test-pkg-1.0.0"));
+                assert!(
+                    task.task
+                        .path
+                        .as_ref()
+                        .unwrap()
+                        .ends_with("tasks/greeting/task.oo.yaml")
+                );
+                assert!(
+                    task.task
+                        .package_path
+                        .as_ref()
+                        .unwrap()
+                        .ends_with("test-pkg-1.0.0")
+                );
             }
 
             // transform_node is a Task resolved via self::transform
@@ -226,12 +236,13 @@ mod tests {
             let transform_node = nested_flow.nodes.get(&transform_id).unwrap();
             assert!(matches!(transform_node, manifest_meta::Node::Task(_)));
             if let manifest_meta::Node::Task(task) = transform_node {
-                assert!(task
-                    .task
-                    .path
-                    .as_ref()
-                    .unwrap()
-                    .ends_with("tasks/transform/task.oo.yaml"));
+                assert!(
+                    task.task
+                        .path
+                        .as_ref()
+                        .unwrap()
+                        .ends_with("tasks/transform/task.oo.yaml")
+                );
 
                 // transform_node.text input comes from greeting_node.message
                 let text_handle = HandleName::new("text".to_owned());
@@ -258,11 +269,13 @@ mod tests {
             ));
 
             // nested subflow has package_path set to the package root
-            assert!(nested_flow
-                .package_path
-                .as_ref()
-                .unwrap()
-                .ends_with("test-pkg-1.0.0"));
+            assert!(
+                nested_flow
+                    .package_path
+                    .as_ref()
+                    .unwrap()
+                    .ends_with("test-pkg-1.0.0")
+            );
         }
     }
 

@@ -1,5 +1,5 @@
 use super::common::{HandlesTos, NodeInput};
-use crate::{extend_node_common_field, Block, BlockScope, SubflowBlock, TaskBlock};
+use crate::{Block, BlockScope, SubflowBlock, TaskBlock, extend_node_common_field};
 use crate::{HandleName, NodeId};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};

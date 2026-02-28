@@ -293,8 +293,11 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
                                 }
 
                                 if find_package_file(&scope_path).is_some() {
-                                    let status =
-                                        get_layer_status_with_registry_fallback(&scope_path, None, None);
+                                    let status = get_layer_status_with_registry_fallback(
+                                        &scope_path,
+                                        None,
+                                        None,
+                                    );
                                     package_map.insert(scope_path, format!("{status:?}"));
                                 }
                             }
@@ -348,11 +351,17 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
                     layer::import_package_layer(import_package, layer_dir)?;
                 }
                 Ok(layer::PackageLayerStatus::Exist) => {
-                    info!("Package layer {:?} already exists, skip import", import_package);
+                    info!(
+                        "Package layer {:?} already exists, skip import",
+                        import_package
+                    );
                     println!("Package layer already exists, skipping import.");
                 }
                 Err(e) => {
-                    tracing::info!("import package path doesn't exist package file: {:?}. just import package layer.", e);
+                    tracing::info!(
+                        "import package path doesn't exist package file: {:?}. just import package layer.",
+                        e
+                    );
                     layer::import_package_layer(import_package, layer_dir)?;
                 }
             }
@@ -378,7 +387,9 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
         }
         LayerAction::DeleteAll {} => {
             // TODO: 修改成 prune API，不要清理所有的 layer data，会有误删的问题
-            tracing::warn!("delete all layer data is not recommended, it will delete all layer data, including the layers that are used by other projects");
+            tracing::warn!(
+                "delete all layer data is not recommended, it will delete all layer data, including the layers that are used by other projects"
+            );
             layer::delete_all_layer_data()?;
         }
     }

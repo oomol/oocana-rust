@@ -5,7 +5,7 @@ mod query;
 
 use cache::CacheAction;
 use fun::arg::{config, find_env_file, load_bind_paths, parse_search_paths, temp_root};
-use one_shot::one_shot::{run_block, BlockArgs};
+use one_shot::one_shot::{BlockArgs, run_block};
 use std::{collections::HashSet, path::PathBuf};
 
 use clap::{Parser, Subcommand};
@@ -134,6 +134,16 @@ enum Commands {
         dry_run: bool,
         #[arg(help = "If true, oocana will forward report messages to console", long)]
         report_to_console: bool,
+        #[arg(
+            help = "Remote block API base URL. Overrides OOCANA_REMOTE_BLOCK_URL env var.",
+            long
+        )]
+        remote_block_url: Option<String>,
+        #[arg(
+            help = "Timeout in seconds for remote task execution. Overrides OOCANA_TASK_TIMEOUT env var. Default is 1800 (30 minutes). Use 0 to disable timeout and poll indefinitely.",
+            long
+        )]
+        task_timeout: Option<u64>,
     },
     Cache {
         #[command(subcommand)]
@@ -179,11 +189,13 @@ pub fn cli_match() -> Result<()> {
                     // create 和 create-registry 要将特定 stdout stderr 的 target 输出到控制台。因此两个都要为 true。
                     output_to_console: matches!(
                         action,
-                        layer::LayerAction::Create { .. } | layer::LayerAction::CreateRegistry { .. }
+                        layer::LayerAction::Create { .. }
+                            | layer::LayerAction::CreateRegistry { .. }
                     ),
                     capture_stdout_stderr_target: matches!(
                         action,
-                        layer::LayerAction::Create { .. } | layer::LayerAction::CreateRegistry { .. }
+                        layer::LayerAction::Create { .. }
+                            | layer::LayerAction::CreateRegistry { .. }
                     ),
                 }
             })?
@@ -243,6 +255,8 @@ pub fn cli_match() -> Result<()> {
             pkg_data_root,
             project_data,
             report_to_console,
+            remote_block_url,
+            task_timeout,
         } => {
             let bind_paths = load_bind_paths(bind_paths, bind_path_file);
             let search_paths = parse_search_paths(search_paths);
@@ -294,6 +308,8 @@ pub fn cli_match() -> Result<()> {
                 project_data: &PathBuf::from(project_data),
                 pkg_data_root: &PathBuf::from(pkg_data_root),
                 report_to_console: report_to_console.to_owned(),
+                remote_block_url: remote_block_url.to_owned(),
+                task_timeout: task_timeout.to_owned(),
             })?
         }
         Commands::Cache { action } => {

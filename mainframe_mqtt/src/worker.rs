@@ -6,8 +6,8 @@ use tracing::warn;
 
 use job::{JobId, SessionId};
 use mainframe::{
-    worker::{WorkerRxImpl, WorkerTxImpl},
     MessageData,
+    worker::{WorkerRxImpl, WorkerTxImpl},
 };
 
 pub struct WorkerTx {

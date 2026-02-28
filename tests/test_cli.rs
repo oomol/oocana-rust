@@ -14,8 +14,5 @@ fn should_failed_without_subcommand() {
 
 #[test]
 fn cache_clear() {
-    oocana_cmd()
-        .args(["cache", "clear"])
-        .assert()
-        .success();
+    oocana_cmd().args(["cache", "clear"]).assert().success();
 }

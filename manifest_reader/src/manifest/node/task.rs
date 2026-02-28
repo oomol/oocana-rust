@@ -4,10 +4,10 @@ use tracing::warn;
 use crate::{
     extend_node_common_field,
     manifest::{InputHandle, NodeInputFrom, OutputHandle, TaskBlock},
-    path_finder::{calculate_block_value_type, BlockValueType},
+    path_finder::{BlockValueType, calculate_block_value_type},
 };
 
-use super::common::{default_concurrency, default_progress_weight, NodeId};
+use super::common::{NodeId, default_concurrency, default_progress_weight};
 
 extend_node_common_field!(TaskNode {
     task: TaskNodeBlock,

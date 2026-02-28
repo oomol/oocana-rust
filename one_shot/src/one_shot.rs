@@ -1,8 +1,8 @@
 //! Run flow once and exit.
 
 use job::SessionId;
-use mainframe::scheduler::ExecutorParameters;
 use mainframe::BindPath;
+use mainframe::scheduler::ExecutorParameters;
 use manifest_meta::BlockResolver;
 use manifest_reader::path_finder::BlockPathFinder;
 use std::collections::HashSet;
@@ -94,6 +94,8 @@ pub struct BlockArgs<'a> {
     pub project_data: &'a PathBuf,
     pub pkg_data_root: &'a PathBuf,
     pub report_to_console: bool,
+    pub remote_block_url: Option<String>,
+    pub task_timeout: Option<u64>,
 }
 
 async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
@@ -119,6 +121,8 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
         project_data,
         pkg_data_root,
         report_to_console,
+        remote_block_url,
+        task_timeout,
     } = block_args;
     let session_id = SessionId::new(session);
     tracing::info!("Session start with session id: {}", session_id);
@@ -290,6 +294,11 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
     // delay to collect rest loggings
     let delay_abort_handle = delay_abort_rx.run();
 
+    let remote_task_config = runtime::remote_task_config::RemoteTaskConfig::from_env_and_args(
+        remote_block_url.as_deref(),
+        task_timeout,
+    );
+
     let shared = Arc::new(runtime::shared::Shared {
         session_id: session_id.clone(),
         address: addr.to_string(),
@@ -297,6 +306,7 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
         delay_abort_tx,
         reporter: reporter_tx.clone(),
         use_cache,
+        remote_task_config,
     });
 
     let block_reader = BlockResolver::new();

@@ -7,7 +7,7 @@ use utils::error::Result;
 
 use super::{
     calculate_block_value_type,
-    search_paths::{search_block_manifest, BlockManifestParams},
+    search_paths::{BlockManifestParams, search_block_manifest},
 };
 
 pub struct ServiceManifestParams<'a> {

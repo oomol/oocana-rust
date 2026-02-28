@@ -4,7 +4,7 @@ use crate::layer::{
     create_tmp_layer, delete_layer, merge_layer, random_merge_point, random_name, unmerge,
 };
 use crate::ovmlayer::{self, BindPath};
-use crate::package_layer::{PackageLayer, CACHE_DIR};
+use crate::package_layer::{CACHE_DIR, PackageLayer};
 use crate::package_store::get_or_create_package_layer;
 use crate::registry_layer_store::get_registry_layer;
 use std::collections::HashMap;

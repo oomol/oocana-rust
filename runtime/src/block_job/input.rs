@@ -13,7 +13,10 @@ pub fn validate_inputs(
     let mut error_handle = HashMap::new();
 
     for (handle, wrap_value) in input_values {
-        if let Some(def) = inputs_def.as_ref().and_then(|inputs_def| inputs_def.get(handle)) {
+        if let Some(def) = inputs_def
+            .as_ref()
+            .and_then(|inputs_def| inputs_def.get(handle))
+        {
             if let Some(ref json_schema) = def.json_schema {
                 if let Err(err) = validate(json_schema, &wrap_value.value) {
                     error_handle.insert(

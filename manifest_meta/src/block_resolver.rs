@@ -1,7 +1,7 @@
 use manifest_reader::{
     manifest::{self, InputHandles},
     path_finder::BlockPathFinder,
-    reader::read_task_block,
+    reader::{read_block_metadata, read_task_block, BlockMetadata},
 };
 use std::{
     collections::HashMap,
@@ -11,7 +11,7 @@ use std::{
 use utils::error::Result;
 
 use crate::service::ServiceBlock;
-use crate::{flow_resolver, service_resolver, Block, Service, SlotBlock, SubflowBlock, TaskBlock};
+use crate::{Block, Service, SlotBlock, SubflowBlock, TaskBlock, flow_resolver, service_resolver};
 pub type BlockPath = PathBuf;
 
 pub struct BlockResolver {
@@ -66,7 +66,7 @@ impl BlockResolver {
                 self.read_task_block(&path_finder.find_task_block_path(&file)?)
             }
             manifest::TaskNodeBlock::Inline(block) => {
-                let task_block = TaskBlock::from_manifest(block, None, None);
+                let task_block = TaskBlock::from_manifest(block, None, None, false, None);
                 Ok(Arc::new(task_block))
             }
         }
@@ -205,10 +205,21 @@ impl BlockResolver {
             }
         }
 
+        let pkg_path = package_path(task_path).ok();
+        let metadata = pkg_path
+            .as_deref()
+            .map(read_block_metadata)
+            .unwrap_or(BlockMetadata {
+                hide_source: false,
+                timeout: None,
+            });
+
         let task = Arc::new(TaskBlock::from_manifest(
             read_task_block(task_path)?,
             Some(task_path.to_owned()),
-            package_path(task_path).ok(),
+            pkg_path,
+            metadata.hide_source,
+            metadata.timeout,
         ));
 
         let task_cache = self.task_cache.get_or_insert_with(HashMap::new);
@@ -248,6 +259,11 @@ impl BlockResolver {
         {
             let mut guard = placeholder.write().unwrap();
             *guard = flow;
+            if let Ok(pkg_path) = package_path(flow_path) {
+                let metadata = read_block_metadata(&pkg_path);
+                guard.hide_source = metadata.hide_source;
+                guard.remote_timeout = metadata.timeout;
+            }
         }
 
         Ok(placeholder)

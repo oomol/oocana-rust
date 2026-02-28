@@ -2,7 +2,7 @@ use std::sync::{Arc, RwLock};
 
 use manifest_reader::manifest::InputHandles;
 
-use crate::{condition::ConditionBlock, ServiceBlock, SlotBlock, SubflowBlock, TaskBlock};
+use crate::{ServiceBlock, SlotBlock, SubflowBlock, TaskBlock, condition::ConditionBlock};
 
 #[derive(Debug, Clone)]
 pub enum Block {
@@ -33,5 +33,4 @@ impl Block {
             Block::Condition(_) => None,
         }
     }
-
 }

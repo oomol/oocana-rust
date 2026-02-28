@@ -12,7 +12,7 @@ use super::error::Result;
 use std::sync::Mutex;
 use tracing::level_filters::LevelFilter;
 use tracing_appender::non_blocking;
-use tracing_subscriber::{fmt, layer::SubscriberExt, EnvFilter, Layer, Registry};
+use tracing_subscriber::{EnvFilter, Layer, Registry, fmt, layer::SubscriberExt};
 
 lazy_static::lazy_static! {
     static ref LOGGER_DIR: Mutex<PathBuf> = Mutex::new(config::oocana_dir().unwrap_or(std::env::temp_dir()));

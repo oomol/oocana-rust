@@ -90,3 +90,62 @@ pub fn read_manifest_file<T: DeserializeOwned>(file_path: &Path) -> Result<T> {
     let yaml_data: T = serde_yaml::from_str(&s)?;
     Ok(yaml_data)
 }
+
+/// Metadata read from `.metadata.oo.json` in the package root directory.
+pub struct BlockMetadata {
+    pub hide_source: bool,
+    /// Per-block timeout override for remote execution, in seconds.
+    pub timeout: Option<u64>,
+}
+
+/// Read package metadata from a `.metadata.oo.json` file in the package root directory.
+/// Returns defaults (hide_source=false, timeout=None) when the metadata file is missing.
+/// Falls back to fail-closed (hide_source=true, timeout=None) when metadata exists but cannot be read or parsed.
+pub fn read_block_metadata(package_path: &Path) -> BlockMetadata {
+    let metadata_path = package_path.join(".metadata.oo.json");
+    let content = match std::fs::read_to_string(&metadata_path) {
+        Ok(content) => content,
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
+            return BlockMetadata {
+                hide_source: false,
+                timeout: None,
+            };
+        }
+        Err(err) => {
+            tracing::error!(
+                "Failed to read block metadata at {:?}: {}. Falling back to hide_source=true.",
+                metadata_path,
+                err
+            );
+            return BlockMetadata {
+                hide_source: true,
+                timeout: None,
+            };
+        }
+    };
+
+    #[derive(serde::Deserialize)]
+    struct RawBlockMetadata {
+        #[serde(default)]
+        hide_source: bool,
+        timeout: Option<u64>,
+    }
+
+    match serde_json::from_str::<RawBlockMetadata>(&content) {
+        Ok(m) => BlockMetadata {
+            hide_source: m.hide_source,
+            timeout: m.timeout,
+        },
+        Err(err) => {
+            tracing::error!(
+                "Invalid block metadata at {:?}: {}. Falling back to hide_source=true.",
+                metadata_path,
+                err
+            );
+            BlockMetadata {
+                hide_source: true,
+                timeout: None,
+            }
+        }
+    }
+}

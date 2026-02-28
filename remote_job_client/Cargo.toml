@@ -1,0 +1,20 @@
+[package]
+name = "remote_job_client"
+version = "0.30.34"
+edition = "2024"
+description = "Client for create/get-detail/get-result remote job APIs"
+
+[features]
+mock = ["dep:axum", "dep:uuid", "tokio/net", "tokio/rt-multi-thread"]
+
+[dependencies]
+reqwest = { version = "0.12", features = ["rustls-tls", "json"], default-features = false }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "2.0"
+tokio = { version = "1.0", features = ["time"] }
+axum = { version = "0.8", optional = true }
+uuid = { version = "1.0", features = ["v4"], optional = true }
+
+[dev-dependencies]
+tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }

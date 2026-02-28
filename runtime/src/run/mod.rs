@@ -134,23 +134,46 @@ pub fn run_job(params: JobParams) -> Option<BlockJobHandle> {
             inputs_def,
             outputs_def,
             common,
-        } => crate::block_job::execute_task_job(crate::block_job::TaskJobParameters {
-            executor: task_block.executor.clone(),
-            block_path: task_block.path_str(),
-            inputs_def,
-            outputs_def,
-            shared: common.shared,
-            flow_path: parent_flow.as_ref().map(|f| f.read().unwrap().path_str.clone()),
-            injection_store: parent_flow.as_ref().and_then(|f| f.read().unwrap().injection_store.clone()),
-            dir: block_job::block_dir(&task_block, parent_flow.as_ref(), Some(&common.scope)),
-            stacks: common.stacks,
-            job_id: common.job_id,
-            inputs: common.inputs,
-            block_status: common.block_status,
-            scope: common.scope,
-            timeout,
-            inputs_def_patch,
-        }),
+        } => {
+            if task_block.hide_source {
+                crate::block_job::execute_remote_block_job(
+                    crate::block_job::RemoteBlockJobParameters {
+                        task_block,
+                        shared: common.shared,
+                        stacks: common.stacks,
+                        job_id: common.job_id,
+                        inputs: common.inputs,
+                        block_status: common.block_status,
+                    },
+                )
+            } else {
+                crate::block_job::execute_task_job(crate::block_job::TaskJobParameters {
+                    executor: task_block.executor.clone(),
+                    block_path: task_block.path_str(),
+                    inputs_def,
+                    outputs_def,
+                    shared: common.shared,
+                    flow_path: parent_flow
+                        .as_ref()
+                        .map(|f| f.read().unwrap().path_str.clone()),
+                    injection_store: parent_flow
+                        .as_ref()
+                        .and_then(|f| f.read().unwrap().injection_store.clone()),
+                    dir: block_job::block_dir(
+                        &task_block,
+                        parent_flow.as_ref(),
+                        Some(&common.scope),
+                    ),
+                    stacks: common.stacks,
+                    job_id: common.job_id,
+                    inputs: common.inputs,
+                    block_status: common.block_status,
+                    scope: common.scope,
+                    timeout,
+                    inputs_def_patch,
+                })
+            }
+        }
         JobParams::Service {
             service_block,
             parent_flow,
@@ -163,7 +186,9 @@ pub fn run_job(params: JobParams) -> Option<BlockJobHandle> {
             job_id: common.job_id,
             inputs: common.inputs,
             block_status: common.block_status,
-            injection_store: parent_flow.as_ref().and_then(|f| f.read().unwrap().injection_store.clone()),
+            injection_store: parent_flow
+                .as_ref()
+                .and_then(|f| f.read().unwrap().injection_store.clone()),
             parent_flow,
             scope: common.scope,
             inputs_def_patch,

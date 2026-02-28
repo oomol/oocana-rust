@@ -66,7 +66,9 @@ fn shell_flow_env_with_equals_in_value() {
     oocana_cmd()
         .args(["run", "examples/shell"])
         .assert()
-        .stdout(contains("CONNECTION=host=localhost;user=admin;pass=secret=123"))
+        .stdout(contains(
+            "CONNECTION=host=localhost;user=admin;pass=secret=123",
+        ))
         .success();
 }
 

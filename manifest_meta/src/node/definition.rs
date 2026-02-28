@@ -3,7 +3,7 @@ use std::{collections::HashMap, path::PathBuf, sync::Arc};
 use manifest_reader::manifest::{InputHandles, OutputHandle, OutputHandles};
 
 use crate::condition::ConditionBlock;
-use crate::{scope::BlockScope, Block, HandleName, NodeId, ServiceBlock, SlotBlock, TaskBlock};
+use crate::{Block, HandleName, NodeId, ServiceBlock, SlotBlock, TaskBlock, scope::BlockScope};
 
 use crate::extend_node_common_field;
 

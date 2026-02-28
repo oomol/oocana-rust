@@ -16,6 +16,8 @@ pub struct TaskBlock {
     pub additional_outputs: bool,
     // TODO: package_path is not reliable, it should be removed. use block type instead.
     pub package_path: Option<PathBuf>,
+    pub hide_source: bool,
+    pub remote_timeout: Option<u64>,
 }
 
 impl TaskBlock {
@@ -51,6 +53,8 @@ impl TaskBlock {
         manifest: manifest::TaskBlock,
         path: Option<PathBuf>,
         package: Option<PathBuf>,
+        hide_source: bool,
+        remote_timeout: Option<u64>,
     ) -> Self {
         let manifest::TaskBlock {
             executor,
@@ -70,6 +74,8 @@ impl TaskBlock {
             package_path: package,
             additional_inputs,
             additional_outputs,
+            hide_source,
+            remote_timeout,
         }
     }
 }

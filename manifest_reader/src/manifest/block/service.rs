@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 
 use super::{
-    handle::{to_input_handles, to_output_handles, InputHandle, OutputHandle},
     InputHandles, OutputHandles,
+    handle::{InputHandle, OutputHandle, to_input_handles, to_output_handles},
 };
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
