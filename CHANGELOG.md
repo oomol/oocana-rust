@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.30.36 (2026-02-28)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* refactor: rename task_timeout to remote_block_timeout by @leavesster in https://github.com/oomol/oocana-rust/pull/420
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.30.35...v0.30.36
+
 ## 0.30.35 (2026-02-28)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
