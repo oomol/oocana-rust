@@ -2,7 +2,7 @@ use assert_cmd::prelude::*;
 use std::process::{Command, Stdio};
 
 use serde_json::Value;
-use user_task_client::mock;
+use remote_job_client::mock;
 
 fn oocana_cmd() -> Command {
     let mut cmd = Command::cargo_bin("oocana").unwrap();
@@ -37,7 +37,7 @@ fn remote_task_flow() {
         .args([
             "run",
             "examples/remote_task",
-            "--task-api-url",
+            "--remote-block-url",
             &server.url(),
             "--search-paths",
             "examples/remote_task",

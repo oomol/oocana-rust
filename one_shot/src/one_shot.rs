@@ -94,7 +94,7 @@ pub struct BlockArgs<'a> {
     pub project_data: &'a PathBuf,
     pub pkg_data_root: &'a PathBuf,
     pub report_to_console: bool,
-    pub task_api_url: Option<String>,
+    pub remote_block_url: Option<String>,
     pub task_timeout: Option<u64>,
 }
 
@@ -121,7 +121,7 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
         project_data,
         pkg_data_root,
         report_to_console,
-        task_api_url,
+        remote_block_url,
         task_timeout,
     } = block_args;
     let session_id = SessionId::new(session);
@@ -295,7 +295,7 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
     let delay_abort_handle = delay_abort_rx.run();
 
     let remote_task_config = runtime::remote_task_config::RemoteTaskConfig::from_env_and_args(
-        task_api_url.as_deref(),
+        remote_block_url.as_deref(),
         task_timeout,
     );
 

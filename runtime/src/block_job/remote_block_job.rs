@@ -4,7 +4,7 @@ use std::sync::Arc;
 use job::{BlockInputs, BlockJobStacks, JobId};
 use manifest_meta::{HandleName, TaskBlock};
 use tracing::warn;
-use user_task_client::{CreateTaskRequest, TaskResult, TaskStatus, UserTaskClient};
+use remote_job_client::{CreateTaskRequest, RemoteJobClient, TaskResult, TaskStatus};
 use utils::output::OutputValue;
 
 use crate::block_status::BlockStatusTx;
@@ -54,7 +54,7 @@ pub fn execute_remote_block_job(params: RemoteBlockJobParameters) -> Option<Bloc
                 None,
                 Some(
                     "Remote task execution requested but no API configuration provided. \
-                     Set --task-api-url or OOCANA_TASK_API_URL."
+                     Set --remote-block-url or OOCANA_REMOTE_BLOCK_URL."
                         .to_owned(),
                 ),
                 None,
@@ -88,7 +88,7 @@ pub fn execute_remote_block_job(params: RemoteBlockJobParameters) -> Option<Bloc
         map
     });
 
-    let mut client = UserTaskClient::new(&config.base_url);
+    let mut client = RemoteJobClient::new(&config.base_url);
     if let Some(ref token) = config.auth_token {
         client = client.with_token(token);
     }
@@ -112,7 +112,7 @@ pub fn execute_remote_block_job(params: RemoteBlockJobParameters) -> Option<Bloc
 
     let spawn_handle = tokio::spawn(async move {
         // 1. Create remote task
-        let task_id = match client.create_user_task(&payload).await {
+        let task_id = match client.create_remote_job(&payload).await {
             Ok(id) => id,
             Err(e) => {
                 let msg = format!("Failed to create remote task: {e}");

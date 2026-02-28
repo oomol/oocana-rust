@@ -18,7 +18,7 @@ impl RemoteTaskConfig {
             .filter(|s| !s.is_empty())
             .map(|s| s.to_owned())
             .or_else(|| {
-                std::env::var("OOCANA_TASK_API_URL")
+                std::env::var("OOCANA_REMOTE_BLOCK_URL")
                     .ok()
                     .map(|s| s.trim().to_owned())
                     .filter(|s| !s.is_empty())

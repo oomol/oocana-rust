@@ -13,7 +13,7 @@ vault = { path = "../vault" }
 mainframe = { path = "../mainframe"}
 manifest_meta = { path = "../manifest_meta"}
 manifest_reader = { path = "../manifest_reader"}
-user_task_client = { path = "../user_task_client" }
+remote_job_client = { path = "../remote_job_client" }
 serde = { version = "1.0.149", features = ["derive"] }
 serde_json = {version = "1.0.89", features = ["preserve_order"] }
 rand = "0.8.4"

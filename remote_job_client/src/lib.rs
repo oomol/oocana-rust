@@ -40,7 +40,7 @@ impl std::fmt::Debug for Auth {
 }
 
 #[derive(Debug, Clone)]
-pub struct UserTaskClient {
+pub struct RemoteJobClient {
     base_url: String,
     client: Client,
     auth: Auth,
@@ -48,7 +48,7 @@ pub struct UserTaskClient {
 
 const DEFAULT_HTTP_TIMEOUT: Duration = Duration::from_secs(30);
 
-impl UserTaskClient {
+impl RemoteJobClient {
     pub fn new(base_url: impl Into<String>) -> Self {
         let client = Client::builder()
             .timeout(DEFAULT_HTTP_TIMEOUT)
@@ -66,7 +66,7 @@ impl UserTaskClient {
         self
     }
 
-    pub async fn create_user_task(&self, payload: &CreateTaskRequest) -> Result<String> {
+    pub async fn create_remote_job(&self, payload: &CreateTaskRequest) -> Result<String> {
         let url = format!("{}/v3/users/me/tasks", self.base_url);
         let req = self.client.post(url).json(payload);
         let resp = self.with_auth(req).send().await?;
