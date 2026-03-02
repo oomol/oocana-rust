@@ -197,9 +197,9 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
             if manifest_reader::reader::read_block_metadata(std::path::Path::new(package))
                 .hide_source
             {
-                info!("package {package} has hide_source enabled, skipping layer creation");
-                println!("Package has hide_source enabled, skipping layer creation.");
-                return Ok(());
+                return Err(Error::from(format!(
+                    "Cannot create layer for package {package}: hide_source is enabled"
+                )));
             }
             let bind_path_arg = load_bind_paths(bind_paths, bind_path_file);
             let envs: HashMap<String, String> = std::env::vars()
@@ -227,9 +227,9 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
             if manifest_reader::reader::read_block_metadata(std::path::Path::new(package))
                 .hide_source
             {
-                info!("package {package} has hide_source enabled, skipping registry layer creation");
-                println!("Package has hide_source enabled, skipping layer creation.");
-                return Ok(());
+                return Err(Error::from(format!(
+                    "Cannot create registry layer for package {package}: hide_source is enabled"
+                )));
             }
             let bind_path_arg = load_bind_paths(bind_paths, bind_path_file);
             let envs: HashMap<String, String> = std::env::vars()
@@ -260,6 +260,13 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
             package_name,
             version,
         } => {
+            if manifest_reader::reader::read_block_metadata(std::path::Path::new(package))
+                .hide_source
+            {
+                info!("package ({package}) has hide_source enabled, reporting Exist");
+                println!("{:?}", layer::PackageLayerStatus::Exist);
+                return Ok(());
+            }
             let status = get_layer_status_with_registry_fallback(
                 std::path::Path::new(package),
                 package_name.as_deref(),
