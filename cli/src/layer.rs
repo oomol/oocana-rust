@@ -293,6 +293,11 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
                                 }
 
                                 if find_package_file(&scope_path).is_some() {
+                                    if manifest_reader::reader::read_block_metadata(&scope_path)
+                                        .hide_source
+                                    {
+                                        continue;
+                                    }
                                     let status = get_layer_status_with_registry_fallback(
                                         &scope_path,
                                         None,
@@ -304,6 +309,9 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
                         } else {
                             // Regular directories, use original logic
                             if find_package_file(&path).is_some() {
+                                if manifest_reader::reader::read_block_metadata(&path).hide_source {
+                                    continue;
+                                }
                                 let status =
                                     get_layer_status_with_registry_fallback(&path, None, None);
                                 package_map.insert(path, format!("{status:?}"));
