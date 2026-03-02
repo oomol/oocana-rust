@@ -569,6 +569,9 @@ pub fn get_packages(args: GetPackageArgs<'_>) -> Result<HashMap<PathBuf, String>
                         filter_nodes.is_empty() || filter_nodes.contains(&node.0.to_string())
                     })
                     .for_each(|node| {
+                        if node.1.hide_source() {
+                            return;
+                        }
                         if let Some(package_path) = node.1.package_path() {
                             packages.push(package_path);
                         }
