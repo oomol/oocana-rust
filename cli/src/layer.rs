@@ -194,6 +194,13 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
             retain_env_keys,
             env_file,
         } => {
+            if manifest_reader::reader::read_block_metadata(std::path::Path::new(package))
+                .hide_source
+            {
+                info!("package {package} has hide_source enabled, skipping layer creation");
+                println!("Package has hide_source enabled, skipping layer creation.");
+                return Ok(());
+            }
             let bind_path_arg = load_bind_paths(bind_paths, bind_path_file);
             let envs: HashMap<String, String> = std::env::vars()
                 .filter(|(key, _)| {
@@ -217,6 +224,13 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
             retain_env_keys,
             env_file,
         } => {
+            if manifest_reader::reader::read_block_metadata(std::path::Path::new(package))
+                .hide_source
+            {
+                info!("package {package} has hide_source enabled, skipping registry layer creation");
+                println!("Package has hide_source enabled, skipping layer creation.");
+                return Ok(());
+            }
             let bind_path_arg = load_bind_paths(bind_paths, bind_path_file);
             let envs: HashMap<String, String> = std::env::vars()
                 .filter(|(key, _)| {
