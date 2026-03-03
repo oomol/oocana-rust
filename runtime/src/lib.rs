@@ -569,6 +569,9 @@ pub fn get_packages(args: GetPackageArgs<'_>) -> Result<HashMap<PathBuf, String>
                         filter_nodes.is_empty() || filter_nodes.contains(&node.0.to_string())
                     })
                     .for_each(|node| {
+                        // NOTE: hide_source nodes are skipped here so they won't be
+                        // included in layer status queries. However, this only covers
+                        // top-level nodes; nested subflow nodes are not checked here.
                         if node.1.hide_source() {
                             return;
                         }

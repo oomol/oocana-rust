@@ -91,6 +91,19 @@ pub fn get_or_create_package_layer<P: AsRef<Path>>(
     let pkg = package_meta(package_path)?;
     let version = pkg.version;
     let bootstrap = pkg.scripts.and_then(|s| s.bootstrap);
+
+    // This should never be reached: hide_source packages are blocked at the CLI layer.
+    // Defensive guard to ensure bootstrap is never executed for hide_source packages.
+    let bootstrap = if manifest_reader::reader::read_block_metadata(package_path).hide_source {
+        tracing::warn!(
+            "get_or_create_package_layer called for hide_source package {}, skipping bootstrap",
+            package_path.display()
+        );
+        None
+    } else {
+        bootstrap
+    };
+
     let key = package_path.to_string_lossy().to_string();
 
     let store = load_package_store()?;
