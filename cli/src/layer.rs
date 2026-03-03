@@ -317,6 +317,8 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
                                     if manifest_reader::reader::read_block_metadata(&scope_path)
                                         .hide_source
                                     {
+                                        info!("package ({}) has hide_source enabled, reporting Exist", scope_path.display());
+                                        package_map.insert(scope_path, format!("{:?}", layer::PackageLayerStatus::Exist));
                                         continue;
                                     }
                                     let status = get_layer_status_with_registry_fallback(
@@ -331,6 +333,8 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
                             // Regular directories, use original logic
                             if find_package_file(&path).is_some() {
                                 if manifest_reader::reader::read_block_metadata(&path).hide_source {
+                                    info!("package ({}) has hide_source enabled, reporting Exist", path.display());
+                                    package_map.insert(path, format!("{:?}", layer::PackageLayerStatus::Exist));
                                     continue;
                                 }
                                 let status =
