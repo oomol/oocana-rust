@@ -206,7 +206,7 @@ pub fn parse_run_block_request(
                         }),
                         node_id: None,
                         is_inject: false,
-                        enable_layer: layer::feature_enabled(),
+                        enable_layer: !task_block.hide_source && layer::feature_enabled(),
                     }
                 }
                 _ => scope.clone(),
@@ -237,7 +237,7 @@ pub fn parse_run_block_request(
                     }),
                     node_id: None,
                     is_inject: false,
-                    enable_layer: layer::feature_enabled(),
+                    enable_layer: !subflow_guard.hide_source && layer::feature_enabled(),
                 },
                 _ => scope.clone(),
             };

@@ -224,6 +224,14 @@ impl Node {
         }
     }
 
+    pub fn hide_source(&self) -> bool {
+        match self {
+            Self::Task(task) => task.task.hide_source,
+            Self::Flow(flow) => flow.flow.read().unwrap().hide_source,
+            _ => false,
+        }
+    }
+
     pub fn timeout(&self) -> Option<u64> {
         match self {
             Self::Task(task) => task.timeout,

@@ -194,6 +194,13 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
             retain_env_keys,
             env_file,
         } => {
+            if manifest_reader::reader::read_block_metadata(std::path::Path::new(package))
+                .hide_source
+            {
+                return Err(Error::from(format!(
+                    "Cannot create layer for package {package}: hide_source is enabled"
+                )));
+            }
             let bind_path_arg = load_bind_paths(bind_paths, bind_path_file);
             let envs: HashMap<String, String> = std::env::vars()
                 .filter(|(key, _)| {
@@ -217,6 +224,13 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
             retain_env_keys,
             env_file,
         } => {
+            if manifest_reader::reader::read_block_metadata(std::path::Path::new(package))
+                .hide_source
+            {
+                return Err(Error::from(format!(
+                    "Cannot create registry layer for package {package}: hide_source is enabled"
+                )));
+            }
             let bind_path_arg = load_bind_paths(bind_paths, bind_path_file);
             let envs: HashMap<String, String> = std::env::vars()
                 .filter(|(key, _)| {
@@ -246,6 +260,13 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
             package_name,
             version,
         } => {
+            if manifest_reader::reader::read_block_metadata(std::path::Path::new(package))
+                .hide_source
+            {
+                info!("package ({package}) has hide_source enabled, reporting Exist");
+                println!("{:?}", layer::PackageLayerStatus::Exist);
+                return Ok(());
+            }
             let status = get_layer_status_with_registry_fallback(
                 std::path::Path::new(package),
                 package_name.as_deref(),
@@ -293,6 +314,13 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
                                 }
 
                                 if find_package_file(&scope_path).is_some() {
+                                    if manifest_reader::reader::read_block_metadata(&scope_path)
+                                        .hide_source
+                                    {
+                                        info!("package ({}) has hide_source enabled, reporting Exist", scope_path.display());
+                                        package_map.insert(scope_path, format!("{:?}", layer::PackageLayerStatus::Exist));
+                                        continue;
+                                    }
                                     let status = get_layer_status_with_registry_fallback(
                                         &scope_path,
                                         None,
@@ -304,6 +332,11 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
                         } else {
                             // Regular directories, use original logic
                             if find_package_file(&path).is_some() {
+                                if manifest_reader::reader::read_block_metadata(&path).hide_source {
+                                    info!("package ({}) has hide_source enabled, reporting Exist", path.display());
+                                    package_map.insert(path, format!("{:?}", layer::PackageLayerStatus::Exist));
+                                    continue;
+                                }
                                 let status =
                                     get_layer_status_with_registry_fallback(&path, None, None);
                                 package_map.insert(path, format!("{status:?}"));
