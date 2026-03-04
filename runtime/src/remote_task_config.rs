@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 #[derive(Debug, Clone)]
 pub struct RemoteTaskConfig {
     pub base_url: String,
@@ -7,11 +9,13 @@ pub struct RemoteTaskConfig {
 }
 
 impl RemoteTaskConfig {
-    /// CLI url takes priority over env var. Auth token reuses OOMOL_TOKEN.
+    /// CLI url takes priority over env var, then env_file as fallback.
+    /// Auth token reuses OOMOL_TOKEN.
     /// Returns None if no URL is configured.
     pub fn from_env_and_args(
         cli_url: Option<&str>,
         cli_timeout: Option<u64>,
+        env_file_vars: &HashMap<String, String>,
     ) -> Option<Self> {
         let base_url = cli_url
             .map(str::trim)
@@ -22,13 +26,26 @@ impl RemoteTaskConfig {
                     .ok()
                     .map(|s| s.trim().to_owned())
                     .filter(|s| !s.is_empty())
+            })
+            .or_else(|| {
+                env_file_vars
+                    .get("OOCANA_REMOTE_BLOCK_URL")
+                    .map(|s| s.trim().to_owned())
+                    .filter(|s| !s.is_empty())
             })?;
 
-        let auth_token = std::env::var("OOMOL_TOKEN").ok();
+        let auth_token = std::env::var("OOMOL_TOKEN").ok().or_else(|| {
+            env_file_vars
+                .get("OOMOL_TOKEN")
+                .cloned()
+                .filter(|s| !s.is_empty())
+        });
 
         let timeout_secs = cli_timeout.or_else(|| {
-            std::env::var("OOCANA_REMOTE_BLOCK_TIMEOUT").ok().and_then(|s| {
-                match s.parse() {
+            std::env::var("OOCANA_REMOTE_BLOCK_TIMEOUT")
+                .ok()
+                .or_else(|| env_file_vars.get("OOCANA_REMOTE_BLOCK_TIMEOUT").cloned())
+                .and_then(|s| match s.parse() {
                     Ok(v) => Some(v),
                     Err(_) => {
                         tracing::warn!(
@@ -37,8 +54,7 @@ impl RemoteTaskConfig {
                         );
                         None
                     }
-                }
-            })
+                })
         });
 
         Some(Self {
