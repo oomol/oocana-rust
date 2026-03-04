@@ -39,32 +39,17 @@ const LOGS_PAGE_SIZE: usize = 100;
 const LOGS_DRAIN_INTERVAL_MS: u64 = 1000;
 const LOGS_DRAIN_MAX_EMPTY_ROUNDS: u32 = 10;
 
-const KNOWN_REPORTER_TYPES: &[&str] = &[
-    "SessionStarted",
-    "SessionFinished",
-    "FlowStarted",
-    "FlowFinished",
-    "FlowNodesWillRun",
-    "SubflowBlockStarted",
-    "SubflowBlockFinished",
-    "SubflowBlockOutput",
-    "SlotflowStarted",
-    "SlotflowFinished",
-    "SlotflowOutput",
-    "BlockStarted",
-    "BlockFinished",
-    "BlockOutput",
-    "BlockOutputs",
-    "BlockPreview",
-    "BlockLog",
-    "BlockError",
-    "BlockProgress",
-];
-
 fn is_valid_reporter_message(val: &serde_json::Value) -> bool {
-    val.get("type")
-        .and_then(|t| t.as_str())
-        .is_some_and(|t| KNOWN_REPORTER_TYPES.contains(&t))
+    val.get("type").and_then(|t| t.as_str()).is_some()
+}
+
+/// Immutable context shared across poll_logs / drain_logs calls.
+struct LogPollCtx<'a> {
+    client: &'a RemoteJobClient,
+    task_id: &'a str,
+    reporter: &'a BlockReporterTx,
+    block_status: &'a BlockStatusTx,
+    job_id: &'a JobId,
 }
 
 /// Poll one round of remote logs. Returns `(new_items, saw_session_finished)`.
@@ -72,32 +57,28 @@ fn is_valid_reporter_message(val: &serde_json::Value) -> bool {
 /// (empty stacks) was encountered — this is the definitive last event produced
 /// by the remote server session.
 async fn poll_logs(
-    client: &RemoteJobClient,
-    task_id: &str,
+    ctx: &LogPollCtx<'_>,
     logs_page: &mut u32,
     logs_sent_on_page: &mut usize,
-    reporter: &BlockReporterTx,
-    block_status: &BlockStatusTx,
-    job_id: &JobId,
     finished: &mut bool,
 ) -> (usize, bool) {
     let mut new_items = 0;
     let mut saw_session_finished = false;
     loop {
-        match client.get_task_logs(task_id, *logs_page).await {
+        match ctx.client.get_task_logs(ctx.task_id, *logs_page).await {
             Ok(items) => {
                 let page_len = items.len();
                 for (i, item) in items.into_iter().enumerate() {
-                    let remote_stacks_empty = item
+                    let has_remote_stacks = item
                         .get("stacks")
                         .and_then(|s| s.as_array())
-                        .map_or(true, |arr| arr.is_empty());
+                        .is_some_and(|arr| !arr.is_empty());
                     let msg_type = item.get("type").and_then(|t| t.as_str());
 
                     // Detect root-level SessionFinished as the definitive
                     // "all logs produced" signal, even for entries already sent.
                     if !saw_session_finished
-                        && remote_stacks_empty
+                        && !has_remote_stacks
                         && msg_type == Some("SessionFinished")
                     {
                         saw_session_finished = true;
@@ -114,15 +95,15 @@ async fn poll_logs(
                     let mut should_finish = false;
                     let mut finish_error: Option<String> = None;
                     let mut finish_result: Option<HashMap<HandleName, Arc<OutputValue>>> = None;
-                    if remote_stacks_empty {
+                    if !has_remote_stacks {
                         match msg_type {
                             Some("BlockOutput") => {
                                 if let (Some(output), Some(handle)) = (
                                     item.get("output").cloned(),
                                     item.get("handle").and_then(|h| h.as_str()),
                                 ) {
-                                    block_status.output(
-                                        job_id.clone(),
+                                    ctx.block_status.output(
+                                        ctx.job_id.clone(),
                                         Arc::new(OutputValue::new(output, true)),
                                         HandleName::new(handle.to_owned()),
                                         None,
@@ -141,7 +122,7 @@ async fn poll_logs(
                                             )
                                         })
                                         .collect();
-                                    block_status.outputs(job_id.clone(), outputs);
+                                    ctx.block_status.outputs(ctx.job_id.clone(), outputs);
                                 }
                             }
                             Some("BlockFinished") | Some("SubflowBlockFinished") => {
@@ -171,7 +152,7 @@ async fn poll_logs(
                     }
 
                     if is_valid_reporter_message(&item) {
-                        reporter.forward_remote_log(item);
+                        ctx.reporter.forward_remote_log(item);
                     } else {
                         warn!(
                             "Ignoring unknown remote log entry: {}",
@@ -182,7 +163,7 @@ async fn poll_logs(
                     }
 
                     if should_finish {
-                        block_status.finish(job_id.clone(), finish_result, finish_error, None);
+                        ctx.block_status.finish(ctx.job_id.clone(), finish_result, finish_error, None);
                         *finished = true;
                     }
                     *logs_sent_on_page += 1;
@@ -198,7 +179,7 @@ async fn poll_logs(
             Err(e) => {
                 warn!(
                     "Failed to poll remote logs for task {} page {}: {}",
-                    task_id, *logs_page, e
+                    ctx.task_id, *logs_page, e
                 );
                 break;
             }
@@ -212,20 +193,16 @@ async fn poll_logs(
 /// - a root-level `SessionFinished` is seen (definitive end signal), or
 /// - no new items arrive for `LOGS_DRAIN_MAX_EMPTY_ROUNDS` consecutive rounds.
 async fn drain_logs(
-    client: &RemoteJobClient,
-    task_id: &str,
+    ctx: &LogPollCtx<'_>,
     logs_page: &mut u32,
     logs_sent_on_page: &mut usize,
-    reporter: &BlockReporterTx,
-    block_status: &BlockStatusTx,
-    job_id: &JobId,
     finished: &mut bool,
 ) {
     let interval = std::time::Duration::from_millis(LOGS_DRAIN_INTERVAL_MS);
     let mut empty_rounds: u32 = 0;
     loop {
         let (count, saw_session_finished) =
-            poll_logs(client, task_id, logs_page, logs_sent_on_page, reporter, block_status, job_id, finished).await;
+            poll_logs(ctx, logs_page, logs_sent_on_page, finished).await;
         if saw_session_finished {
             break;
         }
@@ -390,14 +367,17 @@ pub fn execute_remote_block_job(params: RemoteBlockJobParameters) -> Option<Bloc
             block_status_clone.progress(job_id_clone.clone(), detail.progress as f32);
 
             // Poll remote logs — outputs and finish are dispatched from here.
+            let log_ctx = LogPollCtx {
+                client: &client,
+                task_id: &task_id,
+                reporter: &reporter_clone,
+                block_status: &block_status_clone,
+                job_id: &job_id_clone,
+            };
             let _ = poll_logs(
-                &client,
-                &task_id,
+                &log_ctx,
                 &mut logs_page,
                 &mut logs_sent_on_page,
-                &reporter_clone,
-                &block_status_clone,
-                &job_id_clone,
                 &mut finished,
             )
             .await;
@@ -407,13 +387,9 @@ pub fn execute_remote_block_job(params: RemoteBlockJobParameters) -> Option<Bloc
                     // Drain remaining logs — BlockFinished in the log stream
                     // drives reporter.finished() and block_status.finish().
                     drain_logs(
-                        &client,
-                        &task_id,
+                        &log_ctx,
                         &mut logs_page,
                         &mut logs_sent_on_page,
-                        &reporter_clone,
-                        &block_status_clone,
-                        &job_id_clone,
                         &mut finished,
                     )
                     .await;

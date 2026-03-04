@@ -131,16 +131,27 @@ impl BlockReporterTx {
                 .and_then(|s| s.as_array())
                 .cloned()
                 .unwrap_or_default();
-            let mut merged = serde_json::to_value(self.stacks.vec())
-                .unwrap()
-                .as_array()
-                .cloned()
-                .unwrap_or_default();
+            let local_stacks = match serde_json::to_value(self.stacks.vec()) {
+                Ok(Value::Array(arr)) => arr,
+                Ok(_) => {
+                    tracing::warn!("forward_remote_log: local stacks serialized to non-array");
+                    vec![]
+                }
+                Err(e) => {
+                    tracing::warn!("forward_remote_log: failed to serialize local stacks: {e}");
+                    vec![]
+                }
+            };
+            let mut merged = local_stacks;
             merged.extend(remote_stacks);
             obj.insert("stacks".into(), Value::Array(merged));
         }
 
-        let bytes = serde_json::to_vec(&item).unwrap_or_default();
-        self.tx.send_raw(bytes);
+        match serde_json::to_vec(&item) {
+            Ok(bytes) => self.tx.send_raw(bytes),
+            Err(e) => {
+                tracing::warn!("forward_remote_log: failed to serialize event: {e}");
+            }
+        }
     }
 }

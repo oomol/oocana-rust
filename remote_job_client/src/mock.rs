@@ -179,7 +179,7 @@ async fn get_task_logs(
 ) -> impl IntoResponse {
     let guard = tasks.lock().unwrap();
     let Some(task) = guard.get(&task_id) else {
-        return (StatusCode::NOT_FOUND, Json(serde_json::json!([])));
+        return (StatusCode::NOT_FOUND, Json(serde_json::json!({ "logs": [] })));
     };
 
     let page: u32 = params
@@ -225,7 +225,7 @@ async fn get_task_logs(
         vec![]
     };
 
-    (StatusCode::OK, Json(serde_json::json!(logs)))
+    (StatusCode::OK, Json(serde_json::json!({ "logs": logs })))
 }
 
 // -- Public API --------------------------------------------------------------

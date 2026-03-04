@@ -102,16 +102,11 @@ impl RemoteJobClient {
         let resp = self.with_auth(req).send().await?;
         let resp = ensure_success(resp).await?;
         let body: Value = resp.json().await?;
-        // Server wraps the array in {"logs": [...]}
-        let items = match body {
-            Value::Array(arr) => arr,
-            Value::Object(ref map) => map
-                .get("logs")
-                .and_then(|v| v.as_array())
-                .cloned()
-                .unwrap_or_default(),
-            _ => vec![],
-        };
+        let items = body
+            .get("logs")
+            .and_then(|v| v.as_array())
+            .cloned()
+            .unwrap_or_default();
         // Server stringifies nested JSON values; parse them back.
         Ok(items.into_iter().map(unstringify_values).collect())
     }
@@ -193,18 +188,27 @@ pub enum TaskResult {
     Pending,
 }
 
+/// Keys whose stringified JSON values should be parsed back into proper Values.
+const UNSTRINGIFY_KEYS: &[&str] = &["stacks", "output", "outputs", "result"];
+
 /// The logs API stringifies nested JSON values (e.g. `"stacks": "[]"` instead
-/// of `"stacks": []`). This function walks a JSON object and parses any string
-/// value that looks like embedded JSON back into a proper Value.
+/// of `"stacks": []`). This function parses whitelisted string values back into
+/// proper JSON.
 fn unstringify_values(val: Value) -> Value {
     let Value::Object(mut map) = val else {
         return val;
     };
-    for (_key, v) in map.iter_mut() {
-        if let Value::String(s) = v {
-            if let Ok(parsed) = serde_json::from_str::<Value>(s) {
-                if !parsed.is_string() {
-                    *v = parsed;
+    for &key in UNSTRINGIFY_KEYS {
+        let needs_parse = map.get(key).is_some_and(|v| v.is_string());
+        if needs_parse {
+            if let Some(Value::String(s)) = map.remove(key) {
+                match serde_json::from_str::<Value>(&s) {
+                    Ok(parsed) if !parsed.is_string() => {
+                        map.insert(key.to_string(), parsed);
+                    }
+                    _ => {
+                        map.insert(key.to_string(), Value::String(s));
+                    }
                 }
             }
         }
