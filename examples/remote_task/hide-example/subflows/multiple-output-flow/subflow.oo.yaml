@@ -1,0 +1,65 @@
+title: "%multiple-output-flow%"
+description: "%chains-two-streaming-tasks-to-demonstrate-sequential-multi-handl%"
+icon: ":carbon:flow:"
+nodes:
+  - node_id: multiple-output#1
+    task: self::multiple-output
+    inputs_from:
+      - handle: input
+        value: ""
+        schema_overrides:
+          - schema:
+              type: string
+        from_flow:
+          - input_handle: input
+  - node_id: multiple-outputs#1
+    task: self::multiple-outputs
+    inputs_from:
+      - handle: input
+        value: ""
+        schema_overrides:
+          - schema:
+              type: string
+        from_node:
+          - node_id: multiple-output#1
+            output_handle: output
+inputs_def:
+  - handle: input
+    description: "%entry-point-any-value-passed-to-first-task-required%"
+    json_schema:
+      {}
+    value: ""
+    nullable: false
+    executor_name: python
+outputs_def:
+  - handle: output
+    description: "%primary-output-from-multiple-outputs-task-streamed-final%"
+    json_schema:
+      {}
+    nullable: false
+    executor_name: python
+  - handle: output2
+    description: "%secondary-output-from-multiple-outputs-task-parallel-stream%"
+    json_schema:
+      source: a1
+    nullable: false
+    executor_name: python
+  - handle: output3
+    description: "%tertiary-output-from-first-multiple-output-task-intermediate-cha%"
+    json_schema:
+      {}
+    nullable: false
+    executor_name: python
+outputs_from:
+  - handle: output
+    from_node:
+      - node_id: multiple-outputs#1
+        output_handle: output
+  - handle: output2
+    from_node:
+      - node_id: multiple-outputs#1
+        output_handle: output2
+  - handle: output3
+    from_node:
+      - node_id: multiple-output#1
+        output_handle: output
