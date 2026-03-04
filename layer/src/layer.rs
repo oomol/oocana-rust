@@ -78,7 +78,7 @@ pub fn unmerge(merge_point: &str) -> Result<()> {
 
 pub fn convert_script_to_shell(script: &str) -> Result<(String, String)> {
     let filename = random_name("script") + ".sh";
-    let content = format!("#! /usr/bin/env zsh\nset -eo pipefail\n{}", script);
+    let content = format!("#! /usr/bin/env zsh\nset -eo pipefail\n{script}");
     let script_path = temp_dir().join(&filename).to_string_lossy().to_string();
     std::fs::write(&script_path, content)?;
 

@@ -138,7 +138,7 @@ pub fn query(action: &QueryAction) -> Result<()> {
                 nodes: Some(HashSet::new()),
             })?;
             for (package, layer) in package_status {
-                println!("package-status: {:?}:{:?}", package, layer);
+                println!("package-status: {package:?}:{layer:?}");
             }
         }
         QueryAction::Inputs {
@@ -157,11 +157,11 @@ pub fn query(action: &QueryAction) -> Result<()> {
             let json_result = serde_json::to_string(&inputs)?;
             if let Some(output) = output {
                 let mut file = std::fs::File::create(output)?;
-                write!(file, "{}", json_result)?;
+                write!(file, "{json_result}")?;
                 file.flush()?;
-                println!("inputs written to file: {}", output);
+                println!("inputs written to file: {output}");
             } else {
-                println!("{}", json_result);
+                println!("{json_result}");
             }
         }
         QueryAction::NodesInputs {
@@ -183,11 +183,11 @@ pub fn query(action: &QueryAction) -> Result<()> {
                     let json_result = serde_json::to_string(&input)?;
                     if let Some(output) = output {
                         let mut file = std::fs::File::create(output)?;
-                        write!(file, "{}", json_result)?;
+                        write!(file, "{json_result}")?;
                         file.flush()?;
-                        println!("blank input written to file: {}", output);
+                        println!("blank input written to file: {output}");
                     } else {
-                        println!("{}", json_result);
+                        println!("{json_result}");
                     }
                 }
                 _ => {
@@ -215,7 +215,7 @@ pub fn query(action: &QueryAction) -> Result<()> {
                 manifest_meta::Block::Flow(flow) => {
                     let results = flow.read().unwrap().get_services();
                     for result in results {
-                        println!("service: {:}", result);
+                        println!("service: {result:}");
                     }
                 }
                 _ => {

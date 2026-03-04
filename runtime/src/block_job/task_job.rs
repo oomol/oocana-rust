@@ -181,8 +181,7 @@ pub fn execute_task_job(params: TaskJobParameters) -> Option<BlockJobHandle> {
                         let status_code = status.code().unwrap_or(-1);
                         if status_code != 0 {
                             let msg = format!(
-                                "Task block '{:?}' exited with code {}",
-                                block_path, status_code
+                                "Task block '{block_path:?}' exited with code {status_code}"
                             );
                             shared_clone.scheduler_tx.send_block_event(
                                 scheduler::ReceiveMessage::BlockFinished {
@@ -333,8 +332,7 @@ fn spawn_shell(
         }
         Err(err) => {
             return Err(utils::error::Error::new(&format!(
-                "Failed to canonicalize cwd {} with error: {}",
-                cwd, err
+                "Failed to canonicalize cwd {cwd} with error: {err}"
             )));
         }
     }
@@ -526,7 +524,7 @@ pub fn timeout_abort(
 ) -> tokio::task::JoinHandle<()> {
     tokio::spawn(async move {
         tokio::time::sleep(timeout).await;
-        reporter.error(&format!("{} timeout after {:?}", job_id, timeout));
+        reporter.error(&format!("{job_id} timeout after {timeout:?}"));
         block_status.finish(job_id, None, Some("Timeout".to_owned()), None);
     })
 }

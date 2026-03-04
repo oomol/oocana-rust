@@ -59,7 +59,7 @@ pub fn setup_logging<P: AsRef<Path>>(params: LogParams<P>) -> Result<non_blockin
             .to_string(),
     );
 
-    let file_path = logger_dir.join(format!("{}.log", log_name));
+    let file_path = logger_dir.join(format!("{log_name}.log"));
 
     let f = create_file_with_dirs(&file_path)?;
 

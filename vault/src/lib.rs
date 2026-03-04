@@ -52,7 +52,7 @@ impl VaultClient {
     /// Compute authentication headers based on token prefix
     fn compute_auth_headers(token: &str) -> (&'static str, String) {
         if token.starts_with(API_TOKEN_PREFIX) {
-            (AUTHORIZATION_HEADER, format!("{} {}", BEARER_PREFIX, token))
+            (AUTHORIZATION_HEADER, format!("{BEARER_PREFIX} {token}"))
         } else {
             (X_JWT_TOKEN_HEADER, token.to_string())
         }
@@ -129,7 +129,7 @@ impl VaultClient {
                         log_request_duration(
                             id,
                             start_time,
-                            &format!("failed with status: {}", status),
+                            &format!("failed with status: {status}"),
                         );
                         return Err(create_status_error(status, self.max_retries));
                     }
@@ -144,7 +144,7 @@ impl VaultClient {
                         );
                         continue;
                     } else {
-                        log_request_duration(id, start_time, &format!("failed with error: {}", e));
+                        log_request_duration(id, start_time, &format!("failed with error: {e}"));
                         return Err(Error::new(&format!(
                             "Request failed after {} retries: {}",
                             self.max_retries, e
@@ -180,7 +180,7 @@ async fn parse_vaultlet_response(resp: reqwest::Response) -> Result<VaultValue> 
     let vault_data: VaultValueOnly = resp
         .json()
         .await
-        .map_err(|e| Error::new(&format!("Failed to parse JSON response: {}", e)))?;
+        .map_err(|e| Error::new(&format!("Failed to parse JSON response: {e}")))?;
 
     Ok(vault_data.value)
 }
@@ -192,11 +192,10 @@ fn should_retry(status: reqwest::StatusCode, attempt: u32, max_retries: u32) -> 
 fn create_status_error(status: reqwest::StatusCode, max_retries: u32) -> Error {
     if status.as_u16() >= 500 {
         Error::new(&format!(
-            "Server error after {} retries: {}",
-            max_retries, status
+            "Server error after {max_retries} retries: {status}"
         ))
     } else {
-        Error::new(&format!("Client error: {}", status))
+        Error::new(&format!("Client error: {status}"))
     }
 }
 
@@ -243,7 +242,7 @@ mod tests {
             .and(path("/v1/vaultlet/test-id"))
             .and(header(
                 AUTHORIZATION_HEADER,
-                &format!("{} api-test-key", BEARER_PREFIX),
+                &format!("{BEARER_PREFIX} api-test-key"),
             ))
             .respond_with(ResponseTemplate::new(200).set_body_json(&response_body))
             .mount(&mock_server)
@@ -265,7 +264,7 @@ mod tests {
             .and(path("/v1/vaultlet/non-existent"))
             .and(header(
                 AUTHORIZATION_HEADER,
-                &format!("{} api-test-key", BEARER_PREFIX),
+                &format!("{BEARER_PREFIX} api-test-key"),
             ))
             .respond_with(ResponseTemplate::new(404))
             .mount(&mock_server)
@@ -292,7 +291,7 @@ mod tests {
             .and(path("/v1/vaultlet/server-error"))
             .and(header(
                 AUTHORIZATION_HEADER,
-                &format!("{} api-test-key", BEARER_PREFIX),
+                &format!("{BEARER_PREFIX} api-test-key"),
             ))
             .respond_with(ResponseTemplate::new(500))
             .expect(total_attempts as u64) // Should be called total_attempts times
@@ -306,7 +305,7 @@ mod tests {
         assert!(result.is_err());
 
         let error_msg = result.unwrap_err().to_string();
-        assert!(error_msg.contains(&format!("Server error after {} retries: 500", max_retries)));
+        assert!(error_msg.contains(&format!("Server error after {max_retries} retries: 500")));
     }
 
     #[tokio::test]
@@ -317,7 +316,7 @@ mod tests {
             .and(path("/v1/vaultlet/retry-success"))
             .and(header(
                 AUTHORIZATION_HEADER,
-                &format!("{} api-test-key", BEARER_PREFIX),
+                &format!("{BEARER_PREFIX} api-test-key"),
             ))
             .respond_with(ResponseTemplate::new(500))
             .up_to_n_times(1)
@@ -335,7 +334,7 @@ mod tests {
             .and(path("/v1/vaultlet/retry-success"))
             .and(header(
                 AUTHORIZATION_HEADER,
-                &format!("{} api-test-key", BEARER_PREFIX),
+                &format!("{BEARER_PREFIX} api-test-key"),
             ))
             .respond_with(ResponseTemplate::new(200).set_body_json(&response_body))
             .mount(&mock_server)
@@ -358,7 +357,7 @@ mod tests {
             .and(path("/v1/vaultlet/invalid-json"))
             .and(header(
                 AUTHORIZATION_HEADER,
-                &format!("{} api-test-key", BEARER_PREFIX),
+                &format!("{BEARER_PREFIX} api-test-key"),
             ))
             .respond_with(ResponseTemplate::new(200).set_body_string("invalid json"))
             .mount(&mock_server)
@@ -381,7 +380,7 @@ mod tests {
             .and(path("/v1/vaultlet/timeout-test"))
             .and(header(
                 AUTHORIZATION_HEADER,
-                &format!("{} api-test-key", BEARER_PREFIX),
+                &format!("{BEARER_PREFIX} api-test-key"),
             ))
             .respond_with(
                 ResponseTemplate::new(200)
@@ -408,7 +407,7 @@ mod tests {
         assert_eq!(api_client.auth_header_name, AUTHORIZATION_HEADER);
         assert_eq!(
             api_client.auth_header_value,
-            format!("{} api-test-key", BEARER_PREFIX)
+            format!("{BEARER_PREFIX} api-test-key")
         );
 
         let jwt_client = VaultClient::new(

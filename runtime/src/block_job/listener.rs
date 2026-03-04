@@ -191,8 +191,7 @@ pub fn listen_to_worker(params: ListenerParameters) -> tokio::task::JoinHandle<(
                     ..
                 } => {
                     let msg = reason.unwrap_or(format!(
-                        "Executor {} exit with code {}",
-                        executor_name, code
+                        "Executor {executor_name} exit with code {code}"
                     ));
 
                     reporter.finished(None, Some(msg.clone()));
@@ -218,8 +217,7 @@ pub fn listen_to_worker(params: ListenerParameters) -> tokio::task::JoinHandle<(
                     }
 
                     let error_message = format!(
-                        "Executor {} identifier {:?} for package {:?} timeout after 5s",
-                        executor_name, identifier, package
+                        "Executor {executor_name} identifier {identifier:?} for package {package:?} timeout after 5s"
                     );
 
                     block_status.error(error_message.clone());

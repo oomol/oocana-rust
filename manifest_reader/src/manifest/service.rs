@@ -135,7 +135,7 @@ mod tests {
         use super::*;
         let json = r#"{"name":"test","entry":"main","function":"func","start_at":"block_start","stop_at":"session_end","keep_alive":"100"}"#;
         let r: Result<ServiceExecutorOptions, _> = serde_json::from_str(json);
-        println!("{:?}", r);
+        println!("{r:?}");
         assert!(r.is_err());
     }
 

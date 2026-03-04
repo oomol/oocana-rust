@@ -24,21 +24,21 @@ static INJECTION_STORE_FILE: &str = "injection_store.json";
 pub fn injection_store_path() -> Result<PathBuf> {
     let dir = config::oocana_dir().ok_or("Failed to get home dir")?;
 
-    std::fs::create_dir_all(&dir).map_err(|e| format!("Failed to create dir: {:?}", e))?;
+    std::fs::create_dir_all(&dir).map_err(|e| format!("Failed to create dir: {e:?}"))?;
 
     let file = dir.join(INJECTION_STORE_FILE);
     if file.exists() {
         return Ok(file);
     } else {
         let f =
-            std::fs::File::create(&file).map_err(|e| format!("Failed to create file: {:?}", e))?;
+            std::fs::File::create(&file).map_err(|e| format!("Failed to create file: {e:?}"))?;
         let writer = std::io::BufWriter::new(f);
         let store = InjectionStore {
             version: env!("CARGO_PKG_VERSION").to_string(),
             flow_injection: HashMap::new(),
         };
         serde_json::to_writer(writer, &store)
-            .map_err(|e| format!("Failed to serialize: {:?}", e))?;
+            .map_err(|e| format!("Failed to serialize: {e:?}"))?;
     }
 
     Ok(file)
@@ -48,7 +48,7 @@ pub fn load_injection_store() -> Result<InjectionStore> {
     let file = injection_store_path()?;
     let reader = std::io::BufReader::new(std::fs::File::open(&file)?);
     let store: InjectionStore =
-        serde_json::from_reader(reader).map_err(|e| format!("Failed to deserialize: {:?}", e))?;
+        serde_json::from_reader(reader).map_err(|e| format!("Failed to deserialize: {e:?}"))?;
 
     Ok(store)
 }

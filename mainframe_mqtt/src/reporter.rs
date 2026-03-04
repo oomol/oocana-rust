@@ -112,7 +112,7 @@ pub async fn connect(
     forward_to_console: bool,
 ) -> (ReporterTx, ReporterRx) {
     let mut options = MqttOptions::new(
-        format!("oocana-reporter-{}", session_id),
+        format!("oocana-reporter-{session_id}"),
         addr.ip().to_string(),
         addr.port(),
     );

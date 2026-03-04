@@ -49,7 +49,7 @@ use utils::{config, error::Result};
 /// Generate registry key from package_name and version.
 /// Format: `package_name@version`
 pub fn registry_key(package_name: &str, version: &str) -> String {
-    format!("{}@{}", package_name, version)
+    format!("{package_name}@{version}")
 }
 
 const MAX_READ_RETRIES: usize = 5;
@@ -85,7 +85,7 @@ fn load_registry_store_with_retry() -> Result<RegistryLayerStore> {
                         std::thread::sleep(std::time::Duration::from_millis(RETRY_DELAY_MS));
                         continue;
                     }
-                    Err(e) => return Err(format!("Failed to parse store: {:?}", e).into()),
+                    Err(e) => return Err(format!("Failed to parse store: {e:?}").into()),
                 }
             }
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
@@ -104,7 +104,7 @@ fn load_registry_store_with_retry() -> Result<RegistryLayerStore> {
                 std::thread::sleep(std::time::Duration::from_millis(RETRY_DELAY_MS));
                 continue;
             }
-            Err(e) => return Err(format!("Failed to read file: {:?}", e).into()),
+            Err(e) => return Err(format!("Failed to read file: {e:?}").into()),
         }
     }
 
@@ -119,20 +119,20 @@ fn save_registry_store_atomic(store: &RegistryLayerStore) -> Result<()> {
 
     // Ensure directory exists
     if let Some(dir) = file_path.parent() {
-        std::fs::create_dir_all(dir).map_err(|e| format!("Failed to create dir: {:?}", e))?;
+        std::fs::create_dir_all(dir).map_err(|e| format!("Failed to create dir: {e:?}"))?;
     }
 
     // Write to temporary file
     let temp_path = file_path.with_extension("tmp");
     let content =
-        serde_json::to_string_pretty(store).map_err(|e| format!("Failed to serialize: {:?}", e))?;
+        serde_json::to_string_pretty(store).map_err(|e| format!("Failed to serialize: {e:?}"))?;
 
     std::fs::write(&temp_path, content)
-        .map_err(|e| format!("Failed to write temp file: {:?}", e))?;
+        .map_err(|e| format!("Failed to write temp file: {e:?}"))?;
 
     // Atomic rename (readers see either old or new file, never partial)
     std::fs::rename(&temp_path, &file_path)
-        .map_err(|e| format!("Failed to rename temp file: {:?}", e))?;
+        .map_err(|e| format!("Failed to rename temp file: {e:?}"))?;
 
     Ok(())
 }

@@ -368,8 +368,7 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
                 }
                 layer::PackageLayerStatus::NotInStore => {
                     return Err(Error::from(format!(
-                        "Package layer {:?} doesn't exist",
-                        package
+                        "Package layer {package:?} doesn't exist"
                     )));
                 }
             }

@@ -26,8 +26,7 @@ mod tests {
 
         assert!(
             matches!(block, Block::Flow(_)),
-            "Expected a Flow block, found {:?}",
-            block
+            "Expected a Flow block, found {block:?}"
         );
     }
 
@@ -51,8 +50,7 @@ mod tests {
 
         assert!(
             matches!(block, Block::Task(_)),
-            "Expected a Task block, found {:?}",
-            block
+            "Expected a Task block, found {block:?}"
         );
     }
 
@@ -75,8 +73,7 @@ mod tests {
 
         assert!(
             matches!(block, Block::Task(_)),
-            "Expected a Task block, found {:?}",
-            block
+            "Expected a Task block, found {block:?}"
         );
     }
 

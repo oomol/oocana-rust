@@ -734,7 +734,7 @@ fn spawn_executor(
         match executor {
             "nodejs" => {
                 let port = free_local_ipv4_port_in_range(9230..=9999)
-                    .map(|p| format!("{}", p))
+                    .map(|p| format!("{p}"))
                     .ok_or("Failed to get free port from 9230 to 9999".to_string())?;
                 match *wait_for_client {
                     true => vec![
@@ -746,7 +746,7 @@ fn spawn_executor(
             } // nodejs accept SIGUSR1 to debugging. just --enable-source-maps is for source map and typescript debugging support.
             "python" => {
                 let port = free_local_ipv4_port_in_range(5678..=9000)
-                    .map(|p| format!("{}", p))
+                    .map(|p| format!("{p}"))
                     .ok_or("Failed to get free port from 5678 to 9000".to_string())?;
                 match *wait_for_client {
                     true => vec![
@@ -802,7 +802,7 @@ fn spawn_executor(
 
         executor_package = Some(package_path_str.to_string());
 
-        let log_filename = format!("ovmlayer-{}-{}.log", executor_bin, identifier);
+        let log_filename = format!("ovmlayer-{executor_bin}-{identifier}.log");
 
         let log_dir = utils::logger::logger_dir();
         envs.insert(
@@ -965,7 +965,7 @@ fn spawn_executor(
                         let _ = tx.send(SchedulerCommand::ExecutorExit {
                             executor: executor_bin_clone.clone(),
                             code: -1,
-                            reason: Some(format!("{}", e)),
+                            reason: Some(format!("{e}")),
                         });
                     }
                 }
@@ -986,7 +986,7 @@ fn spawn_executor(
             if let Some(layer) = layer {
                 drop(layer);
             }
-            let message = format!("Failed to spawn {}. {}", executor_bin, e);
+            let message = format!("Failed to spawn {executor_bin}. {e}");
             error!(message);
             Result::Err(Error::new(&message))
         }
@@ -1263,7 +1263,7 @@ where
                             if let Err(e) = tx.send(SchedulerCommand::ExecutorExit {
                                 executor: executor_name.clone(),
                                 code: -1,
-                                reason: Some(format!("{:?}", e)),
+                                reason: Some(format!("{e:?}")),
                             }) {
                                 warn!("Scheduler send executor exit failed: {e}");
                             }
@@ -1295,7 +1295,7 @@ where
                                 if let Err(e) = tx.send(SchedulerCommand::ExecutorExit {
                                     executor: executor_name.clone(),
                                     code: -1,
-                                    reason: Some(format!("{:?}", e)),
+                                    reason: Some(format!("{e:?}")),
                                 }) {
                                     warn!("Scheduler send executor exit failed: {e}");
                                 }
@@ -1347,7 +1347,7 @@ where
                             let _ = tx.send(SchedulerCommand::ExecutorExit {
                                 executor: executor_name.clone(),
                                 code: -1,
-                                reason: Some(format!("{}", e)),
+                                reason: Some(format!("{e}")),
                             });
                             continue;
                         }
@@ -1378,7 +1378,7 @@ where
                                 if let Err(e) = tx.send(SchedulerCommand::ExecutorExit {
                                     executor: executor_name.clone(),
                                     code: -1,
-                                    reason: Some(format!("{}", e)),
+                                    reason: Some(format!("{e}")),
                                 }) {
                                     warn!("Scheduler send executor exit failed: {e}");
                                 }
@@ -1473,7 +1473,7 @@ where
                                 } => {
                                     // same as generate_executor_map_name fn logic
                                     let executor_map_name = if let Some(ref id) = identifier {
-                                        format!("{}-{}", executor_name, id)
+                                        format!("{executor_name}-{id}")
                                     } else {
                                         executor_name.clone()
                                     };

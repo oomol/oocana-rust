@@ -183,17 +183,17 @@ impl NodeInputValues {
         if let Some(last_values) = &self.cache_value_store {
             // save hash map to file
             let json_string = serde_json::to_string(&last_values)
-                .map_err(|e| format!("failed to serialize {}", e))?;
+                .map_err(|e| format!("failed to serialize {e}"))?;
 
             if let Some(parent) = path.parent() {
                 std::fs::create_dir_all(parent)
-                    .map_err(|e| format!("failed to create dir {}", e))?;
+                    .map_err(|e| format!("failed to create dir {e}"))?;
             }
 
             let mut file =
-                File::create(path).map_err(|e| format!("failed to create file {}", e))?;
+                File::create(path).map_err(|e| format!("failed to create file {e}"))?;
             file.write_all(json_string.as_bytes())
-                .map_err(|e| format!("failed to write file {}", e))?;
+                .map_err(|e| format!("failed to write file {e}"))?;
         }
         Ok(())
     }

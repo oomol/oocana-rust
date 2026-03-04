@@ -60,7 +60,7 @@ pub fn parse_run_block_request(
     let result = read_flow_or_block(block, block_resolver, flow_path_finder);
 
     if result.is_err() {
-        let msg = format!("Failed to read block or subflow: {}", block);
+        let msg = format!("Failed to read block or subflow: {block}");
         return Err(msg);
     }
 
@@ -176,8 +176,7 @@ pub fn parse_run_block_request(
 
             if !missing_inputs.is_empty() {
                 let msg = format!(
-                    "Task block {} inputs missing these input handles: {:?}",
-                    block, missing_inputs
+                    "Task block {block} inputs missing these input handles: {missing_inputs:?}"
                 );
                 return Err(msg);
             }
@@ -185,9 +184,9 @@ pub fn parse_run_block_request(
             let invalid_inputs = validate_fn(&task_block.inputs_def, &inputs_values);
 
             if !invalid_inputs.is_empty() {
-                let mut msg = format!("Task block {} has some invalid inputs:", block);
+                let mut msg = format!("Task block {block} has some invalid inputs:");
                 for (handle, error) in invalid_inputs {
-                    msg += format!("\n{}: {}", handle, error).as_str();
+                    msg += format!("\n{handle}: {error}").as_str();
                 }
                 return Err(msg);
             }
@@ -272,8 +271,7 @@ pub fn parse_run_block_request(
 
             if !missing_inputs.is_empty() {
                 let msg = format!(
-                    "Subflow block {} inputs missing these input handles: {:?}",
-                    block, missing_inputs
+                    "Subflow block {block} inputs missing these input handles: {missing_inputs:?}"
                 );
                 return Err(msg);
             }
@@ -281,9 +279,9 @@ pub fn parse_run_block_request(
             let invalid_inputs = validate_fn(&subflow_guard.inputs_def, &input_values);
 
             if !invalid_inputs.is_empty() {
-                let mut msg = format!("Subflow block {} has some invalid inputs:", block);
+                let mut msg = format!("Subflow block {block} has some invalid inputs:");
                 for (handle, error) in invalid_inputs {
-                    msg += format!("\n{}: {}", handle, error).as_str();
+                    msg += format!("\n{handle}: {error}").as_str();
                 }
                 return Err(msg);
             }
@@ -300,7 +298,7 @@ pub fn parse_run_block_request(
             })
         }
         _ => {
-            let msg = format!("{} is not subflow or task block.", block);
+            let msg = format!("{block} is not subflow or task block.");
             Err(msg)
         }
     }
@@ -385,7 +383,7 @@ pub fn parse_node_downstream(
         None => {
             // if none return empty downstream
             return serde_json::to_value(HashMap::<HandleName, ()>::new())
-                .map_err(|e| format!("Failed to serialize empty downstream: {}", e));
+                .map_err(|e| format!("Failed to serialize empty downstream: {e}"));
         }
     };
 
@@ -468,7 +466,7 @@ pub fn parse_node_downstream(
     let res = serde_json::to_value(downstream);
     match res {
         Ok(value) => Ok(value),
-        Err(e) => Err(format!("Failed to serialize downstream: {}", e)),
+        Err(e) => Err(format!("Failed to serialize downstream: {e}")),
     }
 }
 
@@ -488,6 +486,6 @@ pub async fn parse_oauth_request(
             Value::Object(_) => "object",
             Value::Null => "null",
         };
-        Err(format!("Expected vault ID to be a string, got {}", actual_type).into())
+        Err(format!("Expected vault ID to be a string, got {actual_type}").into())
     }
 }

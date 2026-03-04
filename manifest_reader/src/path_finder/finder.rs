@@ -148,7 +148,7 @@ impl BlockPathFinder {
         let version = self.pkg_version.get(pkg_name);
 
         let pkg_directory = if let Some(version) = version {
-            format!("{}-{}", pkg_name, version)
+            format!("{pkg_name}-{version}")
         } else {
             pkg_name.to_owned()
         };
@@ -187,7 +187,7 @@ impl BlockPathFinder {
     }
 
     pub fn find_flow_block_path(&mut self, flow_name: &str) -> Result<PathBuf> {
-        if let Some(flow_path) = self.cache.get(&format!("flow-{}", flow_name)) {
+        if let Some(flow_path) = self.cache.get(&format!("flow-{flow_name}")) {
             return Ok(flow_path.to_owned());
         }
 
@@ -199,13 +199,13 @@ impl BlockPathFinder {
         })?;
 
         self.cache
-            .insert(format!("flow-{}", flow_name), flow_path.to_owned());
+            .insert(format!("flow-{flow_name}"), flow_path.to_owned());
 
         Ok(flow_path)
     }
 
     pub fn find_task_block_path(&mut self, task_name: &str) -> Result<PathBuf> {
-        if let Some(task_path) = self.cache.get(&format!("task-{}", task_name)) {
+        if let Some(task_path) = self.cache.get(&format!("task-{task_name}")) {
             return Ok(task_path.to_owned());
         }
 
@@ -217,13 +217,13 @@ impl BlockPathFinder {
         })?;
 
         self.cache
-            .insert(format!("task-{}", task_name), task_path.to_owned());
+            .insert(format!("task-{task_name}"), task_path.to_owned());
 
         Ok(task_path)
     }
 
     pub fn find_slot_slotflow_path(&mut self, slot_name: &str) -> Result<PathBuf> {
-        if let Some(slot_path) = self.cache.get(&format!("slot-{}", slot_name)) {
+        if let Some(slot_path) = self.cache.get(&format!("slot-{slot_name}")) {
             return Ok(slot_path.to_owned());
         }
 
@@ -235,13 +235,13 @@ impl BlockPathFinder {
         })?;
 
         self.cache
-            .insert(format!("slot-{}", slot_name), slot_path.to_owned());
+            .insert(format!("slot-{slot_name}"), slot_path.to_owned());
 
         Ok(slot_path)
     }
 
     pub fn find_service_block(&mut self, block_in_service: &str) -> Result<PathBuf> {
-        if let Some(service_path) = self.cache.get(&format!("service-{}", block_in_service)) {
+        if let Some(service_path) = self.cache.get(&format!("service-{block_in_service}")) {
             return Ok(service_path.to_owned());
         }
 
@@ -253,7 +253,7 @@ impl BlockPathFinder {
         })?;
 
         self.cache.insert(
-            format!("service-{}", block_in_service),
+            format!("service-{block_in_service}"),
             service_path.to_owned(),
         );
 

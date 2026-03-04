@@ -86,7 +86,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
             shared.reporter.session_started(block_name, partial, cache);
             shared.reporter.session_finished(
                 block_name,
-                &Some(format!("Failed to read block {:?}", err)),
+                &Some(format!("Failed to read block {err:?}")),
                 &None,
                 partial,
                 cache,
@@ -115,7 +115,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
         let merge_inputs_value = serde_json::from_str::<MergeInputsValue>(&patch_value_str)
             .map_err(|e| {
                 log_error!("Failed to parse input values: {}", e);
-                format!("Invalid input values: {}", e)
+                format!("Invalid input values: {e}")
             })?;
         if let Block::Flow(flow_block) = &block {
             let mut flow_guard = flow_block.write().unwrap();
@@ -127,7 +127,7 @@ pub async fn run(args: RunArgs<'_>) -> Result<()> {
         serde_json::from_str::<job::BlockInputs>(&block_values)
             .map_err(|e| {
                 log_error!("Failed to parse block values: {}", e);
-                format!("Invalid block values: {}", e)
+                format!("Invalid block values: {e}")
             })
             .ok()
     } else {

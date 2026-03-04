@@ -108,8 +108,7 @@ mod tests {
         let node: Node = serde_yaml::from_str(yaml).unwrap();
         assert!(
             matches!(node, Node::Task(_)),
-            "Expected Task variant, got {:?}",
-            node
+            "Expected Task variant, got {node:?}"
         );
     }
 
@@ -122,8 +121,7 @@ mod tests {
         let node: Node = serde_yaml::from_str(yaml).unwrap();
         assert!(
             matches!(node, Node::Subflow(_)),
-            "Expected Subflow variant, got {:?}",
-            node
+            "Expected Subflow variant, got {node:?}"
         );
     }
 
@@ -138,8 +136,7 @@ mod tests {
         let node: Node = serde_yaml::from_str(yaml).unwrap();
         assert!(
             matches!(node, Node::Slot(_)),
-            "Expected Slot variant, got {:?}",
-            node
+            "Expected Slot variant, got {node:?}"
         );
     }
 
@@ -152,8 +149,7 @@ mod tests {
         let node: Node = serde_yaml::from_str(yaml).unwrap();
         assert!(
             matches!(node, Node::Service(_)),
-            "Expected Service variant, got {:?}",
-            node
+            "Expected Service variant, got {node:?}"
         );
     }
 
@@ -174,8 +170,7 @@ mod tests {
         let node: Node = serde_yaml::from_str(yaml).unwrap();
         assert!(
             matches!(node, Node::Condition(_)),
-            "Expected Condition variant, got {:?}",
-            node
+            "Expected Condition variant, got {node:?}"
         );
     }
 
@@ -190,8 +185,7 @@ mod tests {
         let node: Node = serde_yaml::from_str(yaml).unwrap();
         assert!(
             matches!(node, Node::Value(_)),
-            "Expected Value variant, got {:?}",
-            node
+            "Expected Value variant, got {node:?}"
         );
     }
 
@@ -208,8 +202,7 @@ mod tests {
         let node: Node = serde_yaml::from_str(yaml).unwrap();
         assert!(
             matches!(node, Node::Task(_)),
-            "Expected Task variant with inline block, got {:?}",
-            node
+            "Expected Task variant with inline block, got {node:?}"
         );
     }
 
