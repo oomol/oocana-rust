@@ -269,6 +269,14 @@ impl ReporterTx {
         }
     }
 
+    pub fn send_raw(&self, payload: Vec<u8>) {
+        if let Some(tx) = self.tx.as_ref() {
+            tx.send(Command::Report(payload)).unwrap();
+        } else {
+            info!("[Reporter] {}", String::from_utf8_lossy(&payload));
+        }
+    }
+
     pub fn block(
         &self,
         job_id: JobId,
