@@ -1,6 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
 use flume::{Receiver, Sender};
+use tracing::warn;
 use job::JobId;
 use mainframe::{
     reporter::ErrorDetail,
@@ -50,23 +51,29 @@ impl BlockStatusTx {
         handle: HandleName,
         options: Option<OutputOptions>,
     ) {
-        self.tx
-            .send(Status::Output {
-                job_id,
-                result,
-                handle,
-                options,
-            })
-            .unwrap();
+        if let Err(e) = self.tx.send(Status::Output {
+            job_id,
+            result,
+            handle,
+            options,
+        }) {
+            warn!("BlockStatus send output failed: {e:?}");
+        }
     }
     pub fn outputs(&self, job_id: JobId, outputs: HashMap<HandleName, Arc<OutputValue>>) {
-        self.tx.send(Status::Outputs { job_id, outputs }).unwrap();
+        if let Err(e) = self.tx.send(Status::Outputs { job_id, outputs }) {
+            warn!("BlockStatus send outputs failed: {e:?}");
+        }
     }
     pub fn progress(&self, job_id: JobId, progress: f32) {
-        self.tx.send(Status::Progress { job_id, progress }).unwrap();
+        if let Err(e) = self.tx.send(Status::Progress { job_id, progress }) {
+            warn!("BlockStatus send progress failed: {e:?}");
+        }
     }
     pub fn run_request(&self, request: BlockRequest) {
-        self.tx.send(Status::Request(request)).unwrap();
+        if let Err(e) = self.tx.send(Status::Request(request)) {
+            warn!("BlockStatus send request failed: {e:?}");
+        }
     }
     pub fn finish(
         &self,
@@ -75,19 +82,21 @@ impl BlockStatusTx {
         error: Option<String>,
         error_detail: Option<ErrorDetail>,
     ) {
-        self.tx
-            .send(Status::Done {
-                job_id,
-                result,
-                error,
-                error_detail,
-            })
-            .unwrap();
+        if let Err(e) = self.tx.send(Status::Done {
+            job_id,
+            result,
+            error,
+            error_detail,
+        }) {
+            warn!("BlockStatus send done failed: {e:?}");
+        }
     }
 
     // error function don't have job_id, it is a global error not related to a specific job. Currently code architecture only doesn't support handle global error, so we use this function to send global error.
     pub fn error(&self, error: String) {
-        self.tx.send(Status::Error { error }).unwrap();
+        if let Err(e) = self.tx.send(Status::Error { error }) {
+            warn!("BlockStatus send error failed: {e:?}");
+        }
     }
 }
 

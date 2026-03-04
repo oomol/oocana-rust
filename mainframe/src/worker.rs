@@ -112,8 +112,11 @@ impl WorkerTx {
         })
         .unwrap();
         let (tx, rx) = oneshot::channel::<Option<BlockInputsDeserialize>>();
-        self.tx.send(Command::Ready(data, tx)).unwrap();
-        rx.await.unwrap()
+        if let Err(e) = self.tx.send(Command::Ready(data, tx)) {
+            warn!("Worker send ready failed: {e:?}");
+            return None;
+        }
+        rx.await.unwrap_or(None)
     }
 
     pub fn output(&self, output: &JsonValue, handle: &str, done: bool) {
@@ -156,7 +159,9 @@ impl WorkerTx {
 
     fn send(&self, message: BlockMessage, finish: bool) {
         let data = serde_json::to_vec(&message).unwrap();
-        self.tx.send(Command::SendMessage(data, finish)).unwrap();
+        if let Err(e) = self.tx.send(Command::SendMessage(data, finish)) {
+            warn!("Worker send message failed: {e:?}");
+        }
     }
 }
 
@@ -213,7 +218,9 @@ where
                                     debug_assert!(&inputs_callback.is_some());
 
                                     if let Some(callback) = inputs_callback.take() {
-                                        callback.send(inputs).unwrap();
+                                        if callback.send(inputs).is_err() {
+                                            warn!("Worker send inputs callback failed");
+                                        }
                                     }
                                 }
                                 ReceiveMessage::ExecuteBlock { .. } => {}
@@ -232,7 +239,10 @@ where
         let impl_rx_handle = tokio::spawn(async move {
             loop {
                 let data = impl_rx.recv().await;
-                tx.send(Command::ReceiveMessage(data)).unwrap();
+                if let Err(e) = tx.send(Command::ReceiveMessage(data)) {
+                    warn!("Worker send receive message failed: {e:?}");
+                    break;
+                }
             }
         });
 

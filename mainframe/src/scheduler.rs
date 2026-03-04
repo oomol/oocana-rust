@@ -501,34 +501,34 @@ impl SchedulerTx {
             inputs_def_patch,
         } = params;
 
-        self.tx
-            .send(SchedulerCommand::SendInputs {
-                job_id,
-                stacks,
-                block_path,
-                inputs,
-                inputs_def,
-                inputs_def_patch,
-            })
-            .unwrap();
+        if let Err(e) = self.tx.send(SchedulerCommand::SendInputs {
+            job_id,
+            stacks,
+            block_path,
+            inputs,
+            inputs_def,
+            inputs_def_patch,
+        }) {
+            warn!("Scheduler send inputs failed: {e:?}");
+        }
     }
 
     pub fn respond_block_request(&self, session_id: &SessionId, params: BlockResponseParams) {
-        self.tx
-            .send(SchedulerCommand::BlockRequestResponse {
-                session_id: session_id.clone(),
-                job_id: params.job_id,
-                error: params.error,
-                result: params.result,
-                request_id: params.request_id,
-            })
-            .unwrap();
+        if let Err(e) = self.tx.send(SchedulerCommand::BlockRequestResponse {
+            session_id: session_id.clone(),
+            job_id: params.job_id,
+            error: params.error,
+            result: params.result,
+            request_id: params.request_id,
+        }) {
+            warn!("Scheduler send block request response failed: {e:?}");
+        }
     }
 
     pub fn send_block_event(&self, event: ReceiveMessage) {
-        self.tx
-            .send(SchedulerCommand::BlockEvent { event })
-            .unwrap();
+        if let Err(e) = self.tx.send(SchedulerCommand::BlockEvent { event }) {
+            warn!("Scheduler send block event failed: {e:?}");
+        }
     }
 
     /// disable layer feature is scope package is in exclude package.
@@ -583,19 +583,19 @@ impl SchedulerTx {
         } = params;
 
         let scope = self.calculate_scope(scope);
-        self.tx
-            .send(SchedulerCommand::ExecuteBlock {
-                job_id,
-                executor_name: executor_name.to_owned(),
-                dir,
-                stacks: stacks.clone(),
-                scope,
-                outputs: outputs.clone(),
-                executor: executor.clone(),
-                injection_store: injection_store.clone(),
-                flow_path: flow_path.clone(),
-            })
-            .unwrap();
+        if let Err(e) = self.tx.send(SchedulerCommand::ExecuteBlock {
+            job_id,
+            executor_name: executor_name.to_owned(),
+            dir,
+            stacks: stacks.clone(),
+            scope,
+            outputs: outputs.clone(),
+            executor: executor.clone(),
+            injection_store: injection_store.clone(),
+            flow_path: flow_path.clone(),
+        }) {
+            warn!("Scheduler send execute block failed: {e:?}");
+        }
     }
 
     pub fn send_to_service(&self, params: ServiceParams) {
@@ -613,36 +613,38 @@ impl SchedulerTx {
 
         let scope = self.calculate_scope(scope);
 
-        self.tx
-            .send(SchedulerCommand::ExecuteServiceBlock {
-                job_id,
-                executor_name: executor_name.to_owned(),
-                dir: dir.to_owned(),
-                block_name: block_name.to_owned(),
-                service_executor: options.clone(),
-                scope,
-                stacks: stacks.clone(),
-                outputs: outputs.clone(),
-                service_hash: calculate_short_hash(&dir, 16),
-                flow_path: flow_path.clone(),
-            })
-            .unwrap();
+        if let Err(e) = self.tx.send(SchedulerCommand::ExecuteServiceBlock {
+            job_id,
+            executor_name: executor_name.to_owned(),
+            dir: dir.to_owned(),
+            block_name: block_name.to_owned(),
+            service_executor: options.clone(),
+            scope,
+            stacks: stacks.clone(),
+            outputs: outputs.clone(),
+            service_hash: calculate_short_hash(&dir, 16),
+            flow_path: flow_path.clone(),
+        }) {
+            warn!("Scheduler send execute service block failed: {e:?}");
+        }
     }
 
     pub fn register_subscriber(&self, job_id: JobId, sender: Sender<ReceiveMessage>) {
-        self.tx
-            .send(SchedulerCommand::RegisterSubscriber(job_id, sender))
-            .unwrap()
+        if let Err(e) = self.tx.send(SchedulerCommand::RegisterSubscriber(job_id, sender)) {
+            warn!("Scheduler register subscriber failed: {e:?}");
+        }
     }
 
     pub fn unregister_subscriber(&self, job_id: JobId) {
-        self.tx
-            .send(SchedulerCommand::UnregisterSubscriber(job_id))
-            .unwrap()
+        if let Err(e) = self.tx.send(SchedulerCommand::UnregisterSubscriber(job_id)) {
+            warn!("Scheduler unregister subscriber failed: {e:?}");
+        }
     }
 
     pub fn abort(&self) {
-        self.tx.send(SchedulerCommand::Abort).unwrap()
+        if let Err(e) = self.tx.send(SchedulerCommand::Abort) {
+            warn!("Scheduler send abort failed: {e:?}");
+        }
     }
 }
 
@@ -878,12 +880,13 @@ fn spawn_executor(
             if executor_state.spawn_state != ExecutorSpawnState::Spawned {
                 return;
             }
-            txx.send(SchedulerCommand::SpawnExecutorTimeout {
+            if let Err(e) = txx.send(SchedulerCommand::SpawnExecutorTimeout {
                 executor: executor_bin_clone,
                 package: executor_package,
                 identifier: Some(identifier_clone),
-            })
-            .unwrap();
+            }) {
+                warn!("Scheduler send spawn executor timeout failed: {e:?}");
+            }
         }
     });
 
@@ -1153,9 +1156,10 @@ where
                 if data.is_empty() {
                     break;
                 }
-                tx_clone
-                    .send(SchedulerCommand::ReceiveMessage(data))
-                    .unwrap();
+                if let Err(e) = tx_clone.send(SchedulerCommand::ReceiveMessage(data)) {
+                    warn!("Scheduler send receive message failed: {e:?}");
+                    break;
+                }
             }
         });
 
@@ -1256,12 +1260,13 @@ where
                         });
 
                         if let Err(e) = result {
-                            tx.send(SchedulerCommand::ExecutorExit {
+                            if let Err(e) = tx.send(SchedulerCommand::ExecutorExit {
                                 executor: executor_name.clone(),
                                 code: -1,
                                 reason: Some(format!("{:?}", e)),
-                            })
-                            .unwrap();
+                            }) {
+                                warn!("Scheduler send executor exit failed: {e:?}");
+                            }
                             continue;
                         }
 
@@ -1287,12 +1292,13 @@ where
                                 tx.clone(),
                             );
                             if let Err(e) = r {
-                                tx.send(SchedulerCommand::ExecutorExit {
+                                if let Err(e) = tx.send(SchedulerCommand::ExecutorExit {
                                     executor: executor_name.clone(),
                                     code: -1,
                                     reason: Some(format!("{:?}", e)),
-                                })
-                                .unwrap();
+                                }) {
+                                    warn!("Scheduler send executor exit failed: {e:?}");
+                                }
                             }
                         } else {
                             tracing::info!(
@@ -1369,12 +1375,13 @@ where
                             );
 
                             if let Err(e) = r {
-                                tx.send(SchedulerCommand::ExecutorExit {
+                                if let Err(e) = tx.send(SchedulerCommand::ExecutorExit {
                                     executor: executor_name.clone(),
                                     code: -1,
                                     reason: Some(format!("{}", e)),
-                                })
-                                .unwrap();
+                                }) {
+                                    warn!("Scheduler send executor exit failed: {e:?}");
+                                }
                             }
                         } else {
                             tracing::info!(
@@ -1407,9 +1414,11 @@ where
                                 })
                                 .unwrap();
 
-                                tx_clone
+                                if let Err(e) = tx_clone
                                     .send(SchedulerCommand::ReceiveMessage(data))
-                                    .unwrap();
+                                {
+                                    warn!("Scheduler send listener timeout failed: {e:?}");
+                                }
                             })
                         }
                     }
@@ -1419,14 +1428,14 @@ where
                         identifier,
                     }) => {
                         for (_, sender) in subscribers.iter() {
-                            sender
-                                .send(ReceiveMessage::ExecutorTimeout {
-                                    session_id: session_id.clone(),
-                                    executor_name: executor.clone(),
-                                    package: package.clone(),
-                                    identifier: identifier.clone(),
-                                })
-                                .unwrap();
+                            if let Err(e) = sender.send(ReceiveMessage::ExecutorTimeout {
+                                session_id: session_id.clone(),
+                                executor_name: executor.clone(),
+                                package: package.clone(),
+                                identifier: identifier.clone(),
+                            }) {
+                                warn!("Scheduler send executor timeout to subscriber failed: {e:?}");
+                            }
                         }
                     }
                     Ok(SchedulerCommand::ExecutorExit {
@@ -1436,14 +1445,14 @@ where
                     }) => {
                         // 理论上有任意一个 block 处理就 OK
                         for (_, sender) in subscribers.iter() {
-                            sender
-                                .send(ReceiveMessage::ExecutorExit {
-                                    session_id: session_id.clone(),
-                                    executor_name: executor.clone(),
-                                    code,
-                                    reason: reason.clone(),
-                                })
-                                .unwrap();
+                            if let Err(e) = sender.send(ReceiveMessage::ExecutorExit {
+                                session_id: session_id.clone(),
+                                executor_name: executor.clone(),
+                                code,
+                                reason: reason.clone(),
+                            }) {
+                                warn!("Scheduler send executor exit to subscriber failed: {e:?}");
+                            }
                         }
                     }
                     Ok(SchedulerCommand::ReceiveMessage(data)) => {
@@ -1483,20 +1492,22 @@ where
 
                                     // iterator all subscribers and send executor ready message
                                     for (_, sender) in subscribers.iter() {
-                                        sender
-                                            .send(ReceiveMessage::ExecutorReady {
-                                                executor_name: executor_name.clone(),
-                                                package: package.clone(),
-                                                session_id: session_id.clone(),
-                                                identifier: identifier.clone(),
-                                            })
-                                            .unwrap();
+                                        if let Err(e) = sender.send(ReceiveMessage::ExecutorReady {
+                                            executor_name: executor_name.clone(),
+                                            package: package.clone(),
+                                            session_id: session_id.clone(),
+                                            identifier: identifier.clone(),
+                                        }) {
+                                            warn!("Scheduler send executor ready to subscriber failed: {e:?}");
+                                        }
                                     }
                                 }
                                 ReceiveMessage::BlockRequest(request) => {
                                     // Handle block request
                                     if let Some(sender) = subscribers.get(request.job_id()) {
-                                        sender.send(ReceiveMessage::BlockRequest(request)).unwrap();
+                                        if let Err(e) = sender.send(ReceiveMessage::BlockRequest(request)) {
+                                            warn!("Scheduler send block request to subscriber failed: {e:?}");
+                                        }
                                     } else {
                                         warn!("No subscriber for job_id: {:?}", request.job_id());
                                     }
@@ -1505,7 +1516,9 @@ where
                                     if let Some(sender) =
                                         msg.job_id().and_then(|f| subscribers.get(f))
                                     {
-                                        sender.send(msg).unwrap();
+                                        if let Err(e) = sender.send(msg) {
+                                            warn!("Scheduler send message to subscriber failed: {e:?}");
+                                        }
                                     }
                                 }
                             }

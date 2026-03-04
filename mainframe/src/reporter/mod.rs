@@ -263,7 +263,9 @@ impl ReporterTx {
     pub fn send(&self, data: ReporterMessage) {
         let payload = serde_json::to_vec(&data).unwrap();
         if let Some(tx) = self.tx.as_ref() {
-            tx.send(Command::Report(payload)).unwrap();
+            if let Err(e) = tx.send(Command::Report(payload)) {
+                warn!("Reporter send failed: {e:?}");
+            }
         } else {
             info!("[Reporter] {}", serde_json::to_string(&data).unwrap());
         }
@@ -271,7 +273,9 @@ impl ReporterTx {
 
     pub fn send_raw(&self, payload: Vec<u8>) {
         if let Some(tx) = self.tx.as_ref() {
-            tx.send(Command::Report(payload)).unwrap();
+            if let Err(e) = tx.send(Command::Report(payload)) {
+                warn!("Reporter send failed: {e:?}");
+            }
         } else {
             info!("[Reporter] {}", String::from_utf8_lossy(&payload));
         }
@@ -297,7 +301,9 @@ impl ReporterTx {
 
     pub fn abort(&self) {
         if let Some(tx) = self.tx.as_ref() {
-            tx.send(Command::Abort).unwrap()
+            if let Err(e) = tx.send(Command::Abort) {
+                warn!("Reporter send abort failed: {e:?}");
+            }
         }
     }
 }
