@@ -57,22 +57,22 @@ impl BlockStatusTx {
             handle,
             options,
         }) {
-            warn!("BlockStatus send output failed: {e:?}");
+            warn!("BlockStatus send output failed: {e}");
         }
     }
     pub fn outputs(&self, job_id: JobId, outputs: HashMap<HandleName, Arc<OutputValue>>) {
         if let Err(e) = self.tx.send(Status::Outputs { job_id, outputs }) {
-            warn!("BlockStatus send outputs failed: {e:?}");
+            warn!("BlockStatus send outputs failed: {e}");
         }
     }
     pub fn progress(&self, job_id: JobId, progress: f32) {
         if let Err(e) = self.tx.send(Status::Progress { job_id, progress }) {
-            warn!("BlockStatus send progress failed: {e:?}");
+            warn!("BlockStatus send progress failed: {e}");
         }
     }
     pub fn run_request(&self, request: BlockRequest) {
         if let Err(e) = self.tx.send(Status::Request(request)) {
-            warn!("BlockStatus send request failed: {e:?}");
+            warn!("BlockStatus send request failed: {e}");
         }
     }
     pub fn finish(
@@ -88,14 +88,14 @@ impl BlockStatusTx {
             error,
             error_detail,
         }) {
-            warn!("BlockStatus send done failed: {e:?}");
+            warn!("BlockStatus send done failed: {e}");
         }
     }
 
     // error function don't have job_id, it is a global error not related to a specific job. Currently code architecture only doesn't support handle global error, so we use this function to send global error.
     pub fn error(&self, error: String) {
         if let Err(e) = self.tx.send(Status::Error { error }) {
-            warn!("BlockStatus send error failed: {e:?}");
+            warn!("BlockStatus send error failed: {e}");
         }
     }
 }

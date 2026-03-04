@@ -113,10 +113,16 @@ impl WorkerTx {
         .unwrap();
         let (tx, rx) = oneshot::channel::<Option<BlockInputsDeserialize>>();
         if let Err(e) = self.tx.send(Command::Ready(data, tx)) {
-            warn!("Worker send ready failed: {e:?}");
+            warn!("Worker send ready failed: {e}");
             return None;
         }
-        rx.await.unwrap_or(None)
+        match rx.await {
+            Ok(inputs) => inputs,
+            Err(e) => {
+                warn!("Worker ready oneshot canceled: {e}");
+                None
+            }
+        }
     }
 
     pub fn output(&self, output: &JsonValue, handle: &str, done: bool) {
@@ -160,7 +166,7 @@ impl WorkerTx {
     fn send(&self, message: BlockMessage, finish: bool) {
         let data = serde_json::to_vec(&message).unwrap();
         if let Err(e) = self.tx.send(Command::SendMessage(data, finish)) {
-            warn!("Worker send message failed: {e:?}");
+            warn!("Worker send message failed: {e}");
         }
     }
 }
@@ -240,7 +246,7 @@ where
             loop {
                 let data = impl_rx.recv().await;
                 if let Err(e) = tx.send(Command::ReceiveMessage(data)) {
-                    warn!("Worker send receive message failed: {e:?}");
+                    warn!("Worker send receive message failed: {e}");
                     break;
                 }
             }
