@@ -406,8 +406,27 @@ pub fn execute_remote_block_job(params: RemoteBlockJobParameters) -> Option<Bloc
                         } else {
                             None
                         };
+
+                        // Attempt to fetch actual result data from the API so
+                        // downstream blocks still receive outputs.
+                        let result = match client.get_task_result(&task_id).await {
+                            Ok(remote_job_client::TaskResult::Success { result_data }) => {
+                                result_data.map(|obj| {
+                                    obj.into_iter()
+                                        .map(|(k, v)| {
+                                            (
+                                                HandleName::new(k),
+                                                Arc::new(OutputValue::new(v, true)),
+                                            )
+                                        })
+                                        .collect()
+                                })
+                            }
+                            _ => None,
+                        };
+
                         reporter_clone.finished(None, error.clone());
-                        block_status_clone.finish(job_id_clone, None, error, None);
+                        block_status_clone.finish(job_id_clone, result, error, None);
                     }
                     return;
                 }
