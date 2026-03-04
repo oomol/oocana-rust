@@ -267,7 +267,7 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
             session_dir: session_dir.clone(),
             bind_paths,
             pass_through_env_keys: retain_env_keys.unwrap_or_default(),
-            env_file,
+            env_file: env_file.clone(),
             tmp_dir: flow_tmp_dir.clone(),
             debug,
             wait_for_client,
@@ -294,9 +294,11 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
     // delay to collect rest loggings
     let delay_abort_handle = delay_abort_rx.run();
 
+    let env_file_vars = utils::env::load_env_from_file(&env_file);
     let remote_task_config = runtime::remote_task_config::RemoteTaskConfig::from_env_and_args(
         remote_block_url.as_deref(),
         remote_block_timeout,
+        &env_file_vars,
     );
 
     let shared = Arc::new(runtime::shared::Shared {
