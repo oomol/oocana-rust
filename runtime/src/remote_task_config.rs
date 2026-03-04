@@ -36,19 +36,26 @@ impl RemoteTaskConfig {
 
         let auth_token = std::env::var("OOMOL_TOKEN")
             .ok()
+            .map(|s| s.trim().to_owned())
             .filter(|s| !s.is_empty())
             .or_else(|| {
-            env_file_vars
-                .get("OOMOL_TOKEN")
-                .cloned()
-                .filter(|s| !s.is_empty())
-        });
+                env_file_vars
+                    .get("OOMOL_TOKEN")
+                    .map(|s| s.trim().to_owned())
+                    .filter(|s| !s.is_empty())
+            });
 
         let timeout_secs = cli_timeout.or_else(|| {
             std::env::var("OOCANA_REMOTE_BLOCK_TIMEOUT")
                 .ok()
+                .map(|s| s.trim().to_owned())
                 .filter(|s| !s.is_empty())
-                .or_else(|| env_file_vars.get("OOCANA_REMOTE_BLOCK_TIMEOUT").cloned())
+                .or_else(|| {
+                    env_file_vars
+                        .get("OOCANA_REMOTE_BLOCK_TIMEOUT")
+                        .map(|s| s.trim().to_owned())
+                        .filter(|s| !s.is_empty())
+                })
                 .and_then(|s| match s.parse() {
                     Ok(v) => Some(v),
                     Err(_) => {
