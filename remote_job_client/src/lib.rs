@@ -114,7 +114,7 @@ impl RemoteJobClient {
     fn with_auth(&self, req: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
         match &self.auth {
             Auth::None => req,
-            Auth::Token(token) => req.header("x-jwt-token", token),
+            Auth::Token(token) => req.bearer_auth(token),
         }
     }
 }
