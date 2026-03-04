@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.30.37 (2026-03-04)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* feat: skip layer for hide_source packages by @leavesster in https://github.com/oomol/oocana-rust/pull/423
+* feat: integrate remote task logs polling with streaming output dispatch by @leavesster in https://github.com/oomol/oocana-rust/pull/425
+* fix: replace channel sender unwrap with warn logging by @leavesster in https://github.com/oomol/oocana-rust/pull/426
+* chore(deps): bump time 0.3.39→0.3.47 and bytes 1.10.1→1.11.1 by @leavesster in https://github.com/oomol/oocana-rust/pull/427
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.30.36...v0.30.37
+
 ## 0.30.36 (2026-02-28)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
