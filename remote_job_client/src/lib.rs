@@ -93,17 +93,40 @@ impl RemoteJobClient {
         Ok(body)
     }
 
+    pub async fn get_task_logs(&self, task_id: &str, page: u32) -> Result<Vec<Value>> {
+        let url = format!(
+            "{}/v3/users/me/tasks/{task_id}/logs?page={page}",
+            self.base_url
+        );
+        let req = self.client.get(url);
+        let resp = self.with_auth(req).send().await?;
+        let resp = ensure_success(resp).await?;
+        let body: Value = resp.json().await?;
+        // Server wraps the array in {"logs": [...]}
+        let items = match body {
+            Value::Array(arr) => arr,
+            Value::Object(ref map) => map
+                .get("logs")
+                .and_then(|v| v.as_array())
+                .cloned()
+                .unwrap_or_default(),
+            _ => vec![],
+        };
+        // Server stringifies nested JSON values; parse them back.
+        Ok(items.into_iter().map(unstringify_values).collect())
+    }
+
     fn with_auth(&self, req: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
         match &self.auth {
             Auth::None => req,
-            Auth::Token(token) => req.header("oomol-token", token),
+            Auth::Token(token) => req.header("x-jwt-token", token),
         }
     }
 }
 
 #[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
 struct CreateTaskResponse {
+    #[serde(rename = "taskID")]
     task_id: String,
 }
 
@@ -168,6 +191,25 @@ pub enum TaskResult {
     },
     #[serde(other)]
     Pending,
+}
+
+/// The logs API stringifies nested JSON values (e.g. `"stacks": "[]"` instead
+/// of `"stacks": []`). This function walks a JSON object and parses any string
+/// value that looks like embedded JSON back into a proper Value.
+fn unstringify_values(val: Value) -> Value {
+    let Value::Object(mut map) = val else {
+        return val;
+    };
+    for (_key, v) in map.iter_mut() {
+        if let Value::String(s) = v {
+            if let Ok(parsed) = serde_json::from_str::<Value>(s) {
+                if !parsed.is_string() {
+                    *v = parsed;
+                }
+            }
+        }
+    }
+    Value::Object(map)
 }
 
 #[derive(Debug, Deserialize)]
