@@ -1,0 +1,27 @@
+ui:
+  default_width: 450
+title: "%multiple-outputs%"
+description: "%demonstrates-parallel-multi-handle-output-streaming-emits-5-pair%"
+icon: ":logos:python:"
+inputs_def:
+  - handle: input
+    description: "%any-input-value-passed-through-without-processing2%"
+    json_schema:
+      {}
+    nullable: false
+outputs_def:
+  - handle: output
+    description: "%primary-output-5-incremental-strings-n-final-last%"
+    json_schema:
+      {}
+    nullable: false
+  - handle: output2
+    description: "%secondary-output-5-incremental-strings-value-n-final-last-value%"
+    json_schema:
+      source: a1
+    nullable: false
+executor:
+  name: python
+  options:
+    entry: __init__.py
+    spawn: false

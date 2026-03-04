@@ -1,0 +1,8 @@
+version: 0.0.1
+scripts:
+  bootstrap: |
+    npm install
+    poetry install --no-root
+name: hide-example
+hide_source: true
+releaseNotes: 隐藏源码测试包

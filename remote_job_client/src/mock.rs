@@ -21,6 +21,7 @@ type JsonMap = Map<String, Value>;
 
 struct Task {
     task_type: String,
+    #[allow(dead_code)]
     input_values: Option<JsonMap>,
     created_at: Instant,
 }
@@ -58,8 +59,8 @@ struct CreateTaskRequest {
 }
 
 #[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
 struct CreateTaskResponse {
+    #[serde(rename = "taskID")]
     task_id: String,
 }
 
@@ -151,10 +152,11 @@ async fn get_task_result(
 
     let resp = match status {
         "success" => {
-            let result_data = task.input_values.clone().unwrap_or_default();
+            // Return a fixed output map with handle "output" so downstream blocks
+            // that consume `output_handle: output` get their dependency satisfied.
             serde_json::json!({
                 "status": "success",
-                "resultData": result_data,
+                "resultData": { "output": "mock-result" },
             })
         }
         "failed" => serde_json::json!({
@@ -168,6 +170,62 @@ async fn get_task_result(
     };
 
     (StatusCode::OK, Json(resp))
+}
+
+async fn get_task_logs(
+    State(tasks): State<Tasks>,
+    Path(task_id): Path<String>,
+    axum::extract::Query(params): axum::extract::Query<HashMap<String, String>>,
+) -> impl IntoResponse {
+    let guard = tasks.lock().unwrap();
+    let Some(task) = guard.get(&task_id) else {
+        return (StatusCode::NOT_FOUND, Json(serde_json::json!({ "logs": [] })));
+    };
+
+    let page: u32 = params
+        .get("page")
+        .and_then(|p| p.parse().ok())
+        .unwrap_or(1);
+
+    let status = current_status(task);
+    eprintln!("[mock] GET /tasks/{task_id}/logs?page={page} -> status={status}");
+
+    let logs = if page == 1 && (status == "running" || status == "success") {
+        let mut items = vec![serde_json::json!({
+            "type": "BlockLog",
+            "session_id": &task_id,
+            "job_id": "mock-job",
+            "block_path": null,
+            "stacks": [],
+            "log": "remote task running",
+            "stdio": "stdout"
+        })];
+        if status == "success" {
+            items.push(serde_json::json!({
+                "type": "BlockOutput",
+                "session_id": &task_id,
+                "job_id": "mock-job",
+                "block_path": null,
+                "stacks": [],
+                "output": "mock-result",
+                "handle": "output"
+            }));
+            items.push(serde_json::json!({
+                "type": "BlockFinished",
+                "session_id": &task_id,
+                "job_id": "mock-job",
+                "block_path": null,
+                "stacks": [],
+                "result": { "output": "mock-result" },
+                "finish_at": 0
+            }));
+        }
+        items
+    } else {
+        vec![]
+    };
+
+    (StatusCode::OK, Json(serde_json::json!({ "logs": logs })))
 }
 
 // -- Public API --------------------------------------------------------------
@@ -216,6 +274,10 @@ pub fn start(port: u16) -> MockServer {
                 .route(
                     "/v3/users/me/tasks/{task_id}/result",
                     get(get_task_result),
+                )
+                .route(
+                    "/v3/users/me/tasks/{task_id}/logs",
+                    get(get_task_logs),
                 )
                 .with_state(tasks);
 

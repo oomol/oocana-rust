@@ -93,17 +93,35 @@ impl RemoteJobClient {
         Ok(body)
     }
 
+    pub async fn get_task_logs(&self, task_id: &str, page: u32) -> Result<Vec<Value>> {
+        let url = format!(
+            "{}/v3/users/me/tasks/{task_id}/logs?page={page}",
+            self.base_url
+        );
+        let req = self.client.get(url);
+        let resp = self.with_auth(req).send().await?;
+        let resp = ensure_success(resp).await?;
+        let body: Value = resp.json().await?;
+        let items = body
+            .get("logs")
+            .and_then(|v| v.as_array())
+            .cloned()
+            .unwrap_or_default();
+        // Server stringifies nested JSON values; parse them back.
+        Ok(items.into_iter().map(unstringify_values).collect())
+    }
+
     fn with_auth(&self, req: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
         match &self.auth {
             Auth::None => req,
-            Auth::Token(token) => req.header("oomol-token", token),
+            Auth::Token(token) => req.bearer_auth(token),
         }
     }
 }
 
 #[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
 struct CreateTaskResponse {
+    #[serde(rename = "taskID")]
     task_id: String,
 }
 
@@ -168,6 +186,34 @@ pub enum TaskResult {
     },
     #[serde(other)]
     Pending,
+}
+
+/// Keys whose stringified JSON values should be parsed back into proper Values.
+const UNSTRINGIFY_KEYS: &[&str] = &["stacks", "output", "outputs", "result"];
+
+/// The logs API stringifies nested JSON values (e.g. `"stacks": "[]"` instead
+/// of `"stacks": []`). This function parses whitelisted string values back into
+/// proper JSON.
+fn unstringify_values(val: Value) -> Value {
+    let Value::Object(mut map) = val else {
+        return val;
+    };
+    for &key in UNSTRINGIFY_KEYS {
+        let needs_parse = map.get(key).is_some_and(|v| v.is_string());
+        if needs_parse {
+            if let Some(Value::String(s)) = map.remove(key) {
+                match serde_json::from_str::<Value>(&s) {
+                    Ok(parsed) if !parsed.is_string() => {
+                        map.insert(key.to_string(), parsed);
+                    }
+                    _ => {
+                        map.insert(key.to_string(), Value::String(s));
+                    }
+                }
+            }
+        }
+    }
+    Value::Object(map)
 }
 
 #[derive(Debug, Deserialize)]

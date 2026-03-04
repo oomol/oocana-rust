@@ -1,0 +1,22 @@
+ui:
+  default_width: 450
+title: "%multiple-output%"
+description: "%demonstrates-incremental-output-streaming-emits-5-random-string%"
+icon: ":logos:python:"
+inputs_def:
+  - handle: input
+    description: "%any-input-value-passed-through-without-processing%"
+    json_schema:
+      {}
+    nullable: false
+outputs_def:
+  - handle: output
+    description: "%streamed-random-strings-5-intermediate-plus-final-output_value%"
+    json_schema:
+      {}
+    nullable: false
+executor:
+  name: python
+  options:
+    entry: __init__.py
+    spawn: false
