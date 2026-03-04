@@ -50,7 +50,7 @@ pub fn search_block_manifest(params: BlockManifestParams) -> Option<PathBuf> {
         } => {
             let manifest_path: PathBuf = if let Some(version) = pkg_version.get(&pkg_name) {
                 // Use "{pkg_name}-{version}" as the package directory
-                [&format!("{}-{}", pkg_name, version), block_dir, &block_name]
+                [&format!("{pkg_name}-{version}"), block_dir, &block_name]
                     .iter()
                     .collect()
             } else {

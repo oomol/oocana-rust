@@ -151,7 +151,7 @@ impl PackageLayer {
                 let diff = diff(layers, list.into_iter().collect());
                 if !diff.is_empty() {
                     tracing::debug!("layer not exist: {:?}", diff);
-                    return Err(format!("layer not exist: {:?}", diff).into());
+                    return Err(format!("layer not exist: {diff:?}").into());
                 }
                 Ok(())
             }
@@ -164,7 +164,7 @@ impl PackageLayer {
             std::fs::create_dir_all(dest)?;
         }
 
-        let layers_tar = format!("{}/layers.tar", dest);
+        let layers_tar = format!("{dest}/layers.tar");
 
         let mut layers = self.base_layers.clone().unwrap_or_default();
         layers.push(self.source_layer.clone());
@@ -174,11 +174,11 @@ impl PackageLayer {
 
         export_layers(&layers, &layers_tar)?;
 
-        let file = File::create(format!("{}/{}", dest, PACKAGE_FILENAME))?;
+        let file = File::create(format!("{dest}/{PACKAGE_FILENAME}"))?;
         let writer = std::io::BufWriter::new(file);
         serde_json::to_writer_pretty(writer, self)?;
 
-        let file = File::create(format!("{}/{}", dest, LAYER_FILENAME))?;
+        let file = File::create(format!("{dest}/{LAYER_FILENAME}"))?;
         let writer = std::io::BufWriter::new(file);
         let export = PackageLayerExport { layers };
         serde_json::to_writer_pretty(writer, &export)?;
@@ -189,18 +189,18 @@ impl PackageLayer {
 
 pub fn import_package_layer(package_path: &str, export_dir: &str) -> Result<()> {
     if metadata(export_dir).is_err() {
-        return Err(format!("path not exist: {:?}", export_dir).into());
+        return Err(format!("path not exist: {export_dir:?}").into());
     }
 
-    let package_file_path = format!("{}/{}", export_dir, PACKAGE_FILENAME);
-    let package_layer_path = format!("{}/{}", export_dir, LAYER_FILENAME);
+    let package_file_path = format!("{export_dir}/{PACKAGE_FILENAME}");
+    let package_layer_path = format!("{export_dir}/{LAYER_FILENAME}");
 
     if metadata(&package_file_path).is_err() {
-        return Err(format!("package-layer.json not exist: {:?}", package_file_path).into());
+        return Err(format!("package-layer.json not exist: {package_file_path:?}").into());
     }
 
     if metadata(&package_layer_path).is_err() {
-        return Err(format!("layers.json not exist: {:?}", package_layer_path).into());
+        return Err(format!("layers.json not exist: {package_layer_path:?}").into());
     }
 
     let package_file = File::open(&package_file_path)?;
@@ -211,7 +211,7 @@ pub fn import_package_layer(package_path: &str, export_dir: &str) -> Result<()> 
 
     package.package_path = PathBuf::from(package_path);
 
-    let layer_tar = format!("{}/layers.tar", export_dir);
+    let layer_tar = format!("{export_dir}/layers.tar");
     import_layer(&layer_tar)?;
 
     // TODO: refactor package struct, make package always in fixed path
@@ -224,7 +224,7 @@ pub fn import_package_layer(package_path: &str, export_dir: &str) -> Result<()> 
             package_path
         );
         for layer in package.layers() {
-            let layer_path = format!("/opt/ovmlayer/layer_dir/{}", layer);
+            let layer_path = format!("/opt/ovmlayer/layer_dir/{layer}");
             let old_path_in_layer =
                 PathBuf::from(&layer_path).join(source_dir.trim_start_matches('/'));
             let new_path_in_layer =

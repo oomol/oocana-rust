@@ -145,7 +145,7 @@ impl TryFrom<&str> for BindPath {
             } else if *part == "nonrecursive" && recursive.is_none() {
                 recursive = Some(false);
             } else {
-                return Err(format!("Invalid BindPath format: {}", path));
+                return Err(format!("Invalid BindPath format: {path}"));
             }
         }
 
@@ -158,8 +158,7 @@ impl TryFrom<&str> for BindPath {
             Ok(BindPath::new(&src, &dst, readonly, recursive))
         } else {
             Err(format!(
-                "Invalid BindPath format: {}. Missing src or dst",
-                path
+                "Invalid BindPath format: {path}. Missing src or dst"
             ))
         }
     }
@@ -230,11 +229,11 @@ pub fn run_cmd(
     let mut options = vec![format!("run"), format!("--all-devices")];
 
     for bind_path in mount_paths {
-        options.push(format!("--mount={}", bind_path));
+        options.push(format!("--mount={bind_path}"));
     }
 
     if let Some(work_dir) = work_dir {
-        options.push(format!("--workdir={}", work_dir).to_string());
+        options.push(format!("--workdir={work_dir}").to_string());
     }
 
     if envs.get("DEBIAN_FRONTEND").is_none() {
@@ -245,14 +244,14 @@ pub fn run_cmd(
 
     for (env_key, env_value) in envs {
         options.push("--env".to_string());
-        options.push(format!("{}={}", env_key, env_value));
+        options.push(format!("{env_key}={env_value}"));
     }
 
     if let Some(env_file) = env_file {
-        options.push(format!("--env-file={}", env_file));
+        options.push(format!("--env-file={env_file}"));
     }
 
-    let merged_point = format!("--merged-point={}", merge_point);
+    let merged_point = format!("--merged-point={merge_point}");
     options.push(merged_point);
     // 使用 zsh -i 来加载 zshrc 获取 PATH 环境变量，绕开 sudo 导致的 PATH 改变问题。
     options.push("zsh".to_string());

@@ -19,7 +19,7 @@ pub struct SchedulerTx {
 #[async_trait]
 impl SchedulerTxImpl for SchedulerTx {
     async fn send_block_event(&self, session_id: &SessionId, data: MessageData) {
-        let topic = format!("session/{}", session_id);
+        let topic = format!("session/{session_id}");
 
         self.tx
             .publish(topic, QoS::AtLeastOnce, false, data)
@@ -37,7 +37,7 @@ impl SchedulerTxImpl for SchedulerTx {
     }
 
     async fn run_block(&self, executor: &str, data: MessageData) {
-        let topic = format!("executor/{}/run_block", executor);
+        let topic = format!("executor/{executor}/run_block");
 
         self.tx
             .publish(topic, QoS::AtLeastOnce, false, data)
@@ -51,7 +51,7 @@ impl SchedulerTxImpl for SchedulerTx {
         request_id: &str,
         data: MessageData,
     ) {
-        let topic = format!("session/{}/request/{}/response", session_id, request_id);
+        let topic = format!("session/{session_id}/request/{request_id}/response");
 
         self.tx
             .publish(topic, QoS::AtLeastOnce, false, data)
@@ -60,7 +60,7 @@ impl SchedulerTxImpl for SchedulerTx {
     }
 
     async fn run_service_block(&self, executor: &str, data: MessageData) {
-        let topic = format!("executor/{}/run_service_block", executor);
+        let topic = format!("executor/{executor}/run_service_block");
 
         self.tx
             .publish(topic, QoS::AtLeastOnce, false, data)

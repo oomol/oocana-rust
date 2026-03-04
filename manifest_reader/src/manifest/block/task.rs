@@ -209,7 +209,7 @@ mod test {
         };
 
         let str = serde_json::to_string(&tmp_task_block).unwrap();
-        println!("des: {}", str)
+        println!("des: {str}")
     }
 
     #[test]

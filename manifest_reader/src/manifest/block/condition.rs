@@ -450,7 +450,7 @@ mod tests {
                 result.err()
             );
             let op: ExpressionOperator = result.unwrap();
-            assert_eq!(op, expected_op, "Mismatched operator for: {}", json_op);
+            assert_eq!(op, expected_op, "Mismatched operator for: {json_op}");
         }
     }
 

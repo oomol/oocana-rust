@@ -158,7 +158,7 @@ pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle>
                     .map(|input| input.handle.to_string())
                     .collect::<Vec<String>>()
                     .join(", ");
-                format!("node({}) handles: [{}]", node_id, handles_name)
+                format!("node({node_id}) handles: [{handles_name}]")
             })
             .collect::<Vec<String>>()
             .join(", ");
@@ -854,7 +854,7 @@ pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle>
                             node_id
                                 .clone()
                                 .map(|n| format!("[node id: {n}]"))
-                                .unwrap_or_else(|| format!("job_id: {}", job_id)),
+                                .unwrap_or_else(|| format!("job_id: {job_id}")),
                         );
 
                         let error_stack = if let Some(detail) = &error_detail {
@@ -880,7 +880,7 @@ pub fn execute_flow_job(mut params: FlowJobParameters) -> Option<BlockJobHandle>
                             run_flow_ctx.parent_block_status.finish(
                                 flow_shared.job_id.to_owned(),
                                 None,
-                                Some(format!("flow {} failed.", flow_path_str)),
+                                Some(format!("flow {flow_path_str} failed.")),
                                 Some(ErrorDetail {
                                     message: Some(err),
                                     stack: error_stack,

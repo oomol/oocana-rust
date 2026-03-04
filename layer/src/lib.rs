@@ -37,7 +37,7 @@ pub fn convert_to_script(cmd: &Vec<&str>) -> String {
         exec_string = if i == 0 {
             cmd.to_string()
         } else {
-            format!("{} '{}'", exec_string, cmd)
+            format!("{exec_string} '{cmd}'")
         }
     }
     exec_string

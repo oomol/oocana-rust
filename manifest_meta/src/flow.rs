@@ -93,10 +93,10 @@ impl fmt::Display for ServiceQueryResult {
             self.dir, self.service_hash, self.is_global
         );
         if let Some(entry) = &self.entry {
-            msg.push_str(&format!(", \"entry\": {:?}", entry));
+            msg.push_str(&format!(", \"entry\": {entry:?}"));
         }
         if let Some(package) = &self.package {
-            msg.push_str(&format!(", \"package\": {:?}", package));
+            msg.push_str(&format!(", \"package\": {package:?}"));
         }
         msg.push_str(" }");
         write!(f, "{msg}")
@@ -106,7 +106,7 @@ impl fmt::Display for ServiceQueryResult {
 pub static RUNTIME_HANDLE_PREFIX: &str = "runtime";
 
 pub fn generate_runtime_handle_name(node_id: &str, handle: &HandleName) -> HandleName {
-    format!("{}::{}-{}", RUNTIME_HANDLE_PREFIX, node_id, handle).into()
+    format!("{RUNTIME_HANDLE_PREFIX}::{node_id}-{handle}").into()
 }
 
 /// Calculate the BlockScope for a slot provider based on block value type and package path.

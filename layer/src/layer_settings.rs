@@ -18,19 +18,19 @@ pub struct LayerSettings {
 
 pub fn layer_setting_file() -> Result<PathBuf> {
     let settings_dir = config::store_dir().ok_or("Failed to get home dir")?;
-    std::fs::create_dir_all(&settings_dir).map_err(|e| format!("Failed to create dir: {:?}", e))?;
+    std::fs::create_dir_all(&settings_dir).map_err(|e| format!("Failed to create dir: {e:?}"))?;
 
     let file = settings_dir.join(LAYER_SETTING);
     if file.exists() {
         return Ok(file);
     } else {
-        let f = File::create(&file).map_err(|e| format!("Failed to create file: {:?}", e))?;
+        let f = File::create(&file).map_err(|e| format!("Failed to create file: {e:?}"))?;
         let writer = std::io::BufWriter::new(f);
         let store = LayerSettings {
             base_rootfs: vec![],
         };
         serde_json::to_writer(writer, &store)
-            .map_err(|e| format!("Failed to serialize: {:?}", e))?;
+            .map_err(|e| format!("Failed to serialize: {e:?}"))?;
     }
 
     Ok(file)
@@ -50,8 +50,7 @@ pub fn load_base_rootfs() -> Result<Vec<String>> {
                 .cloned()
                 .collect()),
             Err(e) => Err(Error::new(&format!(
-                "Failed to load_package_store: {:?}",
-                e
+                "Failed to load_package_store: {e:?}"
             ))),
         }
     } else {

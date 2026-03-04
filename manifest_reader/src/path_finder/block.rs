@@ -112,8 +112,7 @@ pub fn find_slot_flow(params: SlotBlockManifestParams) -> Result<PathBuf> {
 
     if !matches!(slot_block_value, BlockValueType::SelfBlock { .. }) {
         return Err(utils::error::Error::new(&format!(
-            "Slot block currently only accept self block(self:: prefix), but got: {}",
-            value
+            "Slot block currently only accept self block(self:: prefix), but got: {value}"
         )));
     }
 

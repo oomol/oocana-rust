@@ -53,10 +53,10 @@ impl InjectionLayer {
         let entry = store.flow_injection.entry(key).or_insert(HashMap::new());
         entry.insert(self.package_path.clone(), self.clone());
         let f =
-            std::fs::File::create(&file).map_err(|e| format!("Failed to create file: {:?}", e))?;
+            std::fs::File::create(&file).map_err(|e| format!("Failed to create file: {e:?}"))?;
         let writer = std::io::BufWriter::new(f);
         serde_json::to_writer_pretty(writer, &store)
-            .map_err(|e| format!("Failed to serialize: {:?}", e))?;
+            .map_err(|e| format!("Failed to serialize: {e:?}"))?;
         Ok(())
     }
 }

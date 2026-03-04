@@ -13,9 +13,9 @@ mod tests {
 
         assert_eq!(
             global.store_dir,
-            format!("{}/.oomol-studio/oocana", home_dir)
+            format!("{home_dir}/.oomol-studio/oocana")
         );
-        assert_eq!(global.oocana_dir, format!("{}/.oocana", home_dir));
+        assert_eq!(global.oocana_dir, format!("{home_dir}/.oocana"));
     }
 
     #[test]
@@ -31,13 +31,13 @@ mod tests {
         let global = config.global.clone();
         assert_eq!(
             global.store_dir,
-            format!("{}/.oomol-studio/oocana", home_dir)
+            format!("{home_dir}/.oomol-studio/oocana")
         );
-        assert_eq!(global.oocana_dir, format!("{}/.oocana", home_dir));
-        assert_eq!(global.env_file, Some(format!("{}/.oocana/.env", home_dir)));
+        assert_eq!(global.oocana_dir, format!("{home_dir}/.oocana"));
+        assert_eq!(global.env_file, Some(format!("{home_dir}/.oocana/.env")));
         assert_eq!(
             global.bind_path_file,
-            Some(format!("{}/bind_path.env", home_dir))
+            Some(format!("{home_dir}/bind_path.env"))
         );
 
         assert!(global.search_paths.is_some());

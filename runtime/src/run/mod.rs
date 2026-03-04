@@ -92,8 +92,7 @@ pub fn run_job(params: JobParams) -> Option<BlockJobHandle> {
             block_path: &None,
             stacks: common.stacks.vec(),
             error: Some(format!(
-                "Maximum recursion depth exceeded: {} (limit: {})",
-                depth, MAX_RECURSION_DEPTH
+                "Maximum recursion depth exceeded: {depth} (limit: {MAX_RECURSION_DEPTH})"
             )),
             result: None,
             finish_at: ReporterMessage::now(),

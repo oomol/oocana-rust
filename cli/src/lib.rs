@@ -264,8 +264,8 @@ pub fn cli_match() -> Result<()> {
 
             if *dry_run {
                 // print the parameters
-                println!("bind_paths: {:?}", bind_paths);
-                println!("search_paths: {:?}", search_paths);
+                println!("bind_paths: {bind_paths:?}");
+                println!("search_paths: {search_paths:?}");
 
                 println!("dry_run is enabled, exiting without execution.");
 

@@ -221,27 +221,27 @@ pub fn list_package_layers() -> Result<Vec<PackageLayer>> {
 fn package_store_file(write: bool) -> Result<File> {
     let dir = config::store_dir().ok_or("Failed to get home dir")?;
 
-    std::fs::create_dir_all(&dir).map_err(|e| format!("Failed to create dir: {:?}", e))?;
+    std::fs::create_dir_all(&dir).map_err(|e| format!("Failed to create dir: {e:?}"))?;
 
     let file_path = dir.join(PACKAGE_STORE);
 
     if !file_path.exists() {
-        let f = File::create(&file_path).map_err(|e| format!("Failed to create file: {:?}", e))?;
-        FileExt::lock_exclusive(&f).map_err(|e| format!("Failed to lock file: {:?}", e))?;
+        let f = File::create(&file_path).map_err(|e| format!("Failed to create file: {e:?}"))?;
+        FileExt::lock_exclusive(&f).map_err(|e| format!("Failed to lock file: {e:?}"))?;
         let writer = std::io::BufWriter::new(&f);
         let store = PackageLayerStore {
             version: env!("CARGO_PKG_VERSION").to_string(),
             packages: HashMap::new(),
         };
         serde_json::to_writer(writer, &store)
-            .map_err(|e| format!("Failed to serialize: {:?}", e))?;
-        FileExt::unlock(&f).map_err(|e| format!("Failed to unlock file: {:?}", e))?;
+            .map_err(|e| format!("Failed to serialize: {e:?}"))?;
+        FileExt::unlock(&f).map_err(|e| format!("Failed to unlock file: {e:?}"))?;
     }
 
     let f = if write {
-        File::create(&file_path).map_err(|e| format!("Failed to open file: {:?}", e))?
+        File::create(&file_path).map_err(|e| format!("Failed to open file: {e:?}"))?
     } else {
-        File::open(&file_path).map_err(|e| format!("Failed to open file: {:?}", e))?
+        File::open(&file_path).map_err(|e| format!("Failed to open file: {e:?}"))?
     };
 
     Ok(f)
@@ -251,18 +251,17 @@ pub fn load_package_store() -> Result<PackageLayerStore> {
     let f = package_store_file(false)?;
 
     let reader = std::io::BufReader::new(&f);
-    FileExt::lock_shared(&f).map_err(|e| format!("Failed to lock file: {:?}", e))?;
+    FileExt::lock_shared(&f).map_err(|e| format!("Failed to lock file: {e:?}"))?;
 
     let _defer = Defer(Some(|| {
         FileExt::unlock(&f)
-            .map_err(|e| format!("Failed to unlock file: {:?}", e))
+            .map_err(|e| format!("Failed to unlock file: {e:?}"))
             .unwrap();
     }));
 
     let store: PackageLayerStore = serde_json::from_reader(reader).map_err(|e| {
         format!(
-            "Failed to deserialize package store from {}: {:?}",
-            PACKAGE_STORE, e
+            "Failed to deserialize package store from {PACKAGE_STORE}: {e:?}"
         )
     })?;
 
@@ -277,10 +276,10 @@ pub fn load_package_store() -> Result<PackageLayerStore> {
     if store.version == "0.2.0" || store.version == "0.1.0" {
         let dir = config::store_dir().ok_or("Failed to get home dir")?;
 
-        std::fs::create_dir_all(&dir).map_err(|e| format!("Failed to create dir: {:?}", e))?;
+        std::fs::create_dir_all(&dir).map_err(|e| format!("Failed to create dir: {e:?}"))?;
 
         let file_path = dir.join(PACKAGE_STORE);
-        fs::remove_file(&file_path).map_err(|e| format!("Failed to remove file: {:?}", e))?;
+        fs::remove_file(&file_path).map_err(|e| format!("Failed to remove file: {e:?}"))?;
         return load_package_store();
     }
 
@@ -307,18 +306,18 @@ pub fn save_package_store(store: &PackageLayerStore, file: Option<File>) -> Resu
         // 如果调用者提供了文件句柄，可能已经进行过锁操作，这里只尝试加锁
         let _ = FileExt::try_lock_exclusive(&f);
     } else {
-        FileExt::lock_exclusive(&f).map_err(|e| format!("Failed to lock file: {:?}", e))?;
+        FileExt::lock_exclusive(&f).map_err(|e| format!("Failed to lock file: {e:?}"))?;
     }
 
     f.set_len(0)
-        .map_err(|e| format!("Failed to truncate package store file: {:?}", e))?;
+        .map_err(|e| format!("Failed to truncate package store file: {e:?}"))?;
 
     let writer = std::io::BufWriter::new(&f);
 
     serde_json::to_writer_pretty(writer, store)
-        .map_err(|e| format!("Failed to serialize: {:?}", e))?;
+        .map_err(|e| format!("Failed to serialize: {e:?}"))?;
 
-    FileExt::unlock(&f).map_err(|e| format!("Failed to unlock file: {:?}", e))?;
+    FileExt::unlock(&f).map_err(|e| format!("Failed to unlock file: {e:?}"))?;
 
     Ok(())
 }
