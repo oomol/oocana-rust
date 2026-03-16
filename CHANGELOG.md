@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.30.38 (2026-03-16)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* fix: remove opt ovmlayer deps by @leavesster in https://github.com/oomol/oocana-rust/pull/429
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.30.37...v0.30.38
+
 ## 0.30.37 (2026-03-04)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
