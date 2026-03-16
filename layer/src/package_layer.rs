@@ -224,8 +224,8 @@ pub fn import_package_layer(package_path: &str, export_dir: &str) -> Result<()> 
         );
         let move_script = r#"
 mkdir -p -- "$PACKAGE_PATH"
-if [[ -d "$SOURCE_DIR" ]]; then
-    find "$SOURCE_DIR" -mindepth 1 -maxdepth 1 -exec mv -- {} "$PACKAGE_PATH" \;
+if [ -d "$SOURCE_DIR" ]; then
+    find "$SOURCE_DIR" -mindepth 1 -maxdepth 1 -exec mv -- '{}' "$PACKAGE_PATH" \;
 fi
 "#;
         let envs = HashMap::from([
@@ -328,9 +328,9 @@ mod tests {
             &[],
             &None,
             r#"
-[[ -f "$PACKAGE_PATH/package.oo.yaml" ]]
-[[ -f "$PACKAGE_PATH/1.txt" ]]
-[[ -f "$PACKAGE_PATH/.hidden" ]]
+[ -f "$PACKAGE_PATH/package.oo.yaml" ]
+[ -f "$PACKAGE_PATH/1.txt" ]
+[ -f "$PACKAGE_PATH/.hidden" ]
 "#,
             &envs,
             &None,
