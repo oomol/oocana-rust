@@ -128,7 +128,7 @@ pub fn run_script_unmerge(
     exec(cp_cmd)?;
 
     let mut cmd = run_cmd(merge_point, bind, work_dir, envs, env_file);
-    cmd.arg(&script_target_path);
+    cmd.arg(quote_shell_arg(&script_target_path));
     tracing::info!("{cmd:?}");
 
     let child = cmd
@@ -224,6 +224,10 @@ pub fn run_script_unmerge(
             return Err(Error::from(format!("spawn failed {e}")));
         }
     }
+}
+
+fn quote_shell_arg(arg: &str) -> String {
+    format!("'{}'", arg.replace('\'', "'\"'\"'"))
 }
 
 static TMP_LAYER_PREFIX: &str = "tmp_layer";
@@ -354,5 +358,13 @@ mod tests {
         );
 
         println!("list layers: {:?}", lists.unwrap());
+    }
+
+    #[test]
+    fn test_quote_shell_arg() {
+        use super::quote_shell_arg;
+
+        assert_eq!(quote_shell_arg("/tmp/source package/script.sh"), "'/tmp/source package/script.sh'");
+        assert_eq!(quote_shell_arg("/tmp/it's/script.sh"), "'/tmp/it'\"'\"'s/script.sh'");
     }
 }
