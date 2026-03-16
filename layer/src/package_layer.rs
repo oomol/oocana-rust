@@ -298,7 +298,7 @@ mod tests {
         .unwrap();
         fs::write(source_dir.join(".hidden"), "hidden").unwrap();
 
-        delete_all_layer_data().unwrap();
+        crate::delete_all_layer_data().unwrap();
 
         let base_layer = create_random_layer().unwrap();
         let package = PackageLayer::create(
@@ -313,7 +313,7 @@ mod tests {
         .unwrap();
         package.export(&export_dir_str).unwrap();
 
-        delete_all_layer_data().unwrap();
+        crate::delete_all_layer_data().unwrap();
 
         import_package_layer(&imported_path_str, &export_dir_str).unwrap();
 
@@ -337,7 +337,7 @@ mod tests {
         )
         .unwrap();
 
-        delete_all_layer_data().unwrap();
+        crate::delete_all_layer_data().unwrap();
         fs::remove_dir_all(temp_root).unwrap();
     }
 }
