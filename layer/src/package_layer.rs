@@ -225,7 +225,7 @@ pub fn import_package_layer(package_path: &str, export_dir: &str) -> Result<()> 
         for layer in package.layers() {
             run_script_unmerge(
                 &vec![layer],
-                &vec![],
+                &[],
                 &None,
                 &format!(
                     "mkdir -p {} && mv {}/* {}",
