@@ -224,13 +224,10 @@ pub fn import_package_layer(package_path: &str, export_dir: &str) -> Result<()> 
         );
         for layer in package.layers() {
             run_script_unmerge(
-                &vec![layer],
+                &[layer],
                 &[],
                 &None,
-                &format!(
-                    "mkdir -p {} && mv {}/* {}",
-                    package_path, source_dir, package_path
-                ),
+                &format!("mkdir -p {package_path} && mv {source_dir}/* {package_path}"),
                 &HashMap::new(),
                 &None,
             )?;
