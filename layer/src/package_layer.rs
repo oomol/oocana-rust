@@ -222,15 +222,18 @@ pub fn import_package_layer(package_path: &str, export_dir: &str) -> Result<()> 
             source_dir,
             package_path
         );
+        let move_script = r#"
+mkdir -p -- "$PACKAGE_PATH"
+if [[ -d "$SOURCE_DIR" ]]; then
+    find "$SOURCE_DIR" -mindepth 1 -maxdepth 1 -exec mv -- {} "$PACKAGE_PATH" \;
+fi
+"#;
+        let envs = HashMap::from([
+            ("PACKAGE_PATH".to_string(), package_path.to_string()),
+            ("SOURCE_DIR".to_string(), source_dir.clone()),
+        ]);
         for layer in package.layers() {
-            run_script_unmerge(
-                &[layer],
-                &[],
-                &None,
-                &format!("mkdir -p {package_path} && mv {source_dir}/* {package_path}"),
-                &HashMap::new(),
-                &None,
-            )?;
+            run_script_unmerge(&[layer], &[], &None, move_script, &envs, &None)?;
         }
     }
 
@@ -248,7 +251,6 @@ fn diff(a: HashSet<String>, b: HashSet<String>) -> Vec<String> {
 
 #[cfg(test)]
 mod tests {
-
     #[test]
     fn test_diff() {
         let a = ["a", "b", "c"];
@@ -271,5 +273,71 @@ mod tests {
         let b: std::collections::HashSet<String> = b.iter().map(|s| s.to_string()).collect();
         let diff = super::diff(a, b);
         assert_eq!(diff.len(), 0);
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn test_import_package_layer_moves_bootstrap_and_hidden_files() {
+        use std::{collections::HashMap, fs};
+
+        use super::*;
+
+        let temp_root = std::env::temp_dir().join(crate::layer::random_name("package_layer_test"));
+        let source_dir = temp_root.join("source package");
+        let export_dir = temp_root.join("export bundle");
+        let imported_path = temp_root.join("imported package");
+        let source_dir_str = source_dir.to_string_lossy().to_string();
+        let export_dir_str = export_dir.to_string_lossy().to_string();
+        let imported_path_str = imported_path.to_string_lossy().to_string();
+
+        fs::create_dir_all(&source_dir).unwrap();
+        fs::write(
+            source_dir.join("package.oo.yaml"),
+            "version: 0.1.2\nscripts:\n  bootstrap: |\n    touch 1.txt\n",
+        )
+        .unwrap();
+        fs::write(source_dir.join(".hidden"), "hidden").unwrap();
+
+        delete_all_layer_data().unwrap();
+
+        let base_layer = create_random_layer().unwrap();
+        let package = PackageLayer::create(
+            Some("0.1.2".to_string()),
+            Some(vec![base_layer]),
+            Some("touch 1.txt".to_string()),
+            &[],
+            source_dir_str.clone(),
+            &HashMap::new(),
+            &None,
+        )
+        .unwrap();
+        package.export(&export_dir_str).unwrap();
+
+        delete_all_layer_data().unwrap();
+
+        import_package_layer(&imported_path_str, &export_dir_str).unwrap();
+
+        let imported_package = crate::package_store::list_package_layers()
+            .unwrap()
+            .into_iter()
+            .find(|package| package.package_path == imported_path)
+            .unwrap();
+        let envs = HashMap::from([("PACKAGE_PATH".to_string(), imported_path_str)]);
+        run_script_unmerge(
+            &imported_package.layers(),
+            &[],
+            &None,
+            r#"
+[[ -f "$PACKAGE_PATH/package.oo.yaml" ]]
+[[ -f "$PACKAGE_PATH/1.txt" ]]
+[[ -f "$PACKAGE_PATH/.hidden" ]]
+"#,
+            &envs,
+            &None,
+        )
+        .unwrap();
+
+        delete_all_layer_data().unwrap();
+        fs::remove_dir_all(temp_root).unwrap();
     }
 }
