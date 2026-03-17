@@ -49,6 +49,7 @@ for (const target of targets) {
     const oocana = path.join(projectDir, "target", target, "release", "oocana");
 
     await fs.copyFile(oocana, bin);
+    await fs.chmod(bin, 0o755);
 
     const newFile = {
         name: `@${owner}/oocana-cli-${target}`,
@@ -65,4 +66,3 @@ for (const target of targets) {
     console.log(`Built @${owner}/oocana-cli-${target} package.json`);
 
 }
-
