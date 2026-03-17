@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.30.39 (2026-03-17)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* ci: split GitHub and npm publish jobs by @leavesster in https://github.com/oomol/oocana-rust/pull/431
+* chore(deps): bump quinn-proto from 0.11.13 to 0.11.14 by @leavesster in https://github.com/oomol/oocana-rust/pull/432
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.30.38...v0.30.39
+
 ## 0.30.38 (2026-03-16)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
