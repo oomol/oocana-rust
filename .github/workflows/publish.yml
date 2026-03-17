@@ -108,7 +108,7 @@ jobs:
           prerelease: false
           make_latest: true
 
-  publish-npm:
+  prepare-npm-package:
     runs-on: ubuntu-latest
     needs: [release-ubuntu, release-macos, dry-run]
     steps:
@@ -141,6 +141,22 @@ jobs:
         working-directory: oocana-cli
       - name: prepare npm
         run: node npm/npm.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: oocana-npm-package
+          path: |
+            npm
+            target
+          retention-days: 1
+
+  publish-github-npm:
+    runs-on: ubuntu-latest
+    needs: [prepare-npm-package, dry-run]
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: oocana-npm-package
+          path: .
       - name: setup github npm registry
         uses: actions/setup-node@v4
         with:
@@ -150,6 +166,15 @@ jobs:
         if: ${{ needs.dry-run.outputs.dry-run == 'false' }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish-npm:
+    runs-on: ubuntu-latest
+    needs: [prepare-npm-package, dry-run]
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: oocana-npm-package
+          path: .
       - name: setup npm registry
         uses: actions/setup-node@v4
         if: ${{ github.repository_owner == 'oomol' }}
@@ -160,11 +185,11 @@ jobs:
         run: node npm/publish.mjs npm
         if: ${{ (github.repository_owner == 'oomol') && (needs.dry-run.outputs.dry-run == 'false') }}
         env:
-          NODE_AUTH_TOKEN: ${{secrets.NPM_PUBLISH_TOKEN}} # expire at 2026-03-13
+          NODE_AUTH_TOKEN: ${{secrets.NPM_PUBLISH_TOKEN}}
 
   trigger:
     runs-on: ubuntu-latest
-    needs: [publish-npm, dry-run]
+    needs: [publish-github-npm, publish-npm, dry-run]
     if: ${{ (github.repository_owner == 'oomol') && (needs.dry-run.outputs.dry-run == 'false') }}
     steps:
       - run: |
