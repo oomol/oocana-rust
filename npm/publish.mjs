@@ -10,6 +10,7 @@ const registry = argv[2];
 console.log("Publishing packages... to", registry || "github");
 for (const pkg of fs.readdirSync(path.join(__dirname))) {
     if (pkg.startsWith("oocana-cli")) {
+        fs.chmodSync(path.join(__dirname, pkg, "bin", "oocana"), 0o755);
 
         const args = registry == "npm" ? ["publish", "--access", "public"] : ["publish"];
         const { status } = spawnSync("npm", args, {
