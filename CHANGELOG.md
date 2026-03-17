@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.30.40 (2026-03-17)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* fix: update publish workflow and preserve CLI executable bit by @leavesster in https://github.com/oomol/oocana-rust/pull/434
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.30.39...v0.30.40
+
 ## 0.30.39 (2026-03-17)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
