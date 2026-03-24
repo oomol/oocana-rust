@@ -17,6 +17,12 @@ chmod +x /usr/local/bin/ovmlayer
 # download ovmlayer rootfs
 gh release download base-rootfs@0.4.0 --repo oomol/ovmlayer-rootfs --pattern "*${arch}*" --clobber -O /tmp/ubuntu-rootfs.tar
 
+# temporarily use a raw file as ovmlayer storage, will switch to a more robust solution in the future
+truncate -s 10G /workspaces/ovmlayer-layers.raw
+mkfs.ext4 -F /workspaces/ovmlayer-layers.raw
+mkdir -p  /workspaces/ovmlayer-layers 
+mount /workspaces/ovmlayer-layers.raw /workspaces/ovmlayer-layers
+
 # setup ovmlayer
 sudo ovmlayer setup -d /workspaces/ovmlayer-layers,rw --rootfs-tar /tmp/ubuntu-rootfs.tar --rootfs-path /workspaces/rootfs
 
