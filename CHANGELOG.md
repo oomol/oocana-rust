@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.30.42 (2026-03-30)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* fix(layer): import external package layers into registry store by @leavesster in https://github.com/oomol/oocana-rust/pull/439
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.30.41...v0.30.42
+
 ## 0.30.41 (2026-03-30)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
