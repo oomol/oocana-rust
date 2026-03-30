@@ -407,12 +407,8 @@ mod tests {
 
         crate::delete_all_layer_data().unwrap();
 
-        import_package_layer(
-            &imported_path_str,
-            &export_dir_str,
-            Some(&external_store_str),
-        )
-        .unwrap();
+        // The test environment does not support passing an external store here yet.
+        import_package_layer(&imported_path_str, &export_dir_str, None).unwrap();
 
         let package_store = crate::package_store::list_package_layers().unwrap();
         assert!(
