@@ -61,15 +61,56 @@ pub fn load_base_rootfs() -> Result<Vec<String>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::{path::PathBuf, sync::Mutex};
+    use utils::config::GLOBAL_CONFIG;
+
+    static TEST_CONFIG_LOCK: Mutex<()> = Mutex::new(());
+
+    struct TestStoreDirGuard {
+        original_store_dir: String,
+        temp_dir: PathBuf,
+        _serial: std::sync::MutexGuard<'static, ()>,
+    }
+
+    impl TestStoreDirGuard {
+        fn new() -> Self {
+            let serial = TEST_CONFIG_LOCK.lock().unwrap();
+            let temp_dir =
+                std::env::temp_dir().join(format!("layer-settings-test-{}", uuid::Uuid::new_v4()));
+
+            let mut config = GLOBAL_CONFIG.lock().unwrap();
+            let original_store_dir = config.global.store_dir.clone();
+            config.global.store_dir = temp_dir.to_string_lossy().into_owned();
+            drop(config);
+
+            Self {
+                original_store_dir,
+                temp_dir,
+                _serial: serial,
+            }
+        }
+    }
+
+    impl Drop for TestStoreDirGuard {
+        fn drop(&mut self) {
+            if let Ok(mut config) = GLOBAL_CONFIG.lock() {
+                config.global.store_dir = self.original_store_dir.clone();
+            }
+
+            let _ = std::fs::remove_dir_all(&self.temp_dir);
+        }
+    }
 
     #[test]
     fn test_rootfs_file() {
+        let _guard = TestStoreDirGuard::new();
         let file = layer_setting_file().unwrap();
         assert!(file.exists());
     }
 
     #[test]
     fn test_load_base_rootfs() {
+        let _guard = TestStoreDirGuard::new();
         let base = load_base_rootfs().unwrap();
         assert_eq!(base.len(), 0);
     }
