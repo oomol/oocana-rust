@@ -6,10 +6,10 @@ on:
         required: false
         type: boolean
         default: false
-    secrets:
-      layer-token:
+      ovmlayer-repository:
         required: false
-        description: "GitHub token for ovmlayer, required if create-layer is true"
+        type: string
+        default: ovmlayer-next
 
 jobs:
   test-node:
@@ -21,9 +21,19 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 24
+      - name: Generate GitHub App Token for oomol/${{ inputs.ovmlayer-repository }}
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.OOMOL_DOWNLOADER_APP_ID }}
+          private-key: ${{ secrets.OOMOL_DOWNLOADER_APP_PRIVATE_KEY }}
+          owner: oomol
+          repositories: ${{ inputs.ovmlayer-repository }}
+        if: ${{ inputs.create-layer }}
       - uses: ./.github/actions/ovmlayer
         with:
-          token: ${{ secrets.layer-token }}
+          token: ${{ steps.app-token.outputs.token }}
+          repository: ${{ inputs.ovmlayer-repository }}
         if: ${{ inputs.create-layer }}
       - name: Download oocana
         uses: actions/download-artifact@v4

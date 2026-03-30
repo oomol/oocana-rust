@@ -3,6 +3,12 @@ description: "setup ovmlayer on ubuntu-latest"
 
 on:
   workflow_dispatch:
+    inputs:
+      repository:
+        description: GitHub repository to download ovmlayer releases from
+        required: false
+        type: string
+        default: ovmlayer-next
   pull_request:
     paths:
       - ".github/workflows/ovmlayer.yml"
@@ -13,6 +19,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+      - name: Generate GitHub App Token for oomol/${{ inputs.repository }}
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.OOMOL_DOWNLOADER_APP_ID }}
+          private-key: ${{ secrets.OOMOL_DOWNLOADER_APP_PRIVATE_KEY }}
+          owner: oomol
+          repositories: ${{ inputs.repository }}
       - uses: ./.github/actions/ovmlayer
         with:
-          token: ${{ secrets.ACCESS_REPO }}
+          token: ${{ steps.app-token.outputs.token }}
+          repository: ${{ inputs.repository }}
