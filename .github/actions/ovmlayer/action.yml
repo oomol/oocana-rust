@@ -63,5 +63,9 @@ runs:
       shell: bash
     - name: setup ovmlayer
       run: |
-        sudo ovmlayer setup dev --base-rootfs=$(pwd)/base_rootfs.tar --layer-disk=/tmp/layer-disk
+        if [[ "${{ inputs.repository }}" == "ovmlayer-next" ]]; then
+          sudo ovmlayer setup --runtime /ovmlayer-workspace --external /dev/shm --rootfs-tar=$(pwd)/base_rootfs.tar
+        else
+          sudo ovmlayer setup dev --base-rootfs=$(pwd)/base_rootfs.tar --layer-disk=/tmp/layer-disk
+        fi
       shell: bash
