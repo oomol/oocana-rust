@@ -9,7 +9,7 @@ on:
       ovmlayer-repository:
         required: false
         type: string
-        default: ovmlayer-next
+        default: ${{ vars.OVMLAYER_REPOSITORY || 'ovmlayer-next' }}
 
 jobs:
   test-node:

@@ -11,7 +11,7 @@ concurrency:
 
 env:
   OVMLAYER_LOG: /tmp/ovmlayer.log
-  OVMLAYER_REPOSITORY: ovmlayer-next
+  OVMLAYER_REPOSITORY: ${{ vars.OVMLAYER_REPOSITORY || 'ovmlayer-next' }}
 
 jobs:
   skip:

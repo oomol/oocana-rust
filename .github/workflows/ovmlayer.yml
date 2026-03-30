@@ -8,7 +8,6 @@ on:
         description: GitHub repository to download ovmlayer releases from
         required: false
         type: string
-        default: ovmlayer-next
   pull_request:
     paths:
       - ".github/workflows/ovmlayer.yml"
@@ -18,7 +17,7 @@ jobs:
   ovmlayer:
     runs-on: ubuntu-latest
     env:
-      OVMLAYER_REPOSITORY: ${{ inputs.repository || 'ovmlayer-next' }}
+      OVMLAYER_REPOSITORY: ${{ inputs.repository || vars.OVMLAYER_REPOSITORY || 'ovmlayer-next' }}
     steps:
       - uses: actions/checkout@v6
       - name: Generate GitHub App Token for oomol/${{ env.OVMLAYER_REPOSITORY }}
