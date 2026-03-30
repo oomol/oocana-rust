@@ -419,7 +419,9 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
                             "Package layer {:?} already exists, skip import",
                             package_path
                         );
-                        println!("Package layer already exists, skipping import.");
+                        println!(
+                            "Package layer already exists and no external layer store is provided, skipping import."
+                        );
                     } else {
                         layer::import_package_layer(
                             package_path,
