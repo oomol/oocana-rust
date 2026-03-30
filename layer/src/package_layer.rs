@@ -190,7 +190,7 @@ impl PackageLayer {
 pub fn import_package_layer(
     package_path: &str,
     export_dir: &str,
-    layer_store: Option<&str>,
+    external_layer_store: Option<&str>,
 ) -> Result<()> {
     if metadata(export_dir).is_err() {
         return Err(format!("path not exist: {export_dir:?}").into());
@@ -211,19 +211,19 @@ pub fn import_package_layer(
     let reader = std::io::BufReader::new(package_file);
     let mut package: PackageLayer = serde_json::from_reader(reader)?;
 
-    let source_dir = package.package_path.to_string_lossy().to_string();
+    let exported_package_path = package.package_path.to_string_lossy().to_string();
 
     package.package_path = PathBuf::from(package_path);
 
-    let layer_tar = format!("{export_dir}/layers.tar");
-    import_layer(&layer_tar, layer_store)?;
+    let layer_archive_path = format!("{export_dir}/layers.tar");
+    import_layer(&layer_archive_path, external_layer_store)?;
 
-    if source_dir != package_path {
+    if exported_package_path != package_path {
         // because layer's path is relative to package path , is not a fixed path.
         // so we need to copy the every thing to the new package path.
         tracing::info!(
             "move source dir {} to package path {}",
-            source_dir,
+            exported_package_path,
             package_path
         );
         let move_script = r#"
@@ -231,10 +231,10 @@ mkdir -p -- "$PACKAGE_PATH"
 if [ -d "$SOURCE_DIR" ]; then
     find "$SOURCE_DIR" -mindepth 1 -maxdepth 1 -exec mv -- '{}' "$PACKAGE_PATH" \;
 fi
-"#;
+        "#;
         let envs = HashMap::from([
             ("PACKAGE_PATH".to_string(), package_path.to_string()),
-            ("SOURCE_DIR".to_string(), source_dir.clone()),
+            ("SOURCE_DIR".to_string(), exported_package_path.clone()),
         ]);
         for layer in package.layers() {
             run_script_unmerge(&[layer], &[], &None, move_script, &envs, &None)?;

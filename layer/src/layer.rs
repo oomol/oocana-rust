@@ -53,8 +53,8 @@ pub(crate) fn export_layers(layers: &[String], dest_file: &str) -> Result<()> {
 
 #[allow(unused)]
 #[instrument(skip_all)]
-pub fn import_layer(file: &str, layer_store: Option<&str>) -> Result<()> {
-    let cmd = import_layer_cmd(file, layer_store);
+pub fn import_layer(archive_path: &str, external_layer_store: Option<&str>) -> Result<()> {
+    let cmd = import_layer_cmd(archive_path, external_layer_store);
     cli::exec_without_output(cmd)
 }
 

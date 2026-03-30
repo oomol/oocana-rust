@@ -106,16 +106,16 @@ pub enum LayerAction {
     #[command(about = "import package layer. It requires the package layer doesn't exist")]
     Import {
         #[arg(help = "directory that contains package layer's export files")]
-        layer_dir: String,
+        export_dir: String,
         #[arg(
             help = "which package path to import, it should be the same as the package path in the exported layer"
         )]
-        import_package: String,
+        package_path: String,
         #[arg(
-            help = "which layer path to store the imported package layer, default is the runtime layer path",
+            help = "external layer store path for the imported package layer; defaults to the runtime layer store path",
             long
         )]
-        layer_store: Option<String>,
+        external_layer_store: Option<String>,
     },
     #[command(about = "list package layer")]
     List {},
@@ -393,23 +393,23 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
             }
         }
         LayerAction::Import {
-            import_package,
-            layer_dir,
-            layer_store,
+            package_path,
+            export_dir,
+            external_layer_store,
         } => {
-            let status = layer::package_layer_status(import_package);
+            let status = layer::package_layer_status(package_path);
             match status {
                 Ok(layer::PackageLayerStatus::NotInStore) => {
                     layer::import_package_layer(
-                        import_package,
-                        layer_dir,
-                        layer_store.as_ref().map(|s| s.as_str()),
+                        package_path,
+                        export_dir,
+                        external_layer_store.as_deref(),
                     )?;
                 }
                 Ok(layer::PackageLayerStatus::Exist) => {
                     info!(
                         "Package layer {:?} already exists, skip import",
-                        import_package
+                        package_path
                     );
                     println!("Package layer already exists, skipping import.");
                 }
@@ -419,9 +419,9 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
                         e
                     );
                     layer::import_package_layer(
-                        import_package,
-                        layer_dir,
-                        layer_store.as_ref().map(|s| s.as_str()),
+                        package_path,
+                        export_dir,
+                        external_layer_store.as_deref(),
                     )?;
                 }
             }
