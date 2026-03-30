@@ -230,7 +230,7 @@ pub fn import_package_layer(
     let layer_archive_path = format!("{export_dir}/layers.tar");
     // Imported package layers must stay in the active ovmlayer store so runtime lookup
     // and validation can resolve the layer names immediately after import.
-    import_layer(&layer_archive_path, None)?;
+    import_layer(&layer_archive_path, external_layer_store)?;
 
     if exported_package_path != package_path {
         // because layer's path is relative to package path , is not a fixed path.
