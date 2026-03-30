@@ -228,7 +228,9 @@ pub fn import_package_layer(
     package.package_path = PathBuf::from(package_path);
 
     let layer_archive_path = format!("{export_dir}/layers.tar");
-    import_layer(&layer_archive_path, external_layer_store)?;
+    // Imported package layers must stay in the active ovmlayer store so runtime lookup
+    // and validation can resolve the layer names immediately after import.
+    import_layer(&layer_archive_path, None)?;
 
     if exported_package_path != package_path {
         // because layer's path is relative to package path , is not a fixed path.
@@ -271,6 +273,49 @@ fn diff(a: HashSet<String>, b: HashSet<String>) -> Vec<String> {
 
 #[cfg(test)]
 mod tests {
+    use std::{path::Path, sync::Mutex};
+    use utils::config::GLOBAL_CONFIG;
+
+    static TEST_CONFIG_LOCK: Mutex<()> = Mutex::new(());
+
+    struct TestStoreGuard {
+        original_store_dir: String,
+        original_registry_store_file: String,
+        _serial: std::sync::MutexGuard<'static, ()>,
+    }
+
+    impl TestStoreGuard {
+        fn new(base_dir: &Path) -> Self {
+            let serial = TEST_CONFIG_LOCK.lock().unwrap();
+            let mut config = GLOBAL_CONFIG.lock().unwrap();
+            let original_store_dir = config.global.store_dir.clone();
+            let original_registry_store_file = config.global.registry_store_file.clone();
+
+            config.global.store_dir = base_dir.join("store").to_string_lossy().into_owned();
+            config.global.registry_store_file = base_dir
+                .join("registry")
+                .join("package_store.json")
+                .to_string_lossy()
+                .into_owned();
+            drop(config);
+
+            Self {
+                original_store_dir,
+                original_registry_store_file,
+                _serial: serial,
+            }
+        }
+    }
+
+    impl Drop for TestStoreGuard {
+        fn drop(&mut self) {
+            if let Ok(mut config) = GLOBAL_CONFIG.lock() {
+                config.global.store_dir = self.original_store_dir.clone();
+                config.global.registry_store_file = self.original_registry_store_file.clone();
+            }
+        }
+    }
+
     #[test]
     fn test_diff() {
         let a = ["a", "b", "c"];
@@ -303,6 +348,7 @@ mod tests {
         use super::*;
 
         let temp_root = std::env::temp_dir().join(crate::layer::random_name("package_layer_test"));
+        let _guard = TestStoreGuard::new(&temp_root);
         let source_dir = temp_root.join("source package");
         let export_dir = temp_root.join("export bundle");
         let imported_path = temp_root.join("imported package");
@@ -370,6 +416,7 @@ mod tests {
 
         let temp_root =
             std::env::temp_dir().join(crate::layer::random_name("package_layer_registry_test"));
+        let _guard = TestStoreGuard::new(&temp_root);
         let source_dir = temp_root.join("source package");
         let export_dir = temp_root.join("export bundle");
         let imported_path = temp_root.join("imported package");
@@ -407,8 +454,12 @@ mod tests {
 
         crate::delete_all_layer_data().unwrap();
 
-        // The test environment does not support passing an external store here yet.
-        import_package_layer(&imported_path_str, &export_dir_str, None).unwrap();
+        import_package_layer(
+            &imported_path_str,
+            &export_dir_str,
+            Some(&external_store_str),
+        )
+        .unwrap();
 
         let package_store = crate::package_store::list_package_layers().unwrap();
         assert!(
@@ -425,15 +476,6 @@ mod tests {
         assert_eq!(registry_package.package_path, imported_path);
         assert_eq!(registry_package.name.as_deref(), Some(package_name));
         assert_eq!(registry_package.version.as_deref(), Some(package_version));
-
-        let mut registry_store = crate::registry_layer_store::load_registry_store().unwrap();
-        registry_store
-            .packages
-            .remove(&crate::registry_layer_store::registry_key(
-                package_name,
-                package_version,
-            ));
-        crate::registry_layer_store::save_registry_store(&registry_store).unwrap();
 
         crate::delete_all_layer_data().unwrap();
         fs::remove_dir_all(temp_root).unwrap();
