@@ -117,6 +117,10 @@ jobs:
     needs: [release-ubuntu, release-macos, dry-run]
     steps:
       - uses: actions/checkout@v6
+      - name: setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
       - uses: actions/download-artifact@v8
         with:
           pattern: oocana-cli-*
@@ -168,6 +172,7 @@ jobs:
       - name: setup github npm registry
         uses: actions/setup-node@v6
         with:
+          node-version: 24
           registry-url: "https://npm.pkg.github.com"
       - name: publish npm to github
         run: node npm/publish.mjs
@@ -187,6 +192,7 @@ jobs:
       - name: setup npm registry
         uses: actions/setup-node@v6
         with:
+          node-version: 24
           registry-url: "https://registry.npmjs.org"
           scope: "@oomol"
       - name: publish npm to npm

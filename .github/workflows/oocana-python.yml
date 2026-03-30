@@ -15,8 +15,12 @@ jobs:
   test-python:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         if: ${{ inputs.create-layer }}
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
       - uses: ./.github/actions/ovmlayer
         with:
           token: ${{ secrets.layer-token }}
