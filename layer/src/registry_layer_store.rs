@@ -127,8 +127,7 @@ fn save_registry_store_atomic(store: &RegistryLayerStore) -> Result<()> {
     let content =
         serde_json::to_string_pretty(store).map_err(|e| format!("Failed to serialize: {e:?}"))?;
 
-    std::fs::write(&temp_path, content)
-        .map_err(|e| format!("Failed to write temp file: {e:?}"))?;
+    std::fs::write(&temp_path, content).map_err(|e| format!("Failed to write temp file: {e:?}"))?;
 
     // Atomic rename (readers see either old or new file, never partial)
     std::fs::rename(&temp_path, &file_path)
@@ -242,6 +241,23 @@ pub fn create_registry_layer<P: AsRef<Path>>(
     save_registry_store_atomic(&store)?;
 
     Ok(layer)
+}
+
+pub(crate) fn add_import_registry_package(pkg: &PackageLayer) -> Result<()> {
+    let package_name = pkg
+        .name
+        .as_deref()
+        .ok_or("Failed to import registry package: missing package name")?;
+    let version = pkg
+        .version
+        .as_deref()
+        .ok_or("Failed to import registry package: missing package version")?;
+
+    let key = registry_key(package_name, version);
+    let mut store = load_registry_store()?;
+    store.packages.insert(key, pkg.clone());
+    save_registry_store_atomic(&store)?;
+    Ok(())
 }
 
 pub fn get_registry_layer(package_name: &str, version: &str) -> Result<Option<PackageLayer>> {
