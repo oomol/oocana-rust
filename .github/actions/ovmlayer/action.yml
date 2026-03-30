@@ -61,10 +61,16 @@ runs:
       run: |
         curl -L ${{inputs.rootfs}} -o base_rootfs.tar
       shell: bash
+    - name: extract base rootfs for ovmlayer-next
+      if: ${{ inputs.repository == 'ovmlayer-next' }}
+      run: |
+        mkdir -p base_rootfs
+        tar -xf base_rootfs.tar -C base_rootfs
+      shell: bash
     - name: setup ovmlayer
       run: |
         if [[ "${{ inputs.repository }}" == "ovmlayer-next" ]]; then
-          sudo ovmlayer setup --runtime /ovmlayer-workspace --external /dev/shm --rootfs-tar=$(pwd)/base_rootfs.tar
+          sudo ovmlayer setup --runtime /ovmlayer-workspace --external /dev/shm --rootfs-path=$(pwd)/base_rootfs
         else
           sudo ovmlayer setup dev --base-rootfs=$(pwd)/base_rootfs.tar --layer-disk=/tmp/layer-disk
         fi
