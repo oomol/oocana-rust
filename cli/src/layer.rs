@@ -106,9 +106,16 @@ pub enum LayerAction {
     #[command(about = "import package layer. It requires the package layer doesn't exist")]
     Import {
         #[arg(help = "directory that contains package layer's export files")]
-        layer_dir: String,
-        #[arg(help = "package path")]
-        import_package: String,
+        export_dir: String,
+        #[arg(
+            help = "which package path to import, it should be the same as the package path in the exported layer"
+        )]
+        package_path: String,
+        #[arg(
+            help = "external layer store path for the imported package layer; defaults to the runtime layer store path",
+            long
+        )]
+        external_layer_store: Option<String>,
     },
     #[command(about = "list package layer")]
     List {},
@@ -317,8 +324,14 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
                                     if manifest_reader::reader::read_block_metadata(&scope_path)
                                         .hide_source
                                     {
-                                        info!("package ({}) has hide_source enabled, reporting Exist", scope_path.display());
-                                        package_map.insert(scope_path, format!("{:?}", layer::PackageLayerStatus::Exist));
+                                        info!(
+                                            "package ({}) has hide_source enabled, reporting Exist",
+                                            scope_path.display()
+                                        );
+                                        package_map.insert(
+                                            scope_path,
+                                            format!("{:?}", layer::PackageLayerStatus::Exist),
+                                        );
                                         continue;
                                     }
                                     let status = get_layer_status_with_registry_fallback(
@@ -333,8 +346,14 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
                             // Regular directories, use original logic
                             if find_package_file(&path).is_some() {
                                 if manifest_reader::reader::read_block_metadata(&path).hide_source {
-                                    info!("package ({}) has hide_source enabled, reporting Exist", path.display());
-                                    package_map.insert(path, format!("{:?}", layer::PackageLayerStatus::Exist));
+                                    info!(
+                                        "package ({}) has hide_source enabled, reporting Exist",
+                                        path.display()
+                                    );
+                                    package_map.insert(
+                                        path,
+                                        format!("{:?}", layer::PackageLayerStatus::Exist),
+                                    );
                                     continue;
                                 }
                                 let status =
@@ -374,18 +393,23 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
             }
         }
         LayerAction::Import {
-            import_package,
-            layer_dir,
+            package_path,
+            export_dir,
+            external_layer_store,
         } => {
-            let status = layer::package_layer_status(import_package);
+            let status = layer::package_layer_status(package_path);
             match status {
                 Ok(layer::PackageLayerStatus::NotInStore) => {
-                    layer::import_package_layer(import_package, layer_dir)?;
+                    layer::import_package_layer(
+                        package_path,
+                        export_dir,
+                        external_layer_store.as_deref(),
+                    )?;
                 }
                 Ok(layer::PackageLayerStatus::Exist) => {
                     info!(
                         "Package layer {:?} already exists, skip import",
-                        import_package
+                        package_path
                     );
                     println!("Package layer already exists, skipping import.");
                 }
@@ -394,7 +418,11 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
                         "import package path doesn't exist package file: {:?}. just import package layer.",
                         e
                     );
-                    layer::import_package_layer(import_package, layer_dir)?;
+                    layer::import_package_layer(
+                        package_path,
+                        export_dir,
+                        external_layer_store.as_deref(),
+                    )?;
                 }
             }
         }

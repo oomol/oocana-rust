@@ -93,10 +93,10 @@ mod tests {
 
         let new_package = "/a/b/c/d";
 
-        let result = import_package_layer(new_package, "/tmp/layer-not-exist");
+        let result = import_package_layer(new_package, "/tmp/layer-not-exist", None);
         assert!(result.is_err(), "Error: {:?}", result);
 
-        let result = import_package_layer(new_package, export_dir);
+        let result = import_package_layer(new_package, export_dir, None);
         assert!(result.is_ok(), "Error: {:?}", result.unwrap_err());
     }
 }
