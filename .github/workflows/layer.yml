@@ -58,6 +58,7 @@ jobs:
         with:
           token: ${{ steps.app-token.outputs.token }}
           repository: ${{ env.OVMLAYER_REPOSITORY }}
+          use-runtime-setup: "true"
       - name: test layer api
         run: cargo test --package layer -- --nocapture --test-threads=1 # 部分单测 API 互相干扰，需要一个个测试
       - name: build oocana

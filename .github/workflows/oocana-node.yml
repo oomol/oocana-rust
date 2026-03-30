@@ -9,11 +9,13 @@ on:
       ovmlayer-repository:
         required: false
         type: string
-        default: ${{ vars.OVMLAYER_REPOSITORY || 'ovmlayer-next' }}
 
 jobs:
   test-node:
     runs-on: ubuntu-latest
+    env:
+      OVMLAYER_REPOSITORY: ${{ inputs.ovmlayer-repository || vars.OVMLAYER_REPOSITORY || 'ovmlayer-next' }}
+      OVMLAYER_USE_RUNTIME_SETUP: ${{ (inputs.ovmlayer-repository || vars.OVMLAYER_REPOSITORY || 'ovmlayer-next') == (vars.OVMLAYER_REPOSITORY || 'ovmlayer-next') }}
     steps:
       - uses: actions/checkout@v6
         if: ${{ inputs.create-layer }}
@@ -21,19 +23,20 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 24
-      - name: Generate GitHub App Token for oomol/${{ inputs.ovmlayer-repository }}
+      - name: Generate GitHub App Token for oomol/${{ env.OVMLAYER_REPOSITORY }}
         id: app-token
         uses: actions/create-github-app-token@v2
         with:
           app-id: ${{ vars.OOMOL_DOWNLOADER_APP_ID }}
           private-key: ${{ secrets.OOMOL_DOWNLOADER_APP_PRIVATE_KEY }}
           owner: oomol
-          repositories: ${{ inputs.ovmlayer-repository }}
+          repositories: ${{ env.OVMLAYER_REPOSITORY }}
         if: ${{ inputs.create-layer }}
       - uses: ./.github/actions/ovmlayer
         with:
           token: ${{ steps.app-token.outputs.token }}
-          repository: ${{ inputs.ovmlayer-repository }}
+          repository: ${{ env.OVMLAYER_REPOSITORY }}
+          use-runtime-setup: ${{ env.OVMLAYER_USE_RUNTIME_SETUP }}
         if: ${{ inputs.create-layer }}
       - name: Download oocana
         uses: actions/download-artifact@v4

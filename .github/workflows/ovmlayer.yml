@@ -18,6 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       OVMLAYER_REPOSITORY: ${{ inputs.repository || vars.OVMLAYER_REPOSITORY || 'ovmlayer-next' }}
+      OVMLAYER_USE_RUNTIME_SETUP: ${{ (inputs.repository || vars.OVMLAYER_REPOSITORY || 'ovmlayer-next') == (vars.OVMLAYER_REPOSITORY || 'ovmlayer-next') }}
     steps:
       - uses: actions/checkout@v6
       - name: Generate GitHub App Token for oomol/${{ env.OVMLAYER_REPOSITORY }}
@@ -32,3 +33,4 @@ jobs:
         with:
           token: ${{ steps.app-token.outputs.token }}
           repository: ${{ env.OVMLAYER_REPOSITORY }}
+          use-runtime-setup: ${{ env.OVMLAYER_USE_RUNTIME_SETUP }}
