@@ -11,7 +11,6 @@ concurrency:
 
 env:
   OVMLAYER_LOG: /tmp/ovmlayer.log
-  OVMLAYER_REPOSITORY: ${{ vars.OVMLAYER_REPOSITORY || 'ovmlayer-next' }}
 
 jobs:
   skip:
@@ -46,18 +45,18 @@ jobs:
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           rustflags: ""
-      - name: Generate GitHub App Token for oomol/${{ env.OVMLAYER_REPOSITORY }}
+      - name: Generate GitHub App Token for oomol/${{ vars.OVMLAYER_REPOSITORY }}
         id: app-token
         uses: actions/create-github-app-token@v2
         with:
           app-id: ${{ vars.OOMOL_DOWNLOADER_APP_ID }}
           private-key: ${{ secrets.OOMOL_DOWNLOADER_APP_PRIVATE_KEY }}
           owner: oomol
-          repositories: ${{ env.OVMLAYER_REPOSITORY }}
+          repositories: ${{ vars.OVMLAYER_REPOSITORY }}
       - uses: ./.github/actions/ovmlayer
         with:
           token: ${{ steps.app-token.outputs.token }}
-          repository: ${{ env.OVMLAYER_REPOSITORY }}
+          repository: ${{ vars.OVMLAYER_REPOSITORY }}
           use-runtime-setup: "true"
       - name: test layer api
         run: cargo test --package layer -- --nocapture --test-threads=1 # 部分单测 API 互相干扰，需要一个个测试
@@ -74,14 +73,14 @@ jobs:
     uses: ./.github/workflows/oocana-node.yml
     with:
       create-layer: true
-      ovmlayer-repository: ${{ env.OVMLAYER_REPOSITORY }}
+      ovmlayer-repository: ${{ vars.OVMLAYER_REPOSITORY }}
     secrets: inherit
   python-test:
     needs: [skip, rust-test]
     uses: ./.github/workflows/oocana-python.yml
     with:
       create-layer: true
-      ovmlayer-repository: ${{ env.OVMLAYER_REPOSITORY }}
+      ovmlayer-repository: ${{ vars.OVMLAYER_REPOSITORY }}
     secrets: inherit
   layer-build:
     runs-on: ubuntu-latest
