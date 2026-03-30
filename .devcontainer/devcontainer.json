@@ -77,6 +77,11 @@
 			"source": "${localEnv:HOME}/.config/gh/hosts.yml",
 			"target": "/root/.config/gh/hosts.yml",
 			"type": "bind"
+		},
+		{
+			"source": "${localEnv:HOME}/.codex",
+			"target": "/root/.codex",
+			"type": "bind"
 		}
 	],
 	"remoteEnv": {
