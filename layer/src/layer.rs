@@ -53,8 +53,8 @@ pub(crate) fn export_layers(layers: &[String], dest_file: &str) -> Result<()> {
 
 #[allow(unused)]
 #[instrument(skip_all)]
-pub fn import_layer(file: &str) -> Result<()> {
-    let cmd = import_layer_cmd(file);
+pub fn import_layer(file: &str, layer_store: Option<&str>) -> Result<()> {
+    let cmd = import_layer_cmd(file, layer_store);
     cli::exec_without_output(cmd)
 }
 
@@ -286,7 +286,7 @@ mod tests {
         let r = delete_layer(&random_layer);
         assert!(r.is_ok(), "delete layer failed: {:?}", r.unwrap_err());
 
-        let r = import_layer(&dest_file);
+        let r = import_layer(&dest_file, None);
         assert!(r.is_ok(), "import layer failed: {:?}", r.unwrap_err());
 
         let list = list_layers(None);
@@ -364,7 +364,13 @@ mod tests {
     fn test_quote_shell_arg() {
         use super::quote_shell_arg;
 
-        assert_eq!(quote_shell_arg("/tmp/source package/script.sh"), "'/tmp/source package/script.sh'");
-        assert_eq!(quote_shell_arg("/tmp/it's/script.sh"), "'/tmp/it'\"'\"'s/script.sh'");
+        assert_eq!(
+            quote_shell_arg("/tmp/source package/script.sh"),
+            "'/tmp/source package/script.sh'"
+        );
+        assert_eq!(
+            quote_shell_arg("/tmp/it's/script.sh"),
+            "'/tmp/it'\"'\"'s/script.sh'"
+        );
     }
 }

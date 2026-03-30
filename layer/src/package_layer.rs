@@ -187,7 +187,11 @@ impl PackageLayer {
     }
 }
 
-pub fn import_package_layer(package_path: &str, export_dir: &str) -> Result<()> {
+pub fn import_package_layer(
+    package_path: &str,
+    export_dir: &str,
+    layer_store: Option<&str>,
+) -> Result<()> {
     if metadata(export_dir).is_err() {
         return Err(format!("path not exist: {export_dir:?}").into());
     }
@@ -212,7 +216,7 @@ pub fn import_package_layer(package_path: &str, export_dir: &str) -> Result<()> 
     package.package_path = PathBuf::from(package_path);
 
     let layer_tar = format!("{export_dir}/layers.tar");
-    import_layer(&layer_tar)?;
+    import_layer(&layer_tar, layer_store)?;
 
     if source_dir != package_path {
         // because layer's path is relative to package path , is not a fixed path.

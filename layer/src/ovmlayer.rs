@@ -55,9 +55,13 @@ pub fn export_layer_cmd(layers: &Vec<String>, dest: &str) -> Command {
     binding
 }
 
-pub fn import_layer_cmd(file: &str) -> Command {
+pub fn import_layer_cmd(file: &str, layer_store: Option<&str>) -> Command {
     let mut binding = ovmlayer_bin();
-    binding.args(["import", file]);
+    binding.args(["import"]);
+    if let Some(layer_store) = layer_store {
+        binding.args(["--external", layer_store]);
+    }
+    binding.args([file]);
     binding
 }
 
