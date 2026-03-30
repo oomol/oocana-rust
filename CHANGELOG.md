@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.30.43 (2026-03-30)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* chore: upgrade GitHub Actions to Node 24 by @leavesster in https://github.com/oomol/oocana-rust/pull/441
+* fix: import layer with external store even if package exists by @leavesster in https://github.com/oomol/oocana-rust/pull/442
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.30.42...v0.30.43
+
 ## 0.30.42 (2026-03-30)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
