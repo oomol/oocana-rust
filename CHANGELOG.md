@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.30.41 (2026-03-30)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* chore: fix devcontainer scripts by @leavesster in https://github.com/oomol/oocana-rust/pull/436
+* feat: support importing package layers into external stores by @leavesster in https://github.com/oomol/oocana-rust/pull/437
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.30.40...v0.30.41
+
 ## 0.30.40 (2026-03-17)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
