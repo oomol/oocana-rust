@@ -17,17 +17,19 @@ on:
 jobs:
   ovmlayer:
     runs-on: ubuntu-latest
+    env:
+      OVMLAYER_REPOSITORY: ${{ inputs.repository || 'ovmlayer-next' }}
     steps:
       - uses: actions/checkout@v6
-      - name: Generate GitHub App Token for oomol/${{ inputs.repository }}
+      - name: Generate GitHub App Token for oomol/${{ env.OVMLAYER_REPOSITORY }}
         id: app-token
         uses: actions/create-github-app-token@v2
         with:
           app-id: ${{ vars.OOMOL_DOWNLOADER_APP_ID }}
           private-key: ${{ secrets.OOMOL_DOWNLOADER_APP_PRIVATE_KEY }}
           owner: oomol
-          repositories: ${{ inputs.repository }}
+          repositories: ${{ env.OVMLAYER_REPOSITORY }}
       - uses: ./.github/actions/ovmlayer
         with:
           token: ${{ steps.app-token.outputs.token }}
-          repository: ${{ inputs.repository }}
+          repository: ${{ env.OVMLAYER_REPOSITORY }}
