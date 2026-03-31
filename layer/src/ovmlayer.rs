@@ -13,7 +13,6 @@ fn ovmlayer_bin() -> Command {
     } else {
         tracing::warn!("ovmlayer need root permission, try to use sudo command to run");
         let mut cmd = Command::new("sudo");
-        cmd.arg("-E"); // preserve environment variables, but $PATH will be lost
         cmd.arg(BIN);
         cmd
     }
