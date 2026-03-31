@@ -46,10 +46,6 @@ jobs:
       - name: add permissions
         run: |
           chmod +x target/oocana
-      - name: Setup tmate session
-        uses: mxschmitt/action-tmate@v3
-        with:
-          detached: true
       - uses: oomol/oocana-node/.github/actions/oocana-node@main
         with:
           path: oocana-node
