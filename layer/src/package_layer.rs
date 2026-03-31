@@ -336,6 +336,32 @@ mod tests {
         }
     }
 
+    struct PathGuard {
+        original_path: Option<String>,
+    }
+
+    impl PathGuard {
+        fn prepend(path: &Path) -> Self {
+            let original_path = std::env::var("PATH").ok();
+            let mut new_path = path.to_string_lossy().to_string();
+            if let Some(existing) = &original_path {
+                new_path.push(':');
+                new_path.push_str(existing);
+            }
+            std::env::set_var("PATH", new_path);
+            Self { original_path }
+        }
+    }
+
+    impl Drop for PathGuard {
+        fn drop(&mut self) {
+            match &self.original_path {
+                Some(path) => std::env::set_var("PATH", path),
+                None => std::env::remove_var("PATH"),
+            }
+        }
+    }
+
     #[test]
     fn test_diff() {
         let a = ["a", "b", "c"];
@@ -469,6 +495,78 @@ mod tests {
             .expect("registry package should exist after migration");
         assert_eq!(migrated.name.as_deref(), Some(package_name));
         assert_eq!(migrated.version.as_deref(), Some(package_version));
+
+        fs::remove_dir_all(temp_root).unwrap();
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn test_move_package_layer_moves_layers_and_updates_stores() {
+        use std::{fs, os::unix::fs::PermissionsExt, path::PathBuf};
+
+        use super::*;
+
+        let temp_root = std::env::temp_dir().join(crate::layer::random_name("package_layer_move"));
+        let _guard = TestStoreGuard::new(&temp_root);
+        let bin_dir = temp_root.join("bin");
+        let log_file = temp_root.join("ovmlayer-move.log");
+        let package_name = "@oomol/move-package-test";
+        let package_version = "0.2.0";
+        let package_path = PathBuf::from("/tmp/move-package-test");
+        let package = PackageLayer {
+            name: Some(package_name.to_string()),
+            version: Some(package_version.to_string()),
+            base_layers: Some(vec!["layer_base".to_string(), "layer_dep".to_string()]),
+            source_layer: "layer_source".to_string(),
+            bootstrap: None,
+            bootstrap_layer: Some("layer_bootstrap".to_string()),
+            package_path: package_path.clone(),
+        };
+
+        fs::create_dir_all(&bin_dir).unwrap();
+        let fake_ovmlayer = bin_dir.join("ovmlayer");
+        fs::write(
+            &fake_ovmlayer,
+            format!(
+                "#!/bin/sh\nset -eu\nif [ \"$1\" = \"move\" ]; then\n  printf '%s\\n' \"$2\" >> \"{}\"\n  exit 0\nfi\nprintf 'unexpected args: %s\\n' \"$*\" >&2\nexit 1\n",
+                log_file.display()
+            ),
+        )
+        .unwrap();
+        let mut perms = fs::metadata(&fake_ovmlayer).unwrap().permissions();
+        perms.set_mode(0o755);
+        fs::set_permissions(&fake_ovmlayer, perms).unwrap();
+        let _path_guard = PathGuard::prepend(&bin_dir);
+
+        add_import_package(&package).unwrap();
+
+        move_package_layer(package_path.to_str().unwrap()).unwrap();
+
+        let moved_layers = fs::read_to_string(&log_file).unwrap();
+        assert_eq!(
+            moved_layers.lines().collect::<Vec<_>>(),
+            package
+                .layers()
+                .iter()
+                .map(|s| s.as_str())
+                .collect::<Vec<_>>()
+        );
+
+        let package_store = crate::package_store::load_package_store().unwrap();
+        assert!(
+            !package_store
+                .packages
+                .contains_key(&package_path.to_string_lossy().to_string())
+        );
+
+        let registry_store = crate::registry_layer_store::load_registry_store().unwrap();
+        let key = crate::registry_layer_store::registry_key(package_name, package_version);
+        let moved_package = registry_store
+            .packages
+            .get(&key)
+            .expect("registry package should exist after move");
+        assert_eq!(moved_package.package_path, package_path);
+        assert_eq!(moved_package.layers(), package.layers());
 
         fs::remove_dir_all(temp_root).unwrap();
     }
