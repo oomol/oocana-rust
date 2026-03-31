@@ -570,4 +570,65 @@ mod tests {
 
         fs::remove_dir_all(temp_root).unwrap();
     }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    #[ignore = "requires a writable ovmlayer workspace configured by `ovmlayer setup`"]
+    fn test_move_package_layer_with_real_ovmlayer_and_base_layers() {
+        use std::{collections::HashMap, fs};
+
+        use super::*;
+
+        let temp_root =
+            std::env::temp_dir().join(crate::layer::random_name("package_layer_move_real"));
+        let _guard = TestStoreGuard::new(&temp_root);
+        let source_dir = temp_root.join("source_package");
+        let source_dir_str = source_dir.to_string_lossy().to_string();
+        let package_name = "@oomol/move-real-base-test";
+        let package_version = "0.4.0";
+
+        fs::create_dir_all(&source_dir).unwrap();
+        fs::write(
+            source_dir.join("package.oo.yaml"),
+            format!(
+                "name: \"{package_name}\"\nversion: {package_version}\nscripts:\n  bootstrap: |\n    touch moved.txt\n"
+            ),
+        )
+        .unwrap();
+
+        let base_layer = create_random_layer().expect("create base layer failed");
+        let package = PackageLayer::create(
+            Some(package_version.to_string()),
+            Some(vec![base_layer.clone()]),
+            Some("touch moved.txt".to_string()),
+            &[],
+            source_dir_str,
+            &HashMap::new(),
+            &None,
+        )
+        .expect("create package layer failed");
+
+        add_import_package(&package).unwrap();
+
+        move_package_layer(package.package_path.to_str().unwrap())
+            .expect("move package layer failed");
+
+        let registry_package =
+            crate::registry_layer_store::get_registry_layer(package_name, package_version)
+                .unwrap()
+                .expect("registry package should exist after move");
+        assert_eq!(registry_package.package_path, package.package_path);
+        assert_eq!(registry_package.base_layers, Some(vec![base_layer]));
+        assert_eq!(registry_package.source_layer, package.source_layer);
+        assert_eq!(registry_package.bootstrap_layer, package.bootstrap_layer);
+
+        let package_status =
+            crate::package_store::package_layer_status(&package.package_path).unwrap();
+        assert_eq!(
+            package_status,
+            crate::package_store::PackageLayerStatus::NotInStore
+        );
+
+        fs::remove_dir_all(temp_root).unwrap();
+    }
 }
