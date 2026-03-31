@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.30.44 (2026-03-31)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* fix(layer): honor external store when importing package layers by @leavesster in https://github.com/oomol/oocana-rust/pull/444
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.30.43...v0.30.44
+
 ## 0.30.43 (2026-03-30)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
