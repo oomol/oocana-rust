@@ -60,6 +60,14 @@ jobs:
           use-runtime-setup: "true"
       - name: test layer api
         run: cargo test --package layer -- --nocapture --test-threads=1 # 部分单测 API 互相干扰，需要一个个测试
+      - name: upload ovmlayer log
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ovmlayer-log
+          path: ${{ env.OVMLAYER_LOG }}
+          if-no-files-found: ignore
+          retention-days: 7
       - name: build oocana
         run: cargo build
       - name: upload oocana
