@@ -420,7 +420,7 @@ mod tests {
         let source_dir = temp_root.join("source package");
         let export_dir = temp_root.join("export bundle");
         let imported_path = temp_root.join("imported package");
-        let external_store = temp_root.join("external-store");
+        let external_store = "/external_layers"; // this path should be same as setup external store path
         let package_name = "@oomol/import-registry-test";
         let package_version = "0.1.3";
         let source_dir_str = source_dir.to_string_lossy().to_string();
