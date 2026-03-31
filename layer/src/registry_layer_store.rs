@@ -260,6 +260,17 @@ pub(crate) fn add_import_registry_package(pkg: &PackageLayer) -> Result<()> {
     Ok(())
 }
 
+pub(crate) fn remove_import_registry_package(
+    package_name: &str,
+    version: &str,
+) -> Result<Option<PackageLayer>> {
+    let key = registry_key(package_name, version);
+    let mut store = load_registry_store()?;
+    let removed = store.packages.remove(&key);
+    save_registry_store_atomic(&store)?;
+    Ok(removed)
+}
+
 pub fn get_registry_layer(package_name: &str, version: &str) -> Result<Option<PackageLayer>> {
     let key = registry_key(package_name, version);
     let store = load_registry_store()?;
