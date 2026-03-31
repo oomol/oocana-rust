@@ -123,10 +123,6 @@ pub enum LayerAction {
     DeleteAll {},
 }
 
-fn should_skip_import(status: layer::PackageLayerStatus) -> bool {
-    matches!(status, layer::PackageLayerStatus::Exist)
-}
-
 /// Get layer status with registry fallback logic (same as Get command).
 /// If override_name and override_version are provided, they take precedence over package meta.
 /// Returns Exist if registry or package layer exists, NotInStore otherwise.
@@ -406,7 +402,7 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
                     layer::import_package_layer(package_path, export_dir)?;
                 }
                 Ok(status) => {
-                    if should_skip_import(status) {
+                    if matches!(status, layer::PackageLayerStatus::Exist) {
                         info!(
                             "Package layer {:?} already exists, skip import",
                             package_path
@@ -457,19 +453,4 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
     }
 
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::should_skip_import;
-
-    #[test]
-    fn import_skips_existing_package() {
-        assert!(should_skip_import(layer::PackageLayerStatus::Exist));
-    }
-
-    #[test]
-    fn import_does_not_skip_missing_package() {
-        assert!(!should_skip_import(layer::PackageLayerStatus::NotInStore));
-    }
 }
