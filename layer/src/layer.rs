@@ -10,8 +10,8 @@ use utils::logger::{STDERR_TARGET, STDOUT_TARGET};
 use crate::cli::{self, exec};
 use crate::ovmlayer::{
     BindPath, LayerType, cp_to_merge_point, create_layer_cmd, delete_all_layer_and_merge_point_cmd,
-    delete_layer_cmd, export_layer_cmd, import_layer_cmd, list_layer_cmd, merge_cmd, run_cmd,
-    unmerge_cmd,
+    delete_layer_cmd, export_layer_cmd, import_layer_cmd, list_layer_cmd, merge_cmd,
+    move_layer_cmd, run_cmd, unmerge_cmd,
 };
 use utils::error::{Error, Result};
 
@@ -53,8 +53,14 @@ pub(crate) fn export_layers(layers: &[String], dest_file: &str) -> Result<()> {
 
 #[allow(unused)]
 #[instrument(skip_all)]
-pub fn import_layer(archive_path: &str, external_layer_store: Option<&str>) -> Result<()> {
-    let cmd = import_layer_cmd(archive_path, external_layer_store);
+pub fn import_layer(archive_path: &str) -> Result<()> {
+    let cmd = import_layer_cmd(archive_path);
+    cli::exec_without_output(cmd)
+}
+
+#[instrument(skip_all)]
+pub fn move_layer(name: &str) -> Result<()> {
+    let cmd = move_layer_cmd(name);
     cli::exec_without_output(cmd)
 }
 
@@ -286,7 +292,7 @@ mod tests {
         let r = delete_layer(&random_layer);
         assert!(r.is_ok(), "delete layer failed: {:?}", r.unwrap_err());
 
-        let r = import_layer(&dest_file, None);
+        let r = import_layer(&dest_file);
         assert!(r.is_ok(), "import layer failed: {:?}", r.unwrap_err());
 
         let list = list_layers(None);
