@@ -73,7 +73,7 @@ runs:
     - name: setup ovmlayer
       run: |
         if [[ "${{ inputs.use-runtime-setup }}" == "true" ]]; then
-          sudo ovmlayer setup --runtime /ovmlayer-workspace --external /dev/shm --rootfs-path=$(pwd)/base_rootfs
+          sudo ovmlayer setup --runtime /ovmlayer-workspace --external /external_layers --rootfs-path="$(pwd)/base_rootfs"
         else
           sudo ovmlayer setup dev --base-rootfs=$(pwd)/base_rootfs.tar --layer-disk=/tmp/layer-disk
         fi
