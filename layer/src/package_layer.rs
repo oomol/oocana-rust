@@ -426,7 +426,7 @@ mod tests {
         let source_dir_str = source_dir.to_string_lossy().to_string();
         let export_dir_str = export_dir.to_string_lossy().to_string();
         let imported_path_str = imported_path.to_string_lossy().to_string();
-        let external_store_str = external_store.to_string_lossy().to_string();
+        let external_store_str = external_store.to_string();
 
         fs::create_dir_all(&source_dir).unwrap();
         fs::create_dir_all(&external_store).unwrap();
