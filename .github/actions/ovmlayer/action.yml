@@ -68,7 +68,7 @@ runs:
       if: inputs.use-runtime-setup == 'true'
       run: |
         mkdir -p base_rootfs
-        tar -xf base_rootfs.tar -C base_rootfs
+        sudo tar -xf base_rootfs.tar -C $(pwd)/base_rootfs
       shell: bash
     - name: setup ovmlayer
       run: |
