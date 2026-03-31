@@ -60,7 +60,10 @@ jobs:
           use-runtime-setup: "true"
       - name: test layer api
         run: |
-          sh -c 'sudo PATH="$PATH" cargo test --package layer -- --nocapture --test-threads=1 # 部分单测 API 互相干扰，需要一个个测试'
+          echo $PATH
+          which cargo
+          exit 1
+          # sudo PATH="$PATH" cargo test --package layer -- --nocapture --test-threads=1 # 部分单测 API 互相干扰，需要一个个测试
       - name: upload ovmlayer log
         if: ${{ failure() }}
         uses: actions/upload-artifact@v4
