@@ -111,11 +111,11 @@ pub enum LayerAction {
             help = "which package path to import, it should be the same as the package path in the exported layer"
         )]
         package_path: String,
-        #[arg(
-            help = "external layer store path for the imported package layer; defaults to the runtime layer store path",
-            long
-        )]
-        external_layer_store: Option<String>,
+    },
+    #[command(about = "move package layer from package store to ovmlayer external store")]
+    Mv {
+        #[arg(help = "package path")]
+        package: String,
     },
     #[command(about = "list package layer")]
     List {},
@@ -123,11 +123,8 @@ pub enum LayerAction {
     DeleteAll {},
 }
 
-fn should_skip_import(
-    status: layer::PackageLayerStatus,
-    external_layer_store: Option<&str>,
-) -> bool {
-    matches!(status, layer::PackageLayerStatus::Exist) && external_layer_store.is_none()
+fn should_skip_import(status: layer::PackageLayerStatus) -> bool {
+    matches!(status, layer::PackageLayerStatus::Exist)
 }
 
 /// Get layer status with registry fallback logic (same as Get command).
@@ -402,32 +399,21 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
         LayerAction::Import {
             package_path,
             export_dir,
-            external_layer_store,
         } => {
             let status = layer::package_layer_status(package_path);
             match status {
                 Ok(layer::PackageLayerStatus::NotInStore) => {
-                    layer::import_package_layer(
-                        package_path,
-                        export_dir,
-                        external_layer_store.as_deref(),
-                    )?;
+                    layer::import_package_layer(package_path, export_dir)?;
                 }
                 Ok(status) => {
-                    if should_skip_import(status, external_layer_store.as_deref()) {
+                    if should_skip_import(status) {
                         info!(
                             "Package layer {:?} already exists, skip import",
                             package_path
                         );
-                        println!(
-                            "Package layer already exists and no external layer store is provided, skipping import."
-                        );
+                        println!("Package layer already exists, skipping import.");
                     } else {
-                        layer::import_package_layer(
-                            package_path,
-                            export_dir,
-                            external_layer_store.as_deref(),
-                        )?;
+                        layer::import_package_layer(package_path, export_dir)?;
                     }
                 }
                 Err(e) => {
@@ -435,13 +421,12 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
                         "import package path doesn't exist package file: {:?}. just import package layer.",
                         e
                     );
-                    layer::import_package_layer(
-                        package_path,
-                        export_dir,
-                        external_layer_store.as_deref(),
-                    )?;
+                    layer::import_package_layer(package_path, export_dir)?;
                 }
             }
+        }
+        LayerAction::Mv { package } => {
+            layer::move_package_layer(package)?;
         }
         LayerAction::List {} => {
             let r = layer::list_package_layers()?;
@@ -479,23 +464,12 @@ mod tests {
     use super::should_skip_import;
 
     #[test]
-    fn import_skips_existing_package_without_external_store() {
-        assert!(should_skip_import(layer::PackageLayerStatus::Exist, None));
-    }
-
-    #[test]
-    fn import_does_not_skip_existing_package_with_external_store() {
-        assert!(!should_skip_import(
-            layer::PackageLayerStatus::Exist,
-            Some("/tmp/external-store"),
-        ));
+    fn import_skips_existing_package() {
+        assert!(should_skip_import(layer::PackageLayerStatus::Exist));
     }
 
     #[test]
     fn import_does_not_skip_missing_package() {
-        assert!(!should_skip_import(
-            layer::PackageLayerStatus::NotInStore,
-            None,
-        ));
+        assert!(!should_skip_import(layer::PackageLayerStatus::NotInStore));
     }
 }

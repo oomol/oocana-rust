@@ -218,6 +218,15 @@ pub fn list_package_layers() -> Result<Vec<PackageLayer>> {
     Ok(layers)
 }
 
+pub fn get_package_layer<P: AsRef<Path>>(package_path: P) -> Result<Option<PackageLayer>> {
+    let package_path = package_path.as_ref();
+    let store = load_package_store()?;
+    Ok(store
+        .packages
+        .get(&package_path.to_string_lossy().to_string())
+        .cloned())
+}
+
 fn package_store_file(write: bool) -> Result<File> {
     let dir = config::store_dir().ok_or("Failed to get home dir")?;
 
@@ -233,8 +242,7 @@ fn package_store_file(write: bool) -> Result<File> {
             version: env!("CARGO_PKG_VERSION").to_string(),
             packages: HashMap::new(),
         };
-        serde_json::to_writer(writer, &store)
-            .map_err(|e| format!("Failed to serialize: {e:?}"))?;
+        serde_json::to_writer(writer, &store).map_err(|e| format!("Failed to serialize: {e:?}"))?;
         FileExt::unlock(&f).map_err(|e| format!("Failed to unlock file: {e:?}"))?;
     }
 
@@ -259,11 +267,8 @@ pub fn load_package_store() -> Result<PackageLayerStore> {
             .unwrap();
     }));
 
-    let store: PackageLayerStore = serde_json::from_reader(reader).map_err(|e| {
-        format!(
-            "Failed to deserialize package store from {PACKAGE_STORE}: {e:?}"
-        )
-    })?;
+    let store: PackageLayerStore = serde_json::from_reader(reader)
+        .map_err(|e| format!("Failed to deserialize package store from {PACKAGE_STORE}: {e:?}"))?;
 
     drop(_defer);
 
@@ -295,6 +300,16 @@ pub fn add_import_package(pkg: &PackageLayer) -> Result<()> {
     save_package_store(&store, None)?;
 
     Ok(())
+}
+
+pub fn remove_package_from_store<P: AsRef<Path>>(package_path: P) -> Result<Option<PackageLayer>> {
+    let package_path = package_path.as_ref();
+    let mut store = load_package_store()?;
+    let removed = store
+        .packages
+        .remove(&package_path.to_string_lossy().to_string());
+    save_package_store(&store, None)?;
+    Ok(removed)
 }
 
 pub fn save_package_store(store: &PackageLayerStore, file: Option<File>) -> Result<()> {
