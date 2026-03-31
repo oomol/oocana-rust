@@ -56,7 +56,7 @@ runs:
           exit 1
         fi
 
-        sudo install -m 755 "$bin" /usr/local/bin/ovmlayer
+        sudo install -m 755 "$bin" /usr/bin/ovmlayer
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.token }}
@@ -73,7 +73,7 @@ runs:
     - name: setup ovmlayer
       run: |
         if [[ "${{ inputs.use-runtime-setup }}" == "true" ]]; then
-          sudo ovmlayer setup --runtime /ovmlayer-workspace --external /external_layers --rootfs-path="$(pwd)/base_rootfs"
+          sudo -E ovmlayer setup --runtime /ovmlayer-workspace --external /external_layers --rootfs-path="$(pwd)/base_rootfs"
         else
           sudo ovmlayer setup dev --base-rootfs=$(pwd)/base_rootfs.tar --layer-disk=/tmp/layer-disk
         fi
