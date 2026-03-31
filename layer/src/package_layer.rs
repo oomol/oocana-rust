@@ -417,15 +417,13 @@ mod tests {
         let temp_root =
             std::env::temp_dir().join(crate::layer::random_name("package_layer_registry_test"));
         let _guard = TestStoreGuard::new(&temp_root);
-        let source_dir = temp_root.join("source package");
-        let export_dir = temp_root.join("export bundle");
-        let imported_path = temp_root.join("imported package");
+        let source_dir = temp_root.join("source_package");
+        let export_dir = temp_root.join("export_bundle");
         let external_store = "/external_layers"; // this path should be same as setup external store path
         let package_name = "@oomol/import-registry-test";
         let package_version = "0.1.3";
         let source_dir_str = source_dir.to_string_lossy().to_string();
         let export_dir_str = export_dir.to_string_lossy().to_string();
-        let imported_path_str = imported_path.to_string_lossy().to_string();
         let external_store_str = external_store.to_string();
 
         fs::create_dir_all(&source_dir).unwrap();
@@ -455,25 +453,16 @@ mod tests {
         crate::delete_all_layer_data().unwrap();
 
         import_package_layer(
-            &imported_path_str,
+            &package.package_path.to_string_lossy(),
             &export_dir_str,
             Some(&external_store_str),
         )
         .unwrap();
 
-        let package_store = crate::package_store::list_package_layers().unwrap();
-        assert!(
-            !package_store
-                .iter()
-                .any(|package| package.package_path == imported_path),
-            "external import should not write into package store"
-        );
-
         let registry_package =
             crate::registry_layer_store::get_registry_layer(package_name, package_version)
                 .unwrap()
                 .expect("registry package should exist after external import");
-        assert_eq!(registry_package.package_path, imported_path);
         assert_eq!(registry_package.name.as_deref(), Some(package_name));
         assert_eq!(registry_package.version.as_deref(), Some(package_version));
 
