@@ -23,11 +23,22 @@ pub use registry_layer_store::{
 };
 pub use runtime_layer::{InjectionParams, RuntimeLayer, create_runtime_layer};
 
+use crate::ovmlayer::is_root;
+
 pub fn feature_enabled() -> bool {
-    let mut cmd = Command::new("ovmlayer");
-    cmd.arg("test");
-    cmd.arg("system");
-    cli::exec(cmd).is_ok()
+    if is_root() {
+        let mut cmd = Command::new("ovmlayer");
+        cmd.arg("test");
+        cmd.arg("system");
+        cli::exec(cmd).is_ok()
+    } else {
+        let mut cmd = Command::new("sudo");
+        cmd.arg("-E");
+        cmd.arg("ovmlayer");
+        cmd.arg("test");
+        cmd.arg("system");
+        cli::exec(cmd).is_ok()
+    }
 }
 
 // 自己转换，避免空格。同时这个函数也可以用于其他地方

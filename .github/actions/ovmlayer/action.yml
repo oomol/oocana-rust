@@ -2,45 +2,81 @@ name: "setup ovmlayer"
 description: "setup ovmlayer on ubuntu-latest"
 inputs:
   token:
-    description: "GitHub token"
+    description: "GitHub token with access to the ovmlayer release repository"
     required: true
     default: ${{ github.token }}
+  repository:
+    description: "GitHub repository name under oomol to download ovmlayer releases from"
+    required: true
+  use-runtime-setup:
+    description: "Whether to use ovmlayer setup with an extracted rootfs directory"
+    required: false
+    default: "false"
   rootfs:
     description: "rootfs tar"
     required: false
     default: "https://github.com/oomol/ovmlayer-rootfs/releases/download/base-rootfs%400.4.0/amd64-rootfs.tar"
-  ref:
-    description: "GitHub ref"
-    required: false
-    default: ""
-
 runs:
   using: "composite"
   steps:
-    - name: download ovmlayer
-      uses: actions/checkout@v6
-      with:
-        repository: oomol/ovmlayer
-        path: ovmlayer
-        ref: ${{ inputs.ref }}
-        token: ${{ inputs.token }}
-    - name: move ovmlayer to PATH
-      run: |
-        mv ovmlayer ../ovmlayer
-        cd ../ovmlayer
-        $(pwd)/build.sh $(uname -m)
-        bin=$(find $(pwd) -name ovmlayer -type f)
-        ln -sf $bin /usr/local/bin/ovmlayer
-      shell: bash
     - name: setup ovmlayer environment
       run: |
-        sudo apt update && sudo apt install -y --no-install-recommends tar zstd
+        sudo apt update
+        sudo apt install -y --no-install-recommends tar zstd
       shell: bash
+    - name: download ovmlayer
+      run: |
+        arch=$(uname -m)
+        case "$arch" in
+          x86_64)
+            arch=amd64
+            ;;
+          aarch64|arm64)
+            arch=arm64
+            ;;
+          *)
+            echo "unsupported architecture: $arch" >&2
+            exit 1
+            ;;
+        esac
+
+        gh release download \
+          --repo "oomol/${{ inputs.repository }}" \
+          --pattern "*${arch}*" \
+          --clobber \
+          -O ovmlayer.tar.zst
+
+        zstd -d ovmlayer.tar.zst -o ovmlayer.tar
+        mkdir -p ovmlayer-bin
+        tar -xf ovmlayer.tar -C ovmlayer-bin
+
+        bin=$(find "$(pwd)/ovmlayer-bin" -name ovmlayer -type f | head -n 1)
+        if [[ -z "$bin" ]]; then
+          echo "ovmlayer binary not found in downloaded archive" >&2
+          exit 1
+        fi
+
+        sudo install -m 755 "$bin" /usr/bin/ovmlayer
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
     - name: download base rootfs
       run: |
         curl -L ${{inputs.rootfs}} -o base_rootfs.tar
       shell: bash
+    - name: extract base rootfs for runtime setup
+      if: inputs.use-runtime-setup == 'true'
+      run: |
+        mkdir -p base_rootfs
+        sudo tar -xf base_rootfs.tar -C $(pwd)/base_rootfs
+      shell: bash
     - name: setup ovmlayer
       run: |
-        sudo ovmlayer setup dev --base-rootfs=$(pwd)/base_rootfs.tar --layer-disk=/tmp/layer-disk
+        if [[ "${{ inputs.use-runtime-setup }}" == "true" ]]; then
+          sudo -E ovmlayer setup --runtime /ovmlayer-workspace --external /external_layers --rootfs-path="$(pwd)/base_rootfs"
+          # github action root user workaround: link the config file to root home, since ovmlayer cli will look for config in home directory
+          sudo ln -sf /home/runner/.ovmlayer_cfg.json /root/.ovmlayer_cfg.json
+        else
+          sudo ovmlayer setup dev --base-rootfs=$(pwd)/base_rootfs.tar --layer-disk=/tmp/layer-disk
+        fi
       shell: bash

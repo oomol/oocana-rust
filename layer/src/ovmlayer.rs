@@ -2,7 +2,7 @@ use core::str;
 use std::{collections::HashMap, fmt, process::Command};
 use users::get_current_uid;
 
-fn is_root() -> bool {
+pub fn is_root() -> bool {
     get_current_uid() == 0
 }
 

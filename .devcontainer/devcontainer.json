@@ -29,6 +29,11 @@
 			"type": "volume"
 		},
 		{
+			"source": "ovmlayer-layers",
+			"target": "/layer",
+			"type": "volume"
+		},
+		{
 			"source": "devcontainer-ssh",
 			"target": "/root/.ssh",
 			"type": "volume"
@@ -41,11 +46,6 @@
 		{
 			"source": "oocana-rust-shell-history",
 			"target": "/root/commandhistory",
-			"type": "volume"
-		},
-		{
-			"source": "ovmlayer-layers",
-			"target": "/workspaces/ovmlayer-layers",
 			"type": "volume"
 		},
 		{
@@ -99,6 +99,5 @@
 	},
 	"runArgs": ["--privileged"],
 	"remoteUser": "root",
-	"onCreateCommand": "./.devcontainer/setup.sh",
-	"postStartCommand": "./.devcontainer/start.sh"
+	"onCreateCommand": "./.devcontainer/setup.sh"
 }
