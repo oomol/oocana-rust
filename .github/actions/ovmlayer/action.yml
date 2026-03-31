@@ -74,6 +74,8 @@ runs:
       run: |
         if [[ "${{ inputs.use-runtime-setup }}" == "true" ]]; then
           sudo -E ovmlayer setup --runtime /ovmlayer-workspace --external /external_layers --rootfs-path="$(pwd)/base_rootfs"
+          # github action root user workaround: link the config file to root home, since ovmlayer cli will look for config in home directory
+          sudo ln -sf /home/runner/.ovmlayer_cfg.json /root/.ovmlayer_cfg.json
         else
           sudo ovmlayer setup dev --base-rootfs=$(pwd)/base_rootfs.tar --layer-disk=/tmp/layer-disk
         fi
