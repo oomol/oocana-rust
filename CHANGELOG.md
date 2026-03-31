@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.30.45 (2026-03-31)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* feat(layer): add package-layer mv command by @leavesster in https://github.com/oomol/oocana-rust/pull/446
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.30.44...v0.30.45
+
 ## 0.30.44 (2026-03-31)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
