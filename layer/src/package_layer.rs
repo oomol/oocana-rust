@@ -297,27 +297,43 @@ fn migrate_package_store_to_registry(package: &PackageLayer) -> Result<()> {
                 error = %rollback_err,
                 "failed to rollback registry entry after package store removal error"
             );
+            return Err(format!(
+                "failed to remove package from store for {package_name}@{version}: {err}; rollback also failed: {rollback_err}"
+            )
+            .into());
         }
         return Err(err);
     }
 
     if let Some(previous_registry_package) = previous_registry_package.as_ref() {
-        delete_overwritten_layers(previous_registry_package, package)?;
+        delete_overwritten_layers(previous_registry_package, package);
     }
 
     Ok(())
 }
 
-fn delete_overwritten_layers(old_package: &PackageLayer, new_package: &PackageLayer) -> Result<()> {
+fn delete_overwritten_layers(old_package: &PackageLayer, new_package: &PackageLayer) {
     let old_layers: HashSet<String> = old_package.layers().into_iter().collect();
     let new_layers: HashSet<String> = new_package.layers().into_iter().collect();
+    let package_name = new_package.name.as_deref().unwrap_or("<unknown>");
+    let version = new_package.version.as_deref().unwrap_or("<unknown>");
 
     for old_layer in diff(old_layers, new_layers) {
-        // TODO: consider whether the old layer is still referenced by multiple package layers.
-        crate::layer::delete_layer(&old_layer)?;
+        // Layers are not shared across package layers today, so layers only present in
+        // the overwritten package can be deleted directly. Revisit this if layer reuse
+        // is introduced in the future.
+        if let Err(err) = crate::layer::delete_layer(&old_layer) {
+            tracing::error!(
+                package_name,
+                version,
+                old_layer,
+                old_package_path = %old_package.package_path.display(),
+                new_package_path = %new_package.package_path.display(),
+                error = %err,
+                "failed to delete overwritten layer after registry migration"
+            );
+        }
     }
-
-    Ok(())
 }
 
 /// Moves all layers of a package from the package store to the ovmlayer external store,
