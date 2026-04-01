@@ -99,8 +99,15 @@ runs:
           }
         fi
 
+        workspace_root="${GITHUB_WORKSPACE:-$(pwd)}"
+        temp_root="${RUNNER_TEMP:-${workspace_root}/.runner-temp}"
+        runtime_root="${temp_root}/ovmlayer-workspace"
+        external_root="${temp_root}/external_layers"
+
+        mkdir -p "${runtime_root}" "${external_root}"
+
         if [[ "${{ inputs.use-runtime-setup }}" == "true" ]]; then
-          run_as_root env "PATH=$PATH" ovmlayer setup --runtime /ovmlayer-workspace --external /external_layers --rootfs-path="$(pwd)/base_rootfs"
+          run_as_root env "PATH=$PATH" ovmlayer setup --runtime "${runtime_root}" --external "${external_root}" --rootfs-path="$(pwd)/base_rootfs"
         else
           run_as_root ovmlayer setup dev --base-rootfs="$(pwd)/base_rootfs.tar" --layer-disk=/tmp/layer-disk
         fi
