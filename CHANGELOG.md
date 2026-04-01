@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.30.46 (2026-04-01)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* fix(layer): allow overwriting existing registry package during migration by @leavesster in https://github.com/oomol/oocana-rust/pull/449
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.30.45...v0.30.46
+
 ## 0.30.45 (2026-03-31)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
