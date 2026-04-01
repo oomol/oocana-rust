@@ -115,21 +115,24 @@ runs:
         user_cfg="${HOME}/.ovmlayer_cfg.json"
         root_home="$(getent passwd 0 | cut -d: -f6)"
         root_cfg="${root_home}/.ovmlayer_cfg.json"
+        user_has_cfg=0
+        if [[ -e "${user_cfg}" ]]; then
+          user_has_cfg=1
+        fi
 
-        for candidate in "${user_cfg}" "${root_cfg}"; do
-          if [[ -e "${candidate}" ]]; then
-            cfg_source="$(readlink -f "${candidate}")"
-            break
+        root_has_cfg=0
+        if run_as_root test -e "${root_cfg}"; then
+          root_has_cfg=1
+        fi
+
+        if [[ "${user_cfg}" != "${root_cfg}" ]]; then
+          if [[ "${user_has_cfg}" -eq 0 && "${root_has_cfg}" -eq 1 ]]; then
+            ln -sf "${root_cfg}" "${user_cfg}"
+            user_has_cfg=1
           fi
-        done
 
-        if [[ -n "${cfg_source:-}" ]]; then
-          if [[ "${user_cfg}" != "${cfg_source}" ]]; then
-            ln -sf "${cfg_source}" "${user_cfg}"
-          fi
-
-          if [[ "${root_cfg}" != "${cfg_source}" ]]; then
-            run_as_root ln -sf "${cfg_source}" "${root_cfg}"
+          if [[ "${root_has_cfg}" -eq 0 && "${user_has_cfg}" -eq 1 ]]; then
+            run_as_root ln -sf "${user_cfg}" "${root_cfg}"
           fi
         fi
       shell: bash
