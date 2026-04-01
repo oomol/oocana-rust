@@ -112,16 +112,24 @@ runs:
           run_as_root ovmlayer setup dev --base-rootfs="$(pwd)/base_rootfs.tar" --layer-disk=/tmp/layer-disk
         fi
 
+        user_cfg="${HOME}/.ovmlayer_cfg.json"
         root_home="$(getent passwd 0 | cut -d: -f6)"
         root_cfg="${root_home}/.ovmlayer_cfg.json"
-        for candidate in "${HOME}/.ovmlayer_cfg.json" "${root_cfg}"; do
-          if [[ -f "${candidate}" ]]; then
-            cfg_path="${candidate}"
+
+        for candidate in "${user_cfg}" "${root_cfg}"; do
+          if [[ -e "${candidate}" ]]; then
+            cfg_source="$(readlink -f "${candidate}")"
             break
           fi
         done
 
-        if [[ -n "${cfg_path:-}" && "${cfg_path}" != "${root_cfg}" ]]; then
-          run_as_root ln -sf "${cfg_path}" "${root_cfg}"
+        if [[ -n "${cfg_source:-}" ]]; then
+          if [[ "${user_cfg}" != "${cfg_source}" ]]; then
+            ln -sf "${cfg_source}" "${user_cfg}"
+          fi
+
+          if [[ "${root_cfg}" != "${cfg_source}" ]]; then
+            run_as_root ln -sf "${cfg_source}" "${root_cfg}"
+          fi
         fi
       shell: bash
