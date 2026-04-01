@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  OVMLAYER_LOG: /tmp/ovmlayer.log
+  OVMLAYER_LOG: ${{ github.workspace }}/ovmlayer.log
 
 jobs:
   skip:
@@ -37,14 +37,17 @@ jobs:
 
   rust-test:
     runs-on: ubuntu-latest
+    container:
+      image: rust:1.88-bookworm
+      options: --privileged
+    defaults:
+      run:
+        shell: bash
     needs: [skip]
     if: ${{ needs.skip.outputs.should_skip == 'false' }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          rustflags: ""
       - name: Generate GitHub App Token for oomol/${{ vars.OVMLAYER_REPOSITORY }}
         id: app-token
         uses: actions/create-github-app-token@v2
