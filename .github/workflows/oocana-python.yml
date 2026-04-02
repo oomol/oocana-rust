@@ -54,7 +54,7 @@ jobs:
           chmod +x target/oocana
       - name: Install container dependencies
         run: |
-          apt-get update && apt-get install -y --no-install-recommends sudo
+          apt-get update && apt-get install -y --no-install-recommends sudo libsqlite3-0
       - uses: oomol/oocana-python/.github/actions/oocana-python@main
         with:
           path: oocana-python
