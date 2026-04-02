@@ -13,6 +13,12 @@ on:
 jobs:
   test-node:
     runs-on: ubuntu-latest
+    container:
+      image: node:24-bookworm
+      options: --privileged --user 0:0
+    defaults:
+      run:
+        shell: bash
     env:
       OVMLAYER_REPOSITORY: ${{ inputs.ovmlayer-repository || vars.OVMLAYER_REPOSITORY || 'ovmlayer-next' }}
       OVMLAYER_USE_RUNTIME_SETUP: ${{ (inputs.ovmlayer-repository || vars.OVMLAYER_REPOSITORY || 'ovmlayer-next') == (vars.OVMLAYER_REPOSITORY || 'ovmlayer-next') }}
@@ -53,7 +59,7 @@ jobs:
           # ref: dev # uncomment this line to use a specific branch or tag
       - name: Start MQTT Broker
         run: |
-          sudo apt update && sudo apt install -y --no-install-recommends mosquitto
+          apt-get update && apt-get install -y --no-install-recommends mosquitto
           mosquitto -d -p 47688
       - name: replace oocana# cargo test will build the binary, so we only need to copy it
         run: cp target/oocana oocana-node/packages/oocana/
