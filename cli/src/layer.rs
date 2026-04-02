@@ -69,6 +69,13 @@ pub enum LayerAction {
         #[arg(help = "package path")]
         package: String,
     },
+    #[command(about = "delete registry package layer")]
+    DeleteRegistry {
+        #[arg(help = "package name")]
+        package_name: String,
+        #[arg(help = "package version")]
+        version: String,
+    },
     #[command(about = "get package layer")]
     Get {
         #[arg(help = "package path")]
@@ -261,6 +268,12 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
         }
         LayerAction::Delete { package } => {
             layer::delete_package_layer(package)?;
+        }
+        LayerAction::DeleteRegistry {
+            package_name,
+            version,
+        } => {
+            layer::delete_registry_layer(package_name, version)?;
         }
         LayerAction::Get {
             package,
