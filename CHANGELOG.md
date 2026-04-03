@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.30.47 (2026-04-03)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* feat(cli): add delete-registry command by @leavesster in https://github.com/oomol/oocana-rust/pull/451
+* chore: run rust-test in privileged container by @leavesster in https://github.com/oomol/oocana-rust/pull/448
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.30.46...v0.30.47
+
 ## 0.30.46 (2026-04-01)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
