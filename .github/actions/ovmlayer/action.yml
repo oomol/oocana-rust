@@ -21,11 +21,23 @@ runs:
   steps:
     - name: setup ovmlayer environment
       run: |
-        sudo apt update
-        sudo apt install -y --no-install-recommends tar zstd
+        set -euo pipefail
+
+        if command -v sudo >/dev/null 2>&1 && [[ "$(id -u)" -ne 0 ]]; then
+          SUDO="sudo"
+        else
+          SUDO=""
+        fi
+
+        echo "SUDO=${SUDO}" >> "$GITHUB_ENV"
+
+        ${SUDO} apt-get update
+        ${SUDO} apt-get install -y --no-install-recommends ca-certificates curl gh tar zstd
       shell: bash
     - name: download ovmlayer
       run: |
+        set -euo pipefail
+
         arch=$(uname -m)
         case "$arch" in
           x86_64)
@@ -56,7 +68,7 @@ runs:
           exit 1
         fi
 
-        sudo install -m 755 "$bin" /usr/bin/ovmlayer
+        ${SUDO} install -m 755 "$bin" /usr/local/bin/ovmlayer
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.token }}
@@ -67,16 +79,58 @@ runs:
     - name: extract base rootfs for runtime setup
       if: inputs.use-runtime-setup == 'true'
       run: |
+        set -euo pipefail
         mkdir -p base_rootfs
-        sudo tar -xf base_rootfs.tar -C $(pwd)/base_rootfs
+        tar -xf base_rootfs.tar -C "$(pwd)/base_rootfs"
       shell: bash
     - name: setup ovmlayer
       run: |
-        if [[ "${{ inputs.use-runtime-setup }}" == "true" ]]; then
-          sudo -E ovmlayer setup --runtime /ovmlayer-workspace --external /external_layers --rootfs-path="$(pwd)/base_rootfs"
-          # github action root user workaround: link the config file to root home, since ovmlayer cli will look for config in home directory
-          sudo ln -sf /home/runner/.ovmlayer_cfg.json /root/.ovmlayer_cfg.json
+        set -euo pipefail
+
+        if command -v sudo >/dev/null 2>&1 && [[ "$(id -u)" -ne 0 ]]; then
+          run_as_root() {
+            sudo "$@"
+          }
         else
-          sudo ovmlayer setup dev --base-rootfs=$(pwd)/base_rootfs.tar --layer-disk=/tmp/layer-disk
+          run_as_root() {
+            "$@"
+          }
+        fi
+
+        workspace_root="${GITHUB_WORKSPACE:-$(pwd)}"
+        temp_root="${RUNNER_TEMP:-${workspace_root}/.runner-temp}"
+        runtime_root="${temp_root}/ovmlayer-workspace"
+        external_root="${temp_root}/external_layers"
+
+        mkdir -p "${runtime_root}" "${external_root}"
+
+        if [[ "${{ inputs.use-runtime-setup }}" == "true" ]]; then
+          run_as_root env "PATH=$PATH" ovmlayer setup --runtime "${runtime_root}" --external "${external_root}" --rootfs-path="$(pwd)/base_rootfs"
+        else
+          run_as_root ovmlayer setup dev --base-rootfs="$(pwd)/base_rootfs.tar" --layer-disk=/tmp/layer-disk
+        fi
+
+        user_cfg="${HOME}/.ovmlayer_cfg.json"
+        root_home="$(getent passwd 0 | cut -d: -f6)"
+        root_cfg="${root_home}/.ovmlayer_cfg.json"
+        user_has_cfg=0
+        if [[ -e "${user_cfg}" ]]; then
+          user_has_cfg=1
+        fi
+
+        root_has_cfg=0
+        if run_as_root test -e "${root_cfg}"; then
+          root_has_cfg=1
+        fi
+
+        if [[ "${user_cfg}" != "${root_cfg}" ]]; then
+          if [[ "${user_has_cfg}" -eq 0 && "${root_has_cfg}" -eq 1 ]]; then
+            ln -sf "${root_cfg}" "${user_cfg}"
+            user_has_cfg=1
+          fi
+
+          if [[ "${root_has_cfg}" -eq 0 && "${user_has_cfg}" -eq 1 ]]; then
+            run_as_root ln -sf "${user_cfg}" "${root_cfg}"
+          fi
         fi
       shell: bash
