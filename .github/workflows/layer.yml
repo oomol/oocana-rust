@@ -38,7 +38,7 @@ jobs:
   rust-test:
     runs-on: ubuntu-latest
     container:
-      image: rust:1.88-bookworm
+      image: rust:1.88-bookworm@sha256:af306cfa71d987911a781c37b59d7d67d934f49684058f96cf72079c3626bfe0
       options: --privileged
     defaults:
       run:
@@ -62,6 +62,8 @@ jobs:
           repository: ${{ vars.OVMLAYER_REPOSITORY }}
           use-runtime-setup: "true"
       - name: test layer api
+        env:
+          RUSTFLAGS: ""
         run: |
           cargo test --package layer -- --nocapture --test-threads=1 # 部分单测 API 互相干扰，需要一个个测试
       - name: upload ovmlayer log
