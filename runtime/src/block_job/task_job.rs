@@ -5,11 +5,13 @@ use manifest_meta::{
     TaskBlockExecutor,
 };
 use manifest_reader::manifest::SpawnOptions;
+use reqwest::{Client, Url};
 
 use std::collections::HashMap;
 use std::path::Path;
 use std::process;
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, OnceLock, RwLock};
+use std::time::Duration;
 use tokio::io::{AsyncBufReadExt, BufReader};
 
 use crate::block_status::BlockStatusTx;
@@ -21,6 +23,15 @@ use utils::path::to_absolute;
 
 use super::job_handle::BlockJobHandle;
 use super::listener::{ListenerParameters, listen_to_worker};
+
+const CONNECTOR_BASE_URL_ENV_KEY: &str = "CONNECTOR_BASE_URL";
+const DEFAULT_CONNECTOR_REQUEST_TIMEOUT_SECS: u64 = 30;
+const CONNECTOR_ERROR_BODY_LIMIT: usize = 512;
+
+fn connector_http_client() -> &'static Client {
+    static CLIENT: OnceLock<Client> = OnceLock::new();
+    CLIENT.get_or_init(Client::new)
+}
 
 pub struct TaskJobHandle {
     pub job_id: JobId,
@@ -230,6 +241,67 @@ pub fn execute_task_job(params: TaskJobParameters) -> Option<BlockJobHandle> {
                 }
             }
         }
+        TaskBlockExecutor::Connector(e) => {
+            let action_id = e.options.action.clone();
+            let scheduler_tx = shared.scheduler_tx.clone();
+            let session_id = shared.session_id.clone();
+            let job_id_clone = job_id.clone();
+            let connector_inputs = inputs.clone();
+            let connector_outputs_def = outputs_def.clone();
+            let connector_auth_token = shared.connector_auth_token.clone();
+            let request_timeout =
+                Duration::from_secs(timeout.unwrap_or(DEFAULT_CONNECTOR_REQUEST_TIMEOUT_SECS));
+
+            let connector_handle = tokio::spawn(async move {
+                let result = if let Some(ref token) = connector_auth_token {
+                    run_connector_action_with_auth_token(
+                        &action_id,
+                        connector_inputs,
+                        connector_outputs_def,
+                        request_timeout,
+                        Some(token),
+                    )
+                    .await
+                } else {
+                    run_connector_action(
+                        &action_id,
+                        connector_inputs,
+                        connector_outputs_def,
+                        request_timeout,
+                    )
+                    .await
+                };
+
+                match result {
+                    Ok(outputs) => {
+                        scheduler_tx.send_block_event(scheduler::ReceiveMessage::BlockFinished {
+                            session_id,
+                            job_id: job_id_clone,
+                            result: Some(outputs),
+                            error: None,
+                        });
+                    }
+                    Err(error) => {
+                        scheduler_tx.send_block_event(scheduler::ReceiveMessage::BlockFinished {
+                            session_id,
+                            job_id: job_id_clone,
+                            result: None,
+                            error: Some(error.to_string()),
+                        });
+                    }
+                }
+            });
+
+            spawn_handles.push(worker_listener_handle);
+            spawn_handles.push(connector_handle);
+
+            Some(BlockJobHandle::new(TaskJobHandle {
+                job_id,
+                shared,
+                child: None,
+                spawn_handles,
+            }))
+        }
         _ => {
             shared.scheduler_tx.send_to_executor(ExecutorParams {
                 executor_name: executor.name(),
@@ -364,6 +436,292 @@ fn get_string_value_from_inputs(inputs: &Option<BlockInputs>, key: &str) -> Opti
         .as_ref()
         .and_then(|inputs| inputs.get(&HandleName::new(key.to_string())))
         .and_then(|v| v.value.as_str().map(|s| s.to_owned()))
+}
+
+async fn run_connector_action(
+    action_id: &str,
+    inputs: Option<BlockInputs>,
+    outputs_def: Option<OutputHandles>,
+    request_timeout: Duration,
+) -> Result<HashMap<HandleName, serde_json::Value>> {
+    let auth_token = std::env::var("OOMOL_TOKEN")
+        .ok()
+        .map(|s| s.trim().to_owned())
+        .filter(|s| !s.is_empty());
+
+    run_connector_action_with_auth_token(
+        action_id,
+        inputs,
+        outputs_def,
+        request_timeout,
+        auth_token.as_deref(),
+    )
+    .await
+}
+
+async fn run_connector_action_with_auth_token(
+    action_id: &str,
+    inputs: Option<BlockInputs>,
+    outputs_def: Option<OutputHandles>,
+    request_timeout: Duration,
+    auth_token: Option<&str>,
+) -> Result<HashMap<HandleName, serde_json::Value>> {
+    let auth_token = auth_token
+        .map(|token| token.trim().to_owned())
+        .filter(|token| !token.is_empty())
+        .or_else(|| {
+            std::env::var("OOMOL_TOKEN")
+                .ok()
+                .map(|s| s.trim().to_owned())
+                .filter(|s| !s.is_empty())
+        });
+    let base_url = std::env::var(CONNECTOR_BASE_URL_ENV_KEY).map_err(|_| {
+        utils::error::Error::new(&format!(
+            "{CONNECTOR_BASE_URL_ENV_KEY} is required for connector executor"
+        ))
+    })?;
+
+    run_connector_action_with_base_url_and_auth(
+        &base_url,
+        action_id,
+        inputs,
+        outputs_def,
+        request_timeout,
+        auth_token.as_deref(),
+    )
+    .await
+}
+
+#[cfg(test)]
+async fn run_connector_action_with_base_url(
+    base_url: &str,
+    action_id: &str,
+    inputs: Option<BlockInputs>,
+    outputs_def: Option<OutputHandles>,
+    request_timeout: Duration,
+) -> Result<HashMap<HandleName, serde_json::Value>> {
+    let auth_token = std::env::var("OOMOL_TOKEN")
+        .ok()
+        .map(|s| s.trim().to_owned())
+        .filter(|s| !s.is_empty());
+
+    run_connector_action_with_base_url_and_auth(
+        base_url,
+        action_id,
+        inputs,
+        outputs_def,
+        request_timeout,
+        auth_token.as_deref(),
+    )
+    .await
+}
+
+async fn run_connector_action_with_base_url_and_auth(
+    base_url: &str,
+    action_id: &str,
+    inputs: Option<BlockInputs>,
+    outputs_def: Option<OutputHandles>,
+    request_timeout: Duration,
+    auth_token: Option<&str>,
+) -> Result<HashMap<HandleName, serde_json::Value>> {
+    let url = build_connector_action_url(base_url, action_id)?;
+
+    let request_body = serde_json::json!({
+        "input": serialize_connector_inputs(inputs),
+    });
+
+    let request = connector_http_client()
+        .post(url.clone())
+        .json(&request_body)
+        .timeout(request_timeout);
+    let request = if let Some(token) = auth_token {
+        request.bearer_auth(token)
+    } else {
+        request
+    };
+
+    let response = request
+        .send()
+        .await
+        .map_err(|e| {
+            utils::error::Error::with_source(
+                &format!("Failed to call connector action '{action_id}' at '{url}'"),
+                Box::new(e),
+            )
+        })?;
+
+    let status = response.status();
+    if !status.is_success() {
+        let body = response.text().await.unwrap_or_default();
+        let message = format_connector_http_error(action_id, status, &body);
+
+        return Err(utils::error::Error::new(&message));
+    }
+
+    let response_json = response.json::<serde_json::Value>().await.map_err(|e| {
+        utils::error::Error::with_source(
+            &format!("Failed to parse connector action '{action_id}' response as JSON"),
+            Box::new(e),
+        )
+    })?;
+
+    parse_connector_outputs(action_id, response_json, outputs_def.as_ref())
+}
+
+fn build_connector_action_url(base_url: &str, action_id: &str) -> Result<Url> {
+    let mut url = Url::parse(base_url).map_err(|e| {
+        utils::error::Error::with_source(
+            &format!("Invalid {CONNECTOR_BASE_URL_ENV_KEY}: '{base_url}'"),
+            Box::new(e),
+        )
+    })?;
+
+    {
+        let mut segments = url.path_segments_mut().map_err(|_| {
+            utils::error::Error::new(&format!(
+                "Invalid {CONNECTOR_BASE_URL_ENV_KEY}: '{base_url}'"
+            ))
+        })?;
+        segments.pop_if_empty();
+        segments.extend(["v1", "actions", action_id]);
+    }
+
+    Ok(url)
+}
+
+fn serialize_connector_inputs(inputs: Option<BlockInputs>) -> HashMap<String, serde_json::Value> {
+    inputs
+        .unwrap_or_default()
+        .into_iter()
+        .map(|(handle, value)| (handle.to_string(), value.value.clone()))
+        .collect()
+}
+
+fn truncate_connector_error_body(body: &str) -> String {
+    let mut chars = body.chars();
+    let truncated: String = chars.by_ref().take(CONNECTOR_ERROR_BODY_LIMIT).collect();
+    if chars.next().is_some() {
+        format!("{truncated}...<truncated>")
+    } else {
+        truncated
+    }
+}
+
+fn format_connector_http_error(
+    action_id: &str,
+    status: reqwest::StatusCode,
+    body: &str,
+) -> String {
+    if body.is_empty() {
+        return format!("Connector action '{action_id}' failed with status {status}");
+    }
+
+    if let Ok(response_json) = serde_json::from_str::<serde_json::Value>(body) {
+        if let Some(details) = format_connector_error_details(&response_json) {
+            return format!("Connector action '{action_id}' failed with status {status}: {details}");
+        }
+    }
+
+    let truncated = truncate_connector_error_body(body);
+    format!("Connector action '{action_id}' failed with status {status}: {truncated}")
+}
+
+fn format_connector_error_details(response_json: &serde_json::Value) -> Option<String> {
+    let message = response_json
+        .get("message")
+        .and_then(|value| value.as_str())
+        .filter(|message| !message.trim().is_empty())
+        .or_else(|| {
+            response_json
+                .get("errorMessage")
+                .and_then(|value| value.as_str())
+                .filter(|message| !message.trim().is_empty())
+        })?;
+
+    let mut metadata = Vec::new();
+
+    if let Some(error_code) = response_json
+        .get("errorCode")
+        .and_then(|value| value.as_str())
+        .filter(|error_code| !error_code.trim().is_empty())
+    {
+        metadata.push(format!("errorCode={error_code}"));
+    }
+
+    if let Some(action_id) = response_json
+        .get("meta")
+        .and_then(|value| value.get("actionId"))
+        .and_then(|value| value.as_str())
+        .filter(|action_id| !action_id.trim().is_empty())
+    {
+        metadata.push(format!("actionId={action_id}"));
+    }
+
+    let execution_id = response_json
+        .get("meta")
+        .and_then(|value| value.get("executionId"))
+        .or_else(|| response_json.get("executionId"))
+        .and_then(|value| value.as_str())
+        .filter(|execution_id| !execution_id.trim().is_empty());
+    if let Some(execution_id) = execution_id {
+        metadata.push(format!("executionId={execution_id}"));
+    }
+
+    if metadata.is_empty() {
+        Some(message.to_owned())
+    } else {
+        Some(format!("{message} ({})", metadata.join(", ")))
+    }
+}
+
+fn parse_connector_outputs(
+    action_id: &str,
+    response_json: serde_json::Value,
+    outputs_def: Option<&OutputHandles>,
+) -> Result<HashMap<HandleName, serde_json::Value>> {
+    let success = response_json
+        .get("success")
+        .and_then(|value| value.as_bool())
+        .ok_or_else(|| {
+            utils::error::Error::new(&format!(
+                "Connector action '{action_id}' response is missing success field"
+            ))
+        })?;
+
+    if !success {
+        let message =
+            format_connector_error_details(&response_json).unwrap_or_else(|| "unknown error".to_owned());
+        return Err(utils::error::Error::new(&format!(
+            "Connector action '{action_id}' failed: {message}"
+        )));
+    }
+
+    let data = response_json.get("data").ok_or_else(|| {
+        utils::error::Error::new(&format!(
+            "Connector action '{action_id}' response is missing data field"
+        ))
+    })?;
+
+    if connector_uses_single_output_handle(outputs_def) {
+        return Ok(HashMap::from([(HandleName::from("output"), data.clone())]));
+    }
+
+    let outputs = data.as_object().ok_or_else(|| {
+        utils::error::Error::new(&format!(
+            "Connector action '{action_id}' response data field must be an object"
+        ))
+    })?;
+
+    Ok(outputs
+        .iter()
+        .map(|(handle, value)| (HandleName::from(handle.clone()), value.clone()))
+        .collect())
+}
+
+fn connector_uses_single_output_handle(outputs_def: Option<&OutputHandles>) -> bool {
+    outputs_def.is_some_and(|outputs| {
+        outputs.len() == 1 && outputs.contains_key(&HandleName::from("output"))
+    })
 }
 
 fn spawn(
@@ -527,4 +885,394 @@ pub fn timeout_abort(
         reporter.error(&format!("{job_id} timeout after {timeout:?}"));
         block_status.finish(job_id, None, Some("Timeout".to_owned()), None);
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::{Arc, Mutex};
+    use utils::output::OutputValue;
+    use wiremock::{
+        Mock, MockServer, ResponseTemplate,
+        matchers::{body_json, header, method, path},
+    };
+
+    #[tokio::test]
+    async fn connector_executor_posts_inputs_and_reads_data_as_outputs() {
+        let _env_guard = crate::CONNECTOR_ENV_LOCK
+            .get_or_init(|| Mutex::new(()))
+            .lock()
+            .unwrap();
+        let mock_server = MockServer::start().await;
+        let previous_connector_base_url = std::env::var_os(CONNECTOR_BASE_URL_ENV_KEY);
+        let previous_oomol_token = std::env::var_os("OOMOL_TOKEN");
+
+        let mut inputs = BlockInputs::new();
+        inputs.insert(
+            HandleName::from("message"),
+            Arc::new(OutputValue::new(serde_json::json!("hello"), true)),
+        );
+        inputs.insert(
+            HandleName::from("count"),
+            Arc::new(OutputValue::new(serde_json::json!(3), true)),
+        );
+
+        Mock::given(method("POST"))
+            .and(path("/v1/actions/run-action"))
+            .and(header("authorization", "Bearer test-token"))
+            .and(body_json(serde_json::json!({
+                "input": {
+                    "message": "hello",
+                    "count": 3
+                }
+            })))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "success": true,
+                "message": "ok",
+                "data": {
+                    "result": "ok",
+                    "total": 4
+                },
+                "meta": {
+                    "executionId": "exec-1",
+                    "actionId": "run-action"
+                }
+            })))
+            .mount(&mock_server)
+            .await;
+
+        unsafe {
+            std::env::set_var(CONNECTOR_BASE_URL_ENV_KEY, mock_server.uri());
+            std::env::set_var("OOMOL_TOKEN", "test-token");
+        }
+
+        let outputs =
+            run_connector_action("run-action", Some(inputs), None, Duration::from_secs(30)).await;
+
+        unsafe {
+            if let Some(value) = previous_connector_base_url {
+                std::env::set_var(CONNECTOR_BASE_URL_ENV_KEY, value);
+            } else {
+                std::env::remove_var(CONNECTOR_BASE_URL_ENV_KEY);
+            }
+            if let Some(value) = previous_oomol_token {
+                std::env::set_var("OOMOL_TOKEN", value);
+            } else {
+                std::env::remove_var("OOMOL_TOKEN");
+            }
+        }
+
+        let outputs = outputs.unwrap();
+
+        assert_eq!(
+            outputs.get(&HandleName::from("result")),
+            Some(&serde_json::json!("ok"))
+        );
+        assert_eq!(
+            outputs.get(&HandleName::from("total")),
+            Some(&serde_json::json!(4))
+        );
+    }
+
+    #[tokio::test]
+    async fn connector_executor_requires_object_data() {
+        let error = parse_connector_outputs(
+            "run-action",
+            serde_json::json!({
+                "success": true,
+                "message": "ok",
+                "data": 1,
+                "meta": {
+                    "executionId": "exec-1",
+                    "actionId": "run-action"
+                }
+            }),
+            None,
+        )
+        .unwrap_err();
+
+        assert_eq!(
+            error.to_string(),
+            "Connector action 'run-action' response data field must be an object"
+        );
+    }
+
+    #[tokio::test]
+    async fn connector_executor_requires_data_field() {
+        let error = parse_connector_outputs(
+            "run-action",
+            serde_json::json!({
+                "success": true,
+                "message": "ok",
+                "meta": {
+                    "executionId": "exec-1",
+                    "actionId": "run-action"
+                }
+            }),
+            None,
+        )
+        .unwrap_err();
+
+        assert_eq!(
+            error.to_string(),
+            "Connector action 'run-action' response is missing data field"
+        );
+    }
+
+    #[tokio::test]
+    async fn connector_executor_reports_unsuccessful_response_message() {
+        let error = parse_connector_outputs(
+            "run-action",
+            serde_json::json!({
+                "success": false,
+                "message": "invalid auth token",
+                "data": {
+                    "ignored": true
+                }
+            }),
+            None,
+        )
+        .unwrap_err();
+
+        assert_eq!(
+            error.to_string(),
+            "Connector action 'run-action' failed: invalid auth token"
+        );
+    }
+
+    #[tokio::test]
+    async fn connector_executor_reports_non_success_status() {
+        let mock_server = MockServer::start().await;
+
+        Mock::given(method("POST"))
+            .and(path("/v1/actions/run-action"))
+            .respond_with(ResponseTemplate::new(500).set_body_string("connector failed"))
+            .mount(&mock_server)
+            .await;
+
+        let error = run_connector_action_with_base_url(
+            &mock_server.uri(),
+            "run-action",
+            None,
+            None,
+            Duration::from_secs(30),
+        )
+        .await
+        .unwrap_err();
+
+        assert_eq!(
+            error.to_string(),
+            "Connector action 'run-action' failed with status 500 Internal Server Error: connector failed"
+        );
+    }
+
+    #[tokio::test]
+    async fn connector_executor_reports_structured_4xx_status() {
+        let mock_server = MockServer::start().await;
+
+        Mock::given(method("POST"))
+            .and(path("/v1/actions/run-action"))
+            .respond_with(ResponseTemplate::new(400).set_body_json(serde_json::json!({
+                "success": false,
+                "message": "input validation failed",
+                "data": null,
+                "errorCode": "invalid_input",
+                "meta": {
+                    "actionId": "run-action",
+                    "executionId": "exec-400"
+                }
+            })))
+            .mount(&mock_server)
+            .await;
+
+        let error = run_connector_action_with_base_url(
+            &mock_server.uri(),
+            "run-action",
+            None,
+            None,
+            Duration::from_secs(30),
+        )
+        .await
+        .unwrap_err();
+
+        assert_eq!(
+            error.to_string(),
+            "Connector action 'run-action' failed with status 400 Bad Request: input validation failed (errorCode=invalid_input, actionId=run-action, executionId=exec-400)"
+        );
+    }
+
+    #[tokio::test]
+    async fn connector_executor_reports_structured_401_status() {
+        let mock_server = MockServer::start().await;
+
+        Mock::given(method("POST"))
+            .and(path("/v1/actions/run-action"))
+            .respond_with(ResponseTemplate::new(401).set_body_json(serde_json::json!({
+                "errorCode": "invalid_input",
+                "errorMessage": "missing authorization header",
+                "executionId": "exec-401"
+            })))
+            .mount(&mock_server)
+            .await;
+
+        let error = run_connector_action_with_base_url(
+            &mock_server.uri(),
+            "run-action",
+            None,
+            None,
+            Duration::from_secs(30),
+        )
+        .await
+        .unwrap_err();
+
+        assert_eq!(
+            error.to_string(),
+            "Connector action 'run-action' failed with status 401 Unauthorized: missing authorization header (errorCode=invalid_input, executionId=exec-401)"
+        );
+    }
+
+    #[tokio::test]
+    async fn connector_executor_reports_structured_5xx_status() {
+        let mock_server = MockServer::start().await;
+
+        Mock::given(method("POST"))
+            .and(path("/v1/actions/run-action"))
+            .respond_with(ResponseTemplate::new(500).set_body_json(serde_json::json!({
+                "success": false,
+                "message": "provider unavailable",
+                "data": null,
+                "errorCode": "provider_error",
+                "meta": {
+                    "actionId": "run-action",
+                    "executionId": "exec-500"
+                }
+            })))
+            .mount(&mock_server)
+            .await;
+
+        let error = run_connector_action_with_base_url(
+            &mock_server.uri(),
+            "run-action",
+            None,
+            None,
+            Duration::from_secs(30),
+        )
+        .await
+        .unwrap_err();
+
+        assert_eq!(
+            error.to_string(),
+            "Connector action 'run-action' failed with status 500 Internal Server Error: provider unavailable (errorCode=provider_error, actionId=run-action, executionId=exec-500)"
+        );
+    }
+
+
+    #[test]
+    fn connector_executor_detects_single_output_handle() {
+        assert!(connector_uses_single_output_handle(Some(&HashMap::from([(
+            HandleName::from("output"),
+            manifest_reader::manifest::OutputHandle {
+                handle: HandleName::from("output"),
+                description: None,
+                json_schema: None,
+                kind: None,
+                nullable: None,
+                is_additional: false,
+                _serialize_for_cache: false,
+            },
+        )]))));
+    }
+
+    #[tokio::test]
+    async fn connector_executor_wraps_object_data_for_single_output_handle() {
+        let outputs = parse_connector_outputs(
+            "run-action",
+            serde_json::json!({
+                "success": true,
+                "message": "ok",
+                "data": {
+                    "bucket": "demo",
+                    "count": 2
+                },
+                "meta": {
+                    "executionId": "exec-1",
+                    "actionId": "run-action"
+                }
+            }),
+            Some(&HashMap::from([(
+                HandleName::from("output"),
+                manifest_reader::manifest::OutputHandle {
+                    handle: HandleName::from("output"),
+                    description: None,
+                    json_schema: None,
+                    kind: None,
+                    nullable: None,
+                    is_additional: false,
+                    _serialize_for_cache: false,
+                },
+            )])),
+        )
+        .unwrap();
+
+        assert_eq!(
+            outputs.get(&HandleName::from("output")),
+            Some(&serde_json::json!({
+                "bucket": "demo",
+                "count": 2
+            }))
+        );
+    }
+
+    #[tokio::test]
+    async fn connector_executor_allows_non_object_data_for_single_output_handle() {
+        let outputs = parse_connector_outputs(
+            "run-action",
+            serde_json::json!({
+                "success": true,
+                "message": "ok",
+                "data": ["a", "b"],
+                "meta": {
+                    "executionId": "exec-1",
+                    "actionId": "run-action"
+                }
+            }),
+            Some(&HashMap::from([(
+                HandleName::from("output"),
+                manifest_reader::manifest::OutputHandle {
+                    handle: HandleName::from("output"),
+                    description: None,
+                    json_schema: None,
+                    kind: None,
+                    nullable: None,
+                    is_additional: false,
+                    _serialize_for_cache: false,
+                },
+            )])),
+        )
+        .unwrap();
+
+        assert_eq!(
+            outputs.get(&HandleName::from("output")),
+            Some(&serde_json::json!(["a", "b"]))
+        );
+    }
+
+    #[test]
+    fn connector_executor_encodes_action_id_as_single_path_segment() {
+        let url = build_connector_action_url("https://connector.example/base", "a/b ?c#d").unwrap();
+
+        assert_eq!(
+            url.as_str(),
+            "https://connector.example/base/v1/actions/a%2Fb%20%3Fc%23d"
+        );
+    }
+
+    #[test]
+    fn connector_executor_truncates_large_error_bodies() {
+        let body = "x".repeat(CONNECTOR_ERROR_BODY_LIMIT + 10);
+        let truncated = truncate_connector_error_body(&body);
+
+        assert!(truncated.ends_with("...<truncated>"));
+        assert!(truncated.len() > CONNECTOR_ERROR_BODY_LIMIT);
+    }
 }

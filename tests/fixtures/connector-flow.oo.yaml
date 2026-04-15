@@ -1,0 +1,38 @@
+name: connector-executor-chain
+nodes:
+  - node_id: before-connector
+    values:
+      - handle: input
+        value: "upstream-payload"
+
+  - node_id: connector
+    task:
+      executor:
+        name: connector
+        options:
+          action: echo-output
+      inputs_def:
+        - handle: input
+      outputs_def:
+        - handle: output
+    inputs_from:
+      - handle: input
+        from_node:
+          - node_id: before-connector
+            output_handle: input
+
+  - node_id: after-connector
+    task:
+      executor:
+        name: connector
+        options:
+          action: confirm-output
+      inputs_def:
+        - handle: payload
+      outputs_def:
+        - handle: confirmed
+    inputs_from:
+      - handle: payload
+        from_node:
+          - node_id: connector
+            output_handle: output

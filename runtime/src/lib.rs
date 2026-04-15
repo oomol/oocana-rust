@@ -35,6 +35,10 @@ use crate::{
 
 const SESSION_CANCEL_INFO: &str = "Cancelled";
 
+#[cfg(test)]
+pub(crate) static CONNECTOR_ENV_LOCK: std::sync::OnceLock<std::sync::Mutex<()>> =
+    std::sync::OnceLock::new();
+
 pub struct RunArgs<'a> {
     pub shared: Arc<shared::Shared>,
     pub block_name: &'a str,
@@ -646,5 +650,308 @@ pub fn find_upstream(
             log_error!("Block is not a flow block: {}", block_path);
             Err("wrong block type. except flow get others".into())
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use async_trait::async_trait;
+    use flume::{Receiver, Sender};
+    use mainframe::{
+        MessageData,
+        reporter::{self, ReporterRxImpl, ReporterTxImpl},
+        scheduler::{self, ExecutorParameters, SchedulerRxImpl, SchedulerTxImpl},
+    };
+    use std::{
+        path::PathBuf,
+        sync::{Arc, Mutex},
+    };
+    use wiremock::{
+        Mock, MockServer, ResponseTemplate,
+        matchers::{body_json, header, method, path},
+    };
+
+    struct LoopbackSchedulerTx {
+        tx: Sender<MessageData>,
+    }
+
+    #[async_trait]
+    impl SchedulerTxImpl for LoopbackSchedulerTx {
+        async fn send_block_event(&self, _session_id: &job::SessionId, data: MessageData) {
+            let _ = self.tx.send_async(data).await;
+        }
+
+        async fn send_inputs(&self, _job_id: &job::JobId, _data: MessageData) {}
+
+        async fn run_block(&self, _executor_name: &str, _data: MessageData) {}
+
+        async fn respond_block_request(
+            &self,
+            _session_id: &job::SessionId,
+            _request_id: &str,
+            _data: MessageData,
+        ) {
+        }
+
+        async fn run_service_block(&self, _executor_name: &str, _data: MessageData) {}
+
+        async fn disconnect(&self) {}
+    }
+
+    struct LoopbackSchedulerRx {
+        rx: Receiver<MessageData>,
+    }
+
+    #[async_trait]
+    impl SchedulerRxImpl for LoopbackSchedulerRx {
+        async fn recv(&mut self) -> MessageData {
+            self.rx.recv_async().await.unwrap_or_default()
+        }
+    }
+
+    struct CollectReporterTx {
+        tx: Sender<serde_json::Value>,
+    }
+
+    #[async_trait]
+    impl ReporterTxImpl for CollectReporterTx {
+        async fn send(&self, data: MessageData) {
+            if let Ok(message) = serde_json::from_slice::<serde_json::Value>(&data) {
+                let _ = self.tx.send_async(message).await;
+            }
+        }
+
+        async fn disconnect(&self) {}
+    }
+
+    struct NoopReporterRx;
+
+    impl ReporterRxImpl for NoopReporterRx {
+        fn event_loop(self) -> tokio::task::JoinHandle<()> {
+            tokio::spawn(async {})
+        }
+    }
+
+    struct TestRuntime {
+        shared: Arc<shared::Shared>,
+        scheduler_handle: tokio::task::JoinHandle<()>,
+        reporter_handle: tokio::task::JoinHandle<()>,
+        delay_abort_handle: tokio::task::JoinHandle<()>,
+        reporter_rx: Receiver<serde_json::Value>,
+    }
+
+    impl TestRuntime {
+        fn new(project_root: &PathBuf) -> Self {
+            let session_id = job::SessionId::random();
+            let (scheduler_impl_tx, scheduler_impl_rx) = flume::unbounded();
+            let (scheduler_tx, scheduler_rx) = scheduler::create(
+                LoopbackSchedulerTx {
+                    tx: scheduler_impl_tx,
+                },
+                LoopbackSchedulerRx {
+                    rx: scheduler_impl_rx,
+                },
+                None,
+                None,
+                ExecutorParameters {
+                    addr: "127.0.0.1:0".to_string(),
+                    session_id: session_id.clone(),
+                    session_dir: project_root.join(".tmp-session").display().to_string(),
+                    pass_through_env_keys: vec![],
+                    bind_paths: vec![],
+                    env_file: None,
+                    tmp_dir: std::env::temp_dir(),
+                    debug: false,
+                    wait_for_client: false,
+                },
+                project_root.display().to_string(),
+            );
+
+            let (reporter_tx, reporter_rx) = flume::unbounded();
+            let (reporter, reporter_loop) = reporter::create(
+                session_id.clone(),
+                Some(CollectReporterTx { tx: reporter_tx }),
+                Some(NoopReporterRx),
+            );
+
+            let (delay_abort_tx, delay_abort_rx) = crate::delay_abort::delay_abort();
+
+            Self {
+                shared: Arc::new(shared::Shared {
+                    session_id,
+                    address: "127.0.0.1:0".to_string(),
+                    connector_auth_token: None,
+                    scheduler_tx,
+                    delay_abort_tx,
+                    reporter,
+                    use_cache: false,
+                    remote_task_config: None,
+                }),
+                scheduler_handle: scheduler_rx.event_loop(),
+                reporter_handle: reporter_loop.event_loop(),
+                delay_abort_handle: delay_abort_rx.run(),
+                reporter_rx,
+            }
+        }
+
+        async fn shutdown(self) -> Receiver<serde_json::Value> {
+            self.shared.scheduler_tx.abort();
+            self.shared.reporter.abort();
+            let reporter_rx = self.reporter_rx;
+            drop(self.shared);
+            let _ = self.scheduler_handle.await;
+            let _ = self.reporter_handle.await;
+            self.delay_abort_handle.abort();
+            reporter_rx
+        }
+    }
+
+    fn project_root() -> PathBuf {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("..")
+            .canonicalize()
+            .unwrap()
+    }
+
+    fn find_block_finished_result(
+        messages: &[serde_json::Value],
+        node_id: &str,
+    ) -> Option<serde_json::Value> {
+        messages.iter().find_map(|message| {
+            let message_node_id = message
+                .get("stacks")
+                .and_then(|stacks| stacks.as_array())
+                .and_then(|stacks| stacks.last())
+                .and_then(|level| level.get("node_id"))
+                .and_then(|node| node.as_str());
+
+            if message.get("type").and_then(|ty| ty.as_str()) == Some("BlockFinished")
+                && message_node_id == Some(node_id)
+            {
+                message.get("result").cloned()
+            } else {
+                None
+            }
+        })
+    }
+
+    #[tokio::test]
+    async fn connector_executor_runs_inside_a_flow_chain() {
+        let _env_guard = CONNECTOR_ENV_LOCK
+            .get_or_init(|| Mutex::new(()))
+            .lock()
+            .unwrap();
+
+        let mock_server = MockServer::start().await;
+        let previous_oomol_token = std::env::var_os("OOMOL_TOKEN");
+        Mock::given(method("POST"))
+            .and(path("/v1/actions/echo-output"))
+            .and(header("authorization", "Bearer test-token"))
+            .and(body_json(serde_json::json!({
+                "input": {
+                    "input": "upstream-payload"
+                }
+            })))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "success": true,
+                "message": "ok",
+                "data": {
+                    "forwardedOutput": "connector-ok"
+                },
+                "meta": {
+                    "executionId": "exec-1",
+                    "actionId": "echo-output"
+                }
+            })))
+            .expect(1)
+            .mount(&mock_server)
+            .await;
+
+        Mock::given(method("POST"))
+            .and(path("/v1/actions/confirm-output"))
+            .and(header("authorization", "Bearer test-token"))
+            .and(body_json(serde_json::json!({
+                "input": {
+                    "payload": {
+                        "forwardedOutput": "connector-ok"
+                    }
+                }
+            })))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "success": true,
+                "message": "ok",
+                "data": {
+                    "confirmed": "connector-ok"
+                },
+                "meta": {
+                    "executionId": "exec-2",
+                    "actionId": "confirm-output"
+                }
+            })))
+            .expect(1)
+            .mount(&mock_server)
+            .await;
+
+        let root = project_root();
+        let runtime = TestRuntime::new(&root);
+        let flow_path = root.join("tests/fixtures/connector-flow.oo.yaml");
+        let previous_connector_base_url = std::env::var_os("CONNECTOR_BASE_URL");
+
+        unsafe {
+            std::env::set_var("CONNECTOR_BASE_URL", mock_server.uri());
+            std::env::set_var("OOMOL_TOKEN", "test-token");
+        }
+
+        let run_result = run(RunArgs {
+            shared: runtime.shared.clone(),
+            block_name: flow_path.to_str().unwrap(),
+            block_reader: BlockResolver::new(),
+            path_finder: BlockPathFinder::new(root.clone(), None),
+            job_id: None,
+            nodes: None,
+            inputs: None,
+            nodes_inputs: None,
+            default_package_path: None,
+            project_data: &root,
+            pkg_data_root: &root,
+            in_layer: false,
+            vault_client: None,
+        })
+        .await;
+
+        unsafe {
+            if let Some(value) = previous_connector_base_url {
+                std::env::set_var("CONNECTOR_BASE_URL", value);
+            } else {
+                std::env::remove_var("CONNECTOR_BASE_URL");
+            }
+            if let Some(value) = previous_oomol_token {
+                std::env::set_var("OOMOL_TOKEN", value);
+            } else {
+                std::env::remove_var("OOMOL_TOKEN");
+            }
+        }
+
+        let reporter_rx = runtime.shutdown().await;
+        let messages: Vec<_> = reporter_rx.try_iter().collect();
+
+        assert!(run_result.is_ok(), "flow run failed: {run_result:?}");
+
+        let connector_result = find_block_finished_result(&messages, "connector")
+            .expect("connector node should finish with outputs");
+        assert_eq!(
+            connector_result.get("output"),
+            Some(&serde_json::json!({
+                "forwardedOutput": "connector-ok"
+            }))
+        );
+
+        let after_connector_result = find_block_finished_result(&messages, "after-connector")
+            .expect("downstream connector node should finish with outputs");
+        assert_eq!(
+            after_connector_result.get("confirmed"),
+            Some(&serde_json::json!("connector-ok"))
+        );
     }
 }
