@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.30.48 (2026-04-15)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* feat(runtime): add connector executor by @leavesster in https://github.com/oomol/oocana-rust/pull/453
+* chore: stabilize formatting by @leavesster in https://github.com/oomol/oocana-rust/pull/455
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.30.47...v0.30.48
+
 ## 0.30.47 (2026-04-03)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
