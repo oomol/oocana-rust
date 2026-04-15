@@ -880,9 +880,7 @@ mod tests {
             .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
                 "success": true,
                 "message": "ok",
-                "data": {
-                    "output": "FORWARDED_OUTPUT=connector-ok"
-                },
+                "data": "FORWARDED_OUTPUT=connector-ok",
                 "meta": {
                     "executionId": "exec-1",
                     "actionId": "echo-output"

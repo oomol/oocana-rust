@@ -247,6 +247,7 @@ pub fn execute_task_job(params: TaskJobParameters) -> Option<BlockJobHandle> {
             let session_id = shared.session_id.clone();
             let job_id_clone = job_id.clone();
             let connector_inputs = inputs.clone();
+            let connector_outputs_def = outputs_def.clone();
             let connector_auth_token = shared.connector_auth_token.clone();
             let request_timeout =
                 Duration::from_secs(timeout.unwrap_or(DEFAULT_CONNECTOR_REQUEST_TIMEOUT_SECS));
@@ -256,12 +257,19 @@ pub fn execute_task_job(params: TaskJobParameters) -> Option<BlockJobHandle> {
                     run_connector_action_with_auth_token(
                         &action_id,
                         connector_inputs,
+                        connector_outputs_def,
                         request_timeout,
                         Some(token),
                     )
                     .await
                 } else {
-                    run_connector_action(&action_id, connector_inputs, request_timeout).await
+                    run_connector_action(
+                        &action_id,
+                        connector_inputs,
+                        connector_outputs_def,
+                        request_timeout,
+                    )
+                    .await
                 };
 
                 match result {
@@ -433,6 +441,7 @@ fn get_string_value_from_inputs(inputs: &Option<BlockInputs>, key: &str) -> Opti
 async fn run_connector_action(
     action_id: &str,
     inputs: Option<BlockInputs>,
+    outputs_def: Option<OutputHandles>,
     request_timeout: Duration,
 ) -> Result<HashMap<HandleName, serde_json::Value>> {
     let auth_token = std::env::var("OOMOL_TOKEN")
@@ -443,6 +452,7 @@ async fn run_connector_action(
     run_connector_action_with_auth_token(
         action_id,
         inputs,
+        outputs_def,
         request_timeout,
         auth_token.as_deref(),
     )
@@ -452,6 +462,7 @@ async fn run_connector_action(
 async fn run_connector_action_with_auth_token(
     action_id: &str,
     inputs: Option<BlockInputs>,
+    outputs_def: Option<OutputHandles>,
     request_timeout: Duration,
     auth_token: Option<&str>,
 ) -> Result<HashMap<HandleName, serde_json::Value>> {
@@ -474,6 +485,7 @@ async fn run_connector_action_with_auth_token(
         &base_url,
         action_id,
         inputs,
+        outputs_def,
         request_timeout,
         auth_token.as_deref(),
     )
@@ -485,6 +497,7 @@ async fn run_connector_action_with_base_url(
     base_url: &str,
     action_id: &str,
     inputs: Option<BlockInputs>,
+    outputs_def: Option<OutputHandles>,
     request_timeout: Duration,
 ) -> Result<HashMap<HandleName, serde_json::Value>> {
     let auth_token = std::env::var("OOMOL_TOKEN")
@@ -496,6 +509,7 @@ async fn run_connector_action_with_base_url(
         base_url,
         action_id,
         inputs,
+        outputs_def,
         request_timeout,
         auth_token.as_deref(),
     )
@@ -506,6 +520,7 @@ async fn run_connector_action_with_base_url_and_auth(
     base_url: &str,
     action_id: &str,
     inputs: Option<BlockInputs>,
+    outputs_def: Option<OutputHandles>,
     request_timeout: Duration,
     auth_token: Option<&str>,
 ) -> Result<HashMap<HandleName, serde_json::Value>> {
@@ -550,7 +565,7 @@ async fn run_connector_action_with_base_url_and_auth(
         )
     })?;
 
-    parse_connector_outputs(action_id, response_json)
+    parse_connector_outputs(action_id, response_json, outputs_def.as_ref())
 }
 
 fn build_connector_action_url(base_url: &str, action_id: &str) -> Result<Url> {
@@ -662,6 +677,7 @@ fn format_connector_error_details(response_json: &serde_json::Value) -> Option<S
 fn parse_connector_outputs(
     action_id: &str,
     response_json: serde_json::Value,
+    outputs_def: Option<&OutputHandles>,
 ) -> Result<HashMap<HandleName, serde_json::Value>> {
     let success = response_json
         .get("success")
@@ -686,6 +702,10 @@ fn parse_connector_outputs(
         ))
     })?;
 
+    if connector_uses_single_output_handle(outputs_def) {
+        return Ok(HashMap::from([(HandleName::from("output"), data.clone())]));
+    }
+
     let outputs = data.as_object().ok_or_else(|| {
         utils::error::Error::new(&format!(
             "Connector action '{action_id}' response data field must be an object"
@@ -696,6 +716,12 @@ fn parse_connector_outputs(
         .iter()
         .map(|(handle, value)| (HandleName::from(handle.clone()), value.clone()))
         .collect())
+}
+
+fn connector_uses_single_output_handle(outputs_def: Option<&OutputHandles>) -> bool {
+    outputs_def.is_some_and(|outputs| {
+        outputs.len() == 1 && outputs.contains_key(&HandleName::from("output"))
+    })
 }
 
 fn spawn(
@@ -920,7 +946,8 @@ mod tests {
             std::env::set_var("OOMOL_TOKEN", "test-token");
         }
 
-        let outputs = run_connector_action("run-action", Some(inputs), Duration::from_secs(30)).await;
+        let outputs =
+            run_connector_action("run-action", Some(inputs), None, Duration::from_secs(30)).await;
 
         unsafe {
             if let Some(value) = previous_connector_base_url {
@@ -955,6 +982,7 @@ mod tests {
                 "success": true,
                 "data": 1
             }),
+            None,
         )
         .unwrap_err();
 
@@ -971,6 +999,7 @@ mod tests {
             serde_json::json!({
                 "success": true
             }),
+            None,
         )
         .unwrap_err();
 
@@ -991,6 +1020,7 @@ mod tests {
                     "ignored": true
                 }
             }),
+            None,
         )
         .unwrap_err();
 
@@ -1013,6 +1043,7 @@ mod tests {
         let error = run_connector_action_with_base_url(
             &mock_server.uri(),
             "run-action",
+            None,
             None,
             Duration::from_secs(30),
         )
@@ -1048,6 +1079,7 @@ mod tests {
             &mock_server.uri(),
             "run-action",
             None,
+            None,
             Duration::from_secs(30),
         )
         .await
@@ -1076,6 +1108,7 @@ mod tests {
         let error = run_connector_action_with_base_url(
             &mock_server.uri(),
             "run-action",
+            None,
             None,
             Duration::from_secs(30),
         )
@@ -1111,6 +1144,7 @@ mod tests {
             &mock_server.uri(),
             "run-action",
             None,
+            None,
             Duration::from_secs(30),
         )
         .await
@@ -1119,6 +1153,87 @@ mod tests {
         assert_eq!(
             error.to_string(),
             "Connector action 'run-action' failed with status 500 Internal Server Error: provider unavailable (errorCode=provider_error, actionId=run-action, executionId=exec-500)"
+        );
+    }
+
+
+    #[test]
+    fn connector_executor_detects_single_output_handle() {
+        assert!(connector_uses_single_output_handle(Some(&HashMap::from([(
+            HandleName::from("output"),
+            manifest_reader::manifest::OutputHandle {
+                handle: HandleName::from("output"),
+                description: None,
+                json_schema: None,
+                kind: None,
+                nullable: None,
+                is_additional: false,
+                _serialize_for_cache: false,
+            },
+        )]))));
+    }
+
+    #[tokio::test]
+    async fn connector_executor_wraps_object_data_for_single_output_handle() {
+        let outputs = parse_connector_outputs(
+            "run-action",
+            serde_json::json!({
+                "success": true,
+                "data": {
+                    "bucket": "demo",
+                    "count": 2
+                }
+            }),
+            Some(&HashMap::from([(
+                HandleName::from("output"),
+                manifest_reader::manifest::OutputHandle {
+                    handle: HandleName::from("output"),
+                    description: None,
+                    json_schema: None,
+                    kind: None,
+                    nullable: None,
+                    is_additional: false,
+                    _serialize_for_cache: false,
+                },
+            )])),
+        )
+        .unwrap();
+
+        assert_eq!(
+            outputs.get(&HandleName::from("output")),
+            Some(&serde_json::json!({
+                "bucket": "demo",
+                "count": 2
+            }))
+        );
+    }
+
+    #[tokio::test]
+    async fn connector_executor_allows_non_object_data_for_single_output_handle() {
+        let outputs = parse_connector_outputs(
+            "run-action",
+            serde_json::json!({
+                "success": true,
+                "data": ["a", "b"]
+            }),
+            Some(&HashMap::from([(
+                HandleName::from("output"),
+                manifest_reader::manifest::OutputHandle {
+                    handle: HandleName::from("output"),
+                    description: None,
+                    json_schema: None,
+                    kind: None,
+                    nullable: None,
+                    is_additional: false,
+                    _serialize_for_cache: false,
+                },
+            )])),
+        )
+        .unwrap();
+
+        assert_eq!(
+            outputs.get(&HandleName::from("output")),
+            Some(&serde_json::json!(["a", "b"]))
         );
     }
 
