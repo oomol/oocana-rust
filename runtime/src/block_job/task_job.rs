@@ -247,12 +247,22 @@ pub fn execute_task_job(params: TaskJobParameters) -> Option<BlockJobHandle> {
             let session_id = shared.session_id.clone();
             let job_id_clone = job_id.clone();
             let connector_inputs = inputs.clone();
+            let connector_auth_token = shared.connector_auth_token.clone();
             let request_timeout =
                 Duration::from_secs(timeout.unwrap_or(DEFAULT_CONNECTOR_REQUEST_TIMEOUT_SECS));
 
             let connector_handle = tokio::spawn(async move {
-                let result =
-                    run_connector_action(&action_id, connector_inputs, request_timeout).await;
+                let result = if let Some(ref token) = connector_auth_token {
+                    run_connector_action_with_auth_token(
+                        &action_id,
+                        connector_inputs,
+                        request_timeout,
+                        Some(token),
+                    )
+                    .await
+                } else {
+                    run_connector_action(&action_id, connector_inputs, request_timeout).await
+                };
 
                 match result {
                     Ok(outputs) => {
@@ -425,13 +435,49 @@ async fn run_connector_action(
     inputs: Option<BlockInputs>,
     request_timeout: Duration,
 ) -> Result<HashMap<HandleName, serde_json::Value>> {
+    let auth_token = std::env::var("OOMOL_TOKEN")
+        .ok()
+        .map(|s| s.trim().to_owned())
+        .filter(|s| !s.is_empty());
+
+    run_connector_action_with_auth_token(
+        action_id,
+        inputs,
+        request_timeout,
+        auth_token.as_deref(),
+    )
+    .await
+}
+
+async fn run_connector_action_with_auth_token(
+    action_id: &str,
+    inputs: Option<BlockInputs>,
+    request_timeout: Duration,
+    auth_token: Option<&str>,
+) -> Result<HashMap<HandleName, serde_json::Value>> {
+    let auth_token = auth_token
+        .map(|token| token.trim().to_owned())
+        .filter(|token| !token.is_empty())
+        .or_else(|| {
+            std::env::var("OOMOL_TOKEN")
+                .ok()
+                .map(|s| s.trim().to_owned())
+                .filter(|s| !s.is_empty())
+        });
     let base_url = std::env::var(CONNECTOR_BASE_URL_ENV_KEY).map_err(|_| {
         utils::error::Error::new(&format!(
             "{CONNECTOR_BASE_URL_ENV_KEY} is required for connector executor"
         ))
     })?;
 
-    run_connector_action_with_base_url(&base_url, action_id, inputs, request_timeout).await
+    run_connector_action_with_base_url_and_auth(
+        &base_url,
+        action_id,
+        inputs,
+        request_timeout,
+        auth_token.as_deref(),
+    )
+    .await
 }
 
 async fn run_connector_action_with_base_url(
@@ -440,16 +486,45 @@ async fn run_connector_action_with_base_url(
     inputs: Option<BlockInputs>,
     request_timeout: Duration,
 ) -> Result<HashMap<HandleName, serde_json::Value>> {
+    let auth_token = std::env::var("OOMOL_TOKEN")
+        .ok()
+        .map(|s| s.trim().to_owned())
+        .filter(|s| !s.is_empty());
+
+    run_connector_action_with_base_url_and_auth(
+        base_url,
+        action_id,
+        inputs,
+        request_timeout,
+        auth_token.as_deref(),
+    )
+    .await
+}
+
+async fn run_connector_action_with_base_url_and_auth(
+    base_url: &str,
+    action_id: &str,
+    inputs: Option<BlockInputs>,
+    request_timeout: Duration,
+    auth_token: Option<&str>,
+) -> Result<HashMap<HandleName, serde_json::Value>> {
     let url = build_connector_action_url(base_url, action_id)?;
 
     let request_body = serde_json::json!({
         "input": serialize_connector_inputs(inputs),
     });
 
-    let response = connector_http_client()
+    let request = connector_http_client()
         .post(url.clone())
         .json(&request_body)
-        .timeout(request_timeout)
+        .timeout(request_timeout);
+    let request = if let Some(token) = auth_token {
+        request.bearer_auth(token)
+    } else {
+        request
+    };
+
+    let response = request
         .send()
         .await
         .map_err(|e| {
@@ -525,6 +600,26 @@ fn parse_connector_outputs(
     action_id: &str,
     response_json: serde_json::Value,
 ) -> Result<HashMap<HandleName, serde_json::Value>> {
+    let success = response_json
+        .get("success")
+        .and_then(|value| value.as_bool())
+        .ok_or_else(|| {
+            utils::error::Error::new(&format!(
+                "Connector action '{action_id}' response is missing success field"
+            ))
+        })?;
+
+    if !success {
+        let message = response_json
+            .get("message")
+            .and_then(|value| value.as_str())
+            .filter(|message| !message.trim().is_empty())
+            .unwrap_or("unknown error");
+        return Err(utils::error::Error::new(&format!(
+            "Connector action '{action_id}' failed: {message}"
+        )));
+    }
+
     let data = response_json.get("data").ok_or_else(|| {
         utils::error::Error::new(&format!(
             "Connector action '{action_id}' response is missing data field"
@@ -709,18 +804,16 @@ pub fn timeout_abort(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::{Arc, Mutex, OnceLock};
+    use std::sync::{Arc, Mutex};
     use utils::output::OutputValue;
     use wiremock::{
         Mock, MockServer, ResponseTemplate,
         matchers::{body_json, header, method, path},
     };
 
-    static CONNECTOR_ENV_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
-
     #[tokio::test]
     async fn connector_executor_posts_inputs_and_reads_data_as_outputs() {
-        let _env_guard = CONNECTOR_ENV_LOCK
+        let _env_guard = crate::CONNECTOR_ENV_LOCK
             .get_or_init(|| Mutex::new(()))
             .lock()
             .unwrap();

@@ -8,6 +8,7 @@ use crate::remote_task_config::RemoteTaskConfig;
 pub struct Shared {
     pub session_id: SessionId,
     pub address: String,
+    pub connector_auth_token: Option<String>,
     pub scheduler_tx: SchedulerTx,
     pub delay_abort_tx: DelayAbortTx,
     pub reporter: ReporterTx,

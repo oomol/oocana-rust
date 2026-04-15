@@ -1,5 +1,18 @@
 use std::collections::HashMap;
 
+pub fn resolve_auth_token(env_file_vars: &HashMap<String, String>) -> Option<String> {
+    std::env::var("OOMOL_TOKEN")
+        .ok()
+        .map(|s| s.trim().to_owned())
+        .filter(|s| !s.is_empty())
+        .or_else(|| {
+            env_file_vars
+                .get("OOMOL_TOKEN")
+                .map(|s| s.trim().to_owned())
+                .filter(|s| !s.is_empty())
+        })
+}
+
 #[derive(Debug, Clone)]
 pub struct RemoteTaskConfig {
     pub base_url: String,
@@ -34,16 +47,7 @@ impl RemoteTaskConfig {
                     .filter(|s| !s.is_empty())
             })?;
 
-        let auth_token = std::env::var("OOMOL_TOKEN")
-            .ok()
-            .map(|s| s.trim().to_owned())
-            .filter(|s| !s.is_empty())
-            .or_else(|| {
-                env_file_vars
-                    .get("OOMOL_TOKEN")
-                    .map(|s| s.trim().to_owned())
-                    .filter(|s| !s.is_empty())
-            });
+        let auth_token = resolve_auth_token(env_file_vars);
 
         let timeout_secs = cli_timeout.or_else(|| {
             std::env::var("OOCANA_REMOTE_BLOCK_TIMEOUT")

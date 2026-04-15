@@ -304,6 +304,7 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
     let shared = Arc::new(runtime::shared::Shared {
         session_id: session_id.clone(),
         address: addr.to_string(),
+        connector_auth_token: runtime::remote_task_config::resolve_auth_token(&env_file_vars),
         scheduler_tx: scheduler_tx.clone(),
         delay_abort_tx,
         reporter: reporter_tx.clone(),

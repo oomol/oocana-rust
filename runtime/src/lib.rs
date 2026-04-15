@@ -35,6 +35,10 @@ use crate::{
 
 const SESSION_CANCEL_INFO: &str = "Cancelled";
 
+#[cfg(test)]
+pub(crate) static CONNECTOR_ENV_LOCK: std::sync::OnceLock<std::sync::Mutex<()>> =
+    std::sync::OnceLock::new();
+
 pub struct RunArgs<'a> {
     pub shared: Arc<shared::Shared>,
     pub block_name: &'a str,
@@ -661,14 +665,12 @@ mod tests {
     };
     use std::{
         path::PathBuf,
-        sync::{Arc, Mutex, OnceLock},
+        sync::{Arc, Mutex},
     };
     use wiremock::{
         Mock, MockServer, ResponseTemplate,
         matchers::{body_json, header, method, path},
     };
-
-    static CONNECTOR_ENV_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
 
     struct LoopbackSchedulerTx {
         tx: Sender<MessageData>,
@@ -779,6 +781,7 @@ mod tests {
                 shared: Arc::new(shared::Shared {
                     session_id,
                     address: "127.0.0.1:0".to_string(),
+                    connector_auth_token: None,
                     scheduler_tx,
                     delay_abort_tx,
                     reporter,
