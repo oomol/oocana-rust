@@ -24,16 +24,15 @@ nodes:
   - node_id: after-connector
     task:
       executor:
-        name: shell
+        name: connector
+        options:
+          action: confirm-output
       inputs_def:
-        - handle: command
-        - handle: envs
+        - handle: payload
       outputs_def:
-        - handle: stdout
+        - handle: confirmed
     inputs_from:
-      - handle: envs
+      - handle: payload
         from_node:
           - node_id: connector
             output_handle: output
-      - handle: command
-        value: "printf '%s\\n' \"$FORWARDED_OUTPUT\""

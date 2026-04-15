@@ -980,7 +980,12 @@ mod tests {
             "run-action",
             serde_json::json!({
                 "success": true,
-                "data": 1
+                "message": "ok",
+                "data": 1,
+                "meta": {
+                    "executionId": "exec-1",
+                    "actionId": "run-action"
+                }
             }),
             None,
         )
@@ -997,7 +1002,12 @@ mod tests {
         let error = parse_connector_outputs(
             "run-action",
             serde_json::json!({
-                "success": true
+                "success": true,
+                "message": "ok",
+                "meta": {
+                    "executionId": "exec-1",
+                    "actionId": "run-action"
+                }
             }),
             None,
         )
@@ -1179,9 +1189,14 @@ mod tests {
             "run-action",
             serde_json::json!({
                 "success": true,
+                "message": "ok",
                 "data": {
                     "bucket": "demo",
                     "count": 2
+                },
+                "meta": {
+                    "executionId": "exec-1",
+                    "actionId": "run-action"
                 }
             }),
             Some(&HashMap::from([(
@@ -1214,7 +1229,12 @@ mod tests {
             "run-action",
             serde_json::json!({
                 "success": true,
-                "data": ["a", "b"]
+                "message": "ok",
+                "data": ["a", "b"],
+                "meta": {
+                    "executionId": "exec-1",
+                    "actionId": "run-action"
+                }
             }),
             Some(&HashMap::from([(
                 HandleName::from("output"),

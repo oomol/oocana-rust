@@ -836,30 +836,6 @@ mod tests {
         })
     }
 
-    fn find_block_output(
-        messages: &[serde_json::Value],
-        node_id: &str,
-        handle: &str,
-    ) -> Option<serde_json::Value> {
-        messages.iter().find_map(|message| {
-            let message_node_id = message
-                .get("stacks")
-                .and_then(|stacks| stacks.as_array())
-                .and_then(|stacks| stacks.last())
-                .and_then(|level| level.get("node_id"))
-                .and_then(|node| node.as_str());
-
-            if message.get("type").and_then(|ty| ty.as_str()) == Some("BlockOutput")
-                && message_node_id == Some(node_id)
-                && message.get("handle").and_then(|value| value.as_str()) == Some(handle)
-            {
-                message.get("output").cloned()
-            } else {
-                None
-            }
-        })
-    }
-
     #[tokio::test]
     async fn connector_executor_runs_inside_a_flow_chain() {
         let _env_guard = CONNECTOR_ENV_LOCK
@@ -880,10 +856,37 @@ mod tests {
             .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
                 "success": true,
                 "message": "ok",
-                "data": "FORWARDED_OUTPUT=connector-ok",
+                "data": {
+                    "forwardedOutput": "connector-ok"
+                },
                 "meta": {
                     "executionId": "exec-1",
                     "actionId": "echo-output"
+                }
+            })))
+            .expect(1)
+            .mount(&mock_server)
+            .await;
+
+        Mock::given(method("POST"))
+            .and(path("/v1/actions/confirm-output"))
+            .and(header("authorization", "Bearer test-token"))
+            .and(body_json(serde_json::json!({
+                "input": {
+                    "payload": {
+                        "forwardedOutput": "connector-ok"
+                    }
+                }
+            })))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "success": true,
+                "message": "ok",
+                "data": {
+                    "confirmed": "connector-ok"
+                },
+                "meta": {
+                    "executionId": "exec-2",
+                    "actionId": "confirm-output"
                 }
             })))
             .expect(1)
@@ -939,14 +942,16 @@ mod tests {
             .expect("connector node should finish with outputs");
         assert_eq!(
             connector_result.get("output"),
-            Some(&serde_json::json!("FORWARDED_OUTPUT=connector-ok"))
+            Some(&serde_json::json!({
+                "forwardedOutput": "connector-ok"
+            }))
         );
 
-        let stdout = find_block_output(&messages, "after-connector", "stdout")
-            .unwrap_or_else(|| panic!("downstream shell node should emit stdout: {messages:?}"));
-        let stdout = stdout
-            .as_str()
-            .expect("shell stdout output should be a string");
-        assert_eq!(stdout.trim(), "connector-ok");
+        let after_connector_result = find_block_finished_result(&messages, "after-connector")
+            .expect("downstream connector node should finish with outputs");
+        assert_eq!(
+            after_connector_result.get("confirmed"),
+            Some(&serde_json::json!("connector-ok"))
+        );
     }
 }
