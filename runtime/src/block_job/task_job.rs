@@ -709,16 +709,24 @@ pub fn timeout_abort(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
+    use std::sync::{Arc, Mutex, OnceLock};
     use utils::output::OutputValue;
     use wiremock::{
         Mock, MockServer, ResponseTemplate,
-        matchers::{body_json, method, path},
+        matchers::{body_json, header, method, path},
     };
+
+    static CONNECTOR_ENV_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
 
     #[tokio::test]
     async fn connector_executor_posts_inputs_and_reads_data_as_outputs() {
+        let _env_guard = CONNECTOR_ENV_LOCK
+            .get_or_init(|| Mutex::new(()))
+            .lock()
+            .unwrap();
         let mock_server = MockServer::start().await;
+        let previous_connector_base_url = std::env::var_os(CONNECTOR_BASE_URL_ENV_KEY);
+        let previous_oomol_token = std::env::var_os("OOMOL_TOKEN");
 
         let mut inputs = BlockInputs::new();
         inputs.insert(
@@ -732,6 +740,7 @@ mod tests {
 
         Mock::given(method("POST"))
             .and(path("/v1/actions/run-action"))
+            .and(header("authorization", "Bearer test-token"))
             .and(body_json(serde_json::json!({
                 "input": {
                     "message": "hello",
@@ -739,22 +748,41 @@ mod tests {
                 }
             })))
             .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "success": true,
+                "message": "ok",
                 "data": {
                     "result": "ok",
                     "total": 4
+                },
+                "meta": {
+                    "executionId": "exec-1",
+                    "actionId": "run-action"
                 }
             })))
             .mount(&mock_server)
             .await;
 
-        let outputs = run_connector_action_with_base_url(
-            &mock_server.uri(),
-            "run-action",
-            Some(inputs),
-            Duration::from_secs(30),
-        )
-        .await
-        .unwrap();
+        unsafe {
+            std::env::set_var(CONNECTOR_BASE_URL_ENV_KEY, mock_server.uri());
+            std::env::set_var("OOMOL_TOKEN", "test-token");
+        }
+
+        let outputs = run_connector_action("run-action", Some(inputs), Duration::from_secs(30)).await;
+
+        unsafe {
+            if let Some(value) = previous_connector_base_url {
+                std::env::set_var(CONNECTOR_BASE_URL_ENV_KEY, value);
+            } else {
+                std::env::remove_var(CONNECTOR_BASE_URL_ENV_KEY);
+            }
+            if let Some(value) = previous_oomol_token {
+                std::env::set_var("OOMOL_TOKEN", value);
+            } else {
+                std::env::remove_var("OOMOL_TOKEN");
+            }
+        }
+
+        let outputs = outputs.unwrap();
 
         assert_eq!(
             outputs.get(&HandleName::from("result")),
@@ -768,8 +796,14 @@ mod tests {
 
     #[tokio::test]
     async fn connector_executor_requires_object_data() {
-        let error =
-            parse_connector_outputs("run-action", serde_json::json!({ "data": 1 })).unwrap_err();
+        let error = parse_connector_outputs(
+            "run-action",
+            serde_json::json!({
+                "success": true,
+                "data": 1
+            }),
+        )
+        .unwrap_err();
 
         assert_eq!(
             error.to_string(),
@@ -779,11 +813,37 @@ mod tests {
 
     #[tokio::test]
     async fn connector_executor_requires_data_field() {
-        let error = parse_connector_outputs("run-action", serde_json::json!({})).unwrap_err();
+        let error = parse_connector_outputs(
+            "run-action",
+            serde_json::json!({
+                "success": true
+            }),
+        )
+        .unwrap_err();
 
         assert_eq!(
             error.to_string(),
             "Connector action 'run-action' response is missing data field"
+        );
+    }
+
+    #[tokio::test]
+    async fn connector_executor_reports_unsuccessful_response_message() {
+        let error = parse_connector_outputs(
+            "run-action",
+            serde_json::json!({
+                "success": false,
+                "message": "invalid auth token",
+                "data": {
+                    "ignored": true
+                }
+            }),
+        )
+        .unwrap_err();
+
+        assert_eq!(
+            error.to_string(),
+            "Connector action 'run-action' failed: invalid auth token"
         );
     }
 

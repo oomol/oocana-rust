@@ -2516,6 +2516,7 @@ dependencies = [
 name = "runtime"
 version = "0.30.47"
 dependencies = [
+ "async-trait",
  "dirs",
  "flume 0.11.1",
  "job",
