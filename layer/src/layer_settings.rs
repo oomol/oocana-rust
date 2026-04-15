@@ -29,8 +29,7 @@ pub fn layer_setting_file() -> Result<PathBuf> {
         let store = LayerSettings {
             base_rootfs: vec![],
         };
-        serde_json::to_writer(writer, &store)
-            .map_err(|e| format!("Failed to serialize: {e:?}"))?;
+        serde_json::to_writer(writer, &store).map_err(|e| format!("Failed to serialize: {e:?}"))?;
     }
 
     Ok(file)
@@ -49,9 +48,7 @@ pub fn load_base_rootfs() -> Result<Vec<String>> {
                 .filter(|s| !s.is_empty())
                 .cloned()
                 .collect()),
-            Err(e) => Err(Error::new(&format!(
-                "Failed to load_package_store: {e:?}"
-            ))),
+            Err(e) => Err(Error::new(&format!("Failed to load_package_store: {e:?}"))),
         }
     } else {
         Err(Error::new("Failed to open file"))

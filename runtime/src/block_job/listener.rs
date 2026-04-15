@@ -190,9 +190,8 @@ pub fn listen_to_worker(params: ListenerParameters) -> tokio::task::JoinHandle<(
                     reason,
                     ..
                 } => {
-                    let msg = reason.unwrap_or(format!(
-                        "Executor {executor_name} exit with code {code}"
-                    ));
+                    let msg =
+                        reason.unwrap_or(format!("Executor {executor_name} exit with code {code}"));
 
                     reporter.finished(None, Some(msg.clone()));
                     block_status.error(msg);

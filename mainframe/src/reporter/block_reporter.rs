@@ -113,10 +113,7 @@ impl BlockReporterTx {
                 "session_id".into(),
                 Value::String(self.tx.session_id.to_string()),
             );
-            obj.insert(
-                "job_id".into(),
-                Value::String(self.job_id.to_string()),
-            );
+            obj.insert("job_id".into(), Value::String(self.job_id.to_string()));
             obj.insert(
                 "block_path".into(),
                 self.block_path

@@ -37,8 +37,7 @@ pub fn injection_store_path() -> Result<PathBuf> {
             version: env!("CARGO_PKG_VERSION").to_string(),
             flow_injection: HashMap::new(),
         };
-        serde_json::to_writer(writer, &store)
-            .map_err(|e| format!("Failed to serialize: {e:?}"))?;
+        serde_json::to_writer(writer, &store).map_err(|e| format!("Failed to serialize: {e:?}"))?;
     }
 
     Ok(file)

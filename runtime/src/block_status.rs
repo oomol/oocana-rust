@@ -1,12 +1,12 @@
 use std::{collections::HashMap, sync::Arc};
 
 use flume::{Receiver, Sender};
-use tracing::warn;
 use job::JobId;
 use mainframe::{
     reporter::ErrorDetail,
     scheduler::{BlockRequest, OutputOptions},
 };
+use tracing::warn;
 use utils::output::OutputValue;
 
 use manifest_meta::HandleName;

@@ -11,10 +11,7 @@ mod tests {
         let home_dir = dirs::home_dir().unwrap().to_string_lossy().to_string();
         let global = config.global;
 
-        assert_eq!(
-            global.store_dir,
-            format!("{home_dir}/.oomol-studio/oocana")
-        );
+        assert_eq!(global.store_dir, format!("{home_dir}/.oomol-studio/oocana"));
         assert_eq!(global.oocana_dir, format!("{home_dir}/.oocana"));
     }
 
@@ -29,10 +26,7 @@ mod tests {
         let config = config.unwrap();
         let home_dir = dirs::home_dir().unwrap().to_string_lossy().to_string();
         let global = config.global.clone();
-        assert_eq!(
-            global.store_dir,
-            format!("{home_dir}/.oomol-studio/oocana")
-        );
+        assert_eq!(global.store_dir, format!("{home_dir}/.oomol-studio/oocana"));
         assert_eq!(global.oocana_dir, format!("{home_dir}/.oocana"));
         assert_eq!(global.env_file, Some(format!("{home_dir}/.oocana/.env")));
         assert_eq!(

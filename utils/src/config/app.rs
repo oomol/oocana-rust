@@ -42,8 +42,8 @@ pub fn load_config<P: AsRef<Path>>(file: Option<P>) -> Result<AppConfig, String>
 
         // 如果展开后还是相对路径，拼接当前目录
         if expanded.is_relative() {
-            let mut current_dir = std::env::current_dir()
-                .map_err(|e| format!("Failed to get current dir: {e:?}"))?;
+            let mut current_dir =
+                std::env::current_dir().map_err(|e| format!("Failed to get current dir: {e:?}"))?;
             current_dir.push(expanded);
             current_dir
         } else {

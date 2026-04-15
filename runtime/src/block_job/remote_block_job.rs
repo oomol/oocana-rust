@@ -4,8 +4,8 @@ use std::sync::Arc;
 use job::{BlockInputs, BlockJobStacks, JobId};
 use mainframe::reporter::BlockReporterTx;
 use manifest_meta::{HandleName, TaskBlock};
-use tracing::warn;
 use remote_job_client::{CreateTaskRequest, RemoteJobClient, TaskStatus};
+use tracing::warn;
 use utils::output::OutputValue;
 
 use crate::block_status::BlockStatusTx;
@@ -111,8 +111,7 @@ async fn poll_logs(
                                 }
                             }
                             Some("BlockOutputs") => {
-                                if let Some(obj) = item.get("outputs").and_then(|o| o.as_object())
-                                {
+                                if let Some(obj) = item.get("outputs").and_then(|o| o.as_object()) {
                                     let outputs = obj
                                         .iter()
                                         .map(|(k, v)| {
@@ -131,10 +130,8 @@ async fn poll_logs(
                                         .get("error")
                                         .and_then(|e| e.as_str())
                                         .map(|s| s.to_owned());
-                                    finish_result = item
-                                        .get("result")
-                                        .and_then(|r| r.as_object())
-                                        .map(|obj| {
+                                    finish_result =
+                                        item.get("result").and_then(|r| r.as_object()).map(|obj| {
                                             obj.iter()
                                                 .map(|(k, v)| {
                                                     (
@@ -163,7 +160,12 @@ async fn poll_logs(
                     }
 
                     if should_finish {
-                        ctx.block_status.finish(ctx.job_id.clone(), finish_result, finish_error, None);
+                        ctx.block_status.finish(
+                            ctx.job_id.clone(),
+                            finish_result,
+                            finish_error,
+                            None,
+                        );
                         *finished = true;
                     }
                     *logs_sent_on_page += 1;
@@ -305,10 +307,7 @@ pub fn execute_remote_block_job(params: RemoteBlockJobParameters) -> Option<Bloc
             }
         };
 
-        reporter_clone.log(
-            &format!("Remote task created: {task_id}"),
-            "remote_task",
-        );
+        reporter_clone.log(&format!("Remote task created: {task_id}"), "remote_task");
 
         // Logs polling state
         let mut logs_page: u32 = 1;
@@ -329,9 +328,7 @@ pub fn execute_remote_block_job(params: RemoteBlockJobParameters) -> Option<Bloc
 
             if let Some(dl) = deadline {
                 if tokio::time::Instant::now() >= dl {
-                    let msg = format!(
-                        "Remote task {task_id} timed out after {timeout_secs}s"
-                    );
+                    let msg = format!("Remote task {task_id} timed out after {timeout_secs}s");
                     reporter_clone.finished(None, Some(msg.clone()));
                     block_status_clone.finish(job_id_clone, None, Some(msg), None);
                     return;
