@@ -35,13 +35,7 @@
     "rustup",
     "run",
     "1.88.0",
-    "rustfmt",
-    "--edition",
-    "2024",
-    "--style-edition",
-    "2024",
-    "--emit",
-    "stdout"
+    "rustfmt"
   ],
   "git.branchProtection": ["main"],
   "git.branchProtectionPrompt": "alwaysCommitToNewBranch",
