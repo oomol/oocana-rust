@@ -5,12 +5,13 @@ use manifest_meta::{
     TaskBlockExecutor,
 };
 use manifest_reader::manifest::SpawnOptions;
-use reqwest::Client;
+use reqwest::{Client, Url};
 
 use std::collections::HashMap;
 use std::path::Path;
 use std::process;
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, OnceLock, RwLock};
+use std::time::Duration;
 use tokio::io::{AsyncBufReadExt, BufReader};
 
 use crate::block_status::BlockStatusTx;
@@ -24,6 +25,13 @@ use super::job_handle::BlockJobHandle;
 use super::listener::{ListenerParameters, listen_to_worker};
 
 const CONNECTOR_BASE_URL_ENV_KEY: &str = "CONNECTOR_BASE_URL";
+const DEFAULT_CONNECTOR_REQUEST_TIMEOUT_SECS: u64 = 30;
+const CONNECTOR_ERROR_BODY_LIMIT: usize = 512;
+
+fn connector_http_client() -> &'static Client {
+    static CLIENT: OnceLock<Client> = OnceLock::new();
+    CLIENT.get_or_init(Client::new)
+}
 
 pub struct TaskJobHandle {
     pub job_id: JobId,
@@ -239,9 +247,12 @@ pub fn execute_task_job(params: TaskJobParameters) -> Option<BlockJobHandle> {
             let session_id = shared.session_id.clone();
             let job_id_clone = job_id.clone();
             let connector_inputs = inputs.clone();
+            let request_timeout =
+                Duration::from_secs(timeout.unwrap_or(DEFAULT_CONNECTOR_REQUEST_TIMEOUT_SECS));
 
             let connector_handle = tokio::spawn(async move {
-                let result = run_connector_action(&action_id, connector_inputs).await;
+                let result =
+                    run_connector_action(&action_id, connector_inputs, request_timeout).await;
 
                 match result {
                     Ok(outputs) => {
@@ -412,6 +423,7 @@ fn get_string_value_from_inputs(inputs: &Option<BlockInputs>, key: &str) -> Opti
 async fn run_connector_action(
     action_id: &str,
     inputs: Option<BlockInputs>,
+    request_timeout: Duration,
 ) -> Result<HashMap<HandleName, serde_json::Value>> {
     let base_url = std::env::var(CONNECTOR_BASE_URL_ENV_KEY).map_err(|_| {
         utils::error::Error::new(&format!(
@@ -419,27 +431,25 @@ async fn run_connector_action(
         ))
     })?;
 
-    run_connector_action_with_base_url(&base_url, action_id, inputs).await
+    run_connector_action_with_base_url(&base_url, action_id, inputs, request_timeout).await
 }
 
 async fn run_connector_action_with_base_url(
     base_url: &str,
     action_id: &str,
     inputs: Option<BlockInputs>,
+    request_timeout: Duration,
 ) -> Result<HashMap<HandleName, serde_json::Value>> {
-    let url = format!(
-        "{}/v1/actions/{}",
-        base_url.trim_end_matches('/'),
-        action_id
-    );
+    let url = build_connector_action_url(base_url, action_id)?;
 
     let request_body = serde_json::json!({
         "input": serialize_connector_inputs(inputs),
     });
 
-    let response = Client::new()
-        .post(&url)
+    let response = connector_http_client()
+        .post(url.clone())
         .json(&request_body)
+        .timeout(request_timeout)
         .send()
         .await
         .map_err(|e| {
@@ -455,7 +465,8 @@ async fn run_connector_action_with_base_url(
         let message = if body.is_empty() {
             format!("Connector action '{action_id}' failed with status {status}")
         } else {
-            format!("Connector action '{action_id}' failed with status {status}: {body}")
+            let truncated = truncate_connector_error_body(&body);
+            format!("Connector action '{action_id}' failed with status {status}: {truncated}")
         };
 
         return Err(utils::error::Error::new(&message));
@@ -471,12 +482,43 @@ async fn run_connector_action_with_base_url(
     parse_connector_outputs(action_id, response_json)
 }
 
+fn build_connector_action_url(base_url: &str, action_id: &str) -> Result<Url> {
+    let mut url = Url::parse(base_url).map_err(|e| {
+        utils::error::Error::with_source(
+            &format!("Invalid {CONNECTOR_BASE_URL_ENV_KEY}: '{base_url}'"),
+            Box::new(e),
+        )
+    })?;
+
+    {
+        let mut segments = url.path_segments_mut().map_err(|_| {
+            utils::error::Error::new(&format!(
+                "Invalid {CONNECTOR_BASE_URL_ENV_KEY}: '{base_url}'"
+            ))
+        })?;
+        segments.pop_if_empty();
+        segments.extend(["v1", "actions", action_id]);
+    }
+
+    Ok(url)
+}
+
 fn serialize_connector_inputs(inputs: Option<BlockInputs>) -> HashMap<String, serde_json::Value> {
     inputs
         .unwrap_or_default()
         .into_iter()
         .map(|(handle, value)| (handle.to_string(), value.value.clone()))
         .collect()
+}
+
+fn truncate_connector_error_body(body: &str) -> String {
+    let mut chars = body.chars();
+    let truncated: String = chars.by_ref().take(CONNECTOR_ERROR_BODY_LIMIT).collect();
+    if chars.next().is_some() {
+        format!("{truncated}...<truncated>")
+    } else {
+        truncated
+    }
 }
 
 fn parse_connector_outputs(
@@ -705,10 +747,14 @@ mod tests {
             .mount(&mock_server)
             .await;
 
-        let outputs =
-            run_connector_action_with_base_url(&mock_server.uri(), "run-action", Some(inputs))
-                .await
-                .unwrap();
+        let outputs = run_connector_action_with_base_url(
+            &mock_server.uri(),
+            "run-action",
+            Some(inputs),
+            Duration::from_secs(30),
+        )
+        .await
+        .unwrap();
 
         assert_eq!(
             outputs.get(&HandleName::from("result")),
@@ -729,5 +775,59 @@ mod tests {
             error.to_string(),
             "Connector action 'run-action' response data field must be an object"
         );
+    }
+
+    #[tokio::test]
+    async fn connector_executor_requires_data_field() {
+        let error = parse_connector_outputs("run-action", serde_json::json!({})).unwrap_err();
+
+        assert_eq!(
+            error.to_string(),
+            "Connector action 'run-action' response is missing data field"
+        );
+    }
+
+    #[tokio::test]
+    async fn connector_executor_reports_non_success_status() {
+        let mock_server = MockServer::start().await;
+
+        Mock::given(method("POST"))
+            .and(path("/v1/actions/run-action"))
+            .respond_with(ResponseTemplate::new(500).set_body_string("connector failed"))
+            .mount(&mock_server)
+            .await;
+
+        let error = run_connector_action_with_base_url(
+            &mock_server.uri(),
+            "run-action",
+            None,
+            Duration::from_secs(30),
+        )
+        .await
+        .unwrap_err();
+
+        assert_eq!(
+            error.to_string(),
+            "Connector action 'run-action' failed with status 500 Internal Server Error: connector failed"
+        );
+    }
+
+    #[test]
+    fn connector_executor_encodes_action_id_as_single_path_segment() {
+        let url = build_connector_action_url("https://connector.example/base", "a/b ?c#d").unwrap();
+
+        assert_eq!(
+            url.as_str(),
+            "https://connector.example/base/v1/actions/a%2Fb%20%3Fc%23d"
+        );
+    }
+
+    #[test]
+    fn connector_executor_truncates_large_error_bodies() {
+        let body = "x".repeat(CONNECTOR_ERROR_BODY_LIMIT + 10);
+        let truncated = truncate_connector_error_body(&body);
+
+        assert!(truncated.ends_with("...<truncated>"));
+        assert!(truncated.len() > CONNECTOR_ERROR_BODY_LIMIT);
     }
 }
