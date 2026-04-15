@@ -65,6 +65,7 @@ pub struct TaskBlock {
 pub enum TaskBlockExecutor {
     NodeJS(NodeJSExecutor),
     Python(PythonExecutor),
+    Connector(ConnectorExecutor),
     Shell(ShellExecutor),
     Rust(RustExecutor),
 }
@@ -94,6 +95,7 @@ impl TaskBlockExecutor {
         match self {
             TaskBlockExecutor::NodeJS(_) => "nodejs",
             TaskBlockExecutor::Python(_) => "python",
+            TaskBlockExecutor::Connector(_) => "connector",
             TaskBlockExecutor::Shell(_) => "shell",
             TaskBlockExecutor::Rust(_) => "rust",
         }
@@ -130,6 +132,7 @@ impl TaskBlockExecutor {
             TaskBlockExecutor::Python(PythonExecutor { options }) => {
                 options.as_ref().is_some_and(|o| o.spawn)
             }
+            TaskBlockExecutor::Connector(_) => false,
             TaskBlockExecutor::Shell(_) => false,
             TaskBlockExecutor::Rust(_) => false,
         }
@@ -146,6 +149,16 @@ pub struct NodeJSExecutor {
 pub struct PythonExecutor {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub options: Option<ExecutorOptions>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ConnectorExecutor {
+    pub options: ConnectorExecutorOptions,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct ConnectorExecutorOptions {
+    pub action: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -352,6 +365,18 @@ mod test {
         match deserialized {
             TaskBlockExecutor::Shell(ShellExecutor { .. }) => {}
             _ => panic!("Expected ShellExecutor"),
+        }
+    }
+
+    #[test]
+    fn deserialize_connector_executor() {
+        let serialized = r#"{"name":"connector","options":{"action":"run-action"}}"#;
+        let deserialized: TaskBlockExecutor = serde_json::from_str(serialized).unwrap();
+        match deserialized {
+            TaskBlockExecutor::Connector(e) => {
+                assert_eq!(e.options.action, "run-action");
+            }
+            _ => panic!("Expected ConnectorExecutor"),
         }
     }
 

@@ -2527,6 +2527,7 @@ dependencies = [
  "path-clean",
  "rand 0.8.5",
  "remote_job_client",
+ "reqwest",
  "serde",
  "serde_json",
  "tokio",
@@ -2534,6 +2535,7 @@ dependencies = [
  "utils",
  "uuid",
  "vault",
+ "wiremock",
 ]
 
 [[package]]

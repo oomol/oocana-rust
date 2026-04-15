@@ -5,6 +5,7 @@ use manifest_meta::{
     TaskBlockExecutor,
 };
 use manifest_reader::manifest::SpawnOptions;
+use reqwest::Client;
 
 use std::collections::HashMap;
 use std::path::Path;
@@ -21,6 +22,8 @@ use utils::path::to_absolute;
 
 use super::job_handle::BlockJobHandle;
 use super::listener::{ListenerParameters, listen_to_worker};
+
+const CONNECTOR_BASE_URL_ENV_KEY: &str = "CONNECTOR_BASE_URL";
 
 pub struct TaskJobHandle {
     pub job_id: JobId,
@@ -230,6 +233,46 @@ pub fn execute_task_job(params: TaskJobParameters) -> Option<BlockJobHandle> {
                 }
             }
         }
+        TaskBlockExecutor::Connector(e) => {
+            let action_id = e.options.action.clone();
+            let scheduler_tx = shared.scheduler_tx.clone();
+            let session_id = shared.session_id.clone();
+            let job_id_clone = job_id.clone();
+            let connector_inputs = inputs.clone();
+
+            let connector_handle = tokio::spawn(async move {
+                let result = run_connector_action(&action_id, connector_inputs).await;
+
+                match result {
+                    Ok(outputs) => {
+                        scheduler_tx.send_block_event(scheduler::ReceiveMessage::BlockFinished {
+                            session_id,
+                            job_id: job_id_clone,
+                            result: Some(outputs),
+                            error: None,
+                        });
+                    }
+                    Err(error) => {
+                        scheduler_tx.send_block_event(scheduler::ReceiveMessage::BlockFinished {
+                            session_id,
+                            job_id: job_id_clone,
+                            result: None,
+                            error: Some(error.to_string()),
+                        });
+                    }
+                }
+            });
+
+            spawn_handles.push(worker_listener_handle);
+            spawn_handles.push(connector_handle);
+
+            Some(BlockJobHandle::new(TaskJobHandle {
+                job_id,
+                shared,
+                child: None,
+                spawn_handles,
+            }))
+        }
         _ => {
             shared.scheduler_tx.send_to_executor(ExecutorParams {
                 executor_name: executor.name(),
@@ -364,6 +407,98 @@ fn get_string_value_from_inputs(inputs: &Option<BlockInputs>, key: &str) -> Opti
         .as_ref()
         .and_then(|inputs| inputs.get(&HandleName::new(key.to_string())))
         .and_then(|v| v.value.as_str().map(|s| s.to_owned()))
+}
+
+async fn run_connector_action(
+    action_id: &str,
+    inputs: Option<BlockInputs>,
+) -> Result<HashMap<HandleName, serde_json::Value>> {
+    let base_url = std::env::var(CONNECTOR_BASE_URL_ENV_KEY).map_err(|_| {
+        utils::error::Error::new(&format!(
+            "{CONNECTOR_BASE_URL_ENV_KEY} is required for connector executor"
+        ))
+    })?;
+
+    run_connector_action_with_base_url(&base_url, action_id, inputs).await
+}
+
+async fn run_connector_action_with_base_url(
+    base_url: &str,
+    action_id: &str,
+    inputs: Option<BlockInputs>,
+) -> Result<HashMap<HandleName, serde_json::Value>> {
+    let url = format!(
+        "{}/v1/actions/{}",
+        base_url.trim_end_matches('/'),
+        action_id
+    );
+
+    let request_body = serde_json::json!({
+        "input": serialize_connector_inputs(inputs),
+    });
+
+    let response = Client::new()
+        .post(&url)
+        .json(&request_body)
+        .send()
+        .await
+        .map_err(|e| {
+            utils::error::Error::with_source(
+                &format!("Failed to call connector action '{action_id}' at '{url}'"),
+                Box::new(e),
+            )
+        })?;
+
+    let status = response.status();
+    if !status.is_success() {
+        let body = response.text().await.unwrap_or_default();
+        let message = if body.is_empty() {
+            format!("Connector action '{action_id}' failed with status {status}")
+        } else {
+            format!("Connector action '{action_id}' failed with status {status}: {body}")
+        };
+
+        return Err(utils::error::Error::new(&message));
+    }
+
+    let response_json = response.json::<serde_json::Value>().await.map_err(|e| {
+        utils::error::Error::with_source(
+            &format!("Failed to parse connector action '{action_id}' response as JSON"),
+            Box::new(e),
+        )
+    })?;
+
+    parse_connector_outputs(action_id, response_json)
+}
+
+fn serialize_connector_inputs(inputs: Option<BlockInputs>) -> HashMap<String, serde_json::Value> {
+    inputs
+        .unwrap_or_default()
+        .into_iter()
+        .map(|(handle, value)| (handle.to_string(), value.value.clone()))
+        .collect()
+}
+
+fn parse_connector_outputs(
+    action_id: &str,
+    response_json: serde_json::Value,
+) -> Result<HashMap<HandleName, serde_json::Value>> {
+    let data = response_json.get("data").ok_or_else(|| {
+        utils::error::Error::new(&format!(
+            "Connector action '{action_id}' response is missing data field"
+        ))
+    })?;
+
+    let outputs = data.as_object().ok_or_else(|| {
+        utils::error::Error::new(&format!(
+            "Connector action '{action_id}' response data field must be an object"
+        ))
+    })?;
+
+    Ok(outputs
+        .iter()
+        .map(|(handle, value)| (HandleName::from(handle.clone()), value.clone()))
+        .collect())
 }
 
 fn spawn(
@@ -527,4 +662,72 @@ pub fn timeout_abort(
         reporter.error(&format!("{job_id} timeout after {timeout:?}"));
         block_status.finish(job_id, None, Some("Timeout".to_owned()), None);
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::Arc;
+    use utils::output::OutputValue;
+    use wiremock::{
+        Mock, MockServer, ResponseTemplate,
+        matchers::{body_json, method, path},
+    };
+
+    #[tokio::test]
+    async fn connector_executor_posts_inputs_and_reads_data_as_outputs() {
+        let mock_server = MockServer::start().await;
+
+        let mut inputs = BlockInputs::new();
+        inputs.insert(
+            HandleName::from("message"),
+            Arc::new(OutputValue::new(serde_json::json!("hello"), true)),
+        );
+        inputs.insert(
+            HandleName::from("count"),
+            Arc::new(OutputValue::new(serde_json::json!(3), true)),
+        );
+
+        Mock::given(method("POST"))
+            .and(path("/v1/actions/run-action"))
+            .and(body_json(serde_json::json!({
+                "input": {
+                    "message": "hello",
+                    "count": 3
+                }
+            })))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "data": {
+                    "result": "ok",
+                    "total": 4
+                }
+            })))
+            .mount(&mock_server)
+            .await;
+
+        let outputs =
+            run_connector_action_with_base_url(&mock_server.uri(), "run-action", Some(inputs))
+                .await
+                .unwrap();
+
+        assert_eq!(
+            outputs.get(&HandleName::from("result")),
+            Some(&serde_json::json!("ok"))
+        );
+        assert_eq!(
+            outputs.get(&HandleName::from("total")),
+            Some(&serde_json::json!(4))
+        );
+    }
+
+    #[tokio::test]
+    async fn connector_executor_requires_object_data() {
+        let error =
+            parse_connector_outputs("run-action", serde_json::json!({ "data": 1 })).unwrap_err();
+
+        assert_eq!(
+            error.to_string(),
+            "Connector action 'run-action' response data field must be an object"
+        );
+    }
 }
