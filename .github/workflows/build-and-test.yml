@@ -53,7 +53,9 @@ jobs:
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           rustflags: ""
-          components: clippy
+          components: clippy, rustfmt
+      - name: Rustfmt
+        run: cargo fmt --all -- --check
       - name: Clippy
         run: cargo clippy --workspace -- -W clippy::all -D warnings
       - name: Start MQTT Broker

@@ -1,8 +1,8 @@
 use assert_cmd::prelude::*;
 use std::process::{Command, Output, Stdio};
 
-use serde_json::Value;
 use remote_job_client::mock;
+use serde_json::Value;
 
 fn oocana_cmd() -> Command {
     let mut cmd = Command::cargo_bin("oocana").unwrap();

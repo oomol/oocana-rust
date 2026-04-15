@@ -1,7 +1,7 @@
 use manifest_reader::{
     manifest::{self, InputHandles},
     path_finder::BlockPathFinder,
-    reader::{read_block_metadata, read_task_block, BlockMetadata},
+    reader::{BlockMetadata, read_block_metadata, read_task_block},
 };
 use std::{
     collections::HashMap,

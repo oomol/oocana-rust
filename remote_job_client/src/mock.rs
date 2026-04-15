@@ -124,11 +124,7 @@ async fn get_task_detail(
         progress: progress(task),
         created_at: 0.0,
         start_time: if status != "queued" { Some(0.0) } else { None },
-        end_time: if status == "success" {
-            Some(0.0)
-        } else {
-            None
-        },
+        end_time: if status == "success" { Some(0.0) } else { None },
         failed_message: None,
     };
 
@@ -179,13 +175,13 @@ async fn get_task_logs(
 ) -> impl IntoResponse {
     let guard = tasks.lock().unwrap();
     let Some(task) = guard.get(&task_id) else {
-        return (StatusCode::NOT_FOUND, Json(serde_json::json!({ "logs": [] })));
+        return (
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({ "logs": [] })),
+        );
     };
 
-    let page: u32 = params
-        .get("page")
-        .and_then(|p| p.parse().ok())
-        .unwrap_or(1);
+    let page: u32 = params.get("page").and_then(|p| p.parse().ok()).unwrap_or(1);
 
     let status = current_status(task);
     eprintln!("[mock] GET /tasks/{task_id}/logs?page={page} -> status={status}");
@@ -271,14 +267,8 @@ pub fn start(port: u16) -> MockServer {
             let app = Router::new()
                 .route("/v3/users/me/tasks", post(create_task))
                 .route("/v3/users/me/tasks/{task_id}", get(get_task_detail))
-                .route(
-                    "/v3/users/me/tasks/{task_id}/result",
-                    get(get_task_result),
-                )
-                .route(
-                    "/v3/users/me/tasks/{task_id}/logs",
-                    get(get_task_logs),
-                )
+                .route("/v3/users/me/tasks/{task_id}/result", get(get_task_result))
+                .route("/v3/users/me/tasks/{task_id}/logs", get(get_task_logs))
                 .with_state(tasks);
 
             let addr = format!("127.0.0.1:{port}");
@@ -287,7 +277,9 @@ pub fn start(port: u16) -> MockServer {
                 .unwrap_or_else(|e| panic!("failed to bind {addr}: {e}"));
 
             axum::serve(listener, app)
-                .with_graceful_shutdown(async { let _ = shutdown_rx.await; })
+                .with_graceful_shutdown(async {
+                    let _ = shutdown_rx.await;
+                })
                 .await
                 .unwrap();
         });

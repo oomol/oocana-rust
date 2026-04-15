@@ -540,15 +540,12 @@ async fn run_connector_action_with_base_url_and_auth(
         request
     };
 
-    let response = request
-        .send()
-        .await
-        .map_err(|e| {
-            utils::error::Error::with_source(
-                &format!("Failed to call connector action '{action_id}' at '{url}'"),
-                Box::new(e),
-            )
-        })?;
+    let response = request.send().await.map_err(|e| {
+        utils::error::Error::with_source(
+            &format!("Failed to call connector action '{action_id}' at '{url}'"),
+            Box::new(e),
+        )
+    })?;
 
     let status = response.status();
     if !status.is_success() {
@@ -607,18 +604,16 @@ fn truncate_connector_error_body(body: &str) -> String {
     }
 }
 
-fn format_connector_http_error(
-    action_id: &str,
-    status: reqwest::StatusCode,
-    body: &str,
-) -> String {
+fn format_connector_http_error(action_id: &str, status: reqwest::StatusCode, body: &str) -> String {
     if body.is_empty() {
         return format!("Connector action '{action_id}' failed with status {status}");
     }
 
     if let Ok(response_json) = serde_json::from_str::<serde_json::Value>(body) {
         if let Some(details) = format_connector_error_details(&response_json) {
-            return format!("Connector action '{action_id}' failed with status {status}: {details}");
+            return format!(
+                "Connector action '{action_id}' failed with status {status}: {details}"
+            );
         }
     }
 
@@ -689,8 +684,8 @@ fn parse_connector_outputs(
         })?;
 
     if !success {
-        let message =
-            format_connector_error_details(&response_json).unwrap_or_else(|| "unknown error".to_owned());
+        let message = format_connector_error_details(&response_json)
+            .unwrap_or_else(|| "unknown error".to_owned());
         return Err(utils::error::Error::new(&format!(
             "Connector action '{action_id}' failed: {message}"
         )));
@@ -1166,21 +1161,22 @@ mod tests {
         );
     }
 
-
     #[test]
     fn connector_executor_detects_single_output_handle() {
-        assert!(connector_uses_single_output_handle(Some(&HashMap::from([(
-            HandleName::from("output"),
-            manifest_reader::manifest::OutputHandle {
-                handle: HandleName::from("output"),
-                description: None,
-                json_schema: None,
-                kind: None,
-                nullable: None,
-                is_additional: false,
-                _serialize_for_cache: false,
-            },
-        )]))));
+        assert!(connector_uses_single_output_handle(Some(&HashMap::from([
+            (
+                HandleName::from("output"),
+                manifest_reader::manifest::OutputHandle {
+                    handle: HandleName::from("output"),
+                    description: None,
+                    json_schema: None,
+                    kind: None,
+                    nullable: None,
+                    is_additional: false,
+                    _serialize_for_cache: false,
+                },
+            )
+        ]))));
     }
 
     #[tokio::test]

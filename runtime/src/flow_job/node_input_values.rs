@@ -186,12 +186,10 @@ impl NodeInputValues {
                 .map_err(|e| format!("failed to serialize {e}"))?;
 
             if let Some(parent) = path.parent() {
-                std::fs::create_dir_all(parent)
-                    .map_err(|e| format!("failed to create dir {e}"))?;
+                std::fs::create_dir_all(parent).map_err(|e| format!("failed to create dir {e}"))?;
             }
 
-            let mut file =
-                File::create(path).map_err(|e| format!("failed to create file {e}"))?;
+            let mut file = File::create(path).map_err(|e| format!("failed to create file {e}"))?;
             file.write_all(json_string.as_bytes())
                 .map_err(|e| format!("failed to write file {e}"))?;
         }
