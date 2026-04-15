@@ -480,6 +480,7 @@ async fn run_connector_action_with_auth_token(
     .await
 }
 
+#[cfg(test)]
 async fn run_connector_action_with_base_url(
     base_url: &str,
     action_id: &str,
