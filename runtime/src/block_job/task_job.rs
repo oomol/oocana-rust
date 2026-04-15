@@ -538,12 +538,7 @@ async fn run_connector_action_with_base_url_and_auth(
     let status = response.status();
     if !status.is_success() {
         let body = response.text().await.unwrap_or_default();
-        let message = if body.is_empty() {
-            format!("Connector action '{action_id}' failed with status {status}")
-        } else {
-            let truncated = truncate_connector_error_body(&body);
-            format!("Connector action '{action_id}' failed with status {status}: {truncated}")
-        };
+        let message = format_connector_http_error(action_id, status, &body);
 
         return Err(utils::error::Error::new(&message));
     }
@@ -597,6 +592,73 @@ fn truncate_connector_error_body(body: &str) -> String {
     }
 }
 
+fn format_connector_http_error(
+    action_id: &str,
+    status: reqwest::StatusCode,
+    body: &str,
+) -> String {
+    if body.is_empty() {
+        return format!("Connector action '{action_id}' failed with status {status}");
+    }
+
+    if let Ok(response_json) = serde_json::from_str::<serde_json::Value>(body) {
+        if let Some(details) = format_connector_error_details(&response_json) {
+            return format!("Connector action '{action_id}' failed with status {status}: {details}");
+        }
+    }
+
+    let truncated = truncate_connector_error_body(body);
+    format!("Connector action '{action_id}' failed with status {status}: {truncated}")
+}
+
+fn format_connector_error_details(response_json: &serde_json::Value) -> Option<String> {
+    let message = response_json
+        .get("message")
+        .and_then(|value| value.as_str())
+        .filter(|message| !message.trim().is_empty())
+        .or_else(|| {
+            response_json
+                .get("errorMessage")
+                .and_then(|value| value.as_str())
+                .filter(|message| !message.trim().is_empty())
+        })?;
+
+    let mut metadata = Vec::new();
+
+    if let Some(error_code) = response_json
+        .get("errorCode")
+        .and_then(|value| value.as_str())
+        .filter(|error_code| !error_code.trim().is_empty())
+    {
+        metadata.push(format!("errorCode={error_code}"));
+    }
+
+    if let Some(action_id) = response_json
+        .get("meta")
+        .and_then(|value| value.get("actionId"))
+        .and_then(|value| value.as_str())
+        .filter(|action_id| !action_id.trim().is_empty())
+    {
+        metadata.push(format!("actionId={action_id}"));
+    }
+
+    let execution_id = response_json
+        .get("meta")
+        .and_then(|value| value.get("executionId"))
+        .or_else(|| response_json.get("executionId"))
+        .and_then(|value| value.as_str())
+        .filter(|execution_id| !execution_id.trim().is_empty());
+    if let Some(execution_id) = execution_id {
+        metadata.push(format!("executionId={execution_id}"));
+    }
+
+    if metadata.is_empty() {
+        Some(message.to_owned())
+    } else {
+        Some(format!("{message} ({})", metadata.join(", ")))
+    }
+}
+
 fn parse_connector_outputs(
     action_id: &str,
     response_json: serde_json::Value,
@@ -611,11 +673,8 @@ fn parse_connector_outputs(
         })?;
 
     if !success {
-        let message = response_json
-            .get("message")
-            .and_then(|value| value.as_str())
-            .filter(|message| !message.trim().is_empty())
-            .unwrap_or("unknown error");
+        let message =
+            format_connector_error_details(&response_json).unwrap_or_else(|| "unknown error".to_owned());
         return Err(utils::error::Error::new(&format!(
             "Connector action '{action_id}' failed: {message}"
         )));
@@ -963,6 +1022,103 @@ mod tests {
         assert_eq!(
             error.to_string(),
             "Connector action 'run-action' failed with status 500 Internal Server Error: connector failed"
+        );
+    }
+
+    #[tokio::test]
+    async fn connector_executor_reports_structured_4xx_status() {
+        let mock_server = MockServer::start().await;
+
+        Mock::given(method("POST"))
+            .and(path("/v1/actions/run-action"))
+            .respond_with(ResponseTemplate::new(400).set_body_json(serde_json::json!({
+                "success": false,
+                "message": "input validation failed",
+                "data": null,
+                "errorCode": "invalid_input",
+                "meta": {
+                    "actionId": "run-action",
+                    "executionId": "exec-400"
+                }
+            })))
+            .mount(&mock_server)
+            .await;
+
+        let error = run_connector_action_with_base_url(
+            &mock_server.uri(),
+            "run-action",
+            None,
+            Duration::from_secs(30),
+        )
+        .await
+        .unwrap_err();
+
+        assert_eq!(
+            error.to_string(),
+            "Connector action 'run-action' failed with status 400 Bad Request: input validation failed (errorCode=invalid_input, actionId=run-action, executionId=exec-400)"
+        );
+    }
+
+    #[tokio::test]
+    async fn connector_executor_reports_structured_401_status() {
+        let mock_server = MockServer::start().await;
+
+        Mock::given(method("POST"))
+            .and(path("/v1/actions/run-action"))
+            .respond_with(ResponseTemplate::new(401).set_body_json(serde_json::json!({
+                "errorCode": "invalid_input",
+                "errorMessage": "missing authorization header",
+                "executionId": "exec-401"
+            })))
+            .mount(&mock_server)
+            .await;
+
+        let error = run_connector_action_with_base_url(
+            &mock_server.uri(),
+            "run-action",
+            None,
+            Duration::from_secs(30),
+        )
+        .await
+        .unwrap_err();
+
+        assert_eq!(
+            error.to_string(),
+            "Connector action 'run-action' failed with status 401 Unauthorized: missing authorization header (errorCode=invalid_input, executionId=exec-401)"
+        );
+    }
+
+    #[tokio::test]
+    async fn connector_executor_reports_structured_5xx_status() {
+        let mock_server = MockServer::start().await;
+
+        Mock::given(method("POST"))
+            .and(path("/v1/actions/run-action"))
+            .respond_with(ResponseTemplate::new(500).set_body_json(serde_json::json!({
+                "success": false,
+                "message": "provider unavailable",
+                "data": null,
+                "errorCode": "provider_error",
+                "meta": {
+                    "actionId": "run-action",
+                    "executionId": "exec-500"
+                }
+            })))
+            .mount(&mock_server)
+            .await;
+
+        let error = run_connector_action_with_base_url(
+            &mock_server.uri(),
+            "run-action",
+            None,
+            Duration::from_secs(30),
+        )
+        .await
+        .unwrap_err();
+
+        assert_eq!(
+            error.to_string(),
+            "Connector action 'run-action' failed with status 500 Internal Server Error: provider unavailable (errorCode=provider_error, actionId=run-action, executionId=exec-500)"
         );
     }
 
