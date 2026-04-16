@@ -30,6 +30,9 @@ runs:
         fi
 
         echo "SUDO=${SUDO}" >> "$GITHUB_ENV"
+
+        ${SUDO} apt-get update
+        ${SUDO} apt-get install -y --no-install-recommends ca-certificates curl gh tar zstd
       shell: bash
     - name: download ovmlayer
       run: |
