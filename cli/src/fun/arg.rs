@@ -111,17 +111,17 @@ pub fn load_bind_paths(
     bind_path_arg
 }
 
-pub fn parse_search_paths(search_paths: &Option<String>) -> Option<Vec<PathBuf>> {
-    let mut search_paths = if let Some(search_paths) = search_paths {
+pub fn parse_search_paths(search_paths: &[String]) -> Option<Vec<PathBuf>> {
+    let mut search_paths = if search_paths.is_empty() {
+        utils::config::search_paths()
+            .map(|search_paths| search_paths.iter().map(parser::expand_tilde).collect())
+    } else {
         Some(
             search_paths
-                .split(',')
+                .iter()
                 .map(parser::expand_tilde)
                 .collect::<Vec<PathBuf>>(),
         )
-    } else {
-        utils::config::search_paths()
-            .map(|search_paths| search_paths.iter().map(parser::expand_tilde).collect())
     };
 
     if let Some(ref extra_paths) = config::extra_search_path() {

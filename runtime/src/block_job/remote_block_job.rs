@@ -34,10 +34,11 @@ impl Drop for RemoteBlockJobHandle {
 
 const MAX_CONSECUTIVE_POLL_ERRORS: u32 = 3;
 const POLL_INTERVAL_SECS: u64 = 2;
+const FIRST_POLL_DELAY_MS: u64 = 250;
 const DEFAULT_TIMEOUT_SECS: u64 = 1800; // 30 minutes
 const LOGS_PAGE_SIZE: usize = 100;
-const LOGS_DRAIN_INTERVAL_MS: u64 = 1000;
-const LOGS_DRAIN_MAX_EMPTY_ROUNDS: u32 = 10;
+const LOGS_DRAIN_INTERVAL_MS: u64 = 300;
+const LOGS_DRAIN_MAX_EMPTY_ROUNDS: u32 = 3;
 
 fn is_valid_reporter_message(val: &serde_json::Value) -> bool {
     val.get("type").and_then(|t| t.as_str()).is_some()
@@ -200,12 +201,16 @@ async fn drain_logs(
     logs_sent_on_page: &mut usize,
     finished: &mut bool,
 ) {
+    if *finished {
+        return;
+    }
+
     let interval = std::time::Duration::from_millis(LOGS_DRAIN_INTERVAL_MS);
     let mut empty_rounds: u32 = 0;
     loop {
         let (count, saw_session_finished) =
             poll_logs(ctx, logs_page, logs_sent_on_page, finished).await;
-        if saw_session_finished {
+        if saw_session_finished || *finished {
             break;
         }
         if count == 0 {
@@ -322,9 +327,17 @@ pub fn execute_remote_block_job(params: RemoteBlockJobParameters) -> Option<Bloc
             None
         };
         let mut consecutive_errors: u32 = 0;
+        let first_poll_delay = std::time::Duration::from_millis(FIRST_POLL_DELAY_MS);
+        let mut is_first_poll = true;
 
         loop {
-            tokio::time::sleep(poll_interval).await;
+            tokio::time::sleep(if is_first_poll {
+                is_first_poll = false;
+                first_poll_delay
+            } else {
+                poll_interval
+            })
+            .await;
 
             if let Some(dl) = deadline {
                 if tokio::time::Instant::now() >= dl {
@@ -383,13 +396,15 @@ pub fn execute_remote_block_job(params: RemoteBlockJobParameters) -> Option<Bloc
                 TaskStatus::Success | TaskStatus::Failed => {
                     // Drain remaining logs — BlockFinished in the log stream
                     // drives reporter.finished() and block_status.finish().
-                    drain_logs(
-                        &log_ctx,
-                        &mut logs_page,
-                        &mut logs_sent_on_page,
-                        &mut finished,
-                    )
-                    .await;
+                    if !finished {
+                        drain_logs(
+                            &log_ctx,
+                            &mut logs_page,
+                            &mut logs_sent_on_page,
+                            &mut finished,
+                        )
+                        .await;
+                    }
 
                     // Fallback: if logs never contained a root-level
                     // BlockFinished, finish from the status detail.
