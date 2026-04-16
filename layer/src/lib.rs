@@ -25,7 +25,33 @@ pub use runtime_layer::{InjectionParams, RuntimeLayer, create_runtime_layer};
 
 use crate::ovmlayer::is_root;
 
+#[cfg(target_os = "linux")]
+fn has_ovmlayer_binary() -> bool {
+    use std::os::unix::fs::PermissionsExt;
+
+    std::env::var_os("PATH")
+        .map(|paths| {
+            std::env::split_paths(&paths).any(|dir| {
+                let candidate = dir.join("ovmlayer");
+                candidate.is_file()
+                    && std::fs::metadata(&candidate)
+                        .map(|m| m.permissions().mode() & 0o111 != 0)
+                        .unwrap_or(false)
+            })
+        })
+        .unwrap_or(false)
+}
+
+#[cfg(not(target_os = "linux"))]
+fn has_ovmlayer_binary() -> bool {
+    false
+}
+
 pub fn feature_enabled() -> bool {
+    if !cfg!(target_os = "linux") || !has_ovmlayer_binary() {
+        return false;
+    }
+
     if is_root() {
         let mut cmd = Command::new("ovmlayer");
         cmd.arg("test");
