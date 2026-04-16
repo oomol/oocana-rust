@@ -27,7 +27,7 @@ use crate::ovmlayer::is_root;
 
 fn has_ovmlayer_binary() -> bool {
     use std::os::unix::fs::PermissionsExt;
-    
+
     env::var_os("PATH")
         .map(|paths| {
             env::split_paths(&paths).any(|dir| {
@@ -39,7 +39,6 @@ fn has_ovmlayer_binary() -> bool {
             })
         })
         .unwrap_or(false)
-}
 }
 
 pub fn feature_enabled() -> bool {
