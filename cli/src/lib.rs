@@ -140,6 +140,11 @@ enum Commands {
         )]
         remote_block_url: Option<String>,
         #[arg(
+            help = "Connector API base URL. Overrides OOCANA_CONNECTOR_BASE_URL env var.",
+            long
+        )]
+        connector_base_url: Option<String>,
+        #[arg(
             help = "Timeout in seconds for remote block execution. Overrides OOCANA_REMOTE_BLOCK_TIMEOUT env var. Default is 1800 (30 minutes). Use 0 to disable timeout and poll indefinitely.",
             long
         )]
@@ -256,6 +261,7 @@ pub fn cli_match() -> Result<()> {
             project_data,
             report_to_console,
             remote_block_url,
+            connector_base_url,
             remote_block_timeout,
         } => {
             let bind_paths = load_bind_paths(bind_paths, bind_path_file);
@@ -309,6 +315,7 @@ pub fn cli_match() -> Result<()> {
                 pkg_data_root: &PathBuf::from(pkg_data_root),
                 report_to_console: report_to_console.to_owned(),
                 remote_block_url: remote_block_url.to_owned(),
+                connector_base_url: connector_base_url.to_owned(),
                 remote_block_timeout: remote_block_timeout.to_owned(),
             })?
         }
@@ -324,4 +331,33 @@ pub fn cli_match() -> Result<()> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn run_command_parses_connector_base_url() {
+        let cli = Cli::try_parse_from([
+            "oocana",
+            "run",
+            "tests/fixtures/connector-flow.oo.yaml",
+            "--connector-base-url",
+            "https://connector.example",
+        ])
+        .expect("cli should parse connector-base-url");
+
+        match cli.command {
+            Commands::Run {
+                connector_base_url, ..
+            } => {
+                assert_eq!(
+                    connector_base_url.as_deref(),
+                    Some("https://connector.example")
+                );
+            }
+            other => panic!("expected run command, got {other:?}"),
+        }
+    }
 }

@@ -781,6 +781,7 @@ mod tests {
                 shared: Arc::new(shared::Shared {
                     session_id,
                     address: "127.0.0.1:0".to_string(),
+                    connector_base_url: None,
                     connector_auth_token: None,
                     scheduler_tx,
                     delay_abort_tx,
@@ -896,10 +897,10 @@ mod tests {
         let root = project_root();
         let runtime = TestRuntime::new(&root);
         let flow_path = root.join("tests/fixtures/connector-flow.oo.yaml");
-        let previous_connector_base_url = std::env::var_os("CONNECTOR_BASE_URL");
+        let previous_connector_base_url = std::env::var_os("OOCANA_CONNECTOR_BASE_URL");
 
         unsafe {
-            std::env::set_var("CONNECTOR_BASE_URL", mock_server.uri());
+            std::env::set_var("OOCANA_CONNECTOR_BASE_URL", mock_server.uri());
             std::env::set_var("OOMOL_TOKEN", "test-token");
         }
 
@@ -922,9 +923,9 @@ mod tests {
 
         unsafe {
             if let Some(value) = previous_connector_base_url {
-                std::env::set_var("CONNECTOR_BASE_URL", value);
+                std::env::set_var("OOCANA_CONNECTOR_BASE_URL", value);
             } else {
-                std::env::remove_var("CONNECTOR_BASE_URL");
+                std::env::remove_var("OOCANA_CONNECTOR_BASE_URL");
             }
             if let Some(value) = previous_oomol_token {
                 std::env::set_var("OOMOL_TOKEN", value);
