@@ -119,7 +119,7 @@ pub fn parse_search_paths(search_paths: &[String]) -> Option<Vec<PathBuf>> {
         Some(
             search_paths
                 .iter()
-                .map(|path| parser::expand_tilde(path))
+                .map(parser::expand_tilde)
                 .collect::<Vec<PathBuf>>(),
         )
     };
