@@ -51,11 +51,12 @@ enum Commands {
         )]
         broker: Option<String>,
         #[arg(
-            help = "Paths to search for Packages. Fallback to the directory of current flow block.",
+            help = "Paths to search for packages. Repeat the flag or use commas. Fallback to config/current flow block.",
             long,
-            alias = "block-search-paths"
+            alias = "block-search-paths",
+            value_delimiter = ','
         )]
-        search_paths: Option<String>,
+        search_paths: Vec<String>,
         #[arg(help = "id to mark this execution session. If not provided, a UUID will be randomly generated different value as the default value for that run.", long, default_value_t = Uuid::new_v4().to_string())]
         session: String,
         #[arg(help = "Enable reporter.", long, num_args =0..=1, require_equals=true, default_missing_value = "true")]
@@ -74,8 +75,12 @@ enum Commands {
         wait_for_client: bool,
         #[arg(help = "Use previous result cache if exist.", long)]
         use_cache: bool,
-        #[arg(help = "Stop the flow after the node is finished.", long)]
-        nodes: Option<String>,
+        #[arg(
+            help = "Stop the flow after the listed nodes are finished. Repeat the flag or use commas.",
+            long,
+            value_delimiter = ','
+        )]
+        nodes: Vec<String>,
         #[arg(
             help = "Values for the input handles value. It's used to fulfill a block's inputs definition. Format is {\"inputHandleName\": <VALUE>} where the first key is the handle name, and the first-level value is a key-value pair.",
             long
@@ -92,10 +97,11 @@ enum Commands {
         )]
         default_package: Option<String>,
         #[arg(
-            help = "exclude package, these package will skip layer feature, accept package path",
-            long
+            help = "Exclude packages from layer mode. Repeat the flag or use commas with package paths.",
+            long,
+            value_delimiter = ','
         )]
-        exclude_packages: Option<String>,
+        exclude_packages: Vec<String>,
         #[arg(
             help = "a directory which will pass to every block, oocana just check the if the path is exit, if not oocana will create one. Oocana won't do anything about this path, won't delete it. It will be the return value of context.sessionDir or context.session_dir function.",
             long
@@ -108,10 +114,11 @@ enum Commands {
         #[arg(help = "a temporary root directory. oocana will create a sub directory (calculate with the block path hash) in the root directory. The sub directory path will be context.tempDir or context.temp_dir function's return value. This sub directory will be deleted if this session success and will retain if session failed. If not provided, oocana will search OOCANA_TEMP_ROOT. If still no value the temp_root will be use os's temp dir.", long, default_value_t = temp_root())]
         temp_root: String,
         #[arg(
-            help = "when spawn a new process, retain the environment variables(only accept variable name), accept multiple input. example: --retain-env-keys <env> --retain-env-keys <env>",
-            long
+            help = "When spawning a new process, retain environment variable names. Repeat the flag or use commas.",
+            long,
+            value_delimiter = ','
         )]
-        retain_env_keys: Option<Vec<String>>,
+        retain_env_keys: Vec<String>,
         #[arg(
             help = ".env file path, when spawn a executor, these env will pass to this executor. The file format is <key>=<value> line by line like traditional env file. if not provided, oocana will search OOCANA_ENV_FILE env variable",
             long
@@ -293,22 +300,17 @@ pub fn cli_match() -> Result<()> {
                 debug: debug.unwrap_or(app_config.run.debug.unwrap_or_default()),
                 wait_for_client: wait_for_client.to_owned(),
                 use_cache: use_cache.to_owned(),
-                nodes: nodes.as_ref().map(|nodes| {
-                    nodes
-                        .split(',')
-                        .map(|node| node.to_string())
-                        .collect::<HashSet<String>>()
-                }),
+                nodes: (!nodes.is_empty()).then(|| nodes.iter().cloned().collect::<HashSet<_>>()),
                 inputs: inputs.to_owned(),
                 nodes_inputs: nodes_inputs.to_owned(),
                 default_package: default_package.to_owned(),
-                exclude_packages: exclude_packages
-                    .as_ref()
-                    .map(|p| p.split(',').map(|s| s.to_string()).collect())
+                exclude_packages: (!exclude_packages.is_empty())
+                    .then_some(exclude_packages.to_owned())
                     .or_else(|| app_config.run.exclude_packages.clone()),
                 session_dir: session_path.to_owned(),
                 bind_paths,
-                retain_env_keys: retain_env_keys.to_owned(),
+                retain_env_keys: (!retain_env_keys.is_empty())
+                    .then_some(retain_env_keys.to_owned()),
                 env_file,
                 temp_root: temp_root.to_owned(),
                 project_data: &PathBuf::from(project_data),
@@ -358,6 +360,68 @@ mod tests {
                 );
             }
             other => panic!("expected run command, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn run_command_parses_multi_value_lists() {
+        let cli = Cli::try_parse_from([
+            "oocana",
+            "run",
+            "tests/fixtures/connector-flow.oo.yaml",
+            "--search-paths",
+            "/tmp/a,/tmp/b",
+            "--nodes",
+            "node-a,node-b",
+            "--exclude-packages",
+            "/pkg/a,/pkg/b",
+            "--retain-env-keys",
+            "FOO,BAR",
+        ])
+        .expect("cli should parse comma-delimited multi-value flags");
+
+        match cli.command {
+            Commands::Run {
+                search_paths,
+                nodes,
+                exclude_packages,
+                retain_env_keys,
+                ..
+            } => {
+                assert_eq!(search_paths, vec!["/tmp/a", "/tmp/b"]);
+                assert_eq!(nodes, vec!["node-a", "node-b"]);
+                assert_eq!(exclude_packages, vec!["/pkg/a", "/pkg/b"]);
+                assert_eq!(retain_env_keys, vec!["FOO", "BAR"]);
+            }
+            other => panic!("expected run command, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn query_upstream_parses_multi_value_nodes() {
+        let cli = Cli::try_parse_from([
+            "oocana",
+            "query",
+            "upstream",
+            "examples/base",
+            "--nodes",
+            "node-a,node-b",
+        ])
+        .expect("query upstream should parse comma-delimited nodes");
+
+        match cli.command {
+            Commands::Query {
+                action:
+                    query::QueryAction::Upstream {
+                        nodes,
+                        search_paths,
+                        ..
+                    },
+            } => {
+                assert_eq!(nodes, vec!["node-a", "node-b"]);
+                assert!(search_paths.is_empty());
+            }
+            other => panic!("expected query upstream command, got {other:?}"),
         }
     }
 }
