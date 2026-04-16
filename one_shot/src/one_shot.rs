@@ -95,6 +95,7 @@ pub struct BlockArgs<'a> {
     pub pkg_data_root: &'a PathBuf,
     pub report_to_console: bool,
     pub remote_block_url: Option<String>,
+    pub connector_base_url: Option<String>,
     pub remote_block_timeout: Option<u64>,
 }
 
@@ -122,6 +123,7 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
         pkg_data_root,
         report_to_console,
         remote_block_url,
+        connector_base_url,
         remote_block_timeout,
     } = block_args;
     let session_id = SessionId::new(session);
@@ -304,6 +306,10 @@ async fn run_block_async(block_args: BlockArgs<'_>) -> Result<()> {
     let shared = Arc::new(runtime::shared::Shared {
         session_id: session_id.clone(),
         address: addr.to_string(),
+        connector_base_url: runtime::remote_task_config::resolve_connector_base_url(
+            connector_base_url.as_deref(),
+            &env_file_vars,
+        ),
         connector_auth_token: runtime::remote_task_config::resolve_auth_token(&env_file_vars),
         scheduler_tx: scheduler_tx.clone(),
         delay_abort_tx,

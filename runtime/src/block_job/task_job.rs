@@ -24,7 +24,7 @@ use utils::path::to_absolute;
 use super::job_handle::BlockJobHandle;
 use super::listener::{ListenerParameters, listen_to_worker};
 
-const CONNECTOR_BASE_URL_ENV_KEY: &str = "CONNECTOR_BASE_URL";
+const OOCANA_CONNECTOR_BASE_URL_ENV_KEY: &str = "OOCANA_CONNECTOR_BASE_URL";
 const DEFAULT_CONNECTOR_REQUEST_TIMEOUT_SECS: u64 = 30;
 const CONNECTOR_ERROR_BODY_LIMIT: usize = 512;
 
@@ -246,6 +246,7 @@ pub fn execute_task_job(params: TaskJobParameters) -> Option<BlockJobHandle> {
             let scheduler_tx = shared.scheduler_tx.clone();
             let session_id = shared.session_id.clone();
             let job_id_clone = job_id.clone();
+            let connector_base_url = shared.connector_base_url.clone();
             let connector_inputs = inputs.clone();
             let connector_outputs_def = outputs_def.clone();
             let connector_auth_token = shared.connector_auth_token.clone();
@@ -253,24 +254,15 @@ pub fn execute_task_job(params: TaskJobParameters) -> Option<BlockJobHandle> {
                 Duration::from_secs(timeout.unwrap_or(DEFAULT_CONNECTOR_REQUEST_TIMEOUT_SECS));
 
             let connector_handle = tokio::spawn(async move {
-                let result = if let Some(ref token) = connector_auth_token {
-                    run_connector_action_with_auth_token(
-                        &action_id,
-                        connector_inputs,
-                        connector_outputs_def,
-                        request_timeout,
-                        Some(token),
-                    )
-                    .await
-                } else {
-                    run_connector_action(
-                        &action_id,
-                        connector_inputs,
-                        connector_outputs_def,
-                        request_timeout,
-                    )
-                    .await
-                };
+                let result = run_connector_action_with_configuration(
+                    &action_id,
+                    connector_inputs,
+                    connector_outputs_def,
+                    request_timeout,
+                    connector_base_url.as_deref(),
+                    connector_auth_token.as_deref(),
+                )
+                .await;
 
                 match result {
                     Ok(outputs) => {
@@ -438,32 +430,30 @@ fn get_string_value_from_inputs(inputs: &Option<BlockInputs>, key: &str) -> Opti
         .and_then(|v| v.value.as_str().map(|s| s.to_owned()))
 }
 
+#[cfg(test)]
 async fn run_connector_action(
     action_id: &str,
     inputs: Option<BlockInputs>,
     outputs_def: Option<OutputHandles>,
     request_timeout: Duration,
 ) -> Result<HashMap<HandleName, serde_json::Value>> {
-    let auth_token = std::env::var("OOMOL_TOKEN")
-        .ok()
-        .map(|s| s.trim().to_owned())
-        .filter(|s| !s.is_empty());
-
-    run_connector_action_with_auth_token(
+    run_connector_action_with_configuration(
         action_id,
         inputs,
         outputs_def,
         request_timeout,
-        auth_token.as_deref(),
+        None,
+        None,
     )
     .await
 }
 
-async fn run_connector_action_with_auth_token(
+async fn run_connector_action_with_configuration(
     action_id: &str,
     inputs: Option<BlockInputs>,
     outputs_def: Option<OutputHandles>,
     request_timeout: Duration,
+    base_url: Option<&str>,
     auth_token: Option<&str>,
 ) -> Result<HashMap<HandleName, serde_json::Value>> {
     let auth_token = auth_token
@@ -475,11 +465,21 @@ async fn run_connector_action_with_auth_token(
                 .map(|s| s.trim().to_owned())
                 .filter(|s| !s.is_empty())
         });
-    let base_url = std::env::var(CONNECTOR_BASE_URL_ENV_KEY).map_err(|_| {
-        utils::error::Error::new(&format!(
-            "{CONNECTOR_BASE_URL_ENV_KEY} is required for connector executor"
-        ))
-    })?;
+    let base_url = base_url
+        .map(str::trim)
+        .filter(|url| !url.is_empty())
+        .map(|url| url.to_owned())
+        .or_else(|| {
+            std::env::var(OOCANA_CONNECTOR_BASE_URL_ENV_KEY)
+                .ok()
+                .map(|url| url.trim().to_owned())
+                .filter(|url| !url.is_empty())
+        })
+        .ok_or_else(|| {
+            utils::error::Error::new(&format!(
+                "{OOCANA_CONNECTOR_BASE_URL_ENV_KEY} is required for connector executor"
+            ))
+        })?;
 
     run_connector_action_with_base_url_and_auth(
         &base_url,
@@ -568,7 +568,7 @@ async fn run_connector_action_with_base_url_and_auth(
 fn build_connector_action_url(base_url: &str, action_id: &str) -> Result<Url> {
     let mut url = Url::parse(base_url).map_err(|e| {
         utils::error::Error::with_source(
-            &format!("Invalid {CONNECTOR_BASE_URL_ENV_KEY}: '{base_url}'"),
+            &format!("Invalid {OOCANA_CONNECTOR_BASE_URL_ENV_KEY}: '{base_url}'"),
             Box::new(e),
         )
     })?;
@@ -576,7 +576,7 @@ fn build_connector_action_url(base_url: &str, action_id: &str) -> Result<Url> {
     {
         let mut segments = url.path_segments_mut().map_err(|_| {
             utils::error::Error::new(&format!(
-                "Invalid {CONNECTOR_BASE_URL_ENV_KEY}: '{base_url}'"
+                "Invalid {OOCANA_CONNECTOR_BASE_URL_ENV_KEY}: '{base_url}'"
             ))
         })?;
         segments.pop_if_empty();
@@ -899,7 +899,7 @@ mod tests {
             .lock()
             .unwrap();
         let mock_server = MockServer::start().await;
-        let previous_connector_base_url = std::env::var_os(CONNECTOR_BASE_URL_ENV_KEY);
+        let previous_connector_base_url = std::env::var_os(OOCANA_CONNECTOR_BASE_URL_ENV_KEY);
         let previous_oomol_token = std::env::var_os("OOMOL_TOKEN");
 
         let mut inputs = BlockInputs::new();
@@ -937,7 +937,7 @@ mod tests {
             .await;
 
         unsafe {
-            std::env::set_var(CONNECTOR_BASE_URL_ENV_KEY, mock_server.uri());
+            std::env::set_var(OOCANA_CONNECTOR_BASE_URL_ENV_KEY, mock_server.uri());
             std::env::set_var("OOMOL_TOKEN", "test-token");
         }
 
@@ -946,9 +946,9 @@ mod tests {
 
         unsafe {
             if let Some(value) = previous_connector_base_url {
-                std::env::set_var(CONNECTOR_BASE_URL_ENV_KEY, value);
+                std::env::set_var(OOCANA_CONNECTOR_BASE_URL_ENV_KEY, value);
             } else {
-                std::env::remove_var(CONNECTOR_BASE_URL_ENV_KEY);
+                std::env::remove_var(OOCANA_CONNECTOR_BASE_URL_ENV_KEY);
             }
             if let Some(value) = previous_oomol_token {
                 std::env::set_var("OOMOL_TOKEN", value);
@@ -966,6 +966,55 @@ mod tests {
         assert_eq!(
             outputs.get(&HandleName::from("total")),
             Some(&serde_json::json!(4))
+        );
+    }
+
+    #[tokio::test]
+    async fn connector_executor_uses_explicit_base_url_configuration() {
+        let mock_server = MockServer::start().await;
+
+        let mut inputs = BlockInputs::new();
+        inputs.insert(
+            HandleName::from("message"),
+            Arc::new(OutputValue::new(serde_json::json!("hello"), true)),
+        );
+
+        Mock::given(method("POST"))
+            .and(path("/v1/actions/run-action"))
+            .and(header("authorization", "Bearer test-token"))
+            .and(body_json(serde_json::json!({
+                "input": {
+                    "message": "hello"
+                }
+            })))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "success": true,
+                "message": "ok",
+                "data": {
+                    "result": "ok"
+                },
+                "meta": {
+                    "executionId": "exec-1",
+                    "actionId": "run-action"
+                }
+            })))
+            .mount(&mock_server)
+            .await;
+
+        let outputs = run_connector_action_with_configuration(
+            "run-action",
+            Some(inputs),
+            None,
+            Duration::from_secs(30),
+            Some(mock_server.uri().as_str()),
+            Some("test-token"),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(
+            outputs.get(&HandleName::from("result")),
+            Some(&serde_json::json!("ok"))
         );
     }
 
