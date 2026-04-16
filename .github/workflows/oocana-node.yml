@@ -25,6 +25,38 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         if: ${{ inputs.create-layer }}
+      - name: Use Azure APT mirror
+        run: |
+          set -euo pipefail
+
+          main_mirror="${APT_MAIN_MIRROR:-http://azure.archive.ubuntu.com/ubuntu/}"
+          ports_mirror="${APT_PORTS_MIRROR:-http://azure.ports.ubuntu.com/ubuntu-ports/}"
+
+          case "$(dpkg --print-architecture)" in
+            amd64|i386)
+              mirror="$main_mirror"
+              ;;
+            arm64|armhf|ppc64el|riscv64|s390x)
+              mirror="$ports_mirror"
+              ;;
+            *)
+              mirror="$main_mirror"
+              ;;
+          esac
+
+          mirror="${mirror%/}/"
+
+          if [ -f /etc/apt/sources.list.d/ubuntu.sources ]; then
+            sed -i -E \
+              "s|URIs: https?://[^[:space:]]+/?|URIs: ${mirror}|g" \
+              /etc/apt/sources.list.d/ubuntu.sources
+          fi
+
+          if [ -f /etc/apt/sources.list ]; then
+            sed -i -E \
+              "s#https?://([[:alnum:].-]+\\.)?(archive|security)\\.ubuntu\\.com/ubuntu/?#${mirror}#g; s#https?://ports\\.ubuntu\\.com/ubuntu-ports/?#${mirror}#g" \
+              /etc/apt/sources.list
+          fi
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
