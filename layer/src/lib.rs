@@ -9,7 +9,7 @@ mod package_store;
 mod registry_layer_store;
 mod runtime_layer;
 
-use std::{env, process::Command};
+use std::process::Command;
 
 pub use ovmlayer::BindPath;
 pub use package_layer::{import_package_layer, move_package_layer};
@@ -25,12 +25,13 @@ pub use runtime_layer::{InjectionParams, RuntimeLayer, create_runtime_layer};
 
 use crate::ovmlayer::is_root;
 
+#[cfg(target_os = "linux")]
 fn has_ovmlayer_binary() -> bool {
     use std::os::unix::fs::PermissionsExt;
 
-    env::var_os("PATH")
+    std::env::var_os("PATH")
         .map(|paths| {
-            env::split_paths(&paths).any(|dir| {
+            std::env::split_paths(&paths).any(|dir| {
                 let candidate = dir.join("ovmlayer");
                 candidate.is_file()
                     && std::fs::metadata(&candidate)
@@ -39,6 +40,11 @@ fn has_ovmlayer_binary() -> bool {
             })
         })
         .unwrap_or(false)
+}
+
+#[cfg(not(target_os = "linux"))]
+fn has_ovmlayer_binary() -> bool {
+    false
 }
 
 pub fn feature_enabled() -> bool {
