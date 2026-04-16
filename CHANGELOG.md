@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.30.49 (2026-04-16)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* chore(action): use azure source in action by @leavesster in https://github.com/oomol/oocana-rust/pull/458
+* feat(connector): support OOCANA connector base URL config by @leavesster in https://github.com/oomol/oocana-rust/pull/457
+* fix(layer): skip ovmlayer probe when unavailable by @leavesster in https://github.com/oomol/oocana-rust/pull/456
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.30.48...v0.30.49
+
 ## 0.30.48 (2026-04-15)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
