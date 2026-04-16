@@ -9,7 +9,7 @@ mod package_store;
 mod registry_layer_store;
 mod runtime_layer;
 
-use std::process::Command;
+use std::{env, process::Command};
 
 pub use ovmlayer::BindPath;
 pub use package_layer::{import_package_layer, move_package_layer};
@@ -25,7 +25,17 @@ pub use runtime_layer::{InjectionParams, RuntimeLayer, create_runtime_layer};
 
 use crate::ovmlayer::is_root;
 
+fn has_ovmlayer_binary() -> bool {
+    env::var_os("PATH")
+        .map(|paths| env::split_paths(&paths).any(|path| path.join("ovmlayer").is_file()))
+        .unwrap_or(false)
+}
+
 pub fn feature_enabled() -> bool {
+    if !cfg!(target_os = "linux") || !has_ovmlayer_binary() {
+        return false;
+    }
+
     if is_root() {
         let mut cmd = Command::new("ovmlayer");
         cmd.arg("test");
