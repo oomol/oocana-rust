@@ -130,11 +130,11 @@ pub enum LayerAction {
     DeleteAll {},
 }
 
-/// Get layer status with external fallback logic (same as Get command).
+/// Get layer status, checking external layer store first and falling back to package layer store.
 /// If override_name and override_version are provided, they take precedence over package meta.
 /// Returns Exist if external or package layer exists, NotInStore otherwise.
 /// Errors are logged but treated as NotInStore.
-fn get_layer_status_with_external_fallback(
+fn get_layer_status_external_first(
     package_path: &std::path::Path,
     override_name: Option<&str>,
     override_version: Option<&str>,
@@ -287,7 +287,7 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
                 println!("{:?}", layer::PackageLayerStatus::Exist);
                 return Ok(());
             }
-            let status = get_layer_status_with_external_fallback(
+            let status = get_layer_status_external_first(
                 std::path::Path::new(package),
                 package_name.as_deref(),
                 version.as_deref(),
@@ -347,11 +347,8 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
                                         );
                                         continue;
                                     }
-                                    let status = get_layer_status_with_external_fallback(
-                                        &scope_path,
-                                        None,
-                                        None,
-                                    );
+                                    let status =
+                                        get_layer_status_external_first(&scope_path, None, None);
                                     package_map.insert(scope_path, format!("{status:?}"));
                                 }
                             }
@@ -369,8 +366,7 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
                                     );
                                     continue;
                                 }
-                                let status =
-                                    get_layer_status_with_external_fallback(&path, None, None);
+                                let status = get_layer_status_external_first(&path, None, None);
                                 package_map.insert(path, format!("{status:?}"));
                             }
                         }
