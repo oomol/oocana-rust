@@ -56,6 +56,37 @@ fn query_inputs() {
 }
 
 #[test]
+fn query_package_reports_connector_package_as_enabled() {
+    let output = oocana_cmd()
+        .args([
+            "query",
+            "package",
+            "tests/fixtures/query-connector-package",
+            "--search-paths",
+            "tests/fixtures",
+        ])
+        .output()
+        .expect("failed to run oocana query package");
+
+    assert!(
+        output.status.success(),
+        "query package failed\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr),
+    );
+
+    let connector_package = std::fs::canonicalize("tests/fixtures/@connector/demo")
+        .expect("connector fixture package should exist");
+    let expected = format!("package-status: {:?}:\"true\"", connector_package);
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    assert!(
+        stdout.contains(&expected),
+        "expected query output to contain {expected:?}, got:\n{stdout}"
+    );
+}
+
+#[test]
 fn query_nodes_inputs() {
     let result = query_to_json(
         &["query", "nodes-inputs", "examples/input"],

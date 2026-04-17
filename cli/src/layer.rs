@@ -1,9 +1,13 @@
 use std::collections::HashMap;
+use std::path::Path;
 
 use crate::fun::arg::{find_env_file, load_bind_paths};
 use clap::Subcommand;
 use manifest_reader::path_finder::find_package_file;
-use manifest_reader::reader::read_package;
+use manifest_reader::reader::{
+    read_block_metadata, read_package, read_package_identity, should_skip_package_layer_handling,
+    should_skip_package_layer_handling_for_path,
+};
 use std::io::Write;
 use tracing::info;
 use utils::error::{Error, Result};
@@ -184,6 +188,32 @@ fn get_layer_status_external_first(
     }
 }
 
+fn package_layer_skip_reason(package_path: &Path) -> Option<&'static str> {
+    let metadata = read_block_metadata(package_path);
+    if metadata.hide_source {
+        return Some("hide_source is enabled");
+    }
+
+    let package_name = read_package_identity(package_path).and_then(|identity| identity.name);
+    if should_skip_package_layer_handling(&metadata, package_name.as_deref()) {
+        return Some("package name starts with @connector");
+    }
+
+    None
+}
+
+fn package_layer_status_for_query(
+    package_path: &Path,
+    override_name: Option<&str>,
+    override_version: Option<&str>,
+) -> layer::PackageLayerStatus {
+    if should_skip_package_layer_handling_for_path(package_path) {
+        return layer::PackageLayerStatus::Exist;
+    }
+
+    get_layer_status_external_first(package_path, override_name, override_version)
+}
+
 pub fn layer_action(action: &LayerAction) -> Result<()> {
     if std::env::var(utils::env::OVMLAYER_LOG_ENV_KEY).is_err() {
         std::env::set_var(
@@ -208,11 +238,9 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
             retain_env_keys,
             env_file,
         } => {
-            if manifest_reader::reader::read_block_metadata(std::path::Path::new(package))
-                .hide_source
-            {
+            if let Some(reason) = package_layer_skip_reason(std::path::Path::new(package)) {
                 return Err(Error::from(format!(
-                    "Cannot create layer for package {package}: hide_source is enabled"
+                    "Cannot create layer for package {package}: {reason}"
                 )));
             }
             let bind_path_arg = load_bind_paths(bind_paths, bind_path_file);
@@ -280,14 +308,12 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
             package_name,
             version,
         } => {
-            if manifest_reader::reader::read_block_metadata(std::path::Path::new(package))
-                .hide_source
-            {
-                info!("package ({package}) has hide_source enabled, reporting Exist");
-                println!("{:?}", layer::PackageLayerStatus::Exist);
-                return Ok(());
+            if let Some(reason) = package_layer_skip_reason(std::path::Path::new(package)) {
+                info!(
+                    "package ({package}) skips package-layer handling ({reason}), reporting Exist"
+                );
             }
-            let status = get_layer_status_external_first(
+            let status = package_layer_status_for_query(
                 std::path::Path::new(package),
                 package_name.as_deref(),
                 version.as_deref(),
@@ -334,39 +360,29 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
                                 }
 
                                 if find_package_file(&scope_path).is_some() {
-                                    if manifest_reader::reader::read_block_metadata(&scope_path)
-                                        .hide_source
-                                    {
+                                    if let Some(reason) = package_layer_skip_reason(&scope_path) {
                                         info!(
-                                            "package ({}) has hide_source enabled, reporting Exist",
-                                            scope_path.display()
+                                            "package ({}) skips package-layer handling ({}), reporting Exist",
+                                            scope_path.display(),
+                                            reason
                                         );
-                                        package_map.insert(
-                                            scope_path,
-                                            format!("{:?}", layer::PackageLayerStatus::Exist),
-                                        );
-                                        continue;
                                     }
                                     let status =
-                                        get_layer_status_external_first(&scope_path, None, None);
+                                        package_layer_status_for_query(&scope_path, None, None);
                                     package_map.insert(scope_path, format!("{status:?}"));
                                 }
                             }
                         } else {
                             // Regular directories, use original logic
                             if find_package_file(&path).is_some() {
-                                if manifest_reader::reader::read_block_metadata(&path).hide_source {
+                                if let Some(reason) = package_layer_skip_reason(&path) {
                                     info!(
-                                        "package ({}) has hide_source enabled, reporting Exist",
-                                        path.display()
+                                        "package ({}) skips package-layer handling ({}), reporting Exist",
+                                        path.display(),
+                                        reason
                                     );
-                                    package_map.insert(
-                                        path,
-                                        format!("{:?}", layer::PackageLayerStatus::Exist),
-                                    );
-                                    continue;
                                 }
-                                let status = get_layer_status_external_first(&path, None, None);
+                                let status = package_layer_status_for_query(&path, None, None);
                                 package_map.insert(path, format!("{status:?}"));
                             }
                         }
@@ -462,4 +478,51 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    fn workspace_root() -> PathBuf {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("..")
+            .canonicalize()
+            .unwrap()
+    }
+
+    #[test]
+    fn connector_packages_are_rejected_for_package_layer_create() {
+        let package = workspace_root().join("tests/fixtures/@connector/demo");
+
+        assert_eq!(
+            package_layer_skip_reason(&package),
+            Some("package name starts with @connector")
+        );
+    }
+
+    #[test]
+    fn connector_packages_report_exist_for_layer_queries() {
+        let package = workspace_root().join("tests/fixtures/@connector/demo");
+
+        assert_eq!(
+            package_layer_status_for_query(&package, None, None),
+            layer::PackageLayerStatus::Exist
+        );
+    }
+
+    #[test]
+    fn hide_source_packages_still_report_exist_for_layer_queries() {
+        let package = workspace_root().join("examples/remote_task/hide-example");
+
+        assert_eq!(
+            package_layer_skip_reason(&package),
+            Some("hide_source is enabled")
+        );
+        assert_eq!(
+            package_layer_status_for_query(&package, None, None),
+            layer::PackageLayerStatus::Exist
+        );
+    }
 }

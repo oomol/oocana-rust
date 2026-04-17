@@ -573,12 +573,6 @@ pub fn get_packages(args: GetPackageArgs<'_>) -> Result<HashMap<PathBuf, String>
                         filter_nodes.is_empty() || filter_nodes.contains(&node.0.to_string())
                     })
                     .for_each(|node| {
-                        // NOTE: hide_source nodes are skipped here so they won't be
-                        // included in layer status queries. However, this only covers
-                        // top-level nodes; nested subflow nodes are not checked here.
-                        if node.1.hide_source() {
-                            return;
-                        }
                         if let Some(package_path) = node.1.package_path() {
                             packages.push(package_path);
                         }
@@ -596,6 +590,10 @@ pub fn get_packages(args: GetPackageArgs<'_>) -> Result<HashMap<PathBuf, String>
 
     let mut package_layers = HashMap::new();
     packages.iter().for_each(|package| {
+        if manifest_reader::reader::should_skip_package_layer_handling_for_path(package) {
+            package_layers.insert(package.clone(), "true".to_owned());
+            return;
+        }
         let layers = layer::package_layer_status(package);
         if let Ok(layer::PackageLayerStatus::Exist) = layers {
             package_layers.insert(package.clone(), "true".to_owned());
@@ -835,6 +833,28 @@ mod tests {
                 None
             }
         })
+    }
+
+    #[test]
+    fn get_packages_reports_connector_packages_as_enabled() {
+        let root = project_root();
+        let flow_path = root.join("tests/fixtures/query-connector-package");
+        let search_path = root.join("tests/fixtures");
+
+        let packages = get_packages(GetPackageArgs {
+            block: flow_path.to_str().unwrap(),
+            block_reader: BlockResolver::new(),
+            path_finder: BlockPathFinder::new(root, Some(vec![search_path])),
+            nodes: None,
+        })
+        .expect("query package should succeed");
+
+        let connector_package = project_root()
+            .join("tests/fixtures/@connector/demo")
+            .canonicalize()
+            .unwrap();
+
+        assert_eq!(packages.get(&connector_package), Some(&"true".to_string()));
     }
 
     #[tokio::test]

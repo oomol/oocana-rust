@@ -196,7 +196,7 @@ pub fn parse_run_block_request(
                     RuntimeScope {
                         session_id: shared.session_id.clone(),
                         pkg_name: Some(pkg_name.clone()),
-                        data_dir: scope.pkg_root.join(pkg_name).to_string_lossy().to_string(),
+                        data_dir: scope.pkg_root.join(&pkg_name).to_string_lossy().to_string(),
                         pkg_root: scope.pkg_root.clone(),
                         path: task_block.package_path.clone().unwrap_or_else(|| {
                             // if package path is not set, use flow shared scope package path
@@ -205,7 +205,10 @@ pub fn parse_run_block_request(
                         }),
                         node_id: None,
                         is_inject: false,
-                        enable_layer: !task_block.hide_source && layer::feature_enabled(),
+                        enable_layer: crate::shared::package_scope_enable_layer(
+                            task_block.hide_source,
+                            Some(pkg_name.as_str()),
+                        ),
                     }
                 }
                 _ => scope.clone(),
@@ -228,7 +231,7 @@ pub fn parse_run_block_request(
                 BlockValueType::Pkg { pkg_name, .. } => RuntimeScope {
                     session_id: shared.session_id.clone(),
                     pkg_name: Some(pkg_name.clone()),
-                    data_dir: scope.pkg_root.join(pkg_name).to_string_lossy().to_string(),
+                    data_dir: scope.pkg_root.join(&pkg_name).to_string_lossy().to_string(),
                     pkg_root: scope.pkg_root.clone(),
                     path: subflow_guard.package_path.clone().unwrap_or_else(|| {
                         warn!("can not find subflow package path, this should never happen");
@@ -236,7 +239,10 @@ pub fn parse_run_block_request(
                     }),
                     node_id: None,
                     is_inject: false,
-                    enable_layer: !subflow_guard.hide_source && layer::feature_enabled(),
+                    enable_layer: crate::shared::package_scope_enable_layer(
+                        subflow_guard.hide_source,
+                        Some(pkg_name.as_str()),
+                    ),
                 },
                 _ => scope.clone(),
             };

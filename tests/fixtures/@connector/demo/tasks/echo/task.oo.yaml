@@ -1,0 +1,7 @@
+type: task_block
+executor:
+  name: rust
+inputs_def:
+  - handle: message
+outputs_def:
+  - handle: echoed

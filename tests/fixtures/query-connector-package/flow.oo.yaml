@@ -1,0 +1,7 @@
+name: query-connector-package
+nodes:
+  - node_id: connector-task
+    task: "@connector/demo::echo"
+    inputs_from:
+      - handle: message
+        value: "hello"
