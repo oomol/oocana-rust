@@ -6,7 +6,7 @@ use crate::layer::{
 use crate::ovmlayer::{self, BindPath};
 use crate::package_layer::{CACHE_DIR, PackageLayer};
 use crate::package_store::get_or_create_package_layer;
-use crate::registry_layer_store::get_registry_layer;
+use crate::external_layer_store::get_external_layer;
 use std::collections::HashMap;
 use std::env::temp_dir;
 use std::fmt::Debug;
@@ -53,24 +53,24 @@ pub fn create_runtime_layer(
 
     let layer: std::result::Result<PackageLayer, utils::error::Error> =
         match (package_name, version) {
-            (Some(pkg_name), Some(ver)) => match get_registry_layer(pkg_name, ver) {
+            (Some(pkg_name), Some(ver)) => match get_external_layer(pkg_name, ver) {
                 Ok(Some(layer)) => {
                     info!(
-                        "get package layer from registry store: {}@{}",
+                        "get package layer from external store: {}@{}",
                         pkg_name, ver
                     );
                     Ok(layer)
                 }
                 Ok(None) => {
                     info!(
-                        "registry layer {}@{} not found, fallback to package layer",
+                        "external layer {}@{} not found, fallback to package layer",
                         pkg_name, ver
                     );
                     get_package_layer()
                 }
                 Err(e) => {
                     info!(
-                        "get registry layer failed: {:?}, fallback to package layer",
+                        "get external layer failed: {:?}, fallback to package layer",
                         e
                     );
                     get_package_layer()

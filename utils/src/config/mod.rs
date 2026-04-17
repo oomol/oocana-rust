@@ -20,8 +20,14 @@ pub fn oocana_dir() -> Option<PathBuf> {
     Some(PathBuf::from(global_config.global.oocana_dir.clone()))
 }
 
-pub fn registry_store_file() -> Option<PathBuf> {
+pub fn external_store_file() -> Option<PathBuf> {
     use crate::path::expand_home;
+
+    if let Ok(val) = std::env::var("OOMOL_EXTERNAL_STORE_FILE") {
+        if !val.is_empty() {
+            return Some(PathBuf::from(expand_home(&val)));
+        }
+    }
 
     if let Ok(val) = std::env::var("OOMOL_REGISTRY_STORE_FILE") {
         if !val.is_empty() {
@@ -31,7 +37,7 @@ pub fn registry_store_file() -> Option<PathBuf> {
 
     let global_config = GLOBAL_CONFIG.lock().unwrap();
     Some(PathBuf::from(
-        global_config.global.registry_store_file.clone(),
+        global_config.global.external_store_file.clone(),
     ))
 }
 

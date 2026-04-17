@@ -257,7 +257,7 @@ fi
     Ok(())
 }
 
-fn migrate_package_store_to_registry(package: &PackageLayer) -> Result<()> {
+fn migrate_package_store_to_external(package: &PackageLayer) -> Result<()> {
     let package_name = package
         .name
         .as_deref()
@@ -266,26 +266,26 @@ fn migrate_package_store_to_registry(package: &PackageLayer) -> Result<()> {
         .version
         .as_deref()
         .ok_or("Failed to move package layer: missing package version")?;
-    let key = crate::registry_layer_store::registry_key(package_name, version);
-    let registry = crate::registry_layer_store::load_registry_store()?;
-    let previous_registry_package = registry.packages.get(&key).cloned();
+    let key = crate::external_layer_store::external_key(package_name, version);
+    let external = crate::external_layer_store::load_external_store()?;
+    let previous_external_package = external.packages.get(&key).cloned();
 
-    if previous_registry_package.is_some() {
+    if previous_external_package.is_some() {
         tracing::warn!(
             package_name,
             version,
-            "package already exists in registry store and will overwrite old layers"
+            "package already exists in external store and will overwrite old layers"
         );
     }
 
-    crate::registry_layer_store::add_import_registry_package(package)?;
+    crate::external_layer_store::add_import_external_package(package)?;
 
     if let Err(err) = remove_package_from_store(&package.package_path) {
         let rollback_result =
-            if let Some(previous_registry_package) = previous_registry_package.as_ref() {
-                crate::registry_layer_store::add_import_registry_package(previous_registry_package)
+            if let Some(previous_external_package) = previous_external_package.as_ref() {
+                crate::external_layer_store::add_import_external_package(previous_external_package)
             } else {
-                crate::registry_layer_store::remove_import_registry_package(package_name, version)
+                crate::external_layer_store::remove_import_external_package(package_name, version)
                     .map(|_| ())
             };
 
@@ -295,7 +295,7 @@ fn migrate_package_store_to_registry(package: &PackageLayer) -> Result<()> {
                 package_name,
                 version,
                 error = %rollback_err,
-                "failed to rollback registry entry after package store removal error"
+                "failed to rollback external entry after package store removal error"
             );
             return Err(format!(
                 "failed to remove package from store for {package_name}@{version}: {err}; rollback also failed: {rollback_err}"
@@ -305,8 +305,8 @@ fn migrate_package_store_to_registry(package: &PackageLayer) -> Result<()> {
         return Err(err);
     }
 
-    if let Some(previous_registry_package) = previous_registry_package.as_ref() {
-        delete_overwritten_layers(previous_registry_package, package);
+    if let Some(previous_external_package) = previous_external_package.as_ref() {
+        delete_overwritten_layers(previous_external_package, package);
     }
 
     Ok(())
@@ -330,14 +330,14 @@ fn delete_overwritten_layers(old_package: &PackageLayer, new_package: &PackageLa
                 old_package_path = %old_package.package_path.display(),
                 new_package_path = %new_package.package_path.display(),
                 error = %err,
-                "failed to delete overwritten layer after registry migration"
+                "failed to delete overwritten layer after external migration"
             );
         }
     }
 }
 
 /// Moves all layers of a package from the package store to the ovmlayer external store,
-/// then migrates the package metadata to the registry store.
+/// then migrates the package metadata to the external store.
 ///
 /// This operation is not atomic. If one or more layer moves fail, previously moved
 /// layers remain in the external store while the package metadata stays in the package
@@ -387,7 +387,7 @@ pub fn move_package_layer(package_path: &str) -> Result<()> {
         .into());
     }
 
-    migrate_package_store_to_registry(&package)
+    migrate_package_store_to_external(&package)
 }
 
 fn diff(a: HashSet<String>, b: HashSet<String>) -> Vec<String> {
@@ -404,7 +404,7 @@ mod tests {
 
     struct TestStoreGuard {
         original_store_dir: String,
-        original_registry_store_file: String,
+        original_external_store_file: String,
         _serial: std::sync::MutexGuard<'static, ()>,
     }
 
@@ -413,19 +413,19 @@ mod tests {
             let serial = TEST_CONFIG_LOCK.lock().unwrap();
             let mut config = GLOBAL_CONFIG.lock().unwrap();
             let original_store_dir = config.global.store_dir.clone();
-            let original_registry_store_file = config.global.registry_store_file.clone();
+            let original_external_store_file = config.global.external_store_file.clone();
 
             config.global.store_dir = base_dir.join("store").to_string_lossy().into_owned();
-            config.global.registry_store_file = base_dir
-                .join("registry")
-                .join("package_store.json")
+            config.global.external_store_file = base_dir
+                .join("external")
+                .join("external_store.json")
                 .to_string_lossy()
                 .into_owned();
             drop(config);
 
             Self {
                 original_store_dir,
-                original_registry_store_file,
+                original_external_store_file,
                 _serial: serial,
             }
         }
@@ -435,7 +435,7 @@ mod tests {
         fn drop(&mut self) {
             if let Ok(mut config) = GLOBAL_CONFIG.lock() {
                 config.global.store_dir = self.original_store_dir.clone();
-                config.global.registry_store_file = self.original_registry_store_file.clone();
+                config.global.external_store_file = self.original_external_store_file.clone();
             }
         }
     }
@@ -553,17 +553,17 @@ mod tests {
 
     #[cfg(target_os = "linux")]
     #[test]
-    fn test_migrate_package_store_to_registry_updates_both_stores() {
+    fn test_migrate_package_store_to_external_updates_both_stores() {
         use std::{fs, path::PathBuf};
 
         use super::*;
 
         let temp_root =
-            std::env::temp_dir().join(crate::layer::random_name("package_layer_registry_test"));
+            std::env::temp_dir().join(crate::layer::random_name("package_layer_external_test"));
         let _guard = TestStoreGuard::new(&temp_root);
-        let package_name = "@oomol/import-registry-test";
+        let package_name = "@oomol/import-external-test";
         let package_version = "0.1.3";
-        let package_path = PathBuf::from("/tmp/import-registry-test");
+        let package_path = PathBuf::from("/tmp/import-external-test");
         let package = PackageLayer {
             name: Some(package_name.to_string()),
             version: Some(package_version.to_string()),
@@ -576,7 +576,7 @@ mod tests {
 
         add_import_package(&package).unwrap();
 
-        migrate_package_store_to_registry(&package).unwrap();
+        migrate_package_store_to_external(&package).unwrap();
 
         let package_store = crate::package_store::load_package_store().unwrap();
         assert!(
@@ -585,12 +585,12 @@ mod tests {
                 .contains_key(&package_path.to_string_lossy().to_string())
         );
 
-        let registry_store = crate::registry_layer_store::load_registry_store().unwrap();
-        let key = crate::registry_layer_store::registry_key(package_name, package_version);
-        let migrated = registry_store
+        let external_store = crate::external_layer_store::load_external_store().unwrap();
+        let key = crate::external_layer_store::external_key(package_name, package_version);
+        let migrated = external_store
             .packages
             .get(&key)
-            .expect("registry package should exist after migration");
+            .expect("external package should exist after migration");
         assert_eq!(migrated.name.as_deref(), Some(package_name));
         assert_eq!(migrated.version.as_deref(), Some(package_version));
 
@@ -599,18 +599,18 @@ mod tests {
 
     #[cfg(target_os = "linux")]
     #[test]
-    fn test_migrate_package_store_to_registry_overwrites_existing_registry_entry_and_deletes_old_layers()
+    fn test_migrate_package_store_to_external_overwrites_existing_external_entry_and_deletes_old_layers()
      {
         use std::{fs, path::PathBuf};
 
         use super::*;
 
         let temp_root =
-            std::env::temp_dir().join(crate::layer::random_name("package_layer_registry_conflict"));
+            std::env::temp_dir().join(crate::layer::random_name("package_layer_external_conflict"));
         let _guard = TestStoreGuard::new(&temp_root);
-        let package_name = "@oomol/import-registry-conflict";
+        let package_name = "@oomol/import-external-conflict";
         let package_version = "0.1.4";
-        let package_path = PathBuf::from("/tmp/import-registry-conflict");
+        let package_path = PathBuf::from("/tmp/import-external-conflict");
         let old_base_layer = create_random_layer().unwrap();
         let old_source_layer = create_random_layer().unwrap();
         let old_bootstrap_layer = create_random_layer().unwrap();
@@ -626,21 +626,21 @@ mod tests {
             bootstrap_layer: Some(new_bootstrap_layer.clone()),
             package_path: package_path.clone(),
         };
-        let existing_registry_package = PackageLayer {
+        let existing_external_package = PackageLayer {
             name: Some(package_name.to_string()),
             version: Some(package_version.to_string()),
             base_layers: Some(vec![old_base_layer.clone()]),
             source_layer: old_source_layer.clone(),
             bootstrap: None,
             bootstrap_layer: Some(old_bootstrap_layer.clone()),
-            package_path: PathBuf::from("/tmp/old-import-registry-conflict"),
+            package_path: PathBuf::from("/tmp/old-import-external-conflict"),
         };
 
         add_import_package(&package).unwrap();
-        crate::registry_layer_store::add_import_registry_package(&existing_registry_package)
+        crate::external_layer_store::add_import_external_package(&existing_external_package)
             .unwrap();
 
-        migrate_package_store_to_registry(&package).unwrap();
+        migrate_package_store_to_external(&package).unwrap();
 
         let package_store = crate::package_store::load_package_store().unwrap();
         assert!(
@@ -649,12 +649,12 @@ mod tests {
                 .contains_key(&package_path.to_string_lossy().to_string())
         );
 
-        let registry_store = crate::registry_layer_store::load_registry_store().unwrap();
-        let key = crate::registry_layer_store::registry_key(package_name, package_version);
-        let migrated = registry_store
+        let external_store = crate::external_layer_store::load_external_store().unwrap();
+        let key = crate::external_layer_store::external_key(package_name, package_version);
+        let migrated = external_store
             .packages
             .get(&key)
-            .expect("registry package should exist after overwrite");
+            .expect("external package should exist after overwrite");
         assert_eq!(migrated.source_layer, new_source_layer);
         assert_eq!(migrated.base_layers, Some(vec![new_base_layer.clone()]));
         assert_eq!(migrated.bootstrap_layer, Some(new_bootstrap_layer.clone()));
@@ -681,17 +681,17 @@ mod tests {
 
     #[cfg(target_os = "linux")]
     #[test]
-    fn test_migrate_package_store_to_registry_rolls_back_registry_on_package_store_failure() {
+    fn test_migrate_package_store_to_external_rolls_back_external_on_package_store_failure() {
         use std::{fs, path::PathBuf};
 
         use super::*;
 
         let temp_root =
-            std::env::temp_dir().join(crate::layer::random_name("package_layer_registry_rollback"));
+            std::env::temp_dir().join(crate::layer::random_name("package_layer_external_rollback"));
         let _guard = TestStoreGuard::new(&temp_root);
-        let package_name = "@oomol/import-registry-rollback";
+        let package_name = "@oomol/import-external-rollback";
         let package_version = "0.1.5";
-        let package_path = PathBuf::from("/tmp/import-registry-rollback");
+        let package_path = PathBuf::from("/tmp/import-external-rollback");
         let package = PackageLayer {
             name: Some(package_name.to_string()),
             version: Some(package_version.to_string()),
@@ -715,7 +715,7 @@ mod tests {
                 .into_owned();
         }
 
-        let err = migrate_package_store_to_registry(&package).unwrap_err();
+        let err = migrate_package_store_to_external(&package).unwrap_err();
         assert!(
             err.to_string().contains("Failed to create dir"),
             "unexpected error: {err:?}"
@@ -726,11 +726,11 @@ mod tests {
             config.global.store_dir = temp_root.join("store").to_string_lossy().into_owned();
         }
 
-        let registry_store = crate::registry_layer_store::load_registry_store().unwrap();
-        let key = crate::registry_layer_store::registry_key(package_name, package_version);
+        let external_store = crate::external_layer_store::load_external_store().unwrap();
+        let key = crate::external_layer_store::external_key(package_name, package_version);
         assert!(
-            !registry_store.packages.contains_key(&key),
-            "registry entry should be rolled back"
+            !external_store.packages.contains_key(&key),
+            "external entry should be rolled back"
         );
 
         let package_store = crate::package_store::load_package_store().unwrap();
@@ -746,17 +746,17 @@ mod tests {
 
     #[cfg(target_os = "linux")]
     #[test]
-    fn test_migrate_package_store_to_registry_restores_previous_registry_entry_on_rollback() {
+    fn test_migrate_package_store_to_external_restores_previous_external_entry_on_rollback() {
         use std::{fs, path::PathBuf};
 
         use super::*;
 
         let temp_root =
-            std::env::temp_dir().join(crate::layer::random_name("package_layer_registry_restore"));
+            std::env::temp_dir().join(crate::layer::random_name("package_layer_external_restore"));
         let _guard = TestStoreGuard::new(&temp_root);
-        let package_name = "@oomol/import-registry-restore";
+        let package_name = "@oomol/import-external-restore";
         let package_version = "0.1.6";
-        let package_path = PathBuf::from("/tmp/import-registry-restore");
+        let package_path = PathBuf::from("/tmp/import-external-restore");
         let package = PackageLayer {
             name: Some(package_name.to_string()),
             version: Some(package_version.to_string()),
@@ -766,18 +766,18 @@ mod tests {
             bootstrap_layer: Some("new_layer_bootstrap".to_string()),
             package_path: package_path.clone(),
         };
-        let existing_registry_package = PackageLayer {
+        let existing_external_package = PackageLayer {
             name: Some(package_name.to_string()),
             version: Some(package_version.to_string()),
             base_layers: Some(vec!["old_layer_base".to_string()]),
             source_layer: "old_layer_source".to_string(),
             bootstrap: None,
             bootstrap_layer: Some("old_layer_bootstrap".to_string()),
-            package_path: PathBuf::from("/tmp/old-import-registry-restore"),
+            package_path: PathBuf::from("/tmp/old-import-external-restore"),
         };
 
         add_import_package(&package).unwrap();
-        crate::registry_layer_store::add_import_registry_package(&existing_registry_package)
+        crate::external_layer_store::add_import_external_package(&existing_external_package)
             .unwrap();
 
         let invalid_store_parent = temp_root.join("store-dir-blocker");
@@ -791,7 +791,7 @@ mod tests {
                 .into_owned();
         }
 
-        let err = migrate_package_store_to_registry(&package).unwrap_err();
+        let err = migrate_package_store_to_external(&package).unwrap_err();
         assert!(
             err.to_string().contains("Failed to create dir"),
             "unexpected error: {err:?}"
@@ -802,20 +802,20 @@ mod tests {
             config.global.store_dir = temp_root.join("store").to_string_lossy().into_owned();
         }
 
-        let registry_store = crate::registry_layer_store::load_registry_store().unwrap();
-        let key = crate::registry_layer_store::registry_key(package_name, package_version);
-        let restored = registry_store
+        let external_store = crate::external_layer_store::load_external_store().unwrap();
+        let key = crate::external_layer_store::external_key(package_name, package_version);
+        let restored = external_store
             .packages
             .get(&key)
-            .expect("previous registry entry should be restored after rollback");
+            .expect("previous external entry should be restored after rollback");
         assert_eq!(
             restored.source_layer,
-            existing_registry_package.source_layer
+            existing_external_package.source_layer
         );
-        assert_eq!(restored.base_layers, existing_registry_package.base_layers);
+        assert_eq!(restored.base_layers, existing_external_package.base_layers);
         assert_eq!(
             restored.bootstrap_layer,
-            existing_registry_package.bootstrap_layer
+            existing_external_package.bootstrap_layer
         );
 
         let package_store = crate::package_store::load_package_store().unwrap();
@@ -870,14 +870,14 @@ mod tests {
         move_package_layer(package.package_path.to_str().unwrap())
             .expect("move package layer failed");
 
-        let registry_package =
-            crate::registry_layer_store::get_registry_layer(package_name, package_version)
+        let external_package =
+            crate::external_layer_store::get_external_layer(package_name, package_version)
                 .unwrap()
-                .expect("registry package should exist after move");
-        assert_eq!(registry_package.package_path, package.package_path);
-        assert_eq!(registry_package.base_layers, Some(vec![base_layer]));
-        assert_eq!(registry_package.source_layer, package.source_layer);
-        assert_eq!(registry_package.bootstrap_layer, package.bootstrap_layer);
+                .expect("external package should exist after move");
+        assert_eq!(external_package.package_path, package.package_path);
+        assert_eq!(external_package.base_layers, Some(vec![base_layer]));
+        assert_eq!(external_package.source_layer, package.source_layer);
+        assert_eq!(external_package.bootstrap_layer, package.bootstrap_layer);
 
         let package_status =
             crate::package_store::package_layer_status(&package.package_path).unwrap();

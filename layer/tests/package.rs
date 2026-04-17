@@ -13,7 +13,7 @@ mod tests {
 
     struct TestStoreGuard {
         original_store_dir: String,
-        original_registry_store_file: String,
+        original_external_store_file: String,
         _serial: std::sync::MutexGuard<'static, ()>,
     }
 
@@ -22,19 +22,19 @@ mod tests {
             let serial = TEST_CONFIG_LOCK.lock().unwrap();
             let mut config = GLOBAL_CONFIG.lock().unwrap();
             let original_store_dir = config.global.store_dir.clone();
-            let original_registry_store_file = config.global.registry_store_file.clone();
+            let original_external_store_file = config.global.external_store_file.clone();
 
             config.global.store_dir = base_dir.join("store").to_string_lossy().into_owned();
-            config.global.registry_store_file = base_dir
-                .join("registry")
-                .join("package_store.json")
+            config.global.external_store_file = base_dir
+                .join("external")
+                .join("external_store.json")
                 .to_string_lossy()
                 .into_owned();
             drop(config);
 
             Self {
                 original_store_dir,
-                original_registry_store_file,
+                original_external_store_file,
                 _serial: serial,
             }
         }
@@ -44,7 +44,7 @@ mod tests {
         fn drop(&mut self) {
             if let Ok(mut config) = GLOBAL_CONFIG.lock() {
                 config.global.store_dir = self.original_store_dir.clone();
-                config.global.registry_store_file = self.original_registry_store_file.clone();
+                config.global.external_store_file = self.original_external_store_file.clone();
             }
         }
     }
@@ -203,11 +203,11 @@ scripts:
             PackageLayerStatus::NotInStore
         );
 
-        let registry_package = get_registry_layer("@oomol/move-real-test", "0.3.0")
+        let external_package = get_external_layer("@oomol/move-real-test", "0.3.0")
             .unwrap()
-            .expect("registry package should exist after move");
-        assert_eq!(registry_package.package_path, package_dir);
-        assert_eq!(registry_package.layers(), package.layers());
+            .expect("external package should exist after move");
+        assert_eq!(external_package.package_path, package_dir);
+        assert_eq!(external_package.layers(), package.layers());
 
         std::fs::remove_dir_all(temp_root).unwrap();
     }
