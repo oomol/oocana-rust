@@ -4,6 +4,7 @@ use serde::de::DeserializeOwned;
 use utils::error::Result;
 
 use crate::manifest::{InputHandles, PackageMeta, Service, SubflowBlock, TaskBlock};
+use crate::path_finder::find_package_file;
 use path_clean::PathClean;
 
 pub fn read_task_block(task_manifest_path: &Path) -> Result<TaskBlock> {
@@ -55,6 +56,39 @@ pub fn read_package<P: AsRef<Path>>(file_path: P) -> Result<PackageMeta> {
             Box::new(err),
         )
     })
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PackageIdentity {
+    pub name: Option<String>,
+    pub version: Option<String>,
+}
+
+pub fn read_package_identity(package_path: &Path) -> Option<PackageIdentity> {
+    find_package_file(package_path)
+        .and_then(|package_file| read_package(&package_file).ok())
+        .map(|package| PackageIdentity {
+            name: package.name,
+            version: package.version,
+        })
+}
+
+pub fn is_connector_package_name(package_name: Option<&str>) -> bool {
+    package_name.is_some_and(|name| name.starts_with("@connector"))
+}
+
+pub fn should_skip_package_layer_handling(
+    metadata: &BlockMetadata,
+    package_name: Option<&str>,
+) -> bool {
+    metadata.hide_source || is_connector_package_name(package_name)
+}
+
+pub fn should_skip_package_layer_handling_for_path(package_path: &Path) -> bool {
+    let metadata = read_block_metadata(package_path);
+    let package_name = read_package_identity(package_path).and_then(|identity| identity.name);
+
+    should_skip_package_layer_handling(&metadata, package_name.as_deref())
 }
 
 pub fn read_service(service_manifest_path: &Path) -> Result<Service> {

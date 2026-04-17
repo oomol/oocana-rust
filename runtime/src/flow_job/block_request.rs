@@ -205,7 +205,12 @@ pub fn parse_run_block_request(
                         }),
                         node_id: None,
                         is_inject: false,
-                        enable_layer: !task_block.hide_source && layer::feature_enabled(),
+                        enable_layer: crate::shared::package_scope_enable_layer(
+                            task_block
+                                .package_path
+                                .as_deref()
+                                .unwrap_or(scope.path.as_path()),
+                        ),
                     }
                 }
                 _ => scope.clone(),
@@ -236,7 +241,12 @@ pub fn parse_run_block_request(
                     }),
                     node_id: None,
                     is_inject: false,
-                    enable_layer: !subflow_guard.hide_source && layer::feature_enabled(),
+                    enable_layer: crate::shared::package_scope_enable_layer(
+                        subflow_guard
+                            .package_path
+                            .as_deref()
+                            .unwrap_or(scope.path.as_path()),
+                    ),
                 },
                 _ => scope.clone(),
             };

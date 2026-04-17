@@ -9,8 +9,7 @@ use crate::layer::{
 };
 use crate::ovmlayer::{BindPath, cp_to_layer};
 use crate::package_store::{add_import_package, get_package_layer, remove_package_from_store};
-use manifest_reader::path_finder::find_package_file;
-use manifest_reader::reader::read_package;
+use manifest_reader::reader::read_package_identity;
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
 use utils::error::Result;
@@ -52,9 +51,7 @@ pub struct PackageLayer {
 }
 
 fn read_package_name(package_path: &std::path::Path) -> Option<String> {
-    find_package_file(package_path)
-        .and_then(|package_file| read_package(&package_file).ok())
-        .and_then(|pkg| pkg.name)
+    read_package_identity(package_path).and_then(|pkg| pkg.name)
 }
 
 impl PackageLayer {

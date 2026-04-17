@@ -1124,7 +1124,7 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
                 .to_string(),
             pkg_root: shared.scope.pkg_root.clone(),
             node_id: node_id.clone(),
-            enable_layer: !node.hide_source() && layer::feature_enabled(),
+            enable_layer: crate::shared::package_scope_enable_layer(&path),
             is_inject: node.scope().is_inject(),
         },
         BlockScope::Flow { node_id, .. } => RuntimeScope {
