@@ -357,26 +357,26 @@ fn package_layer_subcommands_parse() {
         other => panic!("expected package-layer create command, got {other:?}"),
     }
 
-    let create_registry = parse_cli(&[
+    let create_external = parse_cli(&[
         "oocana",
         "package-layer",
-        "create-registry",
+        "create-external",
         "@pkg/name",
         "1.0.0",
         "/pkg/path",
         "--bind-paths",
         "src=/src,dst=/dst",
         "--bind-path-file",
-        "/tmp/registry-binds.txt",
+        "/tmp/external-binds.txt",
         "--retain-env-keys",
         "TOKEN",
         "--env-file",
-        ".env.registry",
+        ".env.external",
     ]);
-    match create_registry.command {
+    match create_external.command {
         Commands::PackageLayer {
             action:
-                layer::LayerAction::CreateRegistry {
+                layer::LayerAction::CreateExternal {
                     package_name,
                     version,
                     package,
@@ -390,11 +390,11 @@ fn package_layer_subcommands_parse() {
             assert_eq!(version, "1.0.0");
             assert_eq!(package, "/pkg/path");
             assert_eq!(bind_paths, Some(vec!["src=/src,dst=/dst".to_string()]));
-            assert_eq!(bind_path_file.as_deref(), Some("/tmp/registry-binds.txt"));
+            assert_eq!(bind_path_file.as_deref(), Some("/tmp/external-binds.txt"));
             assert_eq!(retain_env_keys, Some(vec!["TOKEN".to_string()]));
-            assert_eq!(env_file.as_deref(), Some(".env.registry"));
+            assert_eq!(env_file.as_deref(), Some(".env.external"));
         }
-        other => panic!("expected package-layer create-registry command, got {other:?}"),
+        other => panic!("expected package-layer create-external command, got {other:?}"),
     }
 
     let delete = parse_cli(&["oocana", "package-layer", "delete", "/pkg/path"]);
@@ -405,17 +405,17 @@ fn package_layer_subcommands_parse() {
         other => panic!("expected package-layer delete command, got {other:?}"),
     }
 
-    let delete_registry = parse_cli(&[
+    let delete_external = parse_cli(&[
         "oocana",
         "package-layer",
-        "delete-registry",
+        "delete-external",
         "@pkg/name",
         "1.0.0",
     ]);
-    match delete_registry.command {
+    match delete_external.command {
         Commands::PackageLayer {
             action:
-                layer::LayerAction::DeleteRegistry {
+                layer::LayerAction::DeleteExternal {
                     package_name,
                     version,
                 },
@@ -423,7 +423,7 @@ fn package_layer_subcommands_parse() {
             assert_eq!(package_name, "@pkg/name");
             assert_eq!(version, "1.0.0");
         }
-        other => panic!("expected package-layer delete-registry command, got {other:?}"),
+        other => panic!("expected package-layer delete-external command, got {other:?}"),
     }
 
     let get = parse_cli(&[
@@ -452,17 +452,17 @@ fn package_layer_subcommands_parse() {
         other => panic!("expected package-layer get command, got {other:?}"),
     }
 
-    let get_registry = parse_cli(&[
+    let get_external = parse_cli(&[
         "oocana",
         "package-layer",
-        "get-registry",
+        "get-external",
         "@pkg/name",
         "1.0.0",
     ]);
-    match get_registry.command {
+    match get_external.command {
         Commands::PackageLayer {
             action:
-                layer::LayerAction::GetRegistry {
+                layer::LayerAction::GetExternal {
                     package_name,
                     version,
                 },
@@ -470,7 +470,7 @@ fn package_layer_subcommands_parse() {
             assert_eq!(package_name, "@pkg/name");
             assert_eq!(version, "1.0.0");
         }
-        other => panic!("expected package-layer get-registry command, got {other:?}"),
+        other => panic!("expected package-layer get-external command, got {other:?}"),
     }
 
     let scan = parse_cli(&[

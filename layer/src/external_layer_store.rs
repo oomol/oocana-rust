@@ -1,4 +1,4 @@
-//! Registry layer store management.
+//! External layer store management.
 //!
 //! # Concurrency Model
 //!
@@ -7,21 +7,21 @@
 //!
 //! ## Write Operations (Single Writer Required)
 //!
-//! Functions that modify the registry store:
-//! - [`create_registry_layer`]
-//! - [`delete_registry_layer`]
-//! - [`save_registry_store`]
+//! Functions that modify the external store:
+//! - [`create_external_layer`]
+//! - [`delete_external_layer`]
+//! - [`save_external_store`]
 //!
 //! **Callers MUST ensure only ONE process executes write operations at any time.**
 //! No file locks are used. Concurrent writes will race (last write wins, data loss possible).
 //!
 //! ## Read Operations (Multi-Reader Safe)
 //!
-//! Functions that only read the registry store:
-//! - [`get_registry_layer`]
-//! - [`list_registry_layers`]
-//! - [`registry_layer_status`]
-//! - [`load_registry_store`]
+//! Functions that only read the external store:
+//! - [`get_external_layer`]
+//! - [`list_external_layers`]
+//! - [`external_layer_status`]
+//! - [`load_external_store`]
 //!
 //! Multiple processes can safely read concurrently, even while a single writer is active.
 //! Atomic rename ensures readers always see consistent data (never partial writes).
@@ -46,30 +46,61 @@ use std::env;
 use std::path::Path;
 use utils::{config, error::Result};
 
-/// Generate registry key from package_name and version.
+/// Generate external key from package_name and version.
 /// Format: `package_name@version`
-pub fn registry_key(package_name: &str, version: &str) -> String {
+pub fn external_key(package_name: &str, version: &str) -> String {
     format!("{package_name}@{version}")
 }
 
 const MAX_READ_RETRIES: usize = 5;
 const RETRY_DELAY_MS: u64 = 1000;
 
-/// Load registry store with retry mechanism for NFS compatibility.
+/// One-shot migration from the legacy `package_store.json` file name to
+/// `external_store.json` in the same directory. Safe to call on every load:
+/// only renames when the new file is absent and the legacy file exists.
+fn migrate_legacy_store_file(file_path: &Path) {
+    if file_path.exists() {
+        return;
+    }
+    let Some(parent) = file_path.parent() else {
+        return;
+    };
+    let legacy_path = parent.join("package_store.json");
+    if !legacy_path.exists() {
+        return;
+    }
+    match std::fs::rename(&legacy_path, file_path) {
+        Ok(_) => tracing::info!(
+            "Migrated legacy external store: {:?} -> {:?}",
+            legacy_path,
+            file_path
+        ),
+        Err(e) => tracing::warn!(
+            "Failed to migrate legacy external store {:?} -> {:?}: {:?}",
+            legacy_path,
+            file_path,
+            e
+        ),
+    }
+}
+
+/// Load external store with retry mechanism for NFS compatibility.
 /// Retries on read/parse failures to handle transient issues during atomic writes.
-fn load_registry_store_with_retry() -> Result<RegistryLayerStore> {
+fn load_external_store_with_retry() -> Result<ExternalLayerStore> {
     let file_path =
-        config::registry_store_file().ok_or("Failed to get registry store file path")?;
+        config::external_store_file().ok_or("Failed to get external store file path")?;
+
+    migrate_legacy_store_file(&file_path);
 
     for attempt in 0..MAX_READ_RETRIES {
         match std::fs::read_to_string(&file_path) {
             Ok(content) => {
-                match serde_json::from_str::<RegistryLayerStore>(&content) {
+                match serde_json::from_str::<ExternalLayerStore>(&content) {
                     Ok(store) => {
                         // Version check (preserve existing logic)
                         if store.version != env!("CARGO_PKG_VERSION") {
                             tracing::warn!(
-                                "Registry store version mismatch: {} != {}, proceeding without migration",
+                                "External store version mismatch: {} != {}, proceeding without migration",
                                 store.version,
                                 env!("CARGO_PKG_VERSION")
                             );
@@ -90,7 +121,7 @@ fn load_registry_store_with_retry() -> Result<RegistryLayerStore> {
             }
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
                 // File doesn't exist, initialize new store
-                return Ok(RegistryLayerStore {
+                return Ok(ExternalLayerStore {
                     version: env!("CARGO_PKG_VERSION").to_string(),
                     packages: HashMap::new(),
                 });
@@ -111,11 +142,11 @@ fn load_registry_store_with_retry() -> Result<RegistryLayerStore> {
     unreachable!()
 }
 
-/// Atomically save registry store using write-to-temp + rename.
+/// Atomically save external store using write-to-temp + rename.
 /// This is NFS-safe and more reliable than file locks.
-fn save_registry_store_atomic(store: &RegistryLayerStore) -> Result<()> {
+fn save_external_store_atomic(store: &ExternalLayerStore) -> Result<()> {
     let file_path =
-        config::registry_store_file().ok_or("Failed to get registry store file path")?;
+        config::external_store_file().ok_or("Failed to get external store file path")?;
 
     // Ensure directory exists
     if let Some(dir) = file_path.parent() {
@@ -137,14 +168,14 @@ fn save_registry_store_atomic(store: &RegistryLayerStore) -> Result<()> {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub enum RegistryLayerStatus {
+pub enum ExternalLayerStatus {
     NotInStore,
     Exist,
 }
 
-pub fn registry_layer_status(package_name: &str, version: &str) -> Result<RegistryLayerStatus> {
-    let key = registry_key(package_name, version);
-    let store = load_registry_store()?;
+pub fn external_layer_status(package_name: &str, version: &str) -> Result<ExternalLayerStatus> {
+    let key = external_key(package_name, version);
+    let store = load_external_store()?;
 
     let package = store.packages.get(&key);
 
@@ -157,26 +188,26 @@ pub fn registry_layer_status(package_name: &str, version: &str) -> Result<Regist
                     version,
                     p.version
                 );
-                Ok(RegistryLayerStatus::NotInStore)
+                Ok(ExternalLayerStatus::NotInStore)
             } else {
                 match p.validate() {
-                    Ok(_) => Ok(RegistryLayerStatus::Exist),
+                    Ok(_) => Ok(ExternalLayerStatus::Exist),
                     Err(e) => {
                         tracing::debug!("{} layer validation failed: {}", key, e);
-                        Ok(RegistryLayerStatus::NotInStore)
+                        Ok(ExternalLayerStatus::NotInStore)
                     }
                 }
             }
         }
-        None => Ok(RegistryLayerStatus::NotInStore),
+        None => Ok(ExternalLayerStatus::NotInStore),
     }
 }
 
-/// Create or update a registry layer.
+/// Create or update an external layer.
 ///
 /// # Concurrency Requirements
 ///
-/// **IMPORTANT: This is a WRITE operation. Only ONE process can call registry write functions
+/// **IMPORTANT: This is a WRITE operation. Only ONE process can call external write functions
 /// at the same time.**
 ///
 /// See module-level documentation for detailed concurrency requirements.
@@ -185,16 +216,16 @@ pub fn registry_layer_status(package_name: &str, version: &str) -> Result<Regist
 ///
 /// - If the layer exists and is valid, returns it
 /// - If the layer is invalid or doesn't exist, creates a new one
-/// - Always writes to the registry store (potential data race if called concurrently)
+/// - Always writes to the external store (potential data race if called concurrently)
 ///
 /// # Intended Usage
 ///
 /// This function should ONLY be called from:
-/// - CLI `create-registry` command
+/// - CLI `create-external` command
 /// - Explicit package installation workflows
 ///
-/// Runtime code should use [`get_registry_layer`] instead.
-pub fn create_registry_layer<P: AsRef<Path>>(
+/// Runtime code should use [`get_external_layer`] instead.
+pub fn create_external_layer<P: AsRef<Path>>(
     package_name: &str,
     version: &str,
     package_path: P,
@@ -202,7 +233,7 @@ pub fn create_registry_layer<P: AsRef<Path>>(
     envs: &HashMap<String, String>,
     env_file: &Option<String>,
 ) -> Result<PackageLayer> {
-    let key = registry_key(package_name, version);
+    let key = external_key(package_name, version);
     let package_path = package_path.as_ref();
 
     // Get package metadata to extract bootstrap
@@ -212,7 +243,7 @@ pub fn create_registry_layer<P: AsRef<Path>>(
         .and_then(|scripts| scripts.bootstrap);
 
     // Load the store with retry mechanism
-    let mut store = load_registry_store()?;
+    let mut store = load_external_store()?;
 
     // Check if existing package is valid
     if let Some(p) = store.packages.get(&key) {
@@ -238,42 +269,42 @@ pub fn create_registry_layer<P: AsRef<Path>>(
 
     // Insert and save atomically
     store.packages.insert(key, layer.clone());
-    save_registry_store_atomic(&store)?;
+    save_external_store_atomic(&store)?;
 
     Ok(layer)
 }
 
-pub(crate) fn add_import_registry_package(pkg: &PackageLayer) -> Result<()> {
+pub(crate) fn add_import_external_package(pkg: &PackageLayer) -> Result<()> {
     let package_name = pkg
         .name
         .as_deref()
-        .ok_or("Failed to import registry package: missing package name")?;
+        .ok_or("Failed to import external package: missing package name")?;
     let version = pkg
         .version
         .as_deref()
-        .ok_or("Failed to import registry package: missing package version")?;
+        .ok_or("Failed to import external package: missing package version")?;
 
-    let key = registry_key(package_name, version);
-    let mut store = load_registry_store()?;
+    let key = external_key(package_name, version);
+    let mut store = load_external_store()?;
     store.packages.insert(key, pkg.clone());
-    save_registry_store_atomic(&store)?;
+    save_external_store_atomic(&store)?;
     Ok(())
 }
 
-pub(crate) fn remove_import_registry_package(
+pub(crate) fn remove_import_external_package(
     package_name: &str,
     version: &str,
 ) -> Result<Option<PackageLayer>> {
-    let key = registry_key(package_name, version);
-    let mut store = load_registry_store()?;
+    let key = external_key(package_name, version);
+    let mut store = load_external_store()?;
     let removed = store.packages.remove(&key);
-    save_registry_store_atomic(&store)?;
+    save_external_store_atomic(&store)?;
     Ok(removed)
 }
 
-pub fn get_registry_layer(package_name: &str, version: &str) -> Result<Option<PackageLayer>> {
-    let key = registry_key(package_name, version);
-    let store = load_registry_store()?;
+pub fn get_external_layer(package_name: &str, version: &str) -> Result<Option<PackageLayer>> {
+    let key = external_key(package_name, version);
+    let store = load_external_store()?;
 
     match store.packages.get(&key) {
         Some(p) if p.validate().is_ok() => Ok(Some(p.clone())),
@@ -281,25 +312,25 @@ pub fn get_registry_layer(package_name: &str, version: &str) -> Result<Option<Pa
     }
 }
 
-/// Delete a registry layer and its associated OCI layers.
+/// Delete an external layer and its associated OCI layers.
 ///
 /// # Concurrency Requirements
 ///
-/// **IMPORTANT: This is a WRITE operation. Only ONE process can call registry write functions
+/// **IMPORTANT: This is a WRITE operation. Only ONE process can call external write functions
 /// at the same time.**
 ///
 /// See module-level documentation for detailed concurrency requirements.
 ///
 /// # Behavior
 ///
-/// - Removes the package entry from the registry store
+/// - Removes the package entry from the external store
 /// - Deletes associated OCI layers if they are not shared or in use
 /// - Skips deletion of layers that are:
-///   - Referenced by other packages in the registry
+///   - Referenced by other packages in the external store
 ///   - Currently in use by running containers
-pub fn delete_registry_layer(package_name: &str, version: &str) -> Result<()> {
-    let key = registry_key(package_name, version);
-    let mut store = load_registry_store()?;
+pub fn delete_external_layer(package_name: &str, version: &str) -> Result<()> {
+    let key = external_key(package_name, version);
+    let mut store = load_external_store()?;
 
     // Remove the package and collect all its layers
     let pkg_layer = store.packages.remove(&key);
@@ -342,7 +373,7 @@ pub fn delete_registry_layer(package_name: &str, version: &str) -> Result<()> {
     }
 
     // Save the modified store regardless of delete errors
-    save_registry_store(&store)?;
+    save_external_store(&store)?;
 
     // Return error if any deletions failed
     if !delete_errors.is_empty() {
@@ -352,20 +383,20 @@ pub fn delete_registry_layer(package_name: &str, version: &str) -> Result<()> {
     Ok(())
 }
 
-pub fn list_registry_layers() -> Result<Vec<PackageLayer>> {
-    let store = load_registry_store()?;
+pub fn list_external_layers() -> Result<Vec<PackageLayer>> {
+    let store = load_external_store()?;
     Ok(store.packages.into_values().collect())
 }
 
-pub fn load_registry_store() -> Result<RegistryLayerStore> {
-    load_registry_store_with_retry()
+pub fn load_external_store() -> Result<ExternalLayerStore> {
+    load_external_store_with_retry()
 }
 
-/// Save registry store to disk using atomic write.
+/// Save external store to disk using atomic write.
 ///
 /// # Concurrency Requirements
 ///
-/// **IMPORTANT: This is a WRITE operation. Only ONE process can call registry write functions
+/// **IMPORTANT: This is a WRITE operation. Only ONE process can call external write functions
 /// at the same time.**
 ///
 /// See module-level documentation for detailed concurrency requirements.
@@ -376,12 +407,12 @@ pub fn load_registry_store() -> Result<RegistryLayerStore> {
 /// - NFS compatibility (no reliance on file locks)
 /// - Readers never see partial/corrupted data
 /// - Write operation is all-or-nothing
-pub fn save_registry_store(store: &RegistryLayerStore) -> Result<()> {
-    save_registry_store_atomic(store)
+pub fn save_external_store(store: &ExternalLayerStore) -> Result<()> {
+    save_external_store_atomic(store)
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct RegistryLayerStore {
+pub struct ExternalLayerStore {
     pub version: String,
     /// key format: package_name@version. package_name can be @scope/name or name
     pub packages: HashMap<String, PackageLayer>,
@@ -393,20 +424,20 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_registry_key() {
-        assert_eq!(registry_key("my-package", "1.0.0"), "my-package@1.0.0");
+    fn test_external_key() {
+        assert_eq!(external_key("my-package", "1.0.0"), "my-package@1.0.0");
         assert_eq!(
-            registry_key("@scope/my-package", "2.0.0"),
+            external_key("@scope/my-package", "2.0.0"),
             "@scope/my-package@2.0.0"
         );
     }
 
     #[test]
-    fn test_load_registry_store() {
-        let r = load_registry_store();
+    fn test_load_external_store() {
+        let r = load_external_store();
         assert!(
             r.is_ok(),
-            "load_registry_store failed: {:?}",
+            "load_external_store failed: {:?}",
             r.unwrap_err()
         );
     }

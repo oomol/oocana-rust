@@ -35,8 +35,8 @@ pub enum LayerAction {
         )]
         env_file: Option<String>,
     },
-    #[command(about = "create registry package layer")]
-    CreateRegistry {
+    #[command(about = "create external package layer")]
+    CreateExternal {
         #[arg(help = "package name")]
         package_name: String,
         #[arg(help = "package version")]
@@ -69,8 +69,8 @@ pub enum LayerAction {
         #[arg(help = "package path")]
         package: String,
     },
-    #[command(about = "delete registry package layer")]
-    DeleteRegistry {
+    #[command(about = "delete external package layer")]
+    DeleteExternal {
         #[arg(help = "package name")]
         package_name: String,
         #[arg(help = "package version")]
@@ -80,15 +80,15 @@ pub enum LayerAction {
     Get {
         #[arg(help = "package path")]
         package: String,
-        #[arg(help = "package name for registry layer (optional)", long)]
+        #[arg(help = "package name for external layer (optional)", long)]
         package_name: Option<String>,
-        #[arg(help = "package version for registry layer (optional)", long)]
+        #[arg(help = "package version for external layer (optional)", long)]
         version: Option<String>,
     },
     #[command(
-        about = "get registry package layer (deprecated: use 'get' with --package-name and --version)"
+        about = "get external package layer (deprecated: use 'get' with --package-name and --version)"
     )]
-    GetRegistry {
+    GetExternal {
         #[arg(help = "package name")]
         package_name: String,
         #[arg(help = "package version")]
@@ -130,11 +130,11 @@ pub enum LayerAction {
     DeleteAll {},
 }
 
-/// Get layer status with registry fallback logic (same as Get command).
+/// Get layer status with external fallback logic (same as Get command).
 /// If override_name and override_version are provided, they take precedence over package meta.
-/// Returns Exist if registry or package layer exists, NotInStore otherwise.
+/// Returns Exist if external or package layer exists, NotInStore otherwise.
 /// Errors are logged but treated as NotInStore.
-fn get_layer_status_with_registry_fallback(
+fn get_layer_status_with_external_fallback(
     package_path: &std::path::Path,
     override_name: Option<&str>,
     override_version: Option<&str>,
@@ -148,23 +148,23 @@ fn get_layer_status_with_registry_fallback(
             .unwrap_or((None, None)),
     };
 
-    // If we have both name and version, try registry layer first
+    // If we have both name and version, try external layer first
     if let (Some(ref name), Some(ref ver)) = (&pkg_name, &ver) {
-        match layer::registry_layer_status(name, ver) {
-            Ok(layer::RegistryLayerStatus::Exist) => {
+        match layer::external_layer_status(name, ver) {
+            Ok(layer::ExternalLayerStatus::Exist) => {
                 tracing::debug!(
-                    "find registry layer ({name}@{ver}) in {package_path:?} with status Exist"
+                    "find external layer ({name}@{ver}) in {package_path:?} with status Exist"
                 );
                 return layer::PackageLayerStatus::Exist;
             }
-            Ok(layer::RegistryLayerStatus::NotInStore) => {
+            Ok(layer::ExternalLayerStatus::NotInStore) => {
                 tracing::debug!(
-                    "registry layer ({name}@{ver}) not in store, fallback to package layer"
+                    "external layer ({name}@{ver}) not in store, fallback to package layer"
                 );
             }
             Err(e) => {
                 tracing::debug!(
-                    "get registry layer ({name}@{ver}) failed: {:?}, fallback to package layer",
+                    "get external layer ({name}@{ver}) failed: {:?}, fallback to package layer",
                     e
                 );
             }
@@ -229,7 +229,7 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
 
             layer::get_or_create_package_layer(package, &bind_path_arg, &envs, &env_file)?;
         }
-        LayerAction::CreateRegistry {
+        LayerAction::CreateExternal {
             package_name,
             version,
             package,
@@ -242,7 +242,7 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
                 .hide_source
             {
                 return Err(Error::from(format!(
-                    "Cannot create registry layer for package {package}: hide_source is enabled"
+                    "Cannot create external layer for package {package}: hide_source is enabled"
                 )));
             }
             let bind_path_arg = load_bind_paths(bind_paths, bind_path_file);
@@ -257,7 +257,7 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
 
             let env_file = find_env_file(env_file);
 
-            layer::create_registry_layer(
+            layer::create_external_layer(
                 package_name,
                 version,
                 package,
@@ -269,11 +269,11 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
         LayerAction::Delete { package } => {
             layer::delete_package_layer(package)?;
         }
-        LayerAction::DeleteRegistry {
+        LayerAction::DeleteExternal {
             package_name,
             version,
         } => {
-            layer::delete_registry_layer(package_name, version)?;
+            layer::delete_external_layer(package_name, version)?;
         }
         LayerAction::Get {
             package,
@@ -287,7 +287,7 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
                 println!("{:?}", layer::PackageLayerStatus::Exist);
                 return Ok(());
             }
-            let status = get_layer_status_with_registry_fallback(
+            let status = get_layer_status_with_external_fallback(
                 std::path::Path::new(package),
                 package_name.as_deref(),
                 version.as_deref(),
@@ -296,12 +296,12 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
             info!("package ({package}) status: {status:?}");
             println!("{status:?}");
         }
-        LayerAction::GetRegistry {
+        LayerAction::GetExternal {
             package_name,
             version,
         } => {
-            let status = layer::registry_layer_status(package_name, version)?;
-            info!("registry package ({package_name}@{version}) status: {status:?}");
+            let status = layer::external_layer_status(package_name, version)?;
+            info!("external package ({package_name}@{version}) status: {status:?}");
             println!("{status:?}");
         }
         LayerAction::Scan {
@@ -347,7 +347,7 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
                                         );
                                         continue;
                                     }
-                                    let status = get_layer_status_with_registry_fallback(
+                                    let status = get_layer_status_with_external_fallback(
                                         &scope_path,
                                         None,
                                         None,
@@ -370,7 +370,7 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
                                     continue;
                                 }
                                 let status =
-                                    get_layer_status_with_registry_fallback(&path, None, None);
+                                    get_layer_status_with_external_fallback(&path, None, None);
                                 package_map.insert(path, format!("{status:?}"));
                             }
                         }
@@ -444,15 +444,15 @@ pub fn layer_action(action: &LayerAction) -> Result<()> {
                 println!("{info}");
             }
 
-            match layer::load_registry_store() {
+            match layer::load_external_store() {
                 Ok(store) => {
                     for (key, l) in store.packages {
-                        let info = format!("Registry: {}, Path: {:?}", key, l.package_path);
+                        let info = format!("External: {}, Path: {:?}", key, l.package_path);
                         println!("{info}");
                     }
                 }
                 Err(e) => {
-                    tracing::warn!("load registry store failed: {e}");
+                    tracing::warn!("load external store failed: {e}");
                 }
             }
         }

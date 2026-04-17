@@ -1,4 +1,5 @@
 mod cli;
+mod external_layer_store;
 mod injection_layer;
 mod injection_store;
 mod layer;
@@ -6,20 +7,19 @@ mod layer_settings;
 mod ovmlayer;
 mod package_layer;
 mod package_store;
-mod registry_layer_store;
 mod runtime_layer;
 
 use std::process::Command;
 
+pub use external_layer_store::{
+    ExternalLayerStatus, ExternalLayerStore, create_external_layer, delete_external_layer,
+    external_layer_status, get_external_layer, list_external_layers, load_external_store,
+};
 pub use ovmlayer::BindPath;
 pub use package_layer::{import_package_layer, move_package_layer};
 pub use package_store::{
     PackageLayerStatus, delete_all_layer_data, delete_package_layer, get_or_create_package_layer,
     list_package_layers, package_layer_status,
-};
-pub use registry_layer_store::{
-    RegistryLayerStatus, RegistryLayerStore, create_registry_layer, delete_registry_layer,
-    get_registry_layer, list_registry_layers, load_registry_store, registry_layer_status,
 };
 pub use runtime_layer::{InjectionParams, RuntimeLayer, create_runtime_layer};
 
