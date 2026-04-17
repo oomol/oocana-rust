@@ -5,8 +5,8 @@ use crate::fun::arg::{find_env_file, load_bind_paths};
 use clap::Subcommand;
 use manifest_reader::path_finder::find_package_file;
 use manifest_reader::reader::{
-    is_connector_package_name, read_block_metadata, read_package, read_package_identity,
-    should_skip_package_layer_handling, should_skip_package_layer_handling_for_path,
+    read_block_metadata, read_package, read_package_identity, should_skip_package_layer_handling,
+    should_skip_package_layer_handling_for_path,
 };
 use std::io::Write;
 use tracing::info;
@@ -195,9 +195,7 @@ fn package_layer_skip_reason(package_path: &Path) -> Option<&'static str> {
     }
 
     let package_name = read_package_identity(package_path).and_then(|identity| identity.name);
-    if should_skip_package_layer_handling(&metadata, package_name.as_deref())
-        && is_connector_package_name(package_name.as_deref())
-    {
+    if should_skip_package_layer_handling(&metadata, package_name.as_deref()) {
         return Some("package name starts with @connector");
     }
 

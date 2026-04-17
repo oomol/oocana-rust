@@ -74,7 +74,7 @@ pub fn read_package_identity(package_path: &Path) -> Option<PackageIdentity> {
 }
 
 pub fn is_connector_package_name(package_name: Option<&str>) -> bool {
-    package_name.is_some_and(|name| name.starts_with("@connector"))
+    package_name.is_some_and(|name| name == "@connector" || name.starts_with("@connector/"))
 }
 
 pub fn should_skip_package_layer_handling(

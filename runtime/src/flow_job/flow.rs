@@ -1119,12 +1119,15 @@ fn run_node(node: &Node, shared: &FlowShared, ctx: &mut RunFlowContext) {
             data_dir: shared
                 .scope
                 .pkg_root
-                .join(name)
+                .join(&name)
                 .to_string_lossy()
                 .to_string(),
             pkg_root: shared.scope.pkg_root.clone(),
             node_id: node_id.clone(),
-            enable_layer: crate::shared::package_scope_enable_layer(&path),
+            enable_layer: crate::shared::package_scope_enable_layer(
+                node.hide_source(),
+                Some(name.as_str()),
+            ),
             is_inject: node.scope().is_inject(),
         },
         BlockScope::Flow { node_id, .. } => RuntimeScope {
