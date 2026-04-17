@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.31.1 (2026-04-17)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* feat(layer): skip package-layer handling for @connector packages by @leavesster in https://github.com/oomol/oocana-rust/pull/464
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.31.0...v0.31.1
+
 ## 0.31.0 (2026-04-17)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
