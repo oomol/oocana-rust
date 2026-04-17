@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.31.0 (2026-04-17)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* refactor: improve cli argument handling and parser coverage by @leavesster in https://github.com/oomol/oocana-rust/pull/460
+* refactor(layer)!: rename registry layer store to external layer store by @leavesster in https://github.com/oomol/oocana-rust/pull/462
+* refactor(layer): rename get_layer_status_with_external_fallback to get_layer_status_external_first by @leavesster in https://github.com/oomol/oocana-rust/pull/463
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.30.49...v0.31.0
+
 ## 0.30.49 (2026-04-16)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
