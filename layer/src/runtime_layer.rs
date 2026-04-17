@@ -1,3 +1,4 @@
+use crate::external_layer_store::get_external_layer;
 use crate::injection_layer::InjectionLayer;
 use crate::injection_store::get_injection_layer;
 use crate::layer::{
@@ -6,7 +7,6 @@ use crate::layer::{
 use crate::ovmlayer::{self, BindPath};
 use crate::package_layer::{CACHE_DIR, PackageLayer};
 use crate::package_store::get_or_create_package_layer;
-use crate::external_layer_store::get_external_layer;
 use std::collections::HashMap;
 use std::env::temp_dir;
 use std::fmt::Debug;

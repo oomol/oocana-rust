@@ -7,10 +7,7 @@ struct TmpGlobalConfig {
     pub store_dir: String,
     #[serde(default = "default_oocana_dir")]
     pub oocana_dir: String,
-    #[serde(
-        default = "default_external_store_file",
-        alias = "registry_store_file"
-    )]
+    #[serde(default = "default_external_store_file", alias = "registry_store_file")]
     pub external_store_file: String,
     pub env_file: Option<String>,
     pub bind_path_file: Option<String>,
