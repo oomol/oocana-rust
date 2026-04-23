@@ -33,6 +33,10 @@ fn connector_action_label(action_id: &str) -> String {
     format!("{CONNECTOR_ACTION_PREFIX} '{action_id}'")
 }
 
+fn connector_action_message(action_id: &str, detail: &str) -> String {
+    format!("{}: {detail}", connector_action_label(action_id))
+}
+
 fn connector_http_client() -> &'static Client {
     static CLIENT: OnceLock<Client> = OnceLock::new();
     CLIENT.get_or_init(Client::new)
@@ -547,10 +551,7 @@ async fn run_connector_action_with_base_url_and_auth(
 
     let response = request.send().await.map_err(|e| {
         utils::error::Error::with_source(
-            &format!(
-                "Failed to call {} at '{url}'",
-                connector_action_label(action_id)
-            ),
+            &connector_action_message(action_id, &format!("failed to call at '{url}'")),
             Box::new(e),
         )
     })?;
@@ -565,10 +566,7 @@ async fn run_connector_action_with_base_url_and_auth(
 
     let response_json = response.json::<serde_json::Value>().await.map_err(|e| {
         utils::error::Error::with_source(
-            &format!(
-                "Failed to parse {} response as JSON",
-                connector_action_label(action_id)
-            ),
+            &connector_action_message(action_id, "failed to parse response as JSON"),
             Box::new(e),
         )
     })?;
