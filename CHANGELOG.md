@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.31.2 (2026-04-23)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* refactor(runtime): extract connector action label by @leavesster in https://github.com/oomol/oocana-rust/pull/466
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.31.1...v0.31.2
+
 ## 0.31.1 (2026-04-17)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
