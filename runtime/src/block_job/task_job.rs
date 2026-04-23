@@ -27,6 +27,11 @@ use super::listener::{ListenerParameters, listen_to_worker};
 const OOCANA_CONNECTOR_BASE_URL_ENV_KEY: &str = "OOCANA_CONNECTOR_BASE_URL";
 const DEFAULT_CONNECTOR_REQUEST_TIMEOUT_SECS: u64 = 30;
 const CONNECTOR_ERROR_BODY_LIMIT: usize = 512;
+const CONNECTOR_ACTION_PREFIX: &str = "OOMOL Connector action";
+
+fn connector_action_label(action_id: &str) -> String {
+    format!("{CONNECTOR_ACTION_PREFIX} '{action_id}'")
+}
 
 fn connector_http_client() -> &'static Client {
     static CLIENT: OnceLock<Client> = OnceLock::new();
@@ -542,7 +547,10 @@ async fn run_connector_action_with_base_url_and_auth(
 
     let response = request.send().await.map_err(|e| {
         utils::error::Error::with_source(
-            &format!("Failed to call connector action '{action_id}' at '{url}'"),
+            &format!(
+                "Failed to call {} at '{url}'",
+                connector_action_label(action_id)
+            ),
             Box::new(e),
         )
     })?;
@@ -557,7 +565,10 @@ async fn run_connector_action_with_base_url_and_auth(
 
     let response_json = response.json::<serde_json::Value>().await.map_err(|e| {
         utils::error::Error::with_source(
-            &format!("Failed to parse connector action '{action_id}' response as JSON"),
+            &format!(
+                "Failed to parse {} response as JSON",
+                connector_action_label(action_id)
+            ),
             Box::new(e),
         )
     })?;
@@ -605,20 +616,20 @@ fn truncate_connector_error_body(body: &str) -> String {
 }
 
 fn format_connector_http_error(action_id: &str, status: reqwest::StatusCode, body: &str) -> String {
+    let action_label = connector_action_label(action_id);
+
     if body.is_empty() {
-        return format!("Connector action '{action_id}' failed with status {status}");
+        return format!("{action_label} failed with status {status}");
     }
 
     if let Ok(response_json) = serde_json::from_str::<serde_json::Value>(body) {
         if let Some(details) = format_connector_error_details(&response_json) {
-            return format!(
-                "Connector action '{action_id}' failed with status {status}: {details}"
-            );
+            return format!("{action_label} failed with status {status}: {details}");
         }
     }
 
     let truncated = truncate_connector_error_body(body);
-    format!("Connector action '{action_id}' failed with status {status}: {truncated}")
+    format!("{action_label} failed with status {status}: {truncated}")
 }
 
 fn format_connector_error_details(response_json: &serde_json::Value) -> Option<String> {
@@ -674,27 +685,24 @@ fn parse_connector_outputs(
     response_json: serde_json::Value,
     outputs_def: Option<&OutputHandles>,
 ) -> Result<HashMap<HandleName, serde_json::Value>> {
+    let action_label = connector_action_label(action_id);
     let success = response_json
         .get("success")
         .and_then(|value| value.as_bool())
         .ok_or_else(|| {
-            utils::error::Error::new(&format!(
-                "Connector action '{action_id}' response is missing success field"
-            ))
+            utils::error::Error::new(&format!("{action_label} response is missing success field"))
         })?;
 
     if !success {
         let message = format_connector_error_details(&response_json)
             .unwrap_or_else(|| "unknown error".to_owned());
         return Err(utils::error::Error::new(&format!(
-            "Connector action '{action_id}' failed: {message}"
+            "{action_label} failed: {message}"
         )));
     }
 
     let data = response_json.get("data").ok_or_else(|| {
-        utils::error::Error::new(&format!(
-            "Connector action '{action_id}' response is missing data field"
-        ))
+        utils::error::Error::new(&format!("{action_label} response is missing data field"))
     })?;
 
     if connector_uses_single_output_handle(outputs_def) {
@@ -703,7 +711,7 @@ fn parse_connector_outputs(
 
     let outputs = data.as_object().ok_or_else(|| {
         utils::error::Error::new(&format!(
-            "Connector action '{action_id}' response data field must be an object"
+            "{action_label} response data field must be an object"
         ))
     })?;
 
@@ -1037,7 +1045,10 @@ mod tests {
 
         assert_eq!(
             error.to_string(),
-            "Connector action 'run-action' response data field must be an object"
+            format!(
+                "{} response data field must be an object",
+                connector_action_label("run-action")
+            )
         );
     }
 
@@ -1059,7 +1070,10 @@ mod tests {
 
         assert_eq!(
             error.to_string(),
-            "Connector action 'run-action' response is missing data field"
+            format!(
+                "{} response is missing data field",
+                connector_action_label("run-action")
+            )
         );
     }
 
@@ -1080,7 +1094,10 @@ mod tests {
 
         assert_eq!(
             error.to_string(),
-            "Connector action 'run-action' failed: invalid auth token"
+            format!(
+                "{} failed: invalid auth token",
+                connector_action_label("run-action")
+            )
         );
     }
 
@@ -1106,7 +1123,10 @@ mod tests {
 
         assert_eq!(
             error.to_string(),
-            "Connector action 'run-action' failed with status 500 Internal Server Error: connector failed"
+            format!(
+                "{} failed with status 500 Internal Server Error: connector failed",
+                connector_action_label("run-action")
+            )
         );
     }
 
@@ -1141,7 +1161,10 @@ mod tests {
 
         assert_eq!(
             error.to_string(),
-            "Connector action 'run-action' failed with status 400 Bad Request: input validation failed (errorCode=invalid_input, actionId=run-action, executionId=exec-400)"
+            format!(
+                "{} failed with status 400 Bad Request: input validation failed (errorCode=invalid_input, actionId=run-action, executionId=exec-400)",
+                connector_action_label("run-action")
+            )
         );
     }
 
@@ -1171,7 +1194,10 @@ mod tests {
 
         assert_eq!(
             error.to_string(),
-            "Connector action 'run-action' failed with status 401 Unauthorized: missing authorization header (errorCode=invalid_input, executionId=exec-401)"
+            format!(
+                "{} failed with status 401 Unauthorized: missing authorization header (errorCode=invalid_input, executionId=exec-401)",
+                connector_action_label("run-action")
+            )
         );
     }
 
@@ -1206,7 +1232,10 @@ mod tests {
 
         assert_eq!(
             error.to_string(),
-            "Connector action 'run-action' failed with status 500 Internal Server Error: provider unavailable (errorCode=provider_error, actionId=run-action, executionId=exec-500)"
+            format!(
+                "{} failed with status 500 Internal Server Error: provider unavailable (errorCode=provider_error, actionId=run-action, executionId=exec-500)",
+                connector_action_label("run-action")
+            )
         );
     }
 
