@@ -190,11 +190,7 @@ pub fn listen_to_worker(params: ListenerParameters) -> tokio::task::JoinHandle<(
                     reason,
                     ..
                 } => {
-                    let msg =
-                        reason.unwrap_or(format!("Executor {executor_name} exit with code {code}"));
-
-                    reporter.finished(None, Some(msg.clone()));
-                    block_status.error(msg);
+                    debug!("executor {executor_name} exited with code {code}, reason: {reason:?}");
                 }
                 scheduler::ReceiveMessage::ExecutorTimeout {
                     executor_name,
@@ -215,12 +211,9 @@ pub fn listen_to_worker(params: ListenerParameters) -> tokio::task::JoinHandle<(
                         continue;
                     }
 
-                    let error_message = format!(
+                    debug!(
                         "Executor {executor_name} identifier {identifier:?} for package {package:?} timeout after 5s"
                     );
-
-                    block_status.error(error_message.clone());
-                    reporter.finished(None, Some(error_message));
                 }
                 scheduler::ReceiveMessage::BlockReady { job_id, .. } => {
                     has_executor_response = true;
