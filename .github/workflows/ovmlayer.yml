@@ -15,7 +15,7 @@ on:
 
 jobs:
   ovmlayer:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     env:
       OVMLAYER_REPOSITORY: ${{ inputs.repository || vars.OVMLAYER_REPOSITORY || 'ovmlayer-next' }}
       OVMLAYER_USE_RUNTIME_SETUP: ${{ (inputs.repository || vars.OVMLAYER_REPOSITORY || 'ovmlayer-next') == (vars.OVMLAYER_REPOSITORY || 'ovmlayer-next') }}
