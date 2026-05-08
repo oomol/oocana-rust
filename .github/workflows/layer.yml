@@ -36,7 +36,7 @@ jobs:
             - "!layer/**.md"
 
   rust-test:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     container:
       image: rust:1.88-bookworm@sha256:af306cfa71d987911a781c37b59d7d67d934f49684058f96cf72079c3626bfe0
       options: --privileged
@@ -97,7 +97,7 @@ jobs:
       ovmlayer-repository: ${{ vars.OVMLAYER_REPOSITORY }}
     secrets: inherit
   layer-build:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     needs: [skip, rust-test, python-test, node-test]
     if: ${{ always() }}
     steps:

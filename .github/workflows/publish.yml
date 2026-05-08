@@ -25,7 +25,7 @@ jobs:
             echo "result=true" >> $GITHUB_OUTPUT
           fi
   release-ubuntu:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     strategy:
       matrix:
         target: [
