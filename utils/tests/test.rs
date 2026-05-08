@@ -48,6 +48,24 @@ mod tests {
     }
 
     #[test]
+    fn test_run_extra_search_paths_expand_home() {
+        let config = load_config(Some("tests/run_extra_paths.toml"));
+        assert!(config.is_ok(), "Error: {:?}", config.unwrap_err());
+
+        let config = config.unwrap();
+        let home_dir = dirs::home_dir().unwrap().to_string_lossy().to_string();
+        let extra = config.run.extra.unwrap();
+
+        assert_eq!(
+            extra.search_paths,
+            Some(vec![
+                format!("{home_dir}/run-extra"),
+                format!("{home_dir}/run-extra-env"),
+            ])
+        );
+    }
+
+    #[test]
     fn test_load_env_from_file() {
         let file_path = Some("tests/test.env");
         let env_vars = load_env_from_file(&file_path);

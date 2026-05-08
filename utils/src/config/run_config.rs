@@ -1,6 +1,8 @@
-use crate::path::expand_home;
 use serde::{Deserialize, Serialize};
 
+use crate::path::expand_home;
+
+#[derive(Deserialize)]
 struct TmpRunExtraConfig {
     pub search_paths: Option<Vec<String>>,
 }
@@ -19,6 +21,7 @@ impl From<TmpRunExtraConfig> for RunExtraConfig {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(from = "TmpRunExtraConfig")]
 pub struct RunExtraConfig {
     pub search_paths: Option<Vec<String>>,
 }

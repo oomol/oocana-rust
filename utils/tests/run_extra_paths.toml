@@ -1,0 +1,9 @@
+[global]
+store_dir = "~/.oomol-studio/oocana"
+oocana_dir = "~/.oocana"
+
+[run]
+broker = "127.0.0.1:47688"
+
+[run.extra]
+search_paths = ["~/run-extra", "$HOME/run-extra-env"]
