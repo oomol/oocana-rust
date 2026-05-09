@@ -970,18 +970,8 @@ fn spawn_executor(
                     Some(state) if state.spawn_state == ExecutorSpawnState::TimedOut => {
                         state.pid = None;
                     }
-                    Some(state) => {
-                        state.spawn_state = ExecutorSpawnState::Finished;
-                        state.pid = None;
-                    }
-                    None => {
-                        write_map.insert(
-                            executor_map_name_clone.clone(),
-                            ExecutorState {
-                                spawn_state: ExecutorSpawnState::Finished,
-                                pid: None,
-                            },
-                        );
+                    _ => {
+                        write_map.remove(&executor_map_name_clone);
                     }
                 }
                 drop(write_map);
@@ -1050,7 +1040,7 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
 
     let executor_map_name = generate_executor_map_name(executor_name, scope);
 
-    let executor_state = {
+    let mut executor_state = {
         let read_map = executor_map
             .read()
             .map_err(|_| Error::new("Failed to acquire read lock"))?;
@@ -1060,6 +1050,14 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
             .unwrap_or_default()
             .spawn_state
     };
+
+    if executor_state == ExecutorSpawnState::Finished {
+        let mut write_map = executor_map
+            .write()
+            .map_err(|_| Error::new("Failed to acquire write lock"))?;
+        write_map.remove(&executor_map_name);
+        executor_state = ExecutorSpawnState::None;
+    }
 
     if executor_state == ExecutorSpawnState::TimedOut {
         return Err(Error::new(&format!(
@@ -2266,5 +2264,30 @@ mod tests {
 
         scheduler_tx.abort();
         scheduler_handle.await.unwrap();
+    }
+
+    #[test]
+    fn finished_executor_state_allows_restart() {
+        let session_id = SessionId::random();
+        let scope = test_scope(session_id, "restart");
+        let executor_map = Arc::new(RwLock::new(HashMap::from([(
+            generate_executor_map_name("python", &scope),
+            ExecutorState {
+                spawn_state: ExecutorSpawnState::Finished,
+                pid: None,
+            },
+        )])));
+
+        let result = query_executor_state(ExecutorCheckParams {
+            executor_name: "python",
+            scope: &scope,
+            injection_store: &None,
+            flow_path: &None,
+            executor_payload: &test_executor_payload(scope.session_id.clone()),
+            executor_map,
+        })
+        .unwrap();
+
+        assert_eq!(result.executor_state, ExecutorSpawnState::None);
     }
 }
