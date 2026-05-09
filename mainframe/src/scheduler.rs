@@ -403,6 +403,14 @@ fn executor_name_matches(running_executor: &str, exited_executor: &str) -> bool 
     trim_executor_suffix(running_executor) == trim_executor_suffix(exited_executor)
 }
 
+fn lifecycle_identifier_matches(event_identifier: Option<&str>, running_identifier: &str) -> bool {
+    match event_identifier {
+        Some(identifier) => identifier == running_identifier,
+        // Legacy unscoped lifecycle commands apply to every matching executor name.
+        None => true,
+    }
+}
+
 fn executor_map_name_from_parts(executor: &str, identifier: Option<&str>) -> String {
     let executor_name = executor.strip_suffix("-executor").unwrap_or(executor);
     match identifier {
@@ -1537,10 +1545,10 @@ where
                                 if !executor_name_matches(&running_block.executor_name, &executor) {
                                     return None;
                                 }
-                                if identifier
-                                    .as_ref()
-                                    .is_some_and(|id| id != &running_block.identifier)
-                                {
+                                if !lifecycle_identifier_matches(
+                                    identifier.as_deref(),
+                                    &running_block.identifier,
+                                ) {
                                     return None;
                                 }
                                 Some(job_id.clone())
@@ -1593,9 +1601,10 @@ where
                             .iter()
                             .filter(|(_, running_block)| {
                                 executor_name_matches(&running_block.executor_name, &executor)
-                                    && identifier
-                                        .as_ref()
-                                        .is_none_or(|id| id == &running_block.identifier)
+                                    && lifecycle_identifier_matches(
+                                        identifier.as_deref(),
+                                        &running_block.identifier,
+                                    )
                             })
                             .map(|(job_id, _)| job_id.clone())
                             .collect::<Vec<_>>();
@@ -1618,21 +1627,6 @@ where
                                 }
                             }
                         }
-
-                        // 理论上有任意一个 block 处理就 OK
-                        subscribers.retain(|_, sender| {
-                            if let Err(e) = sender.send(ReceiveMessage::ExecutorExit {
-                                session_id: session_id.clone(),
-                                executor_name: executor.clone(),
-                                code,
-                                reason: reason.clone(),
-                            }) {
-                                warn!("Scheduler send executor exit to subscriber failed, removing: {e}");
-                                false
-                            } else {
-                                true
-                            }
-                        });
                     }
                     Ok(SchedulerCommand::ReceiveMessage(data)) => {
                         if let Some(msg) = parse_worker_message(data, &session_id) {
@@ -2122,13 +2116,11 @@ mod tests {
             } if finished_job_id == &matching_job_id
         ));
 
-        let other_event = timeout(Duration::from_secs(1), other_subscriber_rx.recv_async())
-            .await
-            .expect("other subscriber should still receive executor lifecycle event")
-            .unwrap();
         assert!(
-            !matches!(other_event, ReceiveMessage::BlockFinished { .. }),
-            "executor exit should not finish jobs from another identifier"
+            timeout(Duration::from_millis(100), other_subscriber_rx.recv_async())
+                .await
+                .is_err(),
+            "executor exit should not notify jobs from another identifier"
         );
         assert!(
             block_event_rx.try_recv().is_err(),
