@@ -343,3 +343,220 @@ pub fn listen_to_worker(params: ListenerParameters) -> tokio::task::JoinHandle<(
         }
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use async_trait::async_trait;
+    use job::{BlockJobStacks, SessionId};
+    use mainframe::{
+        MessageData,
+        reporter::{self, ReporterRxImpl, ReporterTxImpl},
+        scheduler::{ExecutorParameters, SchedulerRxImpl, SchedulerTxImpl},
+    };
+    use tokio::time::{Duration, timeout};
+
+    struct NoopSchedulerTx;
+
+    #[async_trait]
+    impl SchedulerTxImpl for NoopSchedulerTx {
+        async fn send_block_event(&self, _session_id: &SessionId, _data: MessageData) {}
+
+        async fn send_inputs(&self, _job_id: &JobId, _data: MessageData) {}
+
+        async fn run_block(&self, _executor_name: &str, _data: MessageData) {}
+
+        async fn respond_block_request(
+            &self,
+            _session_id: &SessionId,
+            _request_id: &str,
+            _data: MessageData,
+        ) {
+        }
+
+        async fn run_service_block(&self, _executor_name: &str, _data: MessageData) {}
+
+        async fn disconnect(&self) {}
+    }
+
+    struct ChannelSchedulerRx {
+        rx: flume::Receiver<MessageData>,
+    }
+
+    #[async_trait]
+    impl SchedulerRxImpl for ChannelSchedulerRx {
+        async fn recv(&mut self) -> MessageData {
+            self.rx.recv_async().await.unwrap_or_default()
+        }
+    }
+
+    struct NoopReporterTx;
+
+    #[async_trait]
+    impl ReporterTxImpl for NoopReporterTx {
+        async fn send(&self, _data: MessageData) {}
+
+        async fn disconnect(&self) {}
+    }
+
+    struct NoopReporterRx;
+
+    impl ReporterRxImpl for NoopReporterRx {
+        fn event_loop(self) -> tokio::task::JoinHandle<()> {
+            tokio::spawn(async {})
+        }
+    }
+
+    fn test_scope(session_id: SessionId) -> RuntimeScope {
+        let root = std::env::temp_dir();
+        RuntimeScope {
+            session_id,
+            pkg_name: None,
+            data_dir: root.display().to_string(),
+            pkg_root: root.clone(),
+            path: root,
+            node_id: None,
+            is_inject: false,
+            enable_layer: false,
+        }
+    }
+
+    fn test_executor_payload(session_id: SessionId) -> ExecutorParameters {
+        ExecutorParameters {
+            addr: "127.0.0.1:0".to_string(),
+            session_id,
+            session_dir: std::env::temp_dir().display().to_string(),
+            pass_through_env_keys: vec![],
+            bind_paths: vec![],
+            env_file: None,
+            tmp_dir: std::env::temp_dir(),
+            debug: false,
+            wait_for_client: false,
+        }
+    }
+
+    async fn send_worker_message(
+        worker_tx: &flume::Sender<MessageData>,
+        message: scheduler::ReceiveMessage,
+    ) {
+        worker_tx
+            .send_async(serde_json::to_vec(&message).unwrap())
+            .await
+            .unwrap();
+    }
+
+    async fn wait_for_listener_subscription(
+        worker_tx: &flume::Sender<MessageData>,
+        block_status_rx: &crate::block_status::BlockStatusRx,
+        session_id: &SessionId,
+        job_id: &JobId,
+    ) {
+        for _ in 0..20 {
+            send_worker_message(
+                worker_tx,
+                scheduler::ReceiveMessage::BlockProgress {
+                    session_id: session_id.clone(),
+                    job_id: job_id.clone(),
+                    progress: 42.0,
+                },
+            )
+            .await;
+
+            match timeout(Duration::from_millis(50), block_status_rx.recv()).await {
+                Ok(Some(crate::block_status::Status::Progress {
+                    job_id: progress_job_id,
+                    progress,
+                })) => {
+                    assert_eq!(progress_job_id, *job_id);
+                    assert_eq!(progress, 42.0);
+                    return;
+                }
+                Ok(Some(_)) => panic!("expected progress status"),
+                Ok(None) => panic!("block status channel closed"),
+                Err(_) => {}
+            }
+        }
+
+        panic!("listener did not subscribe to scheduler messages");
+    }
+
+    #[tokio::test]
+    async fn listener_finishes_block_from_scheduler_block_finished_error() {
+        let session_id = SessionId::random();
+        let job_id = JobId::random();
+        let scope = test_scope(session_id.clone());
+        let (worker_tx, worker_rx) = flume::unbounded();
+        let (scheduler_tx, scheduler_rx) = scheduler::create(
+            NoopSchedulerTx,
+            ChannelSchedulerRx { rx: worker_rx },
+            None,
+            None,
+            test_executor_payload(session_id.clone()),
+            scope.data_dir.clone(),
+        );
+        let scheduler_handle = scheduler_rx.event_loop();
+
+        let (reporter_tx, _reporter_rx) =
+            reporter::create::<NoopReporterTx, NoopReporterRx>(session_id.clone(), None, None);
+        let reporter = Arc::new(reporter_tx.block(job_id.clone(), None, BlockJobStacks::new()));
+        let (block_status_tx, block_status_rx) = crate::block_status::create();
+        let listener_handle = listen_to_worker(ListenerParameters {
+            job_id: job_id.clone(),
+            block_path: None,
+            stacks: BlockJobStacks::new(),
+            scheduler_tx: scheduler_tx.clone(),
+            inputs: None,
+            outputs_def: None,
+            inputs_def: None,
+            inputs_def_patch: None,
+            block_status: block_status_tx,
+            reporter,
+            executor: None,
+            service: None,
+            block_dir: scope.data_dir.clone(),
+            scope,
+            injection_store: None,
+            flow_path: None,
+        });
+
+        wait_for_listener_subscription(&worker_tx, &block_status_rx, &session_id, &job_id).await;
+
+        send_worker_message(
+            &worker_tx,
+            scheduler::ReceiveMessage::BlockFinished {
+                session_id: session_id.clone(),
+                job_id: job_id.clone(),
+                result: None,
+                error: Some("Executor python-executor exit with code 1".to_string()),
+            },
+        )
+        .await;
+
+        let status = timeout(Duration::from_secs(1), block_status_rx.recv())
+            .await
+            .expect("listener should emit block status")
+            .expect("block status channel should stay open");
+
+        match status {
+            crate::block_status::Status::Done {
+                job_id: done_job_id,
+                result,
+                error,
+                error_detail,
+            } => {
+                assert_eq!(done_job_id, job_id);
+                assert!(result.is_none());
+                assert_eq!(
+                    error.as_deref(),
+                    Some("Executor python-executor exit with code 1")
+                );
+                assert!(error_detail.is_none());
+            }
+            _ => panic!("expected done error status"),
+        }
+
+        scheduler_tx.abort();
+        scheduler_handle.await.unwrap();
+        listener_handle.await.unwrap();
+    }
+}
