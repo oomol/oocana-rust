@@ -403,12 +403,21 @@ fn executor_name_matches(running_executor: &str, exited_executor: &str) -> bool 
     trim_executor_suffix(running_executor) == trim_executor_suffix(exited_executor)
 }
 
+fn executor_map_name_from_parts(executor: &str, identifier: Option<&str>) -> String {
+    let executor_name = executor.strip_suffix("-executor").unwrap_or(executor);
+    match identifier {
+        Some(identifier) => format!("{executor_name}-{identifier}"),
+        None => executor_name.to_owned(),
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum ExecutorSpawnState {
     #[default]
     None,
     Spawned,  // spawn 但是没有收到 ready 信息
     Ready,    // 收到 ready 信息
+    TimedOut, // executor spawn timed out; late ready messages must be ignored
     Finished, // executor only finished during session finished. This enum is used to indicate that the executor has finished its work and is no longer running. If this state is reached do not try to send executor spawn timeout.
 }
 
@@ -957,13 +966,24 @@ fn spawn_executor(
             tokio::spawn(async move {
                 let status = ch.wait().await;
                 let mut write_map = executor_map_clone.write().unwrap();
-                write_map.insert(
-                    executor_map_name_clone.clone(),
-                    ExecutorState {
-                        spawn_state: ExecutorSpawnState::Finished,
-                        pid: None,
-                    },
-                );
+                match write_map.get_mut(&executor_map_name_clone) {
+                    Some(state) if state.spawn_state == ExecutorSpawnState::TimedOut => {
+                        state.pid = None;
+                    }
+                    Some(state) => {
+                        state.spawn_state = ExecutorSpawnState::Finished;
+                        state.pid = None;
+                    }
+                    None => {
+                        write_map.insert(
+                            executor_map_name_clone.clone(),
+                            ExecutorState {
+                                spawn_state: ExecutorSpawnState::Finished,
+                                pid: None,
+                            },
+                        );
+                    }
+                }
                 drop(write_map);
                 if let Some(layer) = layer {
                     drop(layer);
@@ -1040,6 +1060,13 @@ fn query_executor_state(params: ExecutorCheckParams) -> Result<ExecutorCheckResu
             .unwrap_or_default()
             .spawn_state
     };
+
+    if executor_state == ExecutorSpawnState::TimedOut {
+        return Err(Error::new(&format!(
+            "Executor {executor_name} identifier {} timed out while starting",
+            scope.identifier()
+        )));
+    }
 
     if executor_state != ExecutorSpawnState::None {
         return Ok(ExecutorCheckResult {
@@ -1473,6 +1500,36 @@ where
                         package,
                         identifier,
                     }) => {
+                        let executor_map_name =
+                            executor_map_name_from_parts(&executor, identifier.as_deref());
+                        let timeout_applied = {
+                            let mut write_map = executor_map.write().unwrap();
+                            match write_map.get_mut(&executor_map_name) {
+                                Some(state) if state.spawn_state == ExecutorSpawnState::Spawned => {
+                                    state.spawn_state = ExecutorSpawnState::TimedOut;
+                                    true
+                                }
+                                Some(state) => {
+                                    debug!(
+                                        "Ignore stale spawn timeout for {} in state {:?}",
+                                        executor_map_name, state.spawn_state
+                                    );
+                                    false
+                                }
+                                None => {
+                                    debug!(
+                                        "Ignore spawn timeout for unknown executor {}",
+                                        executor_map_name
+                                    );
+                                    false
+                                }
+                            }
+                        };
+
+                        if !timeout_applied {
+                            continue;
+                        }
+
                         let error_message = format!(
                             "Executor {executor} identifier {identifier:?} for package {package:?} timeout after 5s"
                         );
@@ -1590,29 +1647,46 @@ where
                                     identifier,
                                 } => {
                                     // same as generate_executor_map_name fn logic
-                                    let executor_map_name = if let Some(ref id) = identifier {
-                                        format!("{executor_name}-{id}")
-                                    } else {
-                                        executor_name.clone()
-                                    };
-
-                                    let pid = {
-                                        let read_map = executor_map.read().unwrap();
-                                        read_map
-                                            .get(&executor_map_name)
-                                            .cloned()
-                                            .unwrap_or_default()
-                                            .pid
-                                    };
-
-                                    let mut write_map = executor_map.write().unwrap();
-                                    write_map.insert(
-                                        executor_map_name,
-                                        ExecutorState {
-                                            spawn_state: ExecutorSpawnState::Ready,
-                                            pid,
-                                        },
+                                    let executor_map_name = executor_map_name_from_parts(
+                                        &executor_name,
+                                        identifier.as_deref(),
                                     );
+                                    let ready_accepted = {
+                                        let mut write_map = executor_map.write().unwrap();
+                                        match write_map.get_mut(&executor_map_name) {
+                                            Some(state)
+                                                if matches!(
+                                                    state.spawn_state,
+                                                    ExecutorSpawnState::TimedOut
+                                                        | ExecutorSpawnState::Finished
+                                                ) =>
+                                            {
+                                                debug!(
+                                                    "Ignore late executor ready for {} in state {:?}",
+                                                    executor_map_name, state.spawn_state
+                                                );
+                                                false
+                                            }
+                                            Some(state) => {
+                                                state.spawn_state = ExecutorSpawnState::Ready;
+                                                true
+                                            }
+                                            None => {
+                                                write_map.insert(
+                                                    executor_map_name,
+                                                    ExecutorState {
+                                                        spawn_state: ExecutorSpawnState::Ready,
+                                                        pid: None,
+                                                    },
+                                                );
+                                                true
+                                            }
+                                        }
+                                    };
+
+                                    if !ready_accepted {
+                                        continue;
+                                    }
 
                                     // iterator all subscribers and send executor ready message
                                     subscribers.retain(|_, sender| {
@@ -2061,6 +2135,133 @@ mod tests {
         assert!(
             block_event_rx.try_recv().is_err(),
             "executor exit should emit exactly one block finish event"
+        );
+
+        scheduler_tx.abort();
+        scheduler_handle.await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn spawn_timeout_ignores_late_executor_ready() {
+        let session_id = SessionId::random();
+        let job_id = JobId::random();
+        let scope = test_scope(session_id.clone(), "late-ready");
+        let executor: TaskBlockExecutor = serde_json::from_value(
+            serde_json::json!({"name":"python","options":{"entry":"main.py"}}),
+        )
+        .unwrap();
+        let (block_event_tx, block_event_rx) = flume::unbounded();
+        let (scheduler_tx, scheduler_rx) = create(
+            CaptureSchedulerTx {
+                block_events: block_event_tx,
+            },
+            PendingSchedulerRx,
+            None,
+            None,
+            test_executor_payload(session_id.clone()),
+            scope.data_dir.clone(),
+        );
+
+        scheduler_rx.executor_map.write().unwrap().insert(
+            generate_executor_map_name("python", &scope),
+            ExecutorState {
+                spawn_state: ExecutorSpawnState::Spawned,
+                pid: Some(42),
+            },
+        );
+        let executor_map = scheduler_rx.executor_map.clone();
+        let scheduler_handle = scheduler_rx.event_loop();
+
+        let (subscriber_tx, subscriber_rx) = flume::unbounded();
+        scheduler_tx.register_subscriber(job_id.clone(), subscriber_tx);
+        scheduler_tx
+            .tx
+            .send(SchedulerCommand::ExecuteBlock {
+                job_id: job_id.clone(),
+                executor_name: "python".to_string(),
+                dir: scope.data_dir.clone(),
+                stacks: vec![],
+                outputs: None,
+                executor,
+                injection_store: None,
+                scope: scope.clone(),
+                flow_path: None,
+            })
+            .unwrap();
+        scheduler_tx
+            .tx
+            .send(SchedulerCommand::SpawnExecutorTimeout {
+                executor: "python-executor".to_string(),
+                package: None,
+                identifier: Some(scope.identifier()),
+            })
+            .unwrap();
+
+        let subscriber_event = timeout(Duration::from_secs(1), subscriber_rx.recv_async())
+            .await
+            .expect("subscriber should receive synthesized timeout finish")
+            .unwrap();
+        assert!(matches!(
+            subscriber_event,
+            ReceiveMessage::BlockFinished {
+                job_id: ref finished_job_id,
+                error: Some(ref error),
+                ..
+            } if finished_job_id == &job_id
+                && error == &format!(
+                    "Executor python-executor identifier {:?} for package None timeout after 5s",
+                    Some(scope.identifier())
+                )
+        ));
+
+        let block_event = timeout(Duration::from_secs(1), block_event_rx.recv_async())
+            .await
+            .expect("broker block event should receive synthesized timeout finish")
+            .unwrap();
+        assert!(matches!(
+            block_event,
+            ReceiveMessage::BlockFinished {
+                job_id: ref finished_job_id,
+                ..
+            } if finished_job_id == &job_id
+        ));
+
+        let timeout_event = timeout(Duration::from_secs(1), subscriber_rx.recv_async())
+            .await
+            .expect("subscriber should receive executor timeout lifecycle event")
+            .unwrap();
+        assert!(matches!(
+            timeout_event,
+            ReceiveMessage::ExecutorTimeout { .. }
+        ));
+
+        scheduler_tx
+            .tx
+            .send(SchedulerCommand::ReceiveMessage(
+                serde_json::to_vec(&ReceiveMessage::ExecutorReady {
+                    session_id: session_id.clone(),
+                    executor_name: "python".to_string(),
+                    package: None,
+                    identifier: Some(scope.identifier()),
+                })
+                .unwrap(),
+            ))
+            .unwrap();
+
+        assert!(
+            timeout(Duration::from_millis(100), subscriber_rx.recv_async())
+                .await
+                .is_err(),
+            "late executor ready should not be forwarded to subscriber"
+        );
+        assert_eq!(
+            executor_map
+                .read()
+                .unwrap()
+                .get(&generate_executor_map_name("python", &scope))
+                .unwrap()
+                .spawn_state,
+            ExecutorSpawnState::TimedOut
         );
 
         scheduler_tx.abort();
