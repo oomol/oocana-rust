@@ -79,6 +79,20 @@ fn is_json_serializable(
 }
 
 pub fn listen_to_worker(params: ListenerParameters) -> tokio::task::JoinHandle<()> {
+    let block_scope = params.scheduler_tx.calculate_scope(&params.scope);
+    let (job_tx, job_rx) = flume::unbounded::<scheduler::ReceiveMessage>();
+    params
+        .scheduler_tx
+        .register_subscriber(params.job_id.to_owned(), job_tx);
+
+    listen_to_worker_messages(params, block_scope, job_rx)
+}
+
+fn listen_to_worker_messages(
+    params: ListenerParameters,
+    block_scope: RuntimeScope,
+    job_rx: flume::Receiver<scheduler::ReceiveMessage>,
+) -> tokio::task::JoinHandle<()> {
     let ListenerParameters {
         job_id,
         block_path,
@@ -98,11 +112,6 @@ pub fn listen_to_worker(params: ListenerParameters) -> tokio::task::JoinHandle<(
         flow_path,
     } = params;
 
-    let block_scope = scheduler_tx.calculate_scope(&scope);
-
-    let (job_tx, job_rx) = flume::unbounded::<scheduler::ReceiveMessage>();
-
-    scheduler_tx.register_subscriber(job_id.to_owned(), job_tx);
     tokio::spawn(async move {
         let run_block = |executor: Option<&Arc<TaskBlockExecutor>>,
                          service: Option<&ServiceExecutorPayload>| {
@@ -480,6 +489,27 @@ mod tests {
         panic!("listener did not subscribe to scheduler messages");
     }
 
+    fn assert_done_error(
+        status: crate::block_status::Status,
+        job_id: &JobId,
+        expected_error: &str,
+    ) {
+        match status {
+            crate::block_status::Status::Done {
+                job_id: done_job_id,
+                result,
+                error,
+                error_detail,
+            } => {
+                assert_eq!(done_job_id, *job_id);
+                assert!(result.is_none());
+                assert_eq!(error.as_deref(), Some(expected_error));
+                assert!(error_detail.is_none());
+            }
+            _ => panic!("expected done error status"),
+        }
+    }
+
     #[tokio::test]
     async fn listener_finishes_block_from_scheduler_block_finished_error() {
         let session_id = SessionId::random();
@@ -537,26 +567,100 @@ mod tests {
             .expect("listener should emit block status")
             .expect("block status channel should stay open");
 
-        match status {
-            crate::block_status::Status::Done {
-                job_id: done_job_id,
-                result,
-                error,
-                error_detail,
-            } => {
-                assert_eq!(done_job_id, job_id);
-                assert!(result.is_none());
-                assert_eq!(
-                    error.as_deref(),
-                    Some("Executor python-executor exit with code 1")
-                );
-                assert!(error_detail.is_none());
-            }
-            _ => panic!("expected done error status"),
-        }
+        assert_done_error(status, &job_id, "Executor python-executor exit with code 1");
 
         scheduler_tx.abort();
         scheduler_handle.await.unwrap();
+        listener_handle.await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn listener_waits_for_block_finished_after_executor_lifecycle_messages() {
+        let session_id = SessionId::random();
+        let job_id = JobId::random();
+        let scope = test_scope(session_id.clone());
+        let (_worker_tx, worker_rx) = flume::unbounded();
+        let (scheduler_tx, _scheduler_rx) = scheduler::create(
+            NoopSchedulerTx,
+            ChannelSchedulerRx { rx: worker_rx },
+            None,
+            None,
+            test_executor_payload(session_id.clone()),
+            scope.data_dir.clone(),
+        );
+
+        let (reporter_tx, _reporter_rx) =
+            reporter::create::<NoopReporterTx, NoopReporterRx>(session_id.clone(), None, None);
+        let reporter = Arc::new(reporter_tx.block(job_id.clone(), None, BlockJobStacks::new()));
+        let (block_status_tx, block_status_rx) = crate::block_status::create();
+        let (job_tx, job_rx) = flume::unbounded();
+        let block_scope = scheduler_tx.calculate_scope(&scope);
+        let listener_handle = listen_to_worker_messages(
+            ListenerParameters {
+                job_id: job_id.clone(),
+                block_path: None,
+                stacks: BlockJobStacks::new(),
+                scheduler_tx,
+                inputs: None,
+                outputs_def: None,
+                inputs_def: None,
+                inputs_def_patch: None,
+                block_status: block_status_tx,
+                reporter,
+                executor: None,
+                service: None,
+                block_dir: scope.data_dir.clone(),
+                scope: scope.clone(),
+                injection_store: None,
+                flow_path: None,
+            },
+            block_scope,
+            job_rx,
+        );
+
+        job_tx
+            .send_async(scheduler::ReceiveMessage::ExecutorExit {
+                session_id: session_id.clone(),
+                executor_name: "python".to_string(),
+                code: 1,
+                reason: None,
+            })
+            .await
+            .unwrap();
+        job_tx
+            .send_async(scheduler::ReceiveMessage::ExecutorTimeout {
+                session_id: session_id.clone(),
+                executor_name: "python".to_string(),
+                package: None,
+                identifier: Some(scope.identifier()),
+            })
+            .await
+            .unwrap();
+
+        assert!(
+            timeout(Duration::from_millis(100), block_status_rx.recv())
+                .await
+                .is_err(),
+            "executor lifecycle messages should not finish blocks directly"
+        );
+
+        job_tx
+            .send_async(scheduler::ReceiveMessage::BlockFinished {
+                session_id,
+                job_id: job_id.clone(),
+                result: None,
+                error: Some("Executor python-executor exit with code 1".to_string()),
+            })
+            .await
+            .unwrap();
+
+        let status = timeout(Duration::from_secs(1), block_status_rx.recv())
+            .await
+            .expect("listener should emit block status")
+            .expect("block status channel should stay open");
+        assert_done_error(status, &job_id, "Executor python-executor exit with code 1");
+
+        drop(job_tx);
         listener_handle.await.unwrap();
     }
 }
