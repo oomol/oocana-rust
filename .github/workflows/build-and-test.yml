@@ -44,7 +44,7 @@ jobs:
         uses: leavesster/duplicate-run-action@v0.1
 
   rust-test:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     needs: [skip, check-duplicate]
     if: ${{ needs.skip.outputs.should_skip != 'true' && needs.check-duplicate.outputs.is_duplicate != 'true' }}
     timeout-minutes: 20
@@ -80,7 +80,7 @@ jobs:
     needs: [skip, rust-test]
     uses: ./.github/workflows/oocana-python.yml
   build:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     needs: [skip, check-duplicate, rust-test, python-test, node-test]
     if: ${{ always() }}
     steps:
