@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.31.3 (2026-05-09)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* ci: migrate workflows to Blacksmith runners by @leavesster in https://github.com/oomol/oocana-rust/pull/471
+* fix(runtime): finish block on executor failure by @leavesster in https://github.com/oomol/oocana-rust/pull/468
+
+
+**Full Changelog**: https://github.com/oomol/oocana-rust/compare/v0.31.2...v0.31.3
+
 ## 0.31.2 (2026-04-23)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->

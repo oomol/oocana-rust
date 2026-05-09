@@ -1,6 +1,6 @@
 [package]
 name = "remote_job_client"
-version = "0.31.2"
+version = "0.31.3"
 edition = "2024"
 description = "Client for create/get-detail/get-result remote job APIs"
 
