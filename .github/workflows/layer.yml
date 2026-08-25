@@ -50,9 +50,9 @@ jobs:
       - uses: actions/checkout@v6
       - name: Generate GitHub App Token for oomol/${{ vars.OVMLAYER_REPOSITORY }}
         id: app-token
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@v3
         with:
-          app-id: ${{ vars.OOMOL_DOWNLOADER_APP_ID }}
+          client-id: ${{ vars.OOMOL_DOWNLOADER_APP_CLIENT_ID }}
           private-key: ${{ secrets.OOMOL_DOWNLOADER_APP_PRIVATE_KEY }}
           owner: oomol
           repositories: ${{ vars.OVMLAYER_REPOSITORY }}
